@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>成长伙伴 · 社交成长任务系统</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    /* ===== CSS Variables & Reset ===== */
+    :root {
+      --primary: #5bb370;
+      --primary-light: #a8e6b8;
+      --primary-lighter: #e8f7ec;
+      --primary-dark: #3d9c54;
+      --accent: #ff9a76;
+      --accent-light: #ffd4c4;
+      --accent-lighter: #fff5f0;
+      --bg: #f5f9f3;
+      --card: #ffffff;
+      --text: #2d3a2e;
+      --text-secondary: #6b7d6e;
+      --text-light: #9caf9f;
+      --border: #e2ead9;
+      --shadow: 0 2px 16px rgba(91, 179, 112, 0.08);
+      --shadow-hover: 0 4px 24px rgba(91, 179, 112, 0.14);
+      --radius: 16px;
+      --radius-sm: 10px;
+      --transition: all 0.3s ease;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Noto Sans SC', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+    /* ===== Login Screen ===== */
+    #login-screen {
+      min-height: 100vh;
+      display: flex; align-items: center; justify-content: center;
+      background: linear-gradient(135deg, #e8f7ec 0%, #f5f9f3 50%, #fff5f0 100%);
+      padding: 20px;
+    }
+    .login-card {
+      background: var(--card); border-radius: 24px; padding: 48px 40px;
+      box-shadow: 0 8px 40px rgba(91, 179, 112, 0.12); max-width: 440px; width: 100%; text-align: center;
+    }
+    .login-logo { font-size: 48px; margin-bottom: 8px; }
+    .login-title { font-size: 28px; font-weight: 700; color: var(--primary-dark); margin-bottom: 4px; }
+    .login-subtitle { font-size: 14px; color: var(--text-secondary); margin-bottom: 32px; }
+    .role-select { display: flex; gap: 16px; margin-bottom: 24px; }
+    .role-card {
+      flex: 1; border: 2px solid var(--border); border-radius: var(--radius); padding: 20px 12px;
+      cursor: pointer; transition: var(--transition); text-align: center;
+    }
+    .role-card:hover { border-color: var(--primary-light); background: var(--primary-lighter); }
+    .role-card.active { border-color: var(--primary); background: var(--primary-lighter); }
+    .role-card .emoji { font-size: 32px; }
+    .role-card .name { font-size: 16px; font-weight: 600; margin-top: 8px; }
+    .role-card .desc { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
+    .form-group { margin-bottom: 16px; text-align: left; }
+    .form-group label { display: block; font-size: 14px; font-weight: 500; margin-bottom: 6px; color: var(--text); }
+    .form-group input, .form-group select, .form-group textarea {
+      width: 100%; padding: 10px 14px; border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+      font-size: 14px; font-family: inherit; transition: var(--transition); background: var(--card); color: var(--text);
+    }
+    .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+      outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(91, 179, 112, 0.1);
+    }
+    .form-group textarea { resize: vertical; min-height: 80px; }
+    .btn {
+      padding: 10px 20px; border: none; border-radius: var(--radius-sm); font-size: 14px; font-weight: 500;
+      cursor: pointer; transition: var(--transition); font-family: inherit; display: inline-flex; align-items: center; gap: 6px;
+    }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-primary:hover { background: var(--primary-dark); transform: translateY(-1px); box-shadow: var(--shadow-hover); }
+    .btn-accent { background: var(--accent); color: white; }
+    .btn-accent:hover { background: #e88860; transform: translateY(-1px); box-shadow: 0 4px 20px rgba(255, 154, 118, 0.3); }
+    .btn-outline { background: transparent; border: 1.5px solid var(--border); color: var(--text); }
+    .btn-outline:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-lighter); }
+    .btn-ghost { background: transparent; color: var(--text-secondary); padding: 6px 12px; }
+    .btn-ghost:hover { background: var(--primary-lighter); color: var(--primary); }
+    .btn-block { width: 100%; justify-content: center; padding: 12px; font-size: 15px; }
+    .btn-sm { padding: 6px 14px; font-size: 13px; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    /* ===== Dashboard Layout ===== */
+    .app { min-height: 100vh; display: flex; flex-direction: column; }
+    .app-header {
+      background: var(--card); border-bottom: 1px solid var(--border); padding: 0 24px;
+      height: 60px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100;
+    }
+    .app-header .logo { display: flex; align-items: center; gap: 8px; font-size: 18px; font-weight: 700; color: var(--primary-dark); }
+    .app-header .user-info { display: flex; align-items: center; gap: 12px; }
+    .app-header .user-name { font-size: 14px; font-weight: 500; }
+    .app-header .user-avatar {
+      width: 36px; height: 36px; border-radius: 50%; background: var(--primary-lighter);
+      display: flex; align-items: center; justify-content: center; font-size: 18px;
+    }
+    .app-nav { background: var(--card); border-bottom: 1px solid var(--border); padding: 0 24px; display: flex; gap: 4px; overflow-x: auto; }
+    .nav-item {
+      padding: 12px 20px; font-size: 14px; font-weight: 500; color: var(--text-secondary);
+      cursor: pointer; transition: var(--transition); border-bottom: 2px solid transparent; white-space: nowrap;
+    }
+    .nav-item:hover { color: var(--primary); }
+    .nav-item.active { color: var(--primary-dark); border-bottom-color: var(--primary); }
+    .app-main { flex: 1; padding: 24px; max-width: 1200px; margin: 0 auto; width: 100%; }
+    /* ===== Components ===== */
+    .page-title { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+    .page-subtitle { font-size: 14px; color: var(--text-secondary); margin-bottom: 24px; }
+    .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+    .section-title { font-size: 18px; font-weight: 600; }
+    .card { background: var(--card); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); margin-bottom: 16px; }
+    .card-title { font-size: 16px; font-weight: 600; margin-bottom: 12px; }
+    .task-card {
+      background: var(--card); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow);
+      margin-bottom: 12px; border-left: 4px solid var(--primary); transition: var(--transition);
+    }
+    .task-card:hover { box-shadow: var(--shadow-hover); }
+    .task-card.level-basic { border-left-color: #95c895; }
+    .task-card.level-advanced { border-left-color: var(--accent); }
+    .task-card.level-breakthrough { border-left-color: #a78bfa; }
+    .task-card-header { display: flex; align-items: start; justify-content: space-between; margin-bottom: 8px; gap: 12px; }
+    .task-card-title { font-size: 16px; font-weight: 600; }
+    .task-card-desc { font-size: 14px; color: var(--text-secondary); margin-bottom: 12px; }
+    .task-meta { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+    .tag {
+      display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 500;
+    }
+    .tag-category { background: var(--primary-lighter); color: var(--primary-dark); }
+    .tag-level-basic { background: #e8f5e9; color: #5a9e5a; }
+    .tag-level-advanced { background: var(--accent-lighter); color: #d4724e; }
+    .tag-level-breakthrough { background: #f0e9ff; color: #8b6ddb; }
+    .tag-status-available { background: #e3f2fd; color: #1976d2; }
+    .tag-status-progress { background: #fff8e1; color: #f9a825; }
+    .tag-status-review { background: #fce4ec; color: #e91e63; }
+    .tag-status-done { background: #e8f5e9; color: #2e7d32; }
+    .tag-status-abandoned { background: #f5f5f5; color: #9e9e9e; }
+    .task-actions { display: flex; gap: 8px; margin-top: 8px; }
+    /* Stats Grid */
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; margin-bottom: 24px; }
+    .stat-card {
+      background: var(--card); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); text-align: center;
+    }
+    .stat-icon { font-size: 28px; margin-bottom: 8px; }
+    .stat-value { font-size: 32px; font-weight: 700; color: var(--primary-dark); }
+    .stat-label { font-size: 13px; color: var(--text-secondary); margin-top: 4px; }
+    /* Progress Bar */
+    .progress-bar-wrap { background: var(--primary-lighter); border-radius: 20px; height: 12px; overflow: hidden; margin-top: 8px; }
+    .progress-bar { background: linear-gradient(90deg, var(--primary), var(--primary-dark)); height: 100%; border-radius: 20px; transition: width 0.6s ease; }
+    /* Empty State */
+    .empty-state { text-align: center; padding: 48px 20px; color: var(--text-light); }
+    .empty-state .emoji { font-size: 48px; margin-bottom: 12px; }
+    .empty-state p { font-size: 15px; }
+    /* Modal */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; z-index: 200; padding: 20px; }
+    .modal {
+      background: var(--card); border-radius: 20px; padding: 28px; max-width: 520px; width: 100%;
+      max-height: 85vh; overflow-y: auto; box-shadow: 0 8px 40px rgba(0,0,0,0.15);
+    }
+    .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+    .modal-title { font-size: 18px; font-weight: 700; }
+    .modal-close { background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text-light); padding: 4px; }
+    .modal-close:hover { color: var(--text); }
+    .modal-footer { display: flex; gap: 12px; justify-content: flex-end; margin-top: 20px; }
+    /* Toast */
+    .toast-container { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 300; display: flex; flex-direction: column; gap: 8px; align-items: center; }
+    .toast {
+      background: var(--primary-dark); color: white; padding: 12px 24px; border-radius: 24px; font-size: 14px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.15); animation: toastIn 0.3s ease; max-width: 90vw;
+    }
+    .toast.success { background: var(--primary-dark); }
+    .toast.warn { background: #f9a825; }
+    .toast.error { background: #e53935; }
+    @keyframes toastIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    /* Reward card */
+    .reward-card { display: flex; align-items: center; gap: 16px; padding: 16px; background: var(--accent-lighter); border-radius: var(--radius-sm); margin-bottom: 12px; }
+    .reward-emoji { font-size: 32px; }
+    .reward-amount { font-size: 20px; font-weight: 700; color: var(--accent); }
+    .reward-info { flex: 1; }
+    .reward-note { font-size: 13px; color: var(--text-secondary); }
+    .reward-date { font-size: 12px; color: var(--text-light); }
+    /* Table */
+    .data-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .data-table th { text-align: left; padding: 10px 12px; background: var(--primary-lighter); color: var(--text-secondary); font-weight: 500; border-radius: 8px; }
+    .data-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); }
+    .data-table tr:hover td { background: var(--primary-lighter); }
+    /* Chart container */
+    .chart-wrap { background: var(--card); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); margin-bottom: 16px; }
+    .chart-title { font-size: 15px; font-weight: 600; margin-bottom: 12px; }
+    .chart-container { display: flex; align-items: center; justify-content: center; }
+    /* Badge */
+    .level-badge { display: inline-flex; align-items: center; gap: 6px; padding: 6px 16px; border-radius: 20px; font-size: 14px; font-weight: 600; }
+    .level-badge .star { font-size: 16px; }
+    /* Filter bar */
+    .filter-bar { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+    .filter-bar select, .filter-bar input {
+      padding: 8px 12px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); font-size: 13px; font-family: inherit; background: var(--card); color: var(--text);
+    }
+    /* Report */
+    .report-card { background: var(--card); border-radius: var(--radius); padding: 24px; box-shadow: var(--shadow); margin-bottom: 16px; }
+    .report-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+    .report-title { font-size: 18px; font-weight: 700; }
+    .report-section { margin-bottom: 16px; }
+    .report-section h4 { font-size: 15px; font-weight: 600; margin-bottom: 8px; color: var(--primary-dark); }
+    .report-section p { font-size: 14px; color: var(--text-secondary); line-height: 1.8; }
+    .report-stats { display: flex; gap: 24px; margin-bottom: 16px; flex-wrap: wrap; }
+    .report-stat { text-align: center; }
+    .report-stat .num { font-size: 24px; font-weight: 700; color: var(--primary-dark); }
+    .report-stat .label { font-size: 12px; color: var(--text-secondary); }
+    /* Responsive */
+    @media (max-width: 768px) {
+      .role-select { flex-direction: column; }
+      .app-header { padding: 0 12px; }
+      .app-main { padding: 16px 12px; }
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+      .stat-value { font-size: 24px; }
+      .nav-item { padding: 10px 14px; font-size: 13px; }
+    }
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--text-light); }
+  </style>
+</head>
+<body>
+  <!-- ===== Login Screen ===== -->
+  <div id="login-screen">
+    <div class="login-card">
+      <div class="login-logo">🌱</div>
+      <div class="login-title">成长伙伴</div>
+      <div class="login-subtitle">社交成长任务系统 · 每一步都算数</div>
+      <div class="role-select">
+        <div class="role-card active" data-role="user" onclick="Auth.selectRole('user')">
+          <div class="emoji">👧</div>
+          <div class="name">妹妹</div>
+          <div class="desc">成长探索者</div>
+        </div>
+        <div class="role-card" data-role="admin" onclick="Auth.selectRole('admin')">
+          <div class="emoji">👨</div>
+          <div class="name">哥哥</div>
+          <div class="desc">管理员</div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>密码</label>
+        <input type="password" id="login-password" placeholder="请输入密码" onkeydown="if(event.key==='Enter')Auth.doLogin()">
+      </div>
+      <button class="btn btn-primary btn-block" onclick="Auth.doLogin()">登录</button>
+      <p style="font-size:12px;color:var(--text-light);margin-top:16px;text-align:center;">妹妹密码：user &nbsp;|&nbsp; 哥哥密码：admin</p>
+    </div>
+  </div>
+  <!-- ===== Admin Dashboard ===== -->
+  <div id="admin-dashboard" class="app" style="display:none">
+    <header class="app-header">
+      <div class="logo">🌱 成长伙伴</div>
+      <div class="user-info">
+        <span class="user-name" id="admin-name"></span>
+        <div class="user-avatar">👨</div>
+        <button class="btn btn-ghost btn-sm" onclick="Auth.logout()">退出</button>
+      </div>
+    </header>
+    <nav class="app-nav" id="admin-nav">
+      <div class="nav-item active" data-tab="tasks" onclick="Router.adminTab('tasks')">任务管理</div>
+      <div class="nav-item" data-tab="review" onclick="Router.adminTab('review')">任务审核</div>
+      <div class="nav-item" data-tab="rewards" onclick="Router.adminTab('rewards')">奖励中心</div>
+      <div class="nav-item" data-tab="dashboard" onclick="Router.adminTab('dashboard')">成长看板</div>
+      <div class="nav-item" data-tab="reports" onclick="Router.adminTab('reports')">总结报告</div>
+    </nav>
+    <main class="app-main" id="admin-main"></main>
+  </div>
+  <!-- ===== User Dashboard ===== -->
+  <div id="user-dashboard" class="app" style="display:none">
+    <header class="app-header">
+      <div class="logo">🌱 成长伙伴</div>
+      <div class="user-info">
+        <span class="user-name" id="user-name"></span>
+        <div class="user-avatar">👧</div>
+        <button class="btn btn-ghost btn-sm" onclick="Auth.logout()">退出</button>
+      </div>
+    </header>
+    <nav class="app-nav" id="user-nav">
+      <div class="nav-item active" data-tab="tasks" onclick="Router.userTab('tasks')">任务中心</div>
+      <div class="nav-item" data-tab="growth" onclick="Router.userTab('growth')">我的成长</div>
+      <div class="nav-item" data-tab="rewards" onclick="Router.userTab('rewards')">奖励记录</div>
+    </nav>
+    <main class="app-main" id="user-main"></main>
+  </div>
+  <!-- ===== Modal & Toast Containers ===== -->
+  <div id="modal-container"></div>
+  <div id="toast-container" class="toast-container"></div>
+  <script src="app.js"></script>
+</body>
+</html>
