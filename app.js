@@ -213,49 +213,119 @@ const DB = {
 
   // App Config
   async getConfig() {
-    const { data, error } = await this.supabase.from('app_config').select('*').single();
+    const { data, error } = await this.supabase.from('app_config').select('*');
     if (error) { console.error('DB getConfig error:', error); return null; }
-    // 兼容旧表结构：growth_score → star_energy
-    const starEnergy = data.star_energy !== undefined && data.star_energy !== null
-      ? data.star_energy
-      : (data.growth_score || 0);
-    const shipLevel = data.ship_level || Math.floor(starEnergy / 50) + 1;
+    const rows = {};
+    data.forEach(r => { rows[r.id] = r; });
+
+    // 确保 game_state 行存在
+    if (!rows['game_state']) {
+      await this._ensureGameState();
+      const { data: gsData } = await this.supabase.from('app_config').select('*').eq('id', 'game_state').single();
+      rows['game_state'] = gsData;
+    }
+
+    const gs = rows['game_state'];
+    const gsValue = gs.value || {};
+    const starEnergy = gs.star_energy || 0;
+    const shipLevel = gs.ship_level || Math.floor(starEnergy / 50) + 1;
+
+    const userProfile = rows['user_profile']?.value || {};
+    const adminProfile = rows['admin_profile']?.value || {};
+
     return {
       starEnergy: starEnergy,
       shipLevel: shipLevel,
-      currentPlanet: data.current_planet || 'moon',
-      engineBuff: data.engine_buff || false,
-      radarBuff: data.radar_buff || false,
-      shipSkin: data.ship_skin || 'default',
-      totalTasksCompleted: data.total_tasks_completed,
-      monthlyTasks: data.monthly_tasks,
-      currentMonth: data.current_month,
-      adminPassword: data.admin_password,
-      userPassword: data.user_password,
-      userName: data.user_name,
-      adminName: data.admin_name,
+      currentPlanet: gs.current_planet || 'moon',
+      engineBuff: gs.engine_buff || false,
+      radarBuff: gs.radar_buff || false,
+      shipSkin: gs.ship_skin || 'default',
+      totalTasksCompleted: gsValue.totalTasksCompleted || 0,
+      monthlyTasks: gsValue.monthlyTasks || 0,
+      currentMonth: gsValue.currentMonth || '',
+      adminPassword: gsValue.adminPassword || 'admin',
+      userPassword: gsValue.userPassword || 'user',
+      userName: userProfile.name || '舰长',
+      adminName: adminProfile.name || '指挥官',
     };
   },
-  async updateConfig(config) {
-    const updates = {};
-    if (config.starEnergy !== undefined) {
-      updates.star_energy = config.starEnergy;
-      updates.growth_score = config.starEnergy; // 同时写入旧字段
+
+  async _ensureGameState() {
+    const now = new Date();
+    const monthKey = `${now.getFullYear()}-${now.getMonth() + 1}`;
+    // 尝试从 user_profile 取初始星能
+    const { data: userProfile } = await this.supabase.from('app_config').select('*').eq('id', 'user_profile').single();
+    let initialEnergy = 0;
+    if (userProfile?.value?.initialScore !== undefined) {
+      initialEnergy = userProfile.value.initialScore;
     }
+    const { error } = await this.supabase.from('app_config').insert({
+      id: 'game_state',
+      value: {
+        totalTasksCompleted: 0,
+        monthlyTasks: 0,
+        currentMonth: monthKey,
+        adminPassword: 'admin',
+        userPassword: 'user',
+      },
+      star_energy: initialEnergy,
+      ship_level: Math.floor(initialEnergy / 50) + 1,
+      current_planet: 'moon',
+      engine_buff: false,
+      radar_buff: false,
+      ship_skin: 'default',
+    });
+    if (error) console.error('_ensureGameState error:', error);
+  },
+
+  async updateConfig(config) {
+    // 先读取当前 game_state 的 value
+    const { data: gs, error: getErr } = await this.supabase.from('app_config').select('*').eq('id', 'game_state').single();
+    if (getErr) {
+      // 不存在则创建
+      await this._ensureGameState();
+      const { data: gs2 } = await this.supabase.from('app_config').select('*').eq('id', 'game_state').single();
+      if (!gs2) return false;
+    }
+
+    const currentValue = gs?.value || {};
+    const newValue = { ...currentValue };
+    const updates = {};
+
+    // 列字段
+    if (config.starEnergy !== undefined) updates.star_energy = config.starEnergy;
     if (config.shipLevel !== undefined) updates.ship_level = config.shipLevel;
     if (config.currentPlanet !== undefined) updates.current_planet = config.currentPlanet;
     if (config.engineBuff !== undefined) updates.engine_buff = config.engineBuff;
     if (config.radarBuff !== undefined) updates.radar_buff = config.radarBuff;
     if (config.shipSkin !== undefined) updates.ship_skin = config.shipSkin;
-    if (config.totalTasksCompleted !== undefined) updates.total_tasks_completed = config.totalTasksCompleted;
-    if (config.monthlyTasks !== undefined) updates.monthly_tasks = config.monthlyTasks;
-    if (config.currentMonth !== undefined) updates.current_month = config.currentMonth;
-    if (config.adminPassword !== undefined) updates.admin_password = config.adminPassword;
-    if (config.userPassword !== undefined) updates.user_password = config.userPassword;
-    if (config.userName !== undefined) updates.user_name = config.userName;
-    if (config.adminName !== undefined) updates.admin_name = config.adminName;
-    const { error } = await this.supabase.from('app_config').update(updates).eq('id', 1);
+
+    // value JSON 字段
+    if (config.totalTasksCompleted !== undefined) newValue.totalTasksCompleted = config.totalTasksCompleted;
+    if (config.monthlyTasks !== undefined) newValue.monthlyTasks = config.monthlyTasks;
+    if (config.currentMonth !== undefined) newValue.currentMonth = config.currentMonth;
+    if (config.adminPassword !== undefined) newValue.adminPassword = config.adminPassword;
+    if (config.userPassword !== undefined) newValue.userPassword = config.userPassword;
+
+    updates.value = newValue;
+
+    const { error } = await this.supabase.from('app_config').update(updates).eq('id', 'game_state');
     if (error) { console.error('DB updateConfig error:', error); return false; }
+
+    // 名字更新到对应行
+    if (config.userName !== undefined) {
+      const { data: up } = await this.supabase.from('app_config').select('*').eq('id', 'user_profile').single();
+      const val = up?.value || {};
+      val.name = config.userName;
+      await this.supabase.from('app_config').update({ value: val }).eq('id', 'user_profile');
+    }
+    if (config.adminName !== undefined) {
+      const { data: ap } = await this.supabase.from('app_config').select('*').eq('id', 'admin_profile').single();
+      const val = ap?.value || {};
+      val.name = config.adminName;
+      await this.supabase.from('app_config').update({ value: val }).eq('id', 'admin_profile');
+    }
+
     return true;
   },
 };
