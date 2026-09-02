@@ -137,7 +137,13 @@ const DB = {
       .select('*')
       .eq('user_role', 'player')
       .single();
-    if (error) { console.error('DB getPlayerState error:', error); return null; }
+    if (error) {
+      // PGRST116 = 没有匹配行，正常情况（首次登录）
+      if (error.code !== 'PGRST116') {
+        console.error('DB getPlayerState error:', error);
+      }
+      return null;
+    }
     return {
       level: data.level,
       exp: data.exp,
@@ -168,6 +174,40 @@ const DB = {
       .eq('user_role', 'player');
     if (error) { console.error('DB updatePlayerState error:', error); return false; }
     return true;
+  },
+
+  // 初始化玩家数据（首次登录自动创建）
+  async initPlayerState() {
+    const existing = await this.getPlayerState();
+    if (existing) return existing;
+
+    const defaultState = {
+      user_role: 'player',
+      level: 1,
+      exp: 0,
+      chopping_count: 10,
+      tree_level: 1,
+      axe_id: 'axe_common',
+      balance: 0,
+      total_withdrawn: 0,
+      last_daily_date: '',
+    };
+
+    const { error } = await dbClient
+      .from('player_state')
+      .insert(defaultState);
+    if (error) { console.error('DB initPlayerState error:', error); return null; }
+
+    return {
+      level: 1,
+      exp: 0,
+      choppingCount: 10,
+      treeLevel: 1,
+      axeId: 'axe_common',
+      balance: 0,
+      totalWithdrawn: 0,
+      lastDailyDate: '',
+    };
   },
 
   // --- 背包 ---
@@ -436,8 +476,12 @@ const Game = {
   inventory: [],
 
   async init() {
-    this.state = await DB.getPlayerState();
+    this.state = await DB.initPlayerState();
     this.inventory = await DB.getInventory();
+    if (!this.state) {
+      console.error('玩家状态初始化失败');
+      UI.toast('初始化失败，请刷新重试', 'error');
+    }
   },
 
   async refresh() {
