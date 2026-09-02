@@ -98,6 +98,30 @@ const SHOP_ITEMS = [
   { id: 'shop_forge_10', name: '锻铁×10', icon: '🔩', costType: 'chopping', costValue: 5, rewardType: 'item', rewardId: 'stone_forge', rewardValue: 10 },
 ];
 
+// 仙阶表
+const REALMS = [
+  { level: 1, name: '凡人', icon: '👤', reqLevel: 1, reqItems: [], desc: '初入修仙界的凡人' },
+  { level: 2, name: '炼气期', icon: '🌬️', reqLevel: 5, reqItems: [{ itemId: 'stone_break', count: 3 }], desc: '感知天地灵气，可使用精品仙斧' },
+  { level: 3, name: '筑基期', icon: '🏔️', reqLevel: 15, reqItems: [{ itemId: 'stone_break', count: 8 }], desc: '筑就道基，可使用珍品仙斧' },
+  { level: 4, name: '金丹期', icon: '🔮', reqLevel: 30, reqItems: [{ itemId: 'stone_break', count: 20 }], desc: '凝结金丹，可使用神品仙斧' },
+  { level: 5, name: '元婴期', icon: '👶', reqLevel: 50, reqItems: [{ itemId: 'stone_break', count: 50 }], desc: '元婴出窍，可使用仙品仙斧' },
+];
+
+// 仙树灵阶表
+const TREE_REALMS = [
+  { level: 1, name: '凡木', icon: '🌱', treeLevel: 1, reqItems: [], desc: '最普通的灵树' },
+  { level: 2, name: '灵木', icon: '🌳', treeLevel: 2, reqItems: [{ itemId: 'stone_forge', count: 20 }, { itemId: 'stone_break', count: 2 }], desc: '蕴含灵气的树木，掉落更佳' },
+  { level: 3, name: '仙木', icon: '🎋', treeLevel: 3, reqItems: [{ itemId: 'stone_forge', count: 50 }, { itemId: 'stone_break', count: 8 }], desc: '传说中的仙树，有神品掉落' },
+];
+
+// 锻造奖池
+const FORGE_POOL = [
+  { itemId: 'axe_iron', weight: 50, quality: 2 },
+  { itemId: 'axe_bronze', weight: 30, quality: 3 },
+  { itemId: 'axe_jade', weight: 15, quality: 4 },
+  { itemId: 'axe_gold', weight: 5, quality: 5 },
+];
+
 // 难度颜色映射
 const DIFFICULTY_MAP = {
   S: { name: 'S级', class: 'tag-difficulty-S' },
@@ -149,6 +173,8 @@ const DB = {
       exp: data.exp,
       choppingCount: data.chopping_count,
       treeLevel: data.tree_level,
+      treeRealm: data.tree_realm || 1,
+      realmLevel: data.realm_level || 1,
       axeId: data.axe_id,
       balance: parseFloat(data.balance),
       totalWithdrawn: parseFloat(data.total_withdrawn),
@@ -162,6 +188,8 @@ const DB = {
     if (updates.exp !== undefined) dbUpdates.exp = updates.exp;
     if (updates.choppingCount !== undefined) dbUpdates.chopping_count = updates.choppingCount;
     if (updates.treeLevel !== undefined) dbUpdates.tree_level = updates.treeLevel;
+    if (updates.treeRealm !== undefined) dbUpdates.tree_realm = updates.treeRealm;
+    if (updates.realmLevel !== undefined) dbUpdates.realm_level = updates.realmLevel;
     if (updates.axeId !== undefined) dbUpdates.axe_id = updates.axeId;
     if (updates.balance !== undefined) dbUpdates.balance = updates.balance;
     if (updates.totalWithdrawn !== undefined) dbUpdates.total_withdrawn = updates.totalWithdrawn;
@@ -187,6 +215,8 @@ const DB = {
       exp: 0,
       chopping_count: 10,
       tree_level: 1,
+      tree_realm: 1,
+      realm_level: 1,
       axe_id: 'axe_stone',
       balance: 0,
       total_withdrawn: 0,
@@ -196,13 +226,35 @@ const DB = {
     const { error } = await dbClient
       .from('player_state')
       .insert(defaultState);
-    if (error) { console.error('DB initPlayerState error:', error); return null; }
+    if (error) {
+      // 如果字段不存在（还没跑升级SQL），降级插入
+      if (error.message && error.message.includes('does not exist')) {
+        const fallbackState = {
+          user_role: 'player',
+          level: 1,
+          exp: 0,
+          chopping_count: 10,
+          tree_level: 1,
+          axe_id: 'axe_stone',
+          balance: 0,
+          total_withdrawn: 0,
+          last_daily_date: null,
+        };
+        const { error: err2 } = await dbClient.from('player_state').insert(fallbackState);
+        if (err2) { console.error('DB initPlayerState fallback error:', err2); return null; }
+      } else {
+        console.error('DB initPlayerState error:', error);
+        return null;
+      }
+    }
 
     return {
       level: 1,
       exp: 0,
       choppingCount: 10,
       treeLevel: 1,
+      treeRealm: 1,
+      realmLevel: 1,
       axeId: 'axe_stone',
       balance: 0,
       totalWithdrawn: 0,
@@ -382,11 +434,15 @@ const DB = {
 
   // --- 邮件 ---
   async getMails() {
-    const { data, error } = await dbClient
+    let query = dbClient
       .from('mails')
       .select('*')
-      .eq('user_role', 'player')
-      .order('created_at', { ascending: false });
+      .eq('user_role', 'player');
+    // 尝试过滤已删除邮件，如果字段不存在则跳过
+    try {
+      query = query.eq('is_deleted', false);
+    } catch (e) {}
+    const { data, error } = await query.order('created_at', { ascending: false });
     if (error) { console.error('DB getMails error:', error); return []; }
     return data.map(m => ({
       id: m.id,
@@ -427,6 +483,17 @@ const DB = {
       .update({ is_claimed: true, is_read: true })
       .eq('id', id);
     if (error) { console.error('DB claimMail error:', error); return false; }
+    return true;
+  },
+
+  async deleteMail(id) {
+    const { error } = await dbClient
+      .from('mails')
+      .update({ is_deleted: true })
+      .eq('id', id);
+    // 如果字段不存在（还没跑升级SQL），直接返回成功
+    if (error && error.message && error.message.includes('does not exist')) return true;
+    if (error) { console.error('DB deleteMail error:', error); return false; }
     return true;
   },
 
@@ -503,13 +570,22 @@ const Game = {
 
     // 随机掉落
     const treeConfig = TREE_LEVELS[this.state.treeLevel] || TREE_LEVELS[1];
-    const item = this._rollDrop(treeConfig);
+    let item = this._rollDrop(treeConfig);
+
+    // 应用仙斧buff
+    item = this._applyAxeBuffs(item);
 
     // 发奖励
     await DB.addItem(item.itemId, item.quantity);
     const idx = this.inventory.findIndex(i => i.itemId == item.itemId);
     if (idx >= 0) this.inventory[idx].quantity += item.quantity;
     else this.inventory.push({ itemId: item.itemId, quantity: item.quantity });
+
+    // 返还砍树次数buff
+    const refund = this._checkRefundBuff();
+    if (refund > 0) {
+      item.refundChopping = refund;
+    }
 
     // 加经验
     const expGain = 2 + item.quality;
@@ -688,6 +764,170 @@ const Game = {
   _getItemQty(itemId) {
     const item = this.inventory.find(i => i.itemId == itemId);
     return item ? item.quantity : 0;
+  },
+
+  // 仙阶突破
+  async breakThrough() {
+    const currentRealm = REALMS.find(r => r.level == this.state.realmLevel) || REALMS[0];
+    const nextRealm = REALMS.find(r => r.level == this.state.realmLevel + 1);
+    if (!nextRealm) {
+      UI.toast('已达最高仙阶', 'warn');
+      return false;
+    }
+    if (this.state.level < nextRealm.reqLevel) {
+      UI.toast(`需要等级达到 ${nextRealm.reqLevel} 级才能突破`, 'warn');
+      return false;
+    }
+    // 检查道具
+    for (const req of nextRealm.reqItems) {
+      if (this._getItemQty(req.itemId) < req.count) {
+        const def = ITEMS[req.itemId];
+        UI.toast(`${def.name}不足，需要 ${req.count} 个`, 'warn');
+        return false;
+      }
+    }
+    // 消耗道具
+    for (const req of nextRealm.reqItems) {
+      await DB.removeItem(req.itemId, req.count);
+    }
+    // 升阶
+    this.state.realmLevel = nextRealm.level;
+    await DB.updatePlayerState({ realmLevel: this.state.realmLevel });
+    await this.refresh();
+    UI.toast(`恭喜突破到 ${nextRealm.name}！`, 'success');
+    return true;
+  },
+
+  // 仙树灵阶升级
+  async upgradeTreeRealm() {
+    const currentTreeRealm = TREE_REALMS.find(r => r.level == this.state.treeRealm) || TREE_REALMS[0];
+    const nextTreeRealm = TREE_REALMS.find(r => r.level == this.state.treeRealm + 1);
+    if (!nextTreeRealm) {
+      UI.toast('仙树已达最高灵阶', 'warn');
+      return false;
+    }
+    // 检查道具
+    for (const req of nextTreeRealm.reqItems) {
+      if (this._getItemQty(req.itemId) < req.count) {
+        const def = ITEMS[req.itemId];
+        UI.toast(`${def.name}不足，需要 ${req.count} 个`, 'warn');
+        return false;
+      }
+    }
+    // 消耗道具
+    for (const req of nextTreeRealm.reqItems) {
+      await DB.removeItem(req.itemId, req.count);
+    }
+    // 升阶
+    this.state.treeRealm = nextTreeRealm.level;
+    this.state.treeLevel = nextTreeRealm.treeLevel;
+    await DB.updatePlayerState({ treeRealm: this.state.treeRealm, treeLevel: this.state.treeLevel });
+    await this.refresh();
+    UI.toast(`仙树升级为 ${nextTreeRealm.name}！`, 'success');
+    return true;
+  },
+
+  // 锻造
+  async forge() {
+    if (this._getItemQty('stone_forge') < 1) {
+      UI.toast('锻铁不足', 'warn');
+      return null;
+    }
+    await DB.removeItem('stone_forge', 1);
+
+    // 加权随机抽取
+    const totalWeight = FORGE_POOL.reduce((sum, p) => sum + p.weight, 0);
+    let roll = Math.random() * totalWeight;
+    let selected = FORGE_POOL[0];
+    for (const pool of FORGE_POOL) {
+      roll -= pool.weight;
+      if (roll <= 0) { selected = pool; break; }
+    }
+
+    const axeDef = ITEMS[selected.itemId];
+    await DB.addItem(selected.itemId, 1);
+    await this.refresh();
+    return { itemId: selected.itemId, quality: selected.quality, item: axeDef };
+  },
+
+  // 十连砍
+  async chopTen() {
+    if (this.state.choppingCount < 10) {
+      UI.toast('砍树次数不足10次', 'warn');
+      return null;
+    }
+    const results = [];
+    for (let i = 0; i < 10; i++) {
+      const item = await this.chop();
+      if (item) results.push(item);
+    }
+    // 十连保底：额外送1件珍品及以上
+    const treeConfig = TREE_LEVELS[this.state.treeLevel] || TREE_LEVELS[1];
+    const rarePools = treeConfig.pools.filter(p => p.quality >= 3);
+    if (rarePools.length > 0) {
+      const totalWeight = rarePools.reduce((sum, p) => sum + p.weight, 0);
+      let roll = Math.random() * totalWeight;
+      let selectedPool = rarePools[0];
+      for (const pool of rarePools) {
+        roll -= pool.weight;
+        if (roll <= 0) { selectedPool = pool; break; }
+      }
+      const itemId = selectedPool.items[Math.floor(Math.random() * selectedPool.items.length)];
+      const itemDef = ITEMS[itemId];
+      await DB.addItem(itemId, 1);
+      const idx = this.inventory.findIndex(i => i.itemId == itemId);
+      if (idx >= 0) this.inventory[idx].quantity += 1;
+      else this.inventory.push({ itemId, quantity: 1 });
+      results.push({
+        itemId, quantity: 1, quality: selectedPool.quality,
+        qualityName: QUALITY[selectedPool.quality].name,
+        item: itemDef, isBonus: true,
+      });
+    }
+    UI.updateHeader();
+    return results;
+  },
+
+  // 应用仙斧buff（返回修正后的掉落结果）
+  _applyAxeBuffs(dropItem) {
+    const axeDef = ITEMS[this.state.axeId] || ITEMS.axe_stone;
+    if (!axeDef.skill) return dropItem;
+
+    // 技能1：指定品质掉落时概率双倍
+    if (axeDef.skill === 'double_common' && dropItem.quality <= 2) {
+      if (Math.random() < 0.2) {
+        dropItem.quantity *= 2;
+        dropItem.buffText = '双倍掉落！';
+      }
+    }
+    if (axeDef.skill === 'double_rare' && dropItem.quality >= 3) {
+      if (Math.random() < 0.3) {
+        dropItem.quantity *= 2;
+        dropItem.buffText = '双倍掉落！';
+      }
+    }
+    if (axeDef.skill === 'super_lucky') {
+      // 提升稀有掉落：重roll一次
+      if (dropItem.quality <= 2 && Math.random() < 0.3) {
+        dropItem.quality += 1;
+        dropItem.qualityName = QUALITY[dropItem.quality]?.name || dropItem.qualityName;
+        dropItem.buffText = '幸运暴击！';
+      }
+    }
+    return dropItem;
+  },
+
+  // 返还砍树次数buff（砍树后调用）
+  _checkRefundBuff() {
+    const axeDef = ITEMS[this.state.axeId] || ITEMS.axe_stone;
+    if (axeDef.skill === 'refund_chopping') {
+      if (Math.random() < 0.15) {
+        this.state.choppingCount += 1;
+        DB.updatePlayerState({ choppingCount: this.state.choppingCount });
+        return 1;
+      }
+    }
+    return 0;
   },
 };
 
@@ -928,36 +1168,70 @@ const PlayerView = {
   async renderCultivate() {
     const main = document.getElementById('player-main');
     const treeConfig = TREE_LEVELS[Game.state.treeLevel] || TREE_LEVELS[1];
+    const treeRealm = TREE_REALMS.find(r => r.level == Game.state.treeRealm) || TREE_REALMS[0];
+    const realm = REALMS.find(r => r.level == Game.state.realmLevel) || REALMS[0];
+    const nextRealm = REALMS.find(r => r.level == Game.state.realmLevel + 1);
+    const nextTreeRealm = TREE_REALMS.find(r => r.level == Game.state.treeRealm + 1);
     const axeDef = ITEMS[Game.state.axeId] || ITEMS.axe_stone;
+    const forgeStoneQty = Game.inventory.find(i => i.itemId == 'stone_forge')?.quantity || 0;
 
     main.innerHTML = `
+      <!-- 仙阶信息栏 -->
+      <div class="card realm-bar">
+        <div style="display:flex;align-items:center;gap:12px;flex:1">
+          <div style="font-size:32px">${realm.icon}</div>
+          <div>
+            <div style="font-weight:700;font-size:16px">${realm.name}</div>
+            <div style="font-size:12px;color:var(--text-secondary)">Lv.${Game.state.level} · 经验 ${Game.state.exp}/${getExpForLevel(Game.state.level)}</div>
+          </div>
+        </div>
+        ${nextRealm ? `
+          <button class="btn btn-accent btn-sm" onclick="PlayerView.showBreakThrough()">突破</button>
+        ` : '<span class="tag" style="background:var(--quality-5)20;color:var(--quality-5)">已满阶</span>'}
+      </div>
+
       <!-- 仙树区域 -->
       <div class="tree-area" id="tree-area">
         <div class="tree-container">
           <div class="tree-icon" id="tree-icon" onclick="PlayerView.doChop()">${treeConfig.icon}</div>
           <div class="tree-info">
-            <div class="tree-name">${treeConfig.name}</div>
-            <div class="tree-level">仙树 Lv.${Game.state.treeLevel}</div>
+            <div class="tree-name">${treeRealm.name} · ${treeConfig.name}</div>
+            <div class="tree-level">灵阶 ${Game.state.treeRealm} · 树 Lv.${Game.state.treeLevel}</div>
           </div>
+          ${nextTreeRealm ? `<button class="tree-upgrade-btn" onclick="PlayerView.showTreeUpgrade()">↑ 升阶</button>` : ''}
         </div>
-        <button class="chop-btn" id="chop-btn" onclick="PlayerView.doChop()" ${Game.state.choppingCount <= 0 ? 'disabled' : ''}>
-          🪓 砍树 (${Game.state.choppingCount})
-        </button>
+        <div style="display:flex;gap:8px">
+          <button class="chop-btn" id="chop-btn" onclick="PlayerView.doChop()" ${Game.state.choppingCount <= 0 ? 'disabled' : ''} style="flex:1">
+            🪓 砍树 (${Game.state.choppingCount})
+          </button>
+          <button class="chop-btn chop-btn-ten" id="chop-ten-btn" onclick="PlayerView.doChopTen()" ${Game.state.choppingCount < 10 ? 'disabled' : ''}>
+            ⚡ 十连
+          </button>
+        </div>
       </div>
 
-      <!-- 状态统计 -->
-      <div class="stats-row">
-        <div class="stat-card">
-          <div class="stat-num">${Game.state.choppingCount}</div>
-          <div class="stat-label">🪓 砍树次数</div>
+      <!-- 锻造入口 -->
+      <div class="forge-entry" onclick="PlayerView.showForge()">
+        <div class="forge-icon">🔨</div>
+        <div class="forge-info">
+          <div class="forge-title">锻造仙斧</div>
+          <div class="forge-desc">消耗锻铁抽取新仙斧</div>
         </div>
-        <div class="stat-card">
-          <div class="stat-num" style="color:${QUALITY[axeDef.quality].color}">${axeDef.icon}</div>
-          <div class="stat-label">${axeDef.name}</div>
+        <div class="forge-count">🔩 ${forgeStoneQty}</div>
+      </div>
+
+      <!-- 当前装备 -->
+      <div class="card">
+        <div class="section-header">
+          <div class="section-title">🪓 当前装备</div>
         </div>
-        <div class="stat-card">
-          <div class="stat-num">${Game.state.level}</div>
-          <div class="stat-label">⚡ 等级</div>
+        <div style="display:flex;align-items:center;gap:12px;padding:8px 0">
+          <div style="font-size:40px">${axeDef.icon}</div>
+          <div style="flex:1">
+            <div style="font-weight:600">${axeDef.name} ${UI.qualityTag(axeDef.quality)}</div>
+            <div style="font-size:12px;color:var(--text-secondary)">${axeDef.desc}</div>
+            ${axeDef.skillDesc ? `<div style="font-size:12px;color:var(--accent);margin-top:4px">🌟 ${axeDef.skillDesc}</div>` : ''}
+          </div>
         </div>
       </div>
 
@@ -1141,11 +1415,19 @@ const PlayerView = {
 
   _showRewardModal(item) {
     const q = QUALITY[item.quality];
+    const buffHtml = item.buffText
+      ? `<div style="color:var(--quality-4);font-size:14px;font-weight:600;margin-bottom:8px">🌟 ${item.buffText}</div>`
+      : '';
+    const refundHtml = item.refundChopping
+      ? `<div style="color:var(--accent);font-size:13px;margin-bottom:8px">🪓 返还 ${item.refundChopping} 次砍树</div>`
+      : '';
     const overlay = UI.modal(`
       <div class="reward-modal">
         <div class="reward-icon">${item.item.icon}</div>
         <div class="reward-name" style="color:${q.color}">${item.item.name}</div>
         <div class="reward-quality">${q.name} · 获得 ×${item.quantity}</div>
+        ${buffHtml}
+        ${refundHtml}
         <button class="btn btn-primary btn-block" onclick="this.closest('.modal-overlay').remove()">收下</button>
       </div>
     `, { title: '🎉 获得物品' });
@@ -1464,6 +1746,7 @@ const PlayerView = {
           <button class="withdraw-btn-round" onclick="PlayerView.adjustWithdraw(100)" id="withdraw-plus">+</button>
         </div>
         <button class="btn btn-primary btn-block" onclick="PlayerView.doWithdraw()">申请提现</button>
+        <button class="btn btn-outline btn-block" style="margin-top:8px" onclick="PlayerView.showWithdrawRecords()">📋 提现记录</button>
       </div>
 
       <!-- 道具兑换商店 -->
@@ -1652,9 +1935,11 @@ const PlayerView = {
     const footer = canClaim
       ? `<div class="modal-footer">
           <button class="btn btn-outline btn-sm" onclick="this.closest('.modal-overlay').remove()">关闭</button>
+          <button class="btn btn-outline btn-sm btn-danger" onclick="this.closest('.modal-overlay').remove();PlayerView.deleteMail('${mailId}')">删除</button>
           <button class="btn btn-accent btn-sm" onclick="PlayerView.claimMailReward('${mailId}')">领取奖励</button>
         </div>`
       : `<div class="modal-footer">
+          <button class="btn btn-outline btn-sm btn-danger" onclick="this.closest('.modal-overlay').remove();PlayerView.deleteMail('${mailId}')">删除</button>
           <button class="btn btn-primary btn-sm" onclick="this.closest('.modal-overlay').remove()">关闭</button>
         </div>`;
 
@@ -1681,6 +1966,242 @@ const PlayerView = {
     document.querySelector('.modal-overlay')?.remove();
     UI.toast('奖励已领取！', 'success');
     this.renderMail();
+  },
+
+  // 仙阶突破弹窗
+  showBreakThrough() {
+    const currentRealm = REALMS.find(r => r.level == Game.state.realmLevel) || REALMS[0];
+    const nextRealm = REALMS.find(r => r.level == Game.state.realmLevel + 1);
+    if (!nextRealm) return;
+
+    const canBreak = Game.state.level >= nextRealm.reqLevel &&
+      nextRealm.reqItems.every(req => (Game.inventory.find(i => i.itemId == req.itemId)?.quantity || 0) >= req.count);
+
+    const reqItemsHtml = nextRealm.reqItems.map(req => {
+      const def = ITEMS[req.itemId];
+      const have = Game.inventory.find(i => i.itemId == req.itemId)?.quantity || 0;
+      const ok = have >= req.count;
+      return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0">
+        <span style="font-size:24px">${def.icon}</span>
+        <span style="flex:1">${def.name}</span>
+        <span style="color:${ok ? 'var(--success)' : 'var(--error)'}">${have}/${req.count}</span>
+      </div>`;
+    }).join('');
+
+    UI.modal(`
+      <div style="text-align:center;margin-bottom:16px">
+        <div style="font-size:48px;margin-bottom:8px">${currentRealm.icon} → ${nextRealm.icon}</div>
+        <div style="font-size:18px;font-weight:700">${currentRealm.name} → ${nextRealm.name}</div>
+        <div style="font-size:12px;color:var(--text-secondary);margin-top:4px">${nextRealm.desc}</div>
+      </div>
+      <div style="margin-bottom:12px;font-weight:600">突破条件</div>
+      <div style="font-size:13px;margin-bottom:8px">等级要求：${Game.state.level}/${nextRealm.reqLevel} ${Game.state.level >= nextRealm.reqLevel ? '✅' : '❌'}</div>
+      ${reqItemsHtml}
+    `, {
+      title: '仙阶突破',
+      footer: `<div class="modal-footer">
+        <button class="btn btn-outline btn-sm" onclick="this.closest('.modal-overlay').remove()">取消</button>
+        <button class="btn btn-accent btn-sm" id="breakthrough-ok" ${canBreak ? '' : 'disabled'}>突破</button>
+      </div>`
+    });
+
+    const btn = document.getElementById('breakthrough-ok');
+    if (btn) btn.addEventListener('click', async () => {
+      btn.disabled = true;
+      const ok = await Game.breakThrough();
+      if (ok) {
+        document.querySelector('.modal-overlay')?.remove();
+        PlayerView.renderCultivate();
+      } else {
+        btn.disabled = false;
+      }
+    });
+  },
+
+  // 仙树升阶弹窗
+  showTreeUpgrade() {
+    const current = TREE_REALMS.find(r => r.level == Game.state.treeRealm) || TREE_REALMS[0];
+    const next = TREE_REALMS.find(r => r.level == Game.state.treeRealm + 1);
+    if (!next) return;
+
+    const canUpgrade = next.reqItems.every(req =>
+      (Game.inventory.find(i => i.itemId == req.itemId)?.quantity || 0) >= req.count
+    );
+
+    const reqItemsHtml = next.reqItems.map(req => {
+      const def = ITEMS[req.itemId];
+      const have = Game.inventory.find(i => i.itemId == req.itemId)?.quantity || 0;
+      const ok = have >= req.count;
+      return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0">
+        <span style="font-size:24px">${def.icon}</span>
+        <span style="flex:1">${def.name}</span>
+        <span style="color:${ok ? 'var(--success)' : 'var(--error)'}">${have}/${req.count}</span>
+      </div>`;
+    }).join('');
+
+    UI.modal(`
+      <div style="text-align:center;margin-bottom:16px">
+        <div style="font-size:64px;margin-bottom:8px">${current.icon} → ${next.icon}</div>
+        <div style="font-size:18px;font-weight:700">${current.name} → ${next.name}</div>
+        <div style="font-size:12px;color:var(--text-secondary);margin-top:4px">${next.desc}</div>
+      </div>
+      <div style="margin-bottom:12px;font-weight:600">升阶消耗</div>
+      ${reqItemsHtml}
+      <div style="margin-top:12px;font-size:12px;color:var(--text-secondary)">
+        升阶后奖池品质提升，有机会获得更稀有的道具
+      </div>
+    `, {
+      title: '仙树升阶',
+      footer: `<div class="modal-footer">
+        <button class="btn btn-outline btn-sm" onclick="this.closest('.modal-overlay').remove()">取消</button>
+        <button class="btn btn-accent btn-sm" id="tree-upgrade-ok" ${canUpgrade ? '' : 'disabled'}>升阶</button>
+      </div>`
+    });
+
+    const btn = document.getElementById('tree-upgrade-ok');
+    if (btn) btn.addEventListener('click', async () => {
+      btn.disabled = true;
+      const ok = await Game.upgradeTreeRealm();
+      if (ok) {
+        document.querySelector('.modal-overlay')?.remove();
+        PlayerView.renderCultivate();
+      } else {
+        btn.disabled = false;
+      }
+    });
+  },
+
+  // 锻造弹窗
+  showForge() {
+    const forgeQty = Game.inventory.find(i => i.itemId == 'stone_forge')?.quantity || 0;
+
+    UI.modal(`
+      <div style="text-align:center;margin-bottom:16px">
+        <div style="font-size:64px;margin-bottom:8px">🔨</div>
+        <div style="font-size:18px;font-weight:700">锻造仙斧</div>
+        <div style="font-size:12px;color:var(--text-secondary);margin-top:4px">消耗锻铁，随机获得一把仙斧</div>
+      </div>
+      <div style="margin-bottom:16px">
+        <div style="font-weight:600;margin-bottom:8px">锻造奖池</div>
+        ${FORGE_POOL.map(p => {
+          const def = ITEMS[p.itemId];
+          return `<div style="display:flex;align-items:center;gap:8px;padding:4px 0">
+            <span style="font-size:24px">${def.icon}</span>
+            <span style="flex:1">${def.name}</span>
+            ${UI.qualityTag(p.quality)}
+            <span style="font-size:12px;color:var(--text-light)">${p.weight}%</span>
+          </div>`;
+        }).join('')}
+      </div>
+      <div style="text-align:center;font-size:13px;color:var(--text-secondary)">
+        当前锻铁：🔩 ${forgeQty} 个
+      </div>
+    `, {
+      title: '锻造',
+      footer: `<div class="modal-footer">
+        <button class="btn btn-outline btn-sm" onclick="this.closest('.modal-overlay').remove()">关闭</button>
+        <button class="btn btn-primary btn-sm" id="forge-ok" ${forgeQty > 0 ? '' : 'disabled'}>锻造（消耗1个锻铁）</button>
+      </div>`
+    });
+
+    const btn = document.getElementById('forge-ok');
+    if (btn) btn.addEventListener('click', async () => {
+      btn.disabled = true;
+      const result = await Game.forge();
+      if (result) {
+        // 显示锻造结果
+        const q = QUALITY[result.quality] || QUALITY[1];
+        UI.modal(`
+          <div style="text-align:center;padding:16px 0">
+            <div style="font-size:80px;margin-bottom:12px;animation:tree-shake 0.5s ease-in-out">${result.item.icon}</div>
+            <div style="font-size:20px;font-weight:700;color:${q.color}">${result.item.name}</div>
+            <div style="margin-top:4px">${UI.qualityTag(result.quality)}</div>
+            <div style="font-size:12px;color:var(--text-secondary);margin-top:8px">${result.item.desc}</div>
+            ${result.item.skillDesc ? `<div style="font-size:12px;color:var(--accent);margin-top:8px">🌟 ${result.item.skillDesc}</div>` : ''}
+          </div>
+        `, {
+          title: '🎉 锻造成功',
+          footer: `<div class="modal-footer">
+            <button class="btn btn-primary btn-sm" onclick="this.closest('.modal-overlay').remove();PlayerView.showForge()">继续锻造</button>
+            <button class="btn btn-accent btn-sm" onclick="this.closest('.modal-overlay').remove();PlayerView.renderCultivate()">完成</button>
+          </div>`
+        });
+      } else {
+        btn.disabled = false;
+      }
+    });
+  },
+
+  // 十连砍
+  async doChopTen() {
+    if (Game.state.choppingCount < 10) {
+      UI.toast('砍树次数不足10次', 'warn');
+      return;
+    }
+    const btn = document.getElementById('chop-ten-btn');
+    if (btn) btn.disabled = true;
+
+    const results = await Game.chopTen();
+    if (!results) {
+      if (btn) btn.disabled = false;
+      return;
+    }
+
+    // 十连结果弹窗（2行5列）
+    const itemsHtml = results.map(r => {
+      const q = QUALITY[r.quality] || QUALITY[1];
+      const bonusTag = r.isBonus ? '<div style="font-size:10px;color:var(--accent);font-weight:600">保底</div>' : '';
+      const buffTag = r.buffText ? `<div style="font-size:10px;color:var(--quality-4)">${r.buffText}</div>` : '';
+      return `<div style="text-align:center;padding:8px;border:1px solid ${q.color}40;border-radius:8px;background:${q.color}10">
+        <div style="font-size:32px">${r.item.icon}</div>
+        <div style="font-size:11px;font-weight:600;color:${q.color};margin-top:2px">${r.item.name}</div>
+        <div style="font-size:10px;color:var(--text-light)">×${r.quantity}</div>
+        ${bonusTag}
+        ${buffTag}
+      </div>`;
+    }).join('');
+
+    UI.modal(`
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px">
+        ${itemsHtml}
+      </div>
+    `, {
+      title: `🎉 十连砍结果（共 ${results.length} 件）`,
+      footer: `<div class="modal-footer">
+        <button class="btn btn-primary btn-sm" onclick="this.closest('.modal-overlay').remove();PlayerView.renderCultivate()">确定</button>
+      </div>`
+    });
+
+    PlayerView.renderCultivate();
+  },
+
+  // 删除邮件
+  async deleteMail(mailId) {
+    UI.confirm('确定删除这封邮件吗？', async () => {
+      await DB.deleteMail(mailId);
+      UI.toast('已删除', 'success');
+      this.renderMail();
+    });
+  },
+
+  // 提现记录
+  showWithdrawRecords() {
+    DB.getWithdrawals().then(records => {
+      if (records.length === 0) {
+        UI.modal('<p style="text-align:center;padding:24px;color:var(--text-secondary)">暂无提现记录</p>', { title: '提现记录' });
+        return;
+      }
+      const html = records.map(r => `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border-light)">
+          <div>
+            <div style="font-weight:600">¥${r.amount.toFixed(2)}</div>
+            <div style="font-size:11px;color:var(--text-light)">${r.createdAt?.split('T')[0] || ''}</div>
+          </div>
+          ${UI.statusTag(r.status)}
+        </div>
+      `).join('');
+      UI.modal(html, { title: '提现记录' });
+    });
   },
 };
 

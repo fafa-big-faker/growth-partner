@@ -974,3 +974,96 @@ body {
   color: var(--text-secondary);
   margin-top: 2px;
 }
+
+/* ===== 仙阶栏 ===== */
+.realm-bar {
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+}
+.realm-bar .btn {
+  flex-shrink: 0;
+}
+
+/* ===== 仙树区域 ===== */
+.tree-upgrade-btn {
+  position: absolute;
+  right: 0;
+  top: 0;
+  background: var(--quality-5);
+  color: white;
+  border: none;
+  border-radius: 20px;
+  padding: 4px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  font-weight: 600;
+}
+.chop-btn-ten {
+  max-width: 80px;
+  font-size: 14px;
+  background: linear-gradient(135deg, var(--quality-4), var(--quality-5));
+  color: white;
+}
+
+/* ===== 锻造入口 ===== */
+.forge-entry {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: linear-gradient(135deg, #fff5e6, #ffe8c2);
+  border-radius: 12px;
+  margin-bottom: 12px;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+.forge-entry:active {
+  transform: scale(0.98);
+}
+.forge-icon {
+  font-size: 36px;
+}
+.forge-info {
+  flex: 1;
+}
+.forge-title {
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--primary-dark);
+}
+.forge-desc {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+.forge-count {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+/* ===== 危险按钮 ===== */
+.btn-danger {
+  color: var(--error) !important;
+  border-color: var(--error) !important;
+}
+
+/* ===== 十连砍结果 ===== */
+.chop-ten-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+}
+
+/* ===== 仙树摇晃 ===== */
+@keyframes tree-shake {
+  0%, 100% { transform: rotate(0deg); }
+  20% { transform: rotate(-5deg); }
+  40% { transform: rotate(5deg); }
+  60% { transform: rotate(-3deg); }
+  80% { transform: rotate(3deg); }
+}
+.shaking {
+  animation: tree-shake 0.3s ease-in-out;
+}
