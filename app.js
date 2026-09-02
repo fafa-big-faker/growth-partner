@@ -507,7 +507,7 @@ const Game = {
 
     // 发奖励
     await DB.addItem(item.itemId, item.quantity);
-    const idx = this.inventory.findIndex(i => i.itemId === item.itemId);
+    const idx = this.inventory.findIndex(i => i.itemId == item.itemId);
     if (idx >= 0) this.inventory[idx].quantity += item.quantity;
     else this.inventory.push({ itemId: item.itemId, quantity: item.quantity });
 
@@ -686,7 +686,7 @@ const Game = {
   },
 
   _getItemQty(itemId) {
-    const item = this.inventory.find(i => i.itemId === itemId);
+    const item = this.inventory.find(i => i.itemId == itemId);
     return item ? item.quantity : 0;
   },
 };
@@ -1327,7 +1327,7 @@ const PlayerView = {
   },
 
   submitTask(taskId) {
-    const task = [...this._dailyTasks, ...this._weeklyTasks].find(t => t.id === taskId);
+    const task = [...this._dailyTasks, ...this._weeklyTasks].find(t => t.id == taskId);
     if (!task) return;
 
     const overlay = UI.modal(`
@@ -1401,8 +1401,8 @@ const PlayerView = {
   },
 
   async claimTaskReward(taskId) {
-    const task = [...this._dailyTasks, ...this._weeklyTasks].find(t => t.id === taskId);
-    const sub = this._submissions.find(s => s.taskId === taskId);
+    const task = [...this._dailyTasks, ...this._weeklyTasks].find(t => t.id == taskId);
+    const sub = this._submissions.find(s => s.taskId == taskId);
     if (!task || !sub) return;
 
     // 发砍树次数
@@ -1623,7 +1623,7 @@ const PlayerView = {
 
   async openMail(mailId) {
     const mails = await DB.getMails();
-    const mail = mails.find(m => m.id === mailId);
+    const mail = mails.find(m => m.id == mailId);
     if (!mail) return;
 
     await DB.markMailRead(mailId);
@@ -1668,7 +1668,7 @@ const PlayerView = {
 
   async claimMailReward(mailId) {
     const mails = await DB.getMails();
-    const mail = mails.find(m => m.id === mailId);
+    const mail = mails.find(m => m.id == mailId);
     if (!mail || !mail.items || mail.items.length === 0) return;
 
     for (const ri of mail.items) {
@@ -1994,7 +1994,7 @@ const AdminView = {
       });
     } else {
       // 固定任务直接通过
-      const sub = this._submissions.find(s => s.id === id);
+      const sub = this._submissions.find(s => s.id == id);
       UI.confirm('确定通过这个任务？', async () => {
         await DB.reviewSubmission(id, 'approved', '任务完成得很好！', sub.rewardChopping, sub.rewardItems);
         await DB.sendMail(
@@ -2025,7 +2025,7 @@ const AdminView = {
     overlay.querySelector('#reject-ok').addEventListener('click', async () => {
       const note = document.getElementById('reject-note').value.trim() || '任务未完成，请继续努力';
       await DB.reviewSubmission(id, 'rejected', note, 0, []);
-      const sub = this._submissions.find(s => s.id === id);
+      const sub = this._submissions.find(s => s.id == id);
       await DB.sendMail(
         '任务审核未通过',
         `你的任务"${sub?.selfTitle || sub?.taskTitle || ''}"未通过审核。\n\n原因：${note}`,
@@ -2111,7 +2111,7 @@ const AdminView = {
   approveWithdraw(id) {
     UI.confirm('确定通过这笔提现申请？', async () => {
       await DB.reviewWithdrawal(id, 'approved');
-      const w = this._withdrawals.find(x => x.id === id);
+      const w = this._withdrawals.find(x => x.id == id);
       // 更新累计提现
       const state = await DB.getPlayerState();
       if (state) {
@@ -2130,7 +2130,7 @@ const AdminView = {
   rejectWithdraw(id) {
     UI.confirm('确定驳回这笔提现申请？', async () => {
       // 把钱退回余额
-      const w = this._withdrawals.find(x => x.id === id);
+      const w = this._withdrawals.find(x => x.id == id);
       const state = await DB.getPlayerState();
       if (state && w) {
         await DB.updatePlayerState({ balance: state.balance + w.amount });
