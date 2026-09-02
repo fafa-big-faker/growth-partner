@@ -434,17 +434,42 @@ const DB = {
 
   // --- 邮件 ---
   async getMails() {
-    let query = dbClient
+    // 先试带 is_deleted 过滤的查询
+    try {
+      const { data, error } = await dbClient
+        .from('mails')
+        .select('*')
+        .eq('user_role', 'player')
+        .eq('is_deleted', false)
+        .order('created_at', { ascending: false });
+      if (!error) {
+        return data.map(m => ({
+          id: m.id,
+          title: m.title,
+          content: m.content,
+          items: m.items || [],
+          isRead: m.is_read,
+          isClaimed: m.is_claimed,
+          createdAt: m.created_at,
+        }));
+      }
+      // 如果是字段不存在错误，走降级查询
+      if (error.message && error.message.includes('does not exist')) {
+        // fall through to fallback
+      } else {
+        console.error('DB getMails error:', error);
+        return [];
+      }
+    } catch (e) {}
+
+    // 降级：不带 is_deleted 过滤
+    const { data: data2, error: err2 } = await dbClient
       .from('mails')
       .select('*')
-      .eq('user_role', 'player');
-    // 尝试过滤已删除邮件，如果字段不存在则跳过
-    try {
-      query = query.eq('is_deleted', false);
-    } catch (e) {}
-    const { data, error } = await query.order('created_at', { ascending: false });
-    if (error) { console.error('DB getMails error:', error); return []; }
-    return data.map(m => ({
+      .eq('user_role', 'player')
+      .order('created_at', { ascending: false });
+    if (err2) { console.error('DB getMails fallback error:', err2); return []; }
+    return data2.map(m => ({
       id: m.id,
       title: m.title,
       content: m.content,
@@ -1394,22 +1419,28 @@ const PlayerView = {
 
     // 掉落延迟
     setTimeout(async () => {
-      const item = await Game.chop();
-      if (item) {
-        UI.playDropAnimation(item, treeIcon);
+      try {
+        const item = await Game.chop();
+        if (item) {
+          UI.playDropAnimation(item, treeIcon);
 
-        // 显示获得弹窗
-        setTimeout(() => {
-          this._showRewardModal(item);
-        }, 800);
+          // 显示获得弹窗
+          setTimeout(() => {
+            this._showRewardModal(item);
+          }, 800);
+        }
+
+        // 更新砍树按钮文字
+        chopBtn.textContent = `🪓 砍树 (${Game.state.choppingCount})`;
+        chopBtn.disabled = Game.state.choppingCount <= 0;
+
+        // 刷新背包
+        this.renderInventory(this.currentInvTab);
+      } catch (e) {
+        console.error('doChop error:', e);
+        UI.toast('砍树失败，请重试', 'error');
+        chopBtn.disabled = false;
       }
-
-      // 更新砍树按钮文字
-      chopBtn.textContent = `🪓 砍树 (${Game.state.choppingCount})`;
-      chopBtn.disabled = Game.state.choppingCount <= 0;
-
-      // 刷新背包
-      this.renderInventory(this.currentInvTab);
     }, 200);
   },
 
