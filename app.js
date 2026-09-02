@@ -187,7 +187,7 @@ const DB = {
       exp: 0,
       chopping_count: 10,
       tree_level: 1,
-      axe_id: 'axe_common',
+      axe_id: 'axe_stone',
       balance: 0,
       total_withdrawn: 0,
       last_daily_date: null,
@@ -203,10 +203,10 @@ const DB = {
       exp: 0,
       choppingCount: 10,
       treeLevel: 1,
-      axeId: 'axe_common',
+      axeId: 'axe_stone',
       balance: 0,
       totalWithdrawn: 0,
-      lastDailyDate: '',
+      lastDailyDate: null,
     };
   },
 
@@ -714,6 +714,12 @@ const Auth = {
     }
 
     await Game.init();
+
+    // 玩家端必须初始化成功才能进入
+    if (this.currentRole === 'player' && !Game.state) {
+      UI.toast('初始化失败，请刷新重试', 'error');
+      return;
+    }
 
     if (this.currentRole === 'admin') {
       document.getElementById('login-screen').style.display = 'none';
@@ -2144,8 +2150,21 @@ const AdminView = {
   async renderPlayerView() {
     const main = document.getElementById('admin-main');
     const state = await DB.getPlayerState();
-    const inventory = await DB.getInventory();
-    const mails = await DB.getMails();
+    const inventory = state ? await DB.getInventory() : [];
+    const mails = state ? await DB.getMails() : [];
+
+    if (!state) {
+      main.innerHTML = `
+        <div class="page-title">👁️ 查看玩家</div>
+        <div class="page-subtitle">了解修炼者的修行进度</div>
+        <div class="empty-state" style="padding:48px 24px">
+          <div class="emoji">😶</div>
+          <p>修炼者尚未开始修仙</p>
+          <p style="font-size:12px;color:var(--text-light)">等待修炼者首次登录后即可查看数据</p>
+        </div>
+      `;
+      return;
+    }
 
     const axeDef = ITEMS[state.axeId] || ITEMS.axe_stone;
 
