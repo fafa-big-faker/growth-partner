@@ -114,7 +114,17 @@ const TASK_TYPE_MAP = {
 };
 
 // ===== Supabase 初始化 =====
-const supabase = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_KEY);
+let supabase = null;
+try {
+  if (window.supabase && window.supabase.createClient) {
+    supabase = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_KEY);
+    console.log('Supabase 初始化成功');
+  } else {
+    console.error('Supabase SDK 未加载');
+  }
+} catch (e) {
+  console.error('Supabase 初始化失败:', e);
+}
 
 /* ================================================================
    DB 层
