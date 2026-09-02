@@ -1,1890 +1,2157 @@
-/* ==========================================================================
-   星途远航 · 社交成长星际系统 — 应用逻辑（Supabase 云端版）
-   模块: DB(数据层) | Auth(认证) | Router(路由) | Task(任务)
-         | SelfReport(自主申报) | SupplyStation(补给站) | StarMap(星图)
-         | Dashboard(看板) | Report(报告) | UI(辅助) | Charts(图表)
-   ========================================================================== */
+/* ================================================================
+   寻道大千 · 社交修仙系统
+   ================================================================ */
 
-const CATEGORIES = ['校园人际', '家庭情感', '自我突破'];
-const STAR_LEVELS = [
-  { stars: 1, name: '流星任务', energyRange: [3, 8] },
-  { stars: 2, name: '卫星任务', energyRange: [8, 15] },
-  { stars: 3, name: '行星任务', energyRange: [15, 25] },
-  { stars: 4, name: '恒星任务', energyRange: [25, 40] },
-  { stars: 5, name: '黑洞任务', energyRange: [40, 60] },
-];
-const STAR_NAMES = { 1: '流星', 2: '卫星', 3: '行星', 4: '恒星', 5: '黑洞' };
-const DIFFICULTIES = ['极低', '低', '中等', '较高', '高'];
-const STATUS_MAP = {
-  available: { label: '待领取', cls: 'available' },
-  in_progress: { label: '进行中', cls: 'progress' },
-  pending_review: { label: '待审核', cls: 'review' },
-  completed: { label: '已完成', cls: 'done' },
-  abandoned: { label: '已放弃', cls: 'abandoned' },
+// ===== 配置数据（后续迁到飞书表格） =====
+
+// 道具配置
+const ITEMS = {
+  // 奖金碎片
+  money_sm_frag: { id: 'money_sm_frag', name: '铜钱碎片', type: 1, quality: 1, icon: '🪙',
+    composeTo: 'money_sm', composeCount: 10, desc: '零散的铜钱，集齐10枚可合成一贯' },
+  money_mid_frag: { id: 'money_mid_frag', name: '银锭碎片', type: 1, quality: 2, icon: '🥈',
+    composeTo: 'money_mid', composeCount: 5, desc: '银锭碎块，集齐5块可合成一锭' },
+  money_lg_frag: { id: 'money_lg_frag', name: '金元宝碎片', type: 1, quality: 3, icon: '🥇',
+    composeTo: 'money_lg', composeCount: 3, desc: '金元宝碎片，集齐3片可合成一锭' },
+  // 奖金成品
+  money_sm: { id: 'money_sm', name: '一贯铜钱', type: 2, quality: 2, icon: '💰',
+    value: 10, desc: '可提现10元' },
+  money_mid: { id: 'money_mid', name: '一锭白银', type: 2, quality: 3, icon: '🪙',
+    value: 50, desc: '可提现50元' },
+  money_lg: { id: 'money_lg', name: '金元宝', type: 2, quality: 4, icon: '👑',
+    value: 200, desc: '可提现200元' },
+  // 突破道具
+  stone_break: { id: 'stone_break', name: '破境石', type: 3, quality: 3, icon: '💎',
+    desc: '突破仙阶所需的神石' },
+  // 锻造道具
+  stone_forge: { id: 'stone_forge', name: '锻铁', type: 4, quality: 1, icon: '🔩',
+    desc: '锻造仙斧的材料' },
+  // 仙斧
+  axe_stone: { id: 'axe_stone', name: '石斧', type: 5, quality: 1, icon: '🪓',
+    skill: null, sellPrice: 1, desc: '最普通的石斧，勉强能用' },
+  axe_iron: { id: 'axe_iron', name: '铁斧', type: 5, quality: 2, icon: '⛏️',
+    skill: 'double_common', skillDesc: '砍树掉落凡品时有概率双倍', sellPrice: 3, desc: '铁制斧头，锋利了不少' },
+  axe_bronze: { id: 'axe_bronze', name: '青铜斧', type: 5, quality: 3, icon: '🔨',
+    skill: 'refund_chopping', skillDesc: '有概率返还砍树次数', sellPrice: 5, desc: '青铜锻造，蕴含灵气' },
+  axe_jade: { id: 'axe_jade', name: '玉斧', type: 5, quality: 4, icon: '🗡️',
+    skill: 'double_rare', skillDesc: '砍树掉落珍品及以上时有概率双倍', sellPrice: 10, desc: '灵玉雕琢，仙气缭绕' },
+  axe_gold: { id: 'axe_gold', name: '开天斧', type: 5, quality: 5, icon: '⚔️',
+    skill: 'super_lucky', skillDesc: '大幅提升稀有道具掉落率', sellPrice: 20, desc: '传说中的神器' },
 };
 
-// 星图配置
-const PLANETS = [
-  { id: 'moon', name: '月尘站', icon: '🌙', energyNeeded: 0, type: 'station', desc: '起点站 · 熟悉飞船操作' },
-  { id: 'red', name: '赤焰星', icon: '🔴', energyNeeded: 30, type: 'planet', desc: '热情的红色星球 · 校园人际任务' },
-  { id: 'supply1', name: '晶蓝补给站', icon: '🛸', energyNeeded: 80, type: 'supply', desc: '星际补给站 · 可兑换奖励' },
-  { id: 'ice', name: '冰晶星', icon: '💙', energyNeeded: 150, type: 'planet', desc: '静谧的冰雪世界 · 家庭情感任务' },
-  { id: 'purple', name: '迷雾星', icon: '🟣', energyNeeded: 250, type: 'planet', desc: '神秘的紫色星云 · 自我突破任务' },
-  { id: 'supply2', name: '彩虹补给站', icon: '🌈', energyNeeded: 400, type: 'supply', desc: '高级补给站 · 更多奖励' },
-  { id: 'galaxy', name: '银河中心', icon: '🌌', energyNeeded: 600, type: 'final', desc: '最终目的地 · 传说中的银河核心' },
+// 品质配置
+const QUALITY = {
+  1: { name: '凡品', color: '#9e9e9e' },
+  2: { name: '精品', color: '#4a90d9' },
+  3: { name: '珍品', color: '#9c6bd4' },
+  4: { name: '神品', color: '#e85a8a' },
+  5: { name: '仙品', color: '#f0b429' },
+};
+
+// 奖池配置（按树等级）
+const TREE_LEVELS = {
+  1: {
+    name: '小树苗',
+    icon: '🌱',
+    pools: [
+      { quality: 1, weight: 60, items: ['money_sm_frag', 'stone_forge'] },
+      { quality: 2, weight: 25, items: ['money_mid_frag', 'stone_forge'] },
+      { quality: 3, weight: 12, items: ['money_lg_frag', 'stone_break'] },
+      { quality: 4, weight: 2.5, items: ['money_mid', 'stone_break'] },
+      { quality: 5, weight: 0.5, items: ['money_lg'] },
+    ],
+  },
+  2: {
+    name: '小树',
+    icon: '🌿',
+    pools: [
+      { quality: 1, weight: 50, items: ['money_sm_frag', 'stone_forge'] },
+      { quality: 2, weight: 30, items: ['money_mid_frag', 'stone_forge'] },
+      { quality: 3, weight: 14, items: ['money_lg_frag', 'stone_break'] },
+      { quality: 4, weight: 4.5, items: ['money_mid', 'stone_break'] },
+      { quality: 5, weight: 1.5, items: ['money_lg', 'axe_iron'] },
+    ],
+  },
+  3: {
+    name: '仙树',
+    icon: '🎋',
+    pools: [
+      { quality: 1, weight: 40, items: ['money_sm_frag', 'stone_forge'] },
+      { quality: 2, weight: 32, items: ['money_mid_frag', 'stone_forge'] },
+      { quality: 3, weight: 18, items: ['money_lg_frag', 'stone_break'] },
+      { quality: 4, weight: 7, items: ['money_mid', 'stone_break'] },
+      { quality: 5, weight: 3, items: ['money_lg', 'axe_bronze'] },
+    ],
+  },
+};
+
+// 角色等级经验表
+function getExpForLevel(level) {
+  return Math.floor(10 * Math.pow(level, 1.5));
+}
+
+// 商店（天道酬勤兑换）
+const SHOP_ITEMS = [
+  { id: 'shop_chopping_5', name: '砍树次数×5', icon: '🪓', costType: 'money', costValue: 10, rewardType: 'chopping', rewardValue: 5 },
+  { id: 'shop_money_sm', name: '一贯铜钱', icon: '💰', costType: 'chopping', costValue: 3, rewardType: 'item', rewardId: 'money_sm', rewardValue: 1 },
+  { id: 'shop_break', name: '破境石', icon: '💎', costType: 'chopping', costValue: 10, rewardType: 'item', rewardId: 'stone_break', rewardValue: 1 },
+  { id: 'shop_forge_10', name: '锻铁×10', icon: '🔩', costType: 'chopping', costValue: 5, rewardType: 'item', rewardId: 'stone_forge', rewardValue: 10 },
 ];
 
-// 补给站可兑换物品
-const SUPPLY_ITEMS = [
-  { id: 'redpacket_s', name: '小红包', emoji: '🧧', cost: 50, value: 30, desc: '30元微信红包' },
-  { id: 'redpacket_m', name: '中红包', emoji: '💰', cost: 150, value: 100, desc: '100元微信红包' },
-  { id: 'redpacket_l', name: '大红包', emoji: '🏆', cost: 500, value: 500, desc: '500元成长奖励' },
-  { id: 'buff_engine', name: '引擎升级', emoji: '⚡', cost: 100, value: 'buff', desc: '星能获取 +10%（永久）' },
-  { id: 'buff_radar', name: '雷达升级', emoji: '📡', cost: 200, value: 'buff', desc: '解锁隐藏任务（永久）' },
-  { id: 'skin_gold', name: '金色涂装', emoji: '✨', cost: 80, value: 'skin', desc: '飞船金色外观' },
-];
+// 难度颜色映射
+const DIFFICULTY_MAP = {
+  S: { name: 'S级', class: 'tag-difficulty-S' },
+  A: { name: 'A级', class: 'tag-difficulty-A' },
+  B: { name: 'B级', class: 'tag-difficulty-B' },
+  C: { name: 'C级', class: 'tag-difficulty-C' },
+};
 
-/* ==========================================================================
-   DB Layer — Supabase
-   ========================================================================== */
+// 任务类型映射
+const TASK_TYPE_MAP = {
+  daily: { name: '每日', class: 'tag-type-daily' },
+  weekly: { name: '每周', class: 'tag-type-weekly' },
+  self: { name: '自主', class: 'tag-type-self' },
+};
+
+// ===== Supabase 初始化 =====
+const supabase = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_KEY);
+
+/* ================================================================
+   DB 层
+   ================================================================ */
 const DB = {
-  supabase: null,
-  init() {
-    this.supabase = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_KEY);
+  // --- 玩家状态 ---
+  async getPlayerState() {
+    const { data, error } = await supabase
+      .from('player_state')
+      .select('*')
+      .eq('user_role', 'player')
+      .single();
+    if (error) { console.error('DB getPlayerState error:', error); return null; }
+    return {
+      level: data.level,
+      exp: data.exp,
+      choppingCount: data.chopping_count,
+      treeLevel: data.tree_level,
+      axeId: data.axe_id,
+      balance: parseFloat(data.balance),
+      totalWithdrawn: parseFloat(data.total_withdrawn),
+      lastDailyDate: data.last_daily_date,
+    };
   },
 
-  // Tasks
-  async getTasks() {
-    const { data, error } = await this.supabase.from('tasks').select('*').order('created_at', { ascending: true });
+  async updatePlayerState(updates) {
+    const dbUpdates = {};
+    if (updates.level !== undefined) dbUpdates.level = updates.level;
+    if (updates.exp !== undefined) dbUpdates.exp = updates.exp;
+    if (updates.choppingCount !== undefined) dbUpdates.chopping_count = updates.choppingCount;
+    if (updates.treeLevel !== undefined) dbUpdates.tree_level = updates.treeLevel;
+    if (updates.axeId !== undefined) dbUpdates.axe_id = updates.axeId;
+    if (updates.balance !== undefined) dbUpdates.balance = updates.balance;
+    if (updates.totalWithdrawn !== undefined) dbUpdates.total_withdrawn = updates.totalWithdrawn;
+    if (updates.lastDailyDate !== undefined) dbUpdates.last_daily_date = updates.lastDailyDate;
+    dbUpdates.updated_at = new Date().toISOString();
+
+    const { error } = await supabase
+      .from('player_state')
+      .update(dbUpdates)
+      .eq('user_role', 'player');
+    if (error) { console.error('DB updatePlayerState error:', error); return false; }
+    return true;
+  },
+
+  // --- 背包 ---
+  async getInventory() {
+    const { data, error } = await supabase
+      .from('inventory')
+      .select('*')
+      .eq('user_role', 'player')
+      .gt('quantity', 0)
+      .order('updated_at', { ascending: false });
+    if (error) { console.error('DB getInventory error:', error); return []; }
+    return data.map(item => ({
+      itemId: item.item_id,
+      quantity: item.quantity,
+    }));
+  },
+
+  async addItem(itemId, quantity = 1) {
+    const { data: existing } = await supabase
+      .from('inventory')
+      .select('*')
+      .eq('user_role', 'player')
+      .eq('item_id', itemId)
+      .maybeSingle();
+
+    if (existing) {
+      const { error } = await supabase
+        .from('inventory')
+        .update({
+          quantity: existing.quantity + quantity,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', existing.id);
+      if (error) { console.error('DB addItem update error:', error); return false; }
+    } else {
+      const { error } = await supabase
+        .from('inventory')
+        .insert({
+          user_role: 'player',
+          item_id: itemId,
+          quantity: quantity,
+        });
+      if (error) { console.error('DB addItem insert error:', error); return false; }
+    }
+    return true;
+  },
+
+  async removeItem(itemId, quantity = 1) {
+    const { data: existing } = await supabase
+      .from('inventory')
+      .select('*')
+      .eq('user_role', 'player')
+      .eq('item_id', itemId)
+      .maybeSingle();
+
+    if (!existing || existing.quantity < quantity) return false;
+
+    const newQty = existing.quantity - quantity;
+    if (newQty <= 0) {
+      const { error } = await supabase.from('inventory').delete().eq('id', existing.id);
+      if (error) { console.error('DB removeItem delete error:', error); return false; }
+    } else {
+      const { error } = await supabase
+        .from('inventory')
+        .update({ quantity: newQty, updated_at: new Date().toISOString() })
+        .eq('id', existing.id);
+      if (error) { console.error('DB removeItem update error:', error); return false; }
+    }
+    return true;
+  },
+
+  // --- 任务 ---
+  async getTasks(type = null) {
+    let query = supabase.from('xiu_tasks').select('*').eq('status', 'published');
+    if (type) query = query.eq('task_type', type);
+    const { data, error } = await query.order('sort_order', { ascending: true });
     if (error) { console.error('DB getTasks error:', error); return []; }
-    return data.map(this._camelCaseTask);
+    return data.map(t => ({
+      id: t.id,
+      taskType: t.task_type,
+      title: t.title,
+      description: t.description,
+      difficulty: t.difficulty,
+      rewardChopping: t.reward_chopping,
+      rewardItems: t.reward_items || [],
+    }));
   },
+
   async createTask(task) {
-    const dbTask = this._snakeCaseTask(task);
-    const { data, error } = await this.supabase.from('tasks').insert(dbTask).select().single();
+    const { data, error } = await supabase
+      .from('xiu_tasks')
+      .insert({
+        task_type: task.taskType,
+        title: task.title,
+        description: task.description,
+        difficulty: task.difficulty,
+        reward_chopping: task.rewardChopping || 0,
+        reward_items: task.rewardItems || [],
+        status: 'published',
+        sort_order: task.sortOrder || 0,
+      })
+      .select()
+      .single();
     if (error) { console.error('DB createTask error:', error); return null; }
-    return this._camelCaseTask(data);
+    return data;
   },
-  async updateTask(id, updates) {
-    const dbUpdates = this._snakeCaseTask(updates);
-    const { data, error } = await this.supabase.from('tasks').update(dbUpdates).eq('id', id).select().single();
-    if (error) { console.error('DB updateTask error:', error); return null; }
-    return this._camelCaseTask(data);
-  },
+
   async deleteTask(id) {
-    const { error } = await this.supabase.from('tasks').delete().eq('id', id);
+    const { error } = await supabase.from('xiu_tasks').delete().eq('id', id);
     if (error) { console.error('DB deleteTask error:', error); return false; }
     return true;
   },
-  _camelCaseTask(t) {
-    // 兼容旧表结构：level → starLevel, growth_value → energy
-    let starLevel = t.star_level;
-    if (starLevel === undefined || starLevel === null) {
-      // 从旧的 level 字段映射
-      if (t.level === '基础礼仪项') starLevel = 2;
-      else if (t.level === '进阶挑战项') starLevel = 3;
-      else if (t.level === '突破挑战项') starLevel = 4;
-      else starLevel = 3; // 默认3星
-    }
-    let energy = t.energy;
-    if (energy === undefined || energy === null) {
-      energy = t.growth_value || 10;
-    }
-    return {
-      id: t.id,
-      title: t.title,
-      description: t.description,
-      category: t.category,
-      starLevel: starLevel,
-      energy: energy,
-      difficulty: t.difficulty,
-      status: t.status,
-      claimedBy: t.claimed_by,
-      submittedAt: t.submitted_at,
-      submittedNote: t.submitted_note,
-      reviewedAt: t.reviewed_at,
-      reviewNote: t.review_note,
-      createdAt: t.created_at,
-    };
-  },
-  _snakeCaseTask(t) {
-    // 注意：只用旧字段名写入，避免 Supabase 因字段不存在报错
-    // level 和 growth_value 是旧表字段，新功能通过这两个字段映射
-    const out = {};
-    if (t.title !== undefined) out.title = t.title;
-    if (t.description !== undefined) out.description = t.description;
-    if (t.category !== undefined) out.category = t.category;
-    if (t.starLevel !== undefined) {
-      const levelMap = { 1: '基础礼仪项', 2: '基础礼仪项', 3: '进阶挑战项', 4: '突破挑战项', 5: '突破挑战项' };
-      out.level = levelMap[t.starLevel] || '进阶挑战项';
-    }
-    if (t.energy !== undefined) {
-      out.growth_value = t.energy;
-    }
-    if (t.difficulty !== undefined) out.difficulty = t.difficulty;
-    if (t.status !== undefined) out.status = t.status;
-    if (t.claimedBy !== undefined) out.claimed_by = t.claimedBy;
-    if (t.submittedAt !== undefined) out.submitted_at = t.submittedAt;
-    if (t.submittedNote !== undefined) out.submitted_note = t.submittedNote;
-    if (t.reviewedAt !== undefined) out.reviewed_at = t.reviewedAt;
-    if (t.reviewNote !== undefined) out.review_note = t.reviewNote;
-    return out;
-  },
 
-  // Self Reports
-  async getSelfReports() {
-    const { data, error } = await this.supabase.from('self_reports').select('*').order('created_at', { ascending: false });
-    if (error) { console.error('DB getSelfReports error:', error); return []; }
-    return data.map(r => ({
-      id: r.id,
-      title: r.title,
-      description: r.description,
-      category: r.category,
-      energy: r.energy || r.growth_value || 10,
-      status: r.status,
-      submittedBy: r.submitted_by,
-      reviewNote: r.review_note,
-      createdAt: r.created_at,
-      reviewedAt: r.reviewed_at,
+  // --- 任务提交 ---
+  async getSubmissions(status = null) {
+    let query = supabase.from('task_submissions').select('*');
+    if (status) query = query.eq('status', status);
+    const { data, error } = await query.order('submitted_at', { ascending: false });
+    if (error) { console.error('DB getSubmissions error:', error); return []; }
+    return data.map(s => ({
+      id: s.id,
+      taskId: s.task_id,
+      taskType: s.task_type,
+      taskTitle: s.task_title,
+      isSelfTask: s.is_self_task,
+      selfTitle: s.self_title,
+      selfDescription: s.self_description,
+      description: s.description,
+      status: s.status,
+      submittedAt: s.submitted_at,
+      reviewNote: s.review_note,
+      rewardChopping: s.reward_chopping || 0,
+      rewardItems: s.reward_items || [],
     }));
   },
-  async createSelfReport(report) {
-    const insertData = {
-      title: report.title,
-      description: report.description,
-      category: report.category,
-      energy: report.energy,
-      growth_value: report.energy, // 同时写入旧字段
-      status: 'pending',
-      submitted_by: report.submittedBy,
-    };
-    const { data, error } = await this.supabase.from('self_reports').insert(insertData).select().single();
-    if (error) { console.error('DB createSelfReport error:', error); return null; }
+
+  async submitTask(submission) {
+    const { data, error } = await supabase
+      .from('task_submissions')
+      .insert({
+        task_id: submission.taskId || null,
+        task_type: submission.taskType,
+        task_title: submission.taskTitle,
+        is_self_task: submission.isSelfTask || false,
+        self_title: submission.selfTitle || null,
+        self_description: submission.selfDescription || null,
+        description: submission.description,
+        status: 'pending',
+        reward_chopping: submission.rewardChopping || 0,
+        reward_items: submission.rewardItems || [],
+      })
+      .select()
+      .single();
+    if (error) { console.error('DB submitTask error:', error); return null; }
     return data;
   },
-  async reviewSelfReport(id, status, reviewNote) {
-    const { error } = await this.supabase.from('self_reports').update({
-      status, review_note: reviewNote, reviewed_at: new Date().toISOString()
-    }).eq('id', id);
-    if (error) { console.error('DB reviewSelfReport error:', error); return false; }
+
+  async reviewSubmission(id, status, note = '', rewardChopping = 0, rewardItems = []) {
+    const { error } = await supabase
+      .from('task_submissions')
+      .update({
+        status: status,
+        review_note: note,
+        reviewed_at: new Date().toISOString(),
+        reward_chopping: rewardChopping,
+        reward_items: rewardItems,
+      })
+      .eq('id', id);
+    if (error) { console.error('DB reviewSubmission error:', error); return false; }
     return true;
   },
 
-  // Rewards / Supply Station Records
-  async getRewards() {
-    const { data, error } = await this.supabase.from('rewards').select('*').order('created_at', { ascending: false });
-    if (error) { console.error('DB getRewards error:', error); return []; }
-    return data.map(r => ({
-      id: r.id,
-      type: r.type,
-      name: r.name,
-      amount: r.amount,
-      energyCost: r.energy_cost || 0,
-      note: r.note,
-      grantedBy: r.granted_by,
-      createdAt: r.created_at,
-      redeemed: r.redeemed || false,
-      redeemedAt: r.redeemed_at,
+  // --- 邮件 ---
+  async getMails() {
+    const { data, error } = await supabase
+      .from('mails')
+      .select('*')
+      .eq('user_role', 'player')
+      .order('created_at', { ascending: false });
+    if (error) { console.error('DB getMails error:', error); return []; }
+    return data.map(m => ({
+      id: m.id,
+      title: m.title,
+      content: m.content,
+      items: m.items || [],
+      isRead: m.is_read,
+      isClaimed: m.is_claimed,
+      createdAt: m.created_at,
     }));
   },
-  async addReward(reward) {
-    const insertData = {
-      type: reward.type,
-      name: reward.name,
-      amount: reward.amount,
-      energy_cost: reward.energyCost,
-      note: reward.note,
-      granted_by: reward.grantedBy,
-      redeemed: reward.redeemed || false,
-    };
-    const { data, error } = await this.supabase.from('rewards').insert(insertData).select().single();
-    if (error) { console.error('DB addReward error:', error); return null; }
-    return data;
-  },
-  async redeemReward(id) {
-    const updateData = {
-      redeemed: true,
-      redeemed_at: new Date().toISOString(),
-    };
-    const { error } = await this.supabase.from('rewards').update(updateData).eq('id', id);
-    if (error) { console.error('DB redeemReward error:', error); return false; }
+
+  async sendMail(title, content, items = []) {
+    const { error } = await supabase
+      .from('mails')
+      .insert({
+        user_role: 'player',
+        title: title,
+        content: content,
+        items: items,
+      });
+    if (error) { console.error('DB sendMail error:', error); return false; }
     return true;
   },
 
-  // App Config
-  async getConfig() {
-    const { data, error } = await this.supabase.from('app_config').select('*');
-    if (error) { console.error('DB getConfig error:', error); return null; }
-    const rows = {};
-    data.forEach(r => { rows[r.id] = r; });
-
-    // 确保 game_state 行存在
-    if (!rows['game_state']) {
-      await this._ensureGameState();
-      const { data: gsData } = await this.supabase.from('app_config').select('*').eq('id', 'game_state').single();
-      rows['game_state'] = gsData;
-    }
-
-    const gs = rows['game_state'];
-    const gsValue = gs.value || {};
-    const starEnergy = gs.star_energy || 0;
-    const shipLevel = gs.ship_level || Math.floor(starEnergy / 50) + 1;
-
-    const userProfile = rows['user_profile']?.value || {};
-    const adminProfile = rows['admin_profile']?.value || {};
-
-    return {
-      starEnergy: starEnergy,
-      shipLevel: shipLevel,
-      currentPlanet: gs.current_planet || 'moon',
-      engineBuff: gs.engine_buff || false,
-      radarBuff: gs.radar_buff || false,
-      shipSkin: gs.ship_skin || 'default',
-      totalTasksCompleted: gsValue.totalTasksCompleted || 0,
-      monthlyTasks: gsValue.monthlyTasks || 0,
-      currentMonth: gsValue.currentMonth || '',
-      adminPassword: gsValue.adminPassword || 'admin',
-      userPassword: gsValue.userPassword || 'user',
-      userName: userProfile.name || '舰长',
-      adminName: adminProfile.name || '指挥官',
-    };
+  async markMailRead(id) {
+    const { error } = await supabase
+      .from('mails')
+      .update({ is_read: true })
+      .eq('id', id);
+    if (error) { console.error('DB markMailRead error:', error); return false; }
+    return true;
   },
 
-  async _ensureGameState() {
-    const now = new Date();
-    const monthKey = `${now.getFullYear()}-${now.getMonth() + 1}`;
-    // 尝试从 user_profile 取初始星能
-    const { data: userProfile } = await this.supabase.from('app_config').select('*').eq('id', 'user_profile').single();
-    let initialEnergy = 0;
-    if (userProfile?.value?.initialScore !== undefined) {
-      initialEnergy = userProfile.value.initialScore;
-    }
-    const { error } = await this.supabase.from('app_config').insert({
-      id: 'game_state',
-      value: {
-        totalTasksCompleted: 0,
-        monthlyTasks: 0,
-        currentMonth: monthKey,
-        adminPassword: 'admin',
-        userPassword: 'user',
-      },
-      star_energy: initialEnergy,
-      ship_level: Math.floor(initialEnergy / 50) + 1,
-      current_planet: 'moon',
-      engine_buff: false,
-      radar_buff: false,
-      ship_skin: 'default',
-    });
-    if (error) console.error('_ensureGameState error:', error);
+  async claimMail(id) {
+    const { error } = await supabase
+      .from('mails')
+      .update({ is_claimed: true, is_read: true })
+      .eq('id', id);
+    if (error) { console.error('DB claimMail error:', error); return false; }
+    return true;
   },
 
-  async updateConfig(config) {
-    // 先读取当前 game_state 的 value
-    const { data: gs, error: getErr } = await this.supabase.from('app_config').select('*').eq('id', 'game_state').single();
-    if (getErr) {
-      // 不存在则创建
-      await this._ensureGameState();
-      const { data: gs2 } = await this.supabase.from('app_config').select('*').eq('id', 'game_state').single();
-      if (!gs2) return false;
-    }
+  // --- 提现 ---
+  async getWithdrawals(status = null) {
+    let query = supabase.from('withdrawals').select('*');
+    if (status) query = query.eq('status', status);
+    const { data, error } = await query.order('created_at', { ascending: false });
+    if (error) { console.error('DB getWithdrawals error:', error); return []; }
+    return data.map(w => ({
+      id: w.id,
+      amount: parseFloat(w.amount),
+      status: w.status,
+      createdAt: w.created_at,
+    }));
+  },
 
-    const currentValue = gs?.value || {};
-    const newValue = { ...currentValue };
-    const updates = {};
+  async requestWithdrawal(amount) {
+    const { data, error } = await supabase
+      .from('withdrawals')
+      .insert({
+        user_role: 'player',
+        amount: amount,
+        status: 'pending',
+      })
+      .select()
+      .single();
+    if (error) { console.error('DB requestWithdrawal error:', error); return null; }
+    return data;
+  },
 
-    // 列字段
-    if (config.starEnergy !== undefined) updates.star_energy = config.starEnergy;
-    if (config.shipLevel !== undefined) updates.ship_level = config.shipLevel;
-    if (config.currentPlanet !== undefined) updates.current_planet = config.currentPlanet;
-    if (config.engineBuff !== undefined) updates.engine_buff = config.engineBuff;
-    if (config.radarBuff !== undefined) updates.radar_buff = config.radarBuff;
-    if (config.shipSkin !== undefined) updates.ship_skin = config.shipSkin;
-
-    // value JSON 字段
-    if (config.totalTasksCompleted !== undefined) newValue.totalTasksCompleted = config.totalTasksCompleted;
-    if (config.monthlyTasks !== undefined) newValue.monthlyTasks = config.monthlyTasks;
-    if (config.currentMonth !== undefined) newValue.currentMonth = config.currentMonth;
-    if (config.adminPassword !== undefined) newValue.adminPassword = config.adminPassword;
-    if (config.userPassword !== undefined) newValue.userPassword = config.userPassword;
-
-    updates.value = newValue;
-
-    const { error } = await this.supabase.from('app_config').update(updates).eq('id', 'game_state');
-    if (error) { console.error('DB updateConfig error:', error); return false; }
-
-    // 名字更新到对应行
-    if (config.userName !== undefined) {
-      const { data: up } = await this.supabase.from('app_config').select('*').eq('id', 'user_profile').single();
-      const val = up?.value || {};
-      val.name = config.userName;
-      await this.supabase.from('app_config').update({ value: val }).eq('id', 'user_profile');
-    }
-    if (config.adminName !== undefined) {
-      const { data: ap } = await this.supabase.from('app_config').select('*').eq('id', 'admin_profile').single();
-      const val = ap?.value || {};
-      val.name = config.adminName;
-      await this.supabase.from('app_config').update({ value: val }).eq('id', 'admin_profile');
-    }
-
+  async reviewWithdrawal(id, status) {
+    const { error } = await supabase
+      .from('withdrawals')
+      .update({ status: status, reviewed_at: new Date().toISOString() })
+      .eq('id', id);
+    if (error) { console.error('DB reviewWithdrawal error:', error); return false; }
     return true;
   },
 };
 
-/* ==========================================================================
+/* ================================================================
+   游戏逻辑
+   ================================================================ */
+const Game = {
+  state: null,
+  inventory: [],
+
+  async init() {
+    this.state = await DB.getPlayerState();
+    this.inventory = await DB.getInventory();
+  },
+
+  async refresh() {
+    this.state = await DB.getPlayerState();
+    this.inventory = await DB.getInventory();
+    UI.updateHeader();
+  },
+
+  // 砍树
+  async chop() {
+    if (this.state.choppingCount <= 0) {
+      UI.toast('没有砍树次数了，去完成任务吧', 'warn');
+      return null;
+    }
+
+    // 消耗砍树次数
+    this.state.choppingCount -= 1;
+    await DB.updatePlayerState({ choppingCount: this.state.choppingCount });
+
+    // 随机掉落
+    const treeConfig = TREE_LEVELS[this.state.treeLevel] || TREE_LEVELS[1];
+    const item = this._rollDrop(treeConfig);
+
+    // 发奖励
+    await DB.addItem(item.itemId, item.quantity);
+    const idx = this.inventory.findIndex(i => i.itemId === item.itemId);
+    if (idx >= 0) this.inventory[idx].quantity += item.quantity;
+    else this.inventory.push({ itemId: item.itemId, quantity: item.quantity });
+
+    // 加经验
+    const expGain = 2 + item.quality;
+    await this._addExp(expGain);
+
+    UI.updateHeader();
+    return item;
+  },
+
+  _rollDrop(treeConfig) {
+    const totalWeight = treeConfig.pools.reduce((sum, p) => sum + p.weight, 0);
+    let roll = Math.random() * totalWeight;
+    let selectedPool = null;
+
+    for (const pool of treeConfig.pools) {
+      roll -= pool.weight;
+      if (roll <= 0) { selectedPool = pool; break; }
+    }
+    if (!selectedPool) selectedPool = treeConfig.pools[0];
+
+    const itemId = selectedPool.items[Math.floor(Math.random() * selectedPool.items.length)];
+    const itemDef = ITEMS[itemId];
+
+    return {
+      itemId: itemId,
+      quantity: 1,
+      quality: selectedPool.quality,
+      qualityName: QUALITY[selectedPool.quality].name,
+      item: itemDef,
+    };
+  },
+
+  async _addExp(amount) {
+    this.state.exp += amount;
+    let leveledUp = false;
+    while (this.state.exp >= getExpForLevel(this.state.level)) {
+      this.state.exp -= getExpForLevel(this.state.level);
+      this.state.level += 1;
+      leveledUp = true;
+    }
+    if (leveledUp) {
+      UI.toast(`恭喜！升级到 Lv.${this.state.level}`, 'success');
+    }
+    await DB.updatePlayerState({ level: this.state.level, exp: this.state.exp });
+    return leveledUp;
+  },
+
+  // 每日签到
+  async dailyCheckIn() {
+    const today = new Date().toISOString().split('T')[0];
+    if (this.state.lastDailyDate === today) {
+      UI.toast('今日已签到', 'warn');
+      return false;
+    }
+    this.state.choppingCount += 1;
+    this.state.lastDailyDate = today;
+    await DB.updatePlayerState({
+      choppingCount: this.state.choppingCount,
+      lastDailyDate: today,
+    });
+    UI.updateHeader();
+    UI.toast('签到成功！获得 1 次砍树机会', 'success');
+    return true;
+  },
+
+  // 合成道具
+  async compose(itemId) {
+    const itemDef = ITEMS[itemId];
+    if (!itemDef || itemDef.type !== 1) return false;
+
+    const have = this._getItemQty(itemId);
+    if (have < itemDef.composeCount) {
+      UI.toast(`需要 ${itemDef.composeCount} 个才能合成`, 'warn');
+      return false;
+    }
+
+    await DB.removeItem(itemId, itemDef.composeCount);
+    await DB.addItem(itemDef.composeTo, 1);
+    await this.refresh();
+
+    const targetItem = ITEMS[itemDef.composeTo];
+    UI.toast(`合成成功！获得 ${targetItem.name}`, 'success');
+    return true;
+  },
+
+  // 出售仙斧
+  async sellAxe(itemId) {
+    const itemDef = ITEMS[itemId];
+    if (!itemDef || itemDef.type !== 5) return false;
+    if (this.state.axeId === itemId) {
+      UI.toast('装备中的斧头无法出售', 'warn');
+      return false;
+    }
+    await DB.removeItem(itemId, 1);
+    this.state.choppingCount += itemDef.sellPrice;
+    await DB.updatePlayerState({ choppingCount: this.state.choppingCount });
+    await this.refresh();
+    UI.toast(`出售成功！获得 ${itemDef.sellPrice} 次砍树`, 'success');
+    return true;
+  },
+
+  // 装备仙斧
+  async equipAxe(itemId) {
+    const itemDef = ITEMS[itemId];
+    if (!itemDef || itemDef.type !== 5) return false;
+    if (this.state.axeId === itemId) {
+      UI.toast('已经装备了', 'warn');
+      return false;
+    }
+    // 旧斧头放回背包
+    if (this.state.axeId && this.state.axeId !== 'axe_stone') {
+      await DB.addItem(this.state.axeId, 1);
+    }
+    // 从背包扣新斧头
+    await DB.removeItem(itemId, 1);
+    this.state.axeId = itemId;
+    await DB.updatePlayerState({ axeId: itemId });
+    await this.refresh();
+    UI.toast(`装备了 ${itemDef.name}`, 'success');
+    return true;
+  },
+
+  // 提现
+  async withdraw(amount) {
+    if (amount <= 0 || amount > this.state.balance) {
+      UI.toast('余额不足', 'error');
+      return false;
+    }
+    if (amount % 100 !== 0) {
+      UI.toast('提现需为100的整数倍', 'warn');
+      return false;
+    }
+    this.state.balance -= amount;
+    await DB.updatePlayerState({ balance: this.state.balance });
+    await DB.requestWithdrawal(amount);
+    await DB.sendMail(
+      '提现申请已提交',
+      `你申请提现 ${amount} 元，天道审核通过后将发放。`,
+      []
+    );
+    await this.refresh();
+    UI.toast('提现申请已提交', 'success');
+    return true;
+  },
+
+  // 商店购买
+  async shopBuy(shopItem) {
+    if (shopItem.costType === 'chopping') {
+      if (this.state.choppingCount < shopItem.costValue) {
+        UI.toast('砍树次数不足', 'warn');
+        return false;
+      }
+      this.state.choppingCount -= shopItem.costValue;
+      await DB.updatePlayerState({ choppingCount: this.state.choppingCount });
+    } else if (shopItem.costType === 'money') {
+      if (this.state.balance < shopItem.costValue) {
+        UI.toast('余额不足', 'warn');
+        return false;
+      }
+      this.state.balance -= shopItem.costValue;
+      await DB.updatePlayerState({ balance: this.state.balance });
+    }
+
+    if (shopItem.rewardType === 'chopping') {
+      this.state.choppingCount += shopItem.rewardValue;
+      await DB.updatePlayerState({ choppingCount: this.state.choppingCount });
+    } else if (shopItem.rewardType === 'item') {
+      await DB.addItem(shopItem.rewardId, shopItem.rewardValue);
+    }
+
+    await this.refresh();
+    UI.toast(`兑换成功！`, 'success');
+    return true;
+  },
+
+  _getItemQty(itemId) {
+    const item = this.inventory.find(i => i.itemId === itemId);
+    return item ? item.quantity : 0;
+  },
+};
+
+/* ================================================================
    Auth
-   ========================================================================== */
+   ================================================================ */
 const Auth = {
-  currentRole: 'user',
+  currentRole: 'player',
+
   selectRole(role) {
     this.currentRole = role;
     document.querySelectorAll('.role-card').forEach(el => {
       el.classList.toggle('active', el.dataset.role === role);
     });
   },
+
   async doLogin() {
     const password = document.getElementById('login-password').value;
-    const config = await DB.getConfig();
-    if (!config) { UI.toast('连接数据库失败', 'error'); return; }
+    const correctPwd = this.currentRole === 'admin' ? 'admin' : 'player';
 
-    const correctPwd = this.currentRole === 'admin' ? config.adminPassword : config.userPassword;
     if (password !== correctPwd) {
-      UI.toast('密码错误', 'error');
+      UI.toast('道号密码错误', 'error');
       return;
     }
 
-    // 检查月度重置
-    const now = new Date();
-    const monthKey = `${now.getFullYear()}-${now.getMonth() + 1}`;
-    if (config.currentMonth !== monthKey) {
-      await DB.updateConfig({ currentMonth: monthKey, monthlyTasks: 0 });
-    }
+    await Game.init();
 
     if (this.currentRole === 'admin') {
-      document.getElementById('admin-name').textContent = config.adminName || '指挥官';
       document.getElementById('login-screen').style.display = 'none';
       document.getElementById('admin-dashboard').style.display = 'flex';
-      Router.adminTab('tasks');
+      Router.adminTab('task-manage');
     } else {
-      document.getElementById('user-name').textContent = config.userName || '舰长';
       document.getElementById('login-screen').style.display = 'none';
-      document.getElementById('user-dashboard').style.display = 'flex';
-      Router.userTab('starmap');
+      document.getElementById('player-dashboard').style.display = 'flex';
+      document.getElementById('player-name').textContent = '小修士';
+      UI.updateHeader();
+      Router.playerTab('cultivate');
     }
   },
+
   logout() {
+    document.getElementById('player-dashboard').style.display = 'none';
     document.getElementById('admin-dashboard').style.display = 'none';
-    document.getElementById('user-dashboard').style.display = 'none';
     document.getElementById('login-screen').style.display = 'flex';
     document.getElementById('login-password').value = '';
   },
 };
 
-/* ==========================================================================
+/* ================================================================
    Router
-   ========================================================================== */
+   ================================================================ */
 const Router = {
-  currentAdminTab: 'tasks',
-  currentUserTab: 'starmap',
+  currentPlayerTab: 'cultivate',
+  currentAdminTab: 'task-manage',
+
+  playerTab(tab) {
+    this.currentPlayerTab = tab;
+    document.querySelectorAll('#player-dashboard .bottom-nav .nav-item').forEach(el => {
+      el.classList.toggle('active', el.dataset.tab === tab);
+    });
+    const main = document.getElementById('player-main');
+
+    switch (tab) {
+      case 'cultivate': PlayerView.renderCultivate(); break;
+      case 'tasks': PlayerView.renderTasks(); break;
+      case 'reward': PlayerView.renderReward(); break;
+      case 'mail': PlayerView.renderMail(); break;
+    }
+  },
 
   adminTab(tab) {
     this.currentAdminTab = tab;
-    document.querySelectorAll('#admin-nav .nav-item').forEach(el => {
+    document.querySelectorAll('#admin-dashboard .bottom-nav .nav-item').forEach(el => {
       el.classList.toggle('active', el.dataset.tab === tab);
     });
     const main = document.getElementById('admin-main');
-    main.innerHTML = '<div style="text-align:center;padding:40px;"><div style="font-size:32px;">🚀</div><p style="color:var(--text-secondary);margin-top:8px;">加载中...</p></div>';
-    this._renderAdmin(tab);
-  },
-  userTab(tab) {
-    this.currentUserTab = tab;
-    document.querySelectorAll('#user-nav .nav-item').forEach(el => {
-      el.classList.toggle('active', el.dataset.tab === tab);
-    });
-    const main = document.getElementById('user-main');
-    main.innerHTML = '<div style="text-align:center;padding:40px;"><div style="font-size:32px;">🚀</div><p style="color:var(--text-secondary);margin-top:8px;">加载中...</p></div>';
-    this._renderUser(tab);
-  },
 
-  async _renderAdmin(tab) {
     switch (tab) {
-      case 'tasks': await AdminView.renderTasks(); break;
-      case 'review': await AdminView.renderReview(); break;
-      case 'rewards': await AdminView.renderRewards(); break;
-      case 'dashboard': await AdminView.renderDashboard(); break;
-      case 'reports': await AdminView.renderReports(); break;
-    }
-  },
-  async _renderUser(tab) {
-    switch (tab) {
-      case 'starmap': await UserView.renderStarMap(); break;
-      case 'tasks': await UserView.renderTasks(); break;
-      case 'growth': await UserView.renderGrowth(); break;
-      case 'rewards': await UserView.renderRewards(); break;
+      case 'task-manage': AdminView.renderTaskManage(); break;
+      case 'review': AdminView.renderReview(); break;
+      case 'withdraw': AdminView.renderWithdrawReview(); break;
+      case 'player-view': AdminView.renderPlayerView(); break;
     }
   },
 };
 
-/* ==========================================================================
-   UI Helpers
-   ========================================================================== */
+/* ================================================================
+   UI 工具
+   ================================================================ */
 const UI = {
-  toast(message, type = 'success') {
+  updateHeader() {
+    if (!Game.state) return;
+    document.getElementById('chopping-count').textContent = Game.state.choppingCount;
+    document.getElementById('player-level-num').textContent = Game.state.level;
+    const expNeeded = getExpForLevel(Game.state.level);
+    const pct = Math.min(100, (Game.state.exp / expNeeded) * 100);
+    document.getElementById('player-exp-bar').style.width = pct + '%';
+
+    // 未读邮件数
+    this._updateMailBadge();
+  },
+
+  async _updateMailBadge() {
+    const mails = await DB.getMails();
+    const unread = mails.filter(m => !m.isRead || (!m.isClaimed && m.items.length > 0)).length;
+    const badge = document.getElementById('mail-badge');
+    if (badge) {
+      if (unread > 0) {
+        badge.style.display = 'inline-block';
+        badge.textContent = unread > 99 ? '99+' : unread;
+      } else {
+        badge.style.display = 'none';
+      }
+    }
+  },
+
+  toast(message, type = 'default') {
     const container = document.getElementById('toast-container');
     const el = document.createElement('div');
     el.className = `toast ${type}`;
     el.textContent = message;
     container.appendChild(el);
-    setTimeout(() => el.remove(), 2500);
+    setTimeout(() => {
+      el.style.opacity = '0';
+      el.style.transform = 'translateY(20px)';
+      setTimeout(() => el.remove(), 300);
+    }, 2500);
   },
 
-  confirm(title, message, onConfirm) {
-    const html = `
-      <div class="modal-overlay" onclick="if(event.target===this)UI.closeModal()">
-        <div class="modal">
-          <div class="modal-header">
-            <div class="modal-title">${title}</div>
-            <button class="modal-close" onclick="UI.closeModal()">×</button>
-          </div>
-          <p style="color:var(--text-secondary);">${message}</p>
-          <div class="modal-footer">
-            <button class="btn btn-outline" onclick="UI.closeModal()">取消</button>
-            <button class="btn btn-primary" id="confirm-ok">确认</button>
-          </div>
+  modal(contentHTML, options = {}) {
+    const container = document.getElementById('modal-container');
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML = `
+      <div class="modal">
+        <div class="modal-header">
+          <div class="modal-title">${options.title || ''}</div>
+          <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">×</button>
         </div>
-      </div>`;
-    document.getElementById('modal-container').innerHTML = html;
-    document.getElementById('confirm-ok').onclick = () => { UI.closeModal(); onConfirm(); };
+        <div class="modal-body">${contentHTML}</div>
+        ${options.footer || ''}
+      </div>
+    `;
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) overlay.remove();
+    });
+    container.appendChild(overlay);
+    return overlay;
   },
 
-  modal(title, bodyHtml, footerHtml = '') {
-    const html = `
-      <div class="modal-overlay" onclick="if(event.target===this)UI.closeModal()">
-        <div class="modal">
-          <div class="modal-header">
-            <div class="modal-title">${title}</div>
-            <button class="modal-close" onclick="UI.closeModal()">×</button>
-          </div>
-          ${bodyHtml}
-          ${footerHtml ? `<div class="modal-footer">${footerHtml}</div>` : ''}
-        </div>
-      </div>`;
-    document.getElementById('modal-container').innerHTML = html;
+  closeModal(overlay) {
+    if (overlay && overlay.parentNode) overlay.remove();
   },
 
-  closeModal() {
-    document.getElementById('modal-container').innerHTML = '';
+  confirm(message, onConfirm) {
+    const overlay = this.modal(`
+      <p style="margin-bottom:16px">${message}</p>
+    `, {
+      title: '确认',
+      footer: `<div class="modal-footer">
+        <button class="btn btn-outline btn-sm" onclick="this.closest('.modal-overlay').remove()">取消</button>
+        <button class="btn btn-primary btn-sm" id="confirm-ok-btn">确定</button>
+      </div>`
+    });
+    overlay.querySelector('#confirm-ok-btn').addEventListener('click', () => {
+      this.closeModal(overlay);
+      onConfirm();
+    });
   },
 
-  starRating(stars) {
-    let html = '<span class="star-rating">';
-    for (let i = 1; i <= 5; i++) {
-      html += `<span class="star ${i <= stars ? 'filled' : ''}">★</span>`;
-    }
-    html += '</span>';
-    return html;
+  // 品质标签
+  qualityTag(quality) {
+    const q = QUALITY[quality] || QUALITY[1];
+    return `<span class="tag" style="background:${q.color}20;color:${q.color}">${q.name}</span>`;
   },
 
-  starTag(starLevel) {
-    return `<span class="tag tag-star">${this.starRating(starLevel)} ${STAR_NAMES[starLevel] || ''}</span>`;
+  // 难度标签
+  difficultyTag(difficulty) {
+    if (!difficulty) return '';
+    const d = DIFFICULTY_MAP[difficulty];
+    if (!d) return '';
+    return `<span class="tag ${d.class}">${d.name}</span>`;
   },
 
+  // 任务类型标签
+  taskTypeTag(type) {
+    const t = TASK_TYPE_MAP[type];
+    if (!t) return '';
+    return `<span class="tag ${t.class}">${t.name}</span>`;
+  },
+
+  // 状态标签
   statusTag(status) {
-    const info = STATUS_MAP[status] || { label: status, cls: '' };
-    return `<span class="tag tag-status-${info.cls}">${info.label}</span>`;
+    const map = {
+      available: ['可领取', 'tag-status-available'],
+      pending: ['待审核', 'tag-status-pending'],
+      review: ['审核中', 'tag-status-review'],
+      done: ['已完成', 'tag-status-done'],
+      approved: ['已通过', 'tag-status-approved'],
+      rejected: ['已驳回', 'tag-status-rejected'],
+    };
+    const s = map[status];
+    if (!s) return '';
+    return `<span class="tag ${s[1]}">${s[0]}</span>`;
   },
 
-  categoryTag(category) {
-    return `<span class="tag tag-category">${category}</span>`;
-  },
+  // 播放掉落动画
+  playDropAnimation(item, treeElement) {
+    const container = document.getElementById('floating-items-container');
+    const el = document.createElement('div');
+    el.className = 'falling-item';
+    el.textContent = item.item.icon;
 
-  formatDate(dateStr) {
-    if (!dateStr) return '-';
-    const d = new Date(dateStr);
-    return `${d.getFullYear()}/${(d.getMonth()+1).toString().padStart(2,'0')}/${d.getDate().toString().padStart(2,'0')}`;
-  },
+    const treeRect = treeElement.getBoundingClientRect();
+    const startX = treeRect.left + treeRect.width / 2 - 18;
+    const startY = treeRect.top + treeRect.height / 3;
 
-  energyBadge(energy) {
-    return `<span class="energy-reward">⚡ ${energy}</span>`;
+    el.style.left = startX + 'px';
+    el.style.top = startY + 'px';
+    el.style.animation = `fall-down 1.2s ease-out forwards`;
+
+    container.appendChild(el);
+    setTimeout(() => el.remove(), 1200);
   },
 };
 
-/* ==========================================================================
-   Charts (SVG)
-   ========================================================================== */
-const Charts = {
-  radar(categories, values, size = 260) {
-    const cx = size / 2, cy = size / 2;
-    const maxVal = 100;
-    const levels = 5;
-    const angleStep = (Math.PI * 2) / categories.length;
-    const radius = size * 0.38;
+/* ================================================================
+   玩家视图
+   ================================================================ */
+const PlayerView = {
+  // --- 修仙主页 ---
+  async renderCultivate() {
+    const main = document.getElementById('player-main');
+    const treeConfig = TREE_LEVELS[Game.state.treeLevel] || TREE_LEVELS[1];
+    const axeDef = ITEMS[Game.state.axeId] || ITEMS.axe_stone;
 
-    let svg = `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">`;
+    main.innerHTML = `
+      <!-- 仙树区域 -->
+      <div class="tree-area" id="tree-area">
+        <div class="tree-container">
+          <div class="tree-icon" id="tree-icon" onclick="PlayerView.doChop()">${treeConfig.icon}</div>
+          <div class="tree-info">
+            <div class="tree-name">${treeConfig.name}</div>
+            <div class="tree-level">仙树 Lv.${Game.state.treeLevel}</div>
+          </div>
+        </div>
+        <button class="chop-btn" id="chop-btn" onclick="PlayerView.doChop()" ${Game.state.choppingCount <= 0 ? 'disabled' : ''}>
+          🪓 砍树 (${Game.state.choppingCount})
+        </button>
+      </div>
 
-    // Grid polygons
-    for (let i = levels; i >= 1; i--) {
-      const r = (radius * i) / levels;
-      let points = '';
-      for (let j = 0; j < categories.length; j++) {
-        const angle = -Math.PI / 2 + j * angleStep;
-        const x = cx + r * Math.cos(angle);
-        const y = cy + r * Math.sin(angle);
-        points += `${x},${y} `;
-      }
-      svg += `<polygon points="${points}" fill="none" stroke="rgba(129,140,248,0.15)" stroke-width="1"/>`;
-    }
+      <!-- 状态统计 -->
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-num">${Game.state.choppingCount}</div>
+          <div class="stat-label">🪓 砍树次数</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num" style="color:${QUALITY[axeDef.quality].color}">${axeDef.icon}</div>
+          <div class="stat-label">${axeDef.name}</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num">${Game.state.level}</div>
+          <div class="stat-label">⚡ 等级</div>
+        </div>
+      </div>
 
-    // Axes
-    for (let j = 0; j < categories.length; j++) {
-      const angle = -Math.PI / 2 + j * angleStep;
-      const x = cx + radius * Math.cos(angle);
-      const y = cy + radius * Math.sin(angle);
-      svg += `<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="rgba(129,140,248,0.1)" stroke-width="1"/>`;
-    }
+      <!-- 背包 -->
+      <div class="card">
+        <div class="section-header">
+          <div class="section-title">🎒 背包</div>
+        </div>
+        <div class="inventory-tabs">
+          <div class="inv-tab active" data-tab="items" onclick="PlayerView.switchInvTab('items')">道具</div>
+          <div class="inv-tab" data-tab="weapons" onclick="PlayerView.switchInvTab('weapons')">武器</div>
+        </div>
+        <div class="inventory-grid" id="inventory-grid"></div>
+      </div>
+    `;
 
-    // Data polygon
-    let dataPoints = '';
-    for (let j = 0; j < categories.length; j++) {
-      const val = Math.min(values[j], maxVal);
-      const r = (radius * val) / maxVal;
-      const angle = -Math.PI / 2 + j * angleStep;
-      const x = cx + r * Math.cos(angle);
-      const y = cy + r * Math.sin(angle);
-      dataPoints += `${x},${y} `;
-    }
-    svg += `<polygon points="${dataPoints}" fill="rgba(244,114,182,0.25)" stroke="#f472b6" stroke-width="2"/>`;
-
-    // Data points
-    for (let j = 0; j < categories.length; j++) {
-      const val = Math.min(values[j], maxVal);
-      const r = (radius * val) / maxVal;
-      const angle = -Math.PI / 2 + j * angleStep;
-      const x = cx + r * Math.cos(angle);
-      const y = cy + r * Math.sin(angle);
-      svg += `<circle cx="${x}" cy="${y}" r="4" fill="#f472b6"/>`;
-    }
-
-    // Labels
-    for (let j = 0; j < categories.length; j++) {
-      const angle = -Math.PI / 2 + j * angleStep;
-      const labelR = radius + 20;
-      const x = cx + labelR * Math.cos(angle);
-      const y = cy + labelR * Math.sin(angle);
-      svg += `<text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="middle" fill="#a5a0c0" font-size="12">${categories[j]}</text>`;
-    }
-
-    svg += '</svg>';
-    return svg;
+    this.renderInventory('items');
   },
 
-  donut(value, max, size = 180, color = '#818cf8') {
-    const cx = size / 2, cy = size / 2;
-    const r = size * 0.38;
-    const circumference = 2 * Math.PI * r;
-    const percent = Math.min(value / max, 1);
-    const dashOffset = circumference * (1 - percent);
+  currentInvTab: 'items',
+
+  switchInvTab(tab) {
+    this.currentInvTab = tab;
+    document.querySelectorAll('.inv-tab').forEach(el => {
+      el.classList.toggle('active', el.dataset.tab === tab);
+    });
+    this.renderInventory(tab);
+  },
+
+  renderInventory(tab) {
+    const grid = document.getElementById('inventory-grid');
+    if (!grid) return;
+
+    const items = Game.inventory.filter(inv => {
+      const def = ITEMS[inv.itemId];
+      if (!def) return false;
+      if (tab === 'weapons') return def.type === 5;
+      return def.type >= 1 && def.type <= 4;
+    });
+
+    // 填充空槽位
+    const slots = Math.max(20, items.length);
+    let html = '';
+
+    items.forEach(inv => {
+      const def = ITEMS[inv.itemId];
+      if (!def) return;
+      html += `
+        <div class="item-slot quality-${def.quality}" onclick="PlayerView.showItemDetail('${inv.itemId}')">
+          <div class="item-icon">${def.icon}</div>
+          <div class="item-count">${inv.quantity}</div>
+        </div>
+      `;
+    });
+
+    // 空槽位
+    for (let i = items.length; i < slots; i++) {
+      html += `<div class="item-slot empty"></div>`;
+    }
+
+    grid.innerHTML = html;
+  },
+
+  showItemDetail(itemId) {
+    const def = ITEMS[itemId];
+    if (!def) return;
+    const qty = Game._getItemQty(itemId);
+    const q = QUALITY[def.quality];
+
+    let actionBtn = '';
+    if (def.type === 1) {
+      actionBtn = `<button class="btn btn-primary btn-sm" onclick="PlayerView.composeItem('${itemId}')">合成 (${qty}/${def.composeCount})</button>`;
+    } else if (def.type === 2) {
+      actionBtn = `<button class="btn btn-primary btn-sm" onclick="PlayerView.cashItem('${itemId}')">提现 ¥${def.value}</button>`;
+    } else if (def.type === 5) {
+      const isEquipped = Game.state.axeId === itemId;
+      actionBtn = `
+        ${isEquipped
+          ? `<button class="btn btn-outline btn-sm" disabled>已装备</button>`
+          : `<button class="btn btn-primary btn-sm" onclick="PlayerView.equipItem('${itemId}')">装备</button>
+             <button class="btn btn-outline btn-sm" onclick="PlayerView.sellItem('${itemId}')">出售 +${def.sellPrice}🪓</button>`
+        }
+      `;
+    }
+
+    UI.modal(`
+      <div style="text-align:center;margin-bottom:16px">
+        <div style="font-size:60px;margin-bottom:8px">${def.icon}</div>
+        <div style="font-size:18px;font-weight:700">${def.name}</div>
+        <div style="margin-top:4px"><span class="tag" style="background:${q.color}20;color:${q.color}">${q.name}</span></div>
+        <div style="margin-top:8px;font-size:13px;color:var(--text-secondary)">数量：${qty}</div>
+      </div>
+      <p style="font-size:13px;color:var(--text-secondary);text-align:center;margin-bottom:16px">${def.desc || ''}</p>
+      ${def.skillDesc ? `<p style="font-size:12px;color:var(--accent);text-align:center;margin-bottom:16px">🌟 ${def.skillDesc}</p>` : ''}
+      <div style="display:flex;gap:8px;justify-content:center">
+        ${actionBtn}
+      </div>
+    `, { title: '物品详情' });
+  },
+
+  composeItem(itemId) {
+    Game.compose(itemId).then(ok => {
+      if (ok) {
+        this.renderInventory(this.currentInvTab);
+        document.querySelector('.modal-overlay')?.remove();
+      }
+    });
+  },
+
+  cashItem(itemId) {
+    const def = ITEMS[itemId];
+    UI.confirm(`确定要将 ${def.name} 提现 ¥${def.value} 吗？`, async () => {
+      const ok = await DB.removeItem(itemId, 1);
+      if (!ok) { UI.toast('操作失败', 'error'); return; }
+      Game.state.balance += def.value;
+      await DB.updatePlayerState({ balance: Game.state.balance });
+      await Game.refresh();
+      this.renderInventory(this.currentInvTab);
+      UI.toast(`到账 ¥${def.value}`, 'success');
+      document.querySelector('.modal-overlay')?.remove();
+    });
+  },
+
+  equipItem(itemId) {
+    Game.equipAxe(itemId).then(ok => {
+      if (ok) {
+        this.renderInventory(this.currentInvTab);
+        document.querySelector('.modal-overlay')?.remove();
+        UI.updateHeader();
+      }
+    });
+  },
+
+  sellItem(itemId) {
+    const def = ITEMS[itemId];
+    UI.confirm(`确定出售 ${def.name}，获得 ${def.sellPrice} 次砍树？`, async () => {
+      const ok = await Game.sellAxe(itemId);
+      if (ok) {
+        this.renderInventory(this.currentInvTab);
+        document.querySelector('.modal-overlay')?.remove();
+      }
+    });
+  },
+
+  async doChop() {
+    if (Game.state.choppingCount <= 0) {
+      UI.toast('没有砍树次数了', 'warn');
+      return;
+    }
+
+    const treeIcon = document.getElementById('tree-icon');
+    const chopBtn = document.getElementById('chop-btn');
+
+    // 禁用按钮
+    chopBtn.disabled = true;
+
+    // 摇晃动画
+    treeIcon.classList.add('shaking');
+    setTimeout(() => treeIcon.classList.remove('shaking'), 300);
+
+    // 掉落延迟
+    setTimeout(async () => {
+      const item = await Game.chop();
+      if (item) {
+        UI.playDropAnimation(item, treeIcon);
+
+        // 显示获得弹窗
+        setTimeout(() => {
+          this._showRewardModal(item);
+        }, 800);
+      }
+
+      // 更新砍树按钮文字
+      chopBtn.textContent = `🪓 砍树 (${Game.state.choppingCount})`;
+      chopBtn.disabled = Game.state.choppingCount <= 0;
+
+      // 刷新背包
+      this.renderInventory(this.currentInvTab);
+    }, 200);
+  },
+
+  _showRewardModal(item) {
+    const q = QUALITY[item.quality];
+    const overlay = UI.modal(`
+      <div class="reward-modal">
+        <div class="reward-icon">${item.item.icon}</div>
+        <div class="reward-name" style="color:${q.color}">${item.item.name}</div>
+        <div class="reward-quality">${q.name} · 获得 ×${item.quantity}</div>
+        <button class="btn btn-primary btn-block" onclick="this.closest('.modal-overlay').remove()">收下</button>
+      </div>
+    `, { title: '🎉 获得物品' });
+  },
+
+  // --- 任务页 ---
+  async renderTasks() {
+    const main = document.getElementById('player-main');
+    const [dailyTasks, weeklyTasks] = await Promise.all([
+      DB.getTasks('daily'),
+      DB.getTasks('weekly'),
+    ]);
+
+    // 检查今日是否已签到
+    const today = new Date().toISOString().split('T')[0];
+    const dailyChecked = Game.state.lastDailyDate === today;
+
+    main.innerHTML = `
+      <div class="page-title">📜 任务</div>
+      <div class="page-subtitle">完成任务获得砍树次数，砍树掉落奖励</div>
+
+      <div class="filter-bar">
+        <div class="filter-chip active" data-filter="all" onclick="PlayerView.filterTasks('all')">全部</div>
+        <div class="filter-chip" data-filter="daily" onclick="PlayerView.filterTasks('daily')">每日</div>
+        <div class="filter-chip" data-filter="weekly" onclick="PlayerView.filterTasks('weekly')">每周</div>
+        <div class="filter-chip" data-filter="self" onclick="PlayerView.filterTasks('self')">自主申报</div>
+      </div>
+
+      <div id="task-list"></div>
+
+      <button class="btn btn-outline btn-block" style="margin-top:16px" onclick="PlayerView.showSelfSubmit()">
+        ✍️ 自主申报任务
+      </button>
+    `;
+
+    this.currentTaskFilter = 'all';
+    this._dailyTasks = dailyTasks;
+    this._weeklyTasks = weeklyTasks;
+    this._dailyChecked = dailyChecked;
+
+    this._renderTaskList();
+  },
+
+  currentTaskFilter: 'all',
+  _dailyTasks: [],
+  _weeklyTasks: [],
+  _submissions: [],
+  _dailyChecked: false,
+
+  async filterTasks(filter) {
+    this.currentTaskFilter = filter;
+    document.querySelectorAll('.filter-chip').forEach(el => {
+      el.classList.toggle('active', el.dataset.filter === filter);
+    });
+    this._renderTaskList();
+  },
+
+  async _renderTaskList() {
+    const list = document.getElementById('task-list');
+    if (!list) return;
+
+    const submissions = await DB.getSubmissions();
+    this._submissions = submissions;
+
+    let html = '';
+
+    // 每日任务
+    if (this.currentTaskFilter === 'all' || this.currentTaskFilter === 'daily') {
+      html += `<div style="font-size:13px;font-weight:600;color:var(--text-secondary);margin:12px 4px 8px">☀️ 每日任务</div>`;
+      this._dailyTasks.forEach(task => {
+        const checked = this._dailyChecked;
+        html += this._renderTaskCard(task, checked ? 'done' : 'available', 'daily');
+      });
+    }
+
+    // 每周任务
+    if (this.currentTaskFilter === 'all' || this.currentTaskFilter === 'weekly') {
+      html += `<div style="font-size:13px;font-weight:600;color:var(--text-secondary);margin:16px 4px 8px">📅 每周任务</div>`;
+      this._weeklyTasks.forEach(task => {
+        const sub = submissions.find(s => s.taskId === task.id);
+        const status = sub ? sub.status : 'available';
+        html += this._renderTaskCard(task, status, 'weekly');
+      });
+    }
+
+    // 自主申报
+    if (this.currentTaskFilter === 'all' || this.currentTaskFilter === 'self') {
+      html += `<div style="font-size:13px;font-weight:600;color:var(--text-secondary);margin:16px 4px 8px">✍️ 自主申报</div>`;
+      const selfSubs = submissions.filter(s => s.isSelfTask);
+      if (selfSubs.length === 0) {
+        html += `<div class="empty-state" style="padding:24px"><div class="emoji">📝</div><p>还没有自主申报的任务</p></div>`;
+      } else {
+        selfSubs.forEach(sub => {
+          html += this._renderSelfSubCard(sub);
+        });
+      }
+    }
+
+    list.innerHTML = html;
+  },
+
+  _renderTaskCard(task, status, type) {
+    const rewardItems = task.rewardItems || [];
+    let rewardHtml = '';
+    if (task.rewardChopping > 0) {
+      rewardHtml += `<span class="reward-chopping">🪓 ×${task.rewardChopping}</span>`;
+    }
+    rewardItems.forEach(ri => {
+      const def = ITEMS[ri.item_id];
+      if (def) rewardHtml += `<span style="font-size:16px" title="${def.name}">${def.icon}×${ri.quantity}</span>`;
+    });
+
+    let actionBtn = '';
+    if (type === 'daily') {
+      if (this._dailyChecked) {
+        actionBtn = `<button class="btn btn-outline btn-sm" disabled>已签到</button>`;
+      } else {
+        actionBtn = `<button class="btn btn-primary btn-sm" onclick="PlayerView.doDailyCheckIn()">签到</button>`;
+      }
+    } else {
+      if (status === 'available') {
+        actionBtn = `<button class="btn btn-primary btn-sm" onclick="PlayerView.submitTask('${task.id}')">完成</button>`;
+      } else if (status === 'pending') {
+        actionBtn = `<button class="btn btn-outline btn-sm" disabled>审核中</button>`;
+      } else if (status === 'approved') {
+        actionBtn = `<button class="btn btn-accent btn-sm" onclick="PlayerView.claimTaskReward('${task.id}')">领取奖励</button>`;
+      } else if (status === 'rejected') {
+        actionBtn = `<button class="btn btn-primary btn-sm" onclick="PlayerView.submitTask('${task.id}')">重新提交</button>`;
+      } else {
+        actionBtn = `<button class="btn btn-outline btn-sm" disabled>已完成</button>`;
+      }
+    }
 
     return `
-      <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
-        <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="rgba(129,140,248,0.15)" stroke-width="12"/>
-        <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${color}" stroke-width="12"
-          stroke-dasharray="${circumference}" stroke-dashoffset="${dashOffset}"
-          stroke-linecap="round" transform="rotate(-90 ${cx} ${cy})"
-          style="transition: stroke-dashoffset 0.6s ease;"/>
-        <text x="${cx}" y="${cy - 6}" text-anchor="middle" fill="#e8e6f5" font-size="24" font-weight="700">${value}</text>
-        <text x="${cx}" y="${cy + 18}" text-anchor="middle" fill="#a5a0c0" font-size="12">/ ${max}</text>
-      </svg>`;
+      <div class="task-card">
+        <div class="task-card-header">
+          <div class="task-title">${task.title}</div>
+          ${task.difficulty ? UI.difficultyTag(task.difficulty) : ''}
+        </div>
+        <div class="task-desc">${task.description || ''}</div>
+        <div class="task-meta">
+          ${UI.taskTypeTag(type)}
+          ${rewardHtml}
+        </div>
+        <div class="task-actions">${actionBtn}</div>
+      </div>
+    `;
   },
 
-  bar(labels, values, width = 300, height = 200) {
-    const maxVal = Math.max(...values, 10);
-    const barWidth = (width - 40) / labels.length * 0.6;
-    const gap = (width - 40) / labels.length * 0.4;
-    const chartTop = 20, chartBottom = height - 30;
-    const chartHeight = chartBottom - chartTop;
-
-    let svg = `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`;
-
-    // Grid lines
-    for (let i = 0; i <= 4; i++) {
-      const y = chartTop + (chartHeight * i) / 4;
-      svg += `<line x1="30" y1="${y}" x2="${width - 10}" y2="${y}" stroke="rgba(129,140,248,0.1)" stroke-width="1"/>`;
+  _renderSelfSubCard(sub) {
+    let actionBtn = '';
+    if (sub.status === 'pending') {
+      actionBtn = `<button class="btn btn-outline btn-sm" disabled>审核中</button>`;
+    } else if (sub.status === 'approved') {
+      actionBtn = `<button class="btn btn-accent btn-sm" onclick="PlayerView.claimSubmissionReward('${sub.id}')">领取奖励</button>`;
+    } else if (sub.status === 'rejected') {
+      actionBtn = `<button class="btn btn-outline btn-sm" disabled>已驳回</button>`;
     }
 
-    // Bars
-    labels.forEach((label, i) => {
-      const x = 30 + i * (barWidth + gap) + gap / 2;
-      const barHeight = (chartHeight * values[i]) / maxVal;
-      const y = chartBottom - barHeight;
-      svg += `<rect x="${x}" y="${y}" width="${barWidth}" height="${barHeight}" rx="4"
-        fill="url(#barGradient${i})" style="transition: height 0.6s ease;"/>`;
-      svg += `<defs><linearGradient id="barGradient${i}" x1="0%" y1="0%" x2="0%" y2="100%">
-        <stop offset="0%" style="stop-color:#f472b6;stop-opacity:1" />
-        <stop offset="100%" style="stop-color:#818cf8;stop-opacity:1" />
-      </linearGradient></defs>`;
-      svg += `<text x="${x + barWidth / 2}" y="${chartBottom + 18}" text-anchor="middle" fill="#a5a0c0" font-size="11">${label}</text>`;
-    });
-
-    svg += '</svg>';
-    return svg;
-  },
-
-  progressBar(value, max, width = '100%') {
-    const percent = Math.min((value / max) * 100, 100);
     return `
-      <div class="progress-bar-wrap" style="width:${width};">
-        <div class="progress-bar" style="width:${percent}%;"></div>
-      </div>`;
-  },
-};
-
-/* ==========================================================================
-   Task Operations
-   ========================================================================== */
-const Task = {
-  async claim(taskId) {
-    const task = (await DB.getTasks()).find(t => t.id === taskId);
-    if (!task || task.status !== 'available') return;
-    const config = await DB.getConfig();
-    await DB.updateTask(taskId, { status: 'in_progress', claimedBy: config.userName });
-    UI.toast('任务已领取，祝航行顺利！', 'success');
-    await this._refreshView();
+      <div class="task-card">
+        <div class="task-card-header">
+          <div class="task-title">${sub.selfTitle || sub.taskTitle}</div>
+          ${UI.statusTag(sub.status)}
+        </div>
+        <div class="task-desc">${sub.selfDescription || sub.description || ''}</div>
+        ${sub.reviewNote ? `<div class="task-desc" style="color:var(--accent)">💬 ${sub.reviewNote}</div>` : ''}
+        <div class="task-actions">${actionBtn}</div>
+      </div>
+    `;
   },
 
-  async submit(taskId) {
-    const body = `
-      <div class="form-group">
-        <label>完成情况说明</label>
-        <textarea id="submit-note" placeholder="描述一下你是怎么完成的，有什么感受..."></textarea>
-      </div>`;
-    const footer = `
-      <button class="btn btn-outline" onclick="UI.closeModal()">取消</button>
-      <button class="btn btn-primary" onclick="Task.doSubmit(${taskId})">提交审核</button>`;
-    UI.modal('提交任务完成', body, footer);
-  },
-
-  async doSubmit(taskId) {
-    const note = document.getElementById('submit-note').value.trim();
-    if (!note) { UI.toast('请填写完成情况说明', 'warn'); return; }
-    await DB.updateTask(taskId, {
-      status: 'pending_review',
-      submittedAt: new Date().toISOString(),
-      submittedNote: note,
-    });
-    UI.closeModal();
-    UI.toast('已提交，等待指挥官审核 ⚡', 'success');
-    await this._refreshView();
-  },
-
-  async abandon(taskId) {
-    UI.confirm('放弃任务', '确定要放弃这个任务吗？放弃后可以重新领取。', async () => {
-      await DB.updateTask(taskId, { status: 'available', claimedBy: null, submittedAt: null, submittedNote: null });
-      UI.toast('已放弃任务', 'warn');
-      await this._refreshView();
-    });
-  },
-
-  async approve(taskId) {
-    const task = (await DB.getTasks()).find(t => t.id === taskId);
-    if (!task) return;
-    const body = `
-      <div class="form-group">
-        <label>审核评语（可选）</label>
-        <textarea id="review-note" placeholder="给舰长一些鼓励..."></textarea>
-      </div>`;
-    const footer = `
-      <button class="btn btn-outline" onclick="UI.closeModal()">取消</button>
-      <button class="btn btn-primary" onclick="Task.doApprove(${taskId})">通过并发放星能</button>`;
-    UI.modal('审核通过', body, footer);
-  },
-
-  async doApprove(taskId) {
-    const note = document.getElementById('review-note').value.trim();
-    const task = (await DB.getTasks()).find(t => t.id === taskId);
-    if (!task) return;
-
-    const config = await DB.getConfig();
-    let energyGain = task.energy;
-    if (config.engineBuff) energyGain = Math.floor(energyGain * 1.1);
-
-    const newEnergy = config.starEnergy + energyGain;
-    const newTotal = config.totalTasksCompleted + 1;
-    const newMonthly = config.monthlyTasks + 1;
-
-    // 计算飞船等级
-    const newLevel = Math.floor(newEnergy / 50) + 1;
-
-    // 检查是否跃迁到新星球
-    const newPlanet = this._calcCurrentPlanet(newEnergy);
-    const oldPlanet = config.currentPlanet;
-    const jumped = newPlanet !== oldPlanet;
-
-    await DB.updateTask(taskId, {
-      status: 'completed',
-      reviewedAt: new Date().toISOString(),
-      reviewNote: note,
-    });
-    await DB.updateConfig({
-      starEnergy: newEnergy,
-      totalTasksCompleted: newTotal,
-      monthlyTasks: newMonthly,
-      shipLevel: newLevel,
-      currentPlanet: newPlanet,
-    });
-
-    UI.closeModal();
-    if (jumped) {
-      UI.toast(`🎉 跃迁成功！抵达 ${PLANETS.find(p=>p.id===newPlanet)?.name}`, 'success');
-    } else {
-      UI.toast(`审核通过，获得 ${energyGain} 星能 ⚡`, 'success');
+  async doDailyCheckIn() {
+    const ok = await Game.dailyCheckIn();
+    if (ok) {
+      this._dailyChecked = true;
+      this._renderTaskList();
     }
-    await this._refreshView();
   },
 
-  async reject(taskId) {
-    const body = `
+  submitTask(taskId) {
+    const task = [...this._dailyTasks, ...this._weeklyTasks].find(t => t.id === taskId);
+    if (!task) return;
+
+    const overlay = UI.modal(`
       <div class="form-group">
-        <label>退回原因</label>
-        <textarea id="reject-note" placeholder="说明一下为什么需要改进..."></textarea>
-      </div>`;
-    const footer = `
-      <button class="btn btn-outline" onclick="UI.closeModal()">取消</button>
-      <button class="btn btn-accent" onclick="Task.doReject(${taskId})">退回修改</button>`;
-    UI.modal('退回任务', body, footer);
-  },
-
-  async doReject(taskId) {
-    const note = document.getElementById('reject-note').value.trim();
-    if (!note) { UI.toast('请填写退回原因', 'warn'); return; }
-    await DB.updateTask(taskId, {
-      status: 'in_progress',
-      reviewedAt: new Date().toISOString(),
-      reviewNote: note,
-      submittedAt: null,
-      submittedNote: null,
+        <label>完成描述</label>
+        <textarea id="submit-desc" placeholder="说说你是怎么完成这个任务的..."></textarea>
+      </div>
+    `, {
+      title: `提交：${task.title}`,
+      footer: `<div class="modal-footer">
+        <button class="btn btn-outline btn-sm" onclick="this.closest('.modal-overlay').remove()">取消</button>
+        <button class="btn btn-primary btn-sm" id="submit-ok">提交</button>
+      </div>`
     });
-    UI.closeModal();
-    UI.toast('已退回修改', 'warn');
-    await this._refreshView();
+
+    overlay.querySelector('#submit-ok').addEventListener('click', async () => {
+      const desc = document.getElementById('submit-desc').value.trim();
+      if (!desc) { UI.toast('请填写完成描述', 'warn'); return; }
+
+      await DB.submitTask({
+        taskId: task.id,
+        taskType: task.taskType,
+        taskTitle: task.title,
+        description: desc,
+        rewardChopping: task.rewardChopping,
+        rewardItems: task.rewardItems,
+      });
+
+      UI.closeModal(overlay);
+      UI.toast('已提交审核', 'success');
+      this._renderTaskList();
+    });
   },
 
-  _calcCurrentPlanet(energy) {
-    let current = 'moon';
-    for (const planet of PLANETS) {
-      if (energy >= planet.energyNeeded) {
-        current = planet.id;
+  showSelfSubmit() {
+    const overlay = UI.modal(`
+      <div class="form-group">
+        <label>任务名称</label>
+        <input type="text" id="self-title" placeholder="比如：主动帮同学带饭">
+      </div>
+      <div class="form-group">
+        <label>完成描述</label>
+        <textarea id="self-desc" placeholder="详细描述一下你做了什么..."></textarea>
+      </div>
+    `, {
+      title: '自主申报任务',
+      footer: `<div class="modal-footer">
+        <button class="btn btn-outline btn-sm" onclick="this.closest('.modal-overlay').remove()">取消</button>
+        <button class="btn btn-primary btn-sm" id="self-ok">提交申报</button>
+      </div>`
+    });
+
+    overlay.querySelector('#self-ok').addEventListener('click', async () => {
+      const title = document.getElementById('self-title').value.trim();
+      const desc = document.getElementById('self-desc').value.trim();
+      if (!title || !desc) { UI.toast('请填写完整', 'warn'); return; }
+
+      await DB.submitTask({
+        taskType: 'self',
+        taskTitle: title,
+        isSelfTask: true,
+        selfTitle: title,
+        selfDescription: desc,
+        description: desc,
+      });
+
+      UI.closeModal(overlay);
+      UI.toast('已提交审核', 'success');
+      this._renderTaskList();
+    });
+  },
+
+  async claimTaskReward(taskId) {
+    const task = [...this._dailyTasks, ...this._weeklyTasks].find(t => t.id === taskId);
+    const sub = this._submissions.find(s => s.taskId === taskId);
+    if (!task || !sub) return;
+
+    // 发砍树次数
+    if (sub.rewardChopping > 0) {
+      Game.state.choppingCount += sub.rewardChopping;
+      await DB.updatePlayerState({ choppingCount: Game.state.choppingCount });
+    }
+
+    // 发道具
+    const items = sub.rewardItems || [];
+    for (const ri of items) {
+      await DB.addItem(ri.item_id, ri.quantity);
+    }
+
+    // 更新状态为已完成
+    await DB.reviewSubmission(sub.id, 'claimed', '', sub.rewardChopping, sub.rewardItems);
+
+    await Game.refresh();
+    UI.toast('奖励已领取！', 'success');
+    this._renderTaskList();
+  },
+
+  async claimSubmissionReward(subId) {
+    const sub = this._submissions.find(s => s.id === subId);
+    if (!sub) return;
+
+    if (sub.rewardChopping > 0) {
+      Game.state.choppingCount += sub.rewardChopping;
+      await DB.updatePlayerState({ choppingCount: Game.state.choppingCount });
+    }
+
+    const items = sub.rewardItems || [];
+    for (const ri of items) {
+      await DB.addItem(ri.item_id, ri.quantity);
+    }
+
+    await DB.reviewSubmission(sub.id, 'claimed', '', sub.rewardChopping, sub.rewardItems);
+    await Game.refresh();
+    UI.toast('奖励已领取！', 'success');
+    this._renderTaskList();
+  },
+
+  // --- 天道酬勤 ---
+  async renderReward() {
+    const main = document.getElementById('player-main');
+    const withdrawals = await DB.getWithdrawals();
+
+    main.innerHTML = `
+      <div class="page-title">🎁 天道酬勤</div>
+      <div class="page-subtitle">努力修仙，天道自会酬勤</div>
+
+      <div class="balance-card">
+        <div class="balance-label">当前余额</div>
+        <div class="balance-value"><small>¥</small>${Game.state.balance.toFixed(2)}</div>
+        <div class="total-withdrawn">累计提现：¥${Game.state.totalWithdrawn.toFixed(2)}</div>
+        <div class="withdraw-controls">
+          <button class="withdraw-btn-round" onclick="PlayerView.adjustWithdraw(-100)" id="withdraw-minus">−</button>
+          <div class="withdraw-amount" id="withdraw-amount">100</div>
+          <button class="withdraw-btn-round" onclick="PlayerView.adjustWithdraw(100)" id="withdraw-plus">+</button>
+        </div>
+        <button class="btn btn-primary btn-block" onclick="PlayerView.doWithdraw()">申请提现</button>
+      </div>
+
+      <!-- 道具兑换商店 -->
+      <div class="shop-section">
+        <div class="section-header">
+          <div class="section-title">🛒 道具兑换</div>
+        </div>
+        <div class="shop-grid" id="shop-grid"></div>
+      </div>
+
+      <!-- 提现记录 -->
+      <div style="margin-top:20px">
+        <div class="section-header">
+          <div class="section-title">📋 提现记录</div>
+        </div>
+        <div id="withdraw-list"></div>
+      </div>
+    `;
+
+    this._withdrawAmount = 100;
+    this._renderShop();
+    this._renderWithdrawList(withdrawals);
+  },
+
+  _withdrawAmount: 100,
+
+  adjustWithdraw(delta) {
+    this._withdrawAmount += delta;
+    if (this._withdrawAmount < 100) this._withdrawAmount = 100;
+    if (this._withdrawAmount > Math.floor(Game.state.balance / 100) * 100) {
+      this._withdrawAmount = Math.floor(Game.state.balance / 100) * 100;
+    }
+    if (this._withdrawAmount < 0) this._withdrawAmount = 0;
+    document.getElementById('withdraw-amount').textContent = this._withdrawAmount;
+  },
+
+  doWithdraw() {
+    if (this._withdrawAmount <= 0) {
+      UI.toast('请选择提现金额', 'warn');
+      return;
+    }
+    UI.confirm(`确定申请提现 ¥${this._withdrawAmount}？天道审核通过后将发放。`, async () => {
+      const ok = await Game.withdraw(this._withdrawAmount);
+      if (ok) {
+        Router.playerTab('reward'); // 刷新页面
       }
-    }
-    return current;
+    });
   },
 
-  async _refreshView() {
-    if (Auth.currentRole === 'admin') {
-      Router.adminTab(Router.currentAdminTab);
-    } else {
-      Router.userTab(Router.currentUserTab);
+  _renderShop() {
+    const grid = document.getElementById('shop-grid');
+    if (!grid) return;
+    let html = '';
+    SHOP_ITEMS.forEach(item => {
+      let costText = '';
+      if (item.costType === 'chopping') costText = `🪓 ${item.costValue} 次`;
+      else costText = `¥${item.costValue}`;
+
+      html += `
+        <div class="shop-item" onclick="PlayerView.buyShopItem('${item.id}')">
+          <div class="shop-icon">${item.icon}</div>
+          <div class="shop-name">${item.name}</div>
+          <div class="shop-cost">${costText}</div>
+        </div>
+      `;
+    });
+    grid.innerHTML = html;
+  },
+
+  buyShopItem(itemId) {
+    const item = SHOP_ITEMS.find(s => s.id === itemId);
+    if (!item) return;
+    let costText = item.costType === 'chopping' ? `${item.costValue} 次砍树` : `¥${item.costValue}`;
+    UI.confirm(`确定消耗 ${costText} 兑换 ${item.name}？`, async () => {
+      const ok = await Game.shopBuy(item);
+      if (ok) {
+        this._renderShop();
+      }
+    });
+  },
+
+  _renderWithdrawList(list) {
+    const el = document.getElementById('withdraw-list');
+    if (!el) return;
+    if (list.length === 0) {
+      el.innerHTML = `<div class="empty-state" style="padding:24px"><div class="emoji">💸</div><p>暂无提现记录</p></div>`;
+      return;
     }
+    let html = '';
+    list.slice(0, 10).forEach(w => {
+      const statusMap = { pending: '审核中', approved: '已通过', rejected: '已驳回' };
+      const date = new Date(w.createdAt).toLocaleDateString('zh-CN');
+      html += `
+        <div class="task-card" style="padding:12px">
+          <div class="task-card-header">
+            <div class="task-title" style="font-size:14px">提现 ¥${w.amount.toFixed(2)}</div>
+            ${UI.statusTag(w.status)}
+          </div>
+          <div class="task-desc" style="font-size:12px;margin-bottom:0">${date}</div>
+        </div>
+      `;
+    });
+    el.innerHTML = html;
+  },
+
+  // --- 邮件 ---
+  async renderMail() {
+    const main = document.getElementById('player-main');
+    const mails = await DB.getMails();
+
+    main.innerHTML = `
+      <div class="page-title">📮 邮件</div>
+      <div class="page-subtitle">天道消息和奖励都在这里</div>
+      <div id="mail-list"></div>
+    `;
+
+    const list = document.getElementById('mail-list');
+    if (mails.length === 0) {
+      list.innerHTML = `<div class="empty-state"><div class="emoji">📭</div><p>暂无邮件</p></div>`;
+      return;
+    }
+
+    let html = '';
+    mails.forEach(mail => {
+      const hasItems = mail.items && mail.items.length > 0;
+      const canClaim = hasItems && !mail.isClaimed;
+      const unread = !mail.isRead || canClaim;
+
+      let itemsHtml = '';
+      if (hasItems) {
+        itemsHtml = '<div class="mail-items">';
+        mail.items.forEach(ri => {
+          const def = ITEMS[ri.item_id];
+          if (def) itemsHtml += `<span class="mini-item">${def.icon}×${ri.quantity}</span>`;
+        });
+        itemsHtml += '</div>';
+      }
+
+      const date = new Date(mail.createdAt).toLocaleDateString('zh-CN');
+
+      html += `
+        <div class="mail-item ${unread ? 'unread' : ''}" onclick="PlayerView.openMail('${mail.id}')">
+          <div class="mail-header">
+            <div class="mail-title">${mail.title}</div>
+            <div class="mail-date">${date}</div>
+          </div>
+          <div class="mail-preview">${mail.content || ''}</div>
+          ${itemsHtml}
+          ${canClaim ? `<div style="margin-top:8px"><span class="tag tag-status-review">可领取</span></div>` : ''}
+        </div>
+      `;
+    });
+    list.innerHTML = html;
+
+    UI._updateMailBadge();
+  },
+
+  async openMail(mailId) {
+    const mails = await DB.getMails();
+    const mail = mails.find(m => m.id === mailId);
+    if (!mail) return;
+
+    await DB.markMailRead(mailId);
+
+    const hasItems = mail.items && mail.items.length > 0;
+    const canClaim = hasItems && !mail.isClaimed;
+
+    let itemsHtml = '';
+    if (hasItems) {
+      itemsHtml = '<div style="display:flex;gap:12px;justify-content:center;margin:16px 0;flex-wrap:wrap">';
+      mail.items.forEach(ri => {
+        const def = ITEMS[ri.item_id];
+        if (def) {
+          const q = QUALITY[def.quality];
+          itemsHtml += `
+            <div style="text-align:center">
+              <div style="font-size:40px">${def.icon}</div>
+              <div style="font-size:12px;color:${q.color}">${def.name} ×${ri.quantity}</div>
+            </div>
+          `;
+        }
+      });
+      itemsHtml += '</div>';
+    }
+
+    const footer = canClaim
+      ? `<div class="modal-footer">
+          <button class="btn btn-outline btn-sm" onclick="this.closest('.modal-overlay').remove()">关闭</button>
+          <button class="btn btn-accent btn-sm" onclick="PlayerView.claimMailReward('${mailId}')">领取奖励</button>
+        </div>`
+      : `<div class="modal-footer">
+          <button class="btn btn-primary btn-sm" onclick="this.closest('.modal-overlay').remove()">关闭</button>
+        </div>`;
+
+    UI.modal(`
+      <p style="font-size:14px;line-height:1.8;color:var(--text-secondary)">${mail.content || ''}</p>
+      ${itemsHtml}
+    `, { title: mail.title, footer });
+
+    this.renderMail();
+  },
+
+  async claimMailReward(mailId) {
+    const mails = await DB.getMails();
+    const mail = mails.find(m => m.id === mailId);
+    if (!mail || !mail.items || mail.items.length === 0) return;
+
+    for (const ri of mail.items) {
+      await DB.addItem(ri.item_id, ri.quantity);
+    }
+
+    await DB.claimMail(mailId);
+    await Game.refresh();
+
+    document.querySelector('.modal-overlay')?.remove();
+    UI.toast('奖励已领取！', 'success');
+    this.renderMail();
   },
 };
 
-/* ==========================================================================
-   Self Report Operations
-   ========================================================================== */
-const SelfReport = {
-  async openSubmit() {
-    const starOptions = STAR_LEVELS.map(l => `<option value="${l.stars}">${l.stars}星 · ${l.name} (${l.energyRange[0]}-${l.energyRange[1]}星能)</option>`).join('');
-    const catOptions = CATEGORIES.map(c => `<option value="${c}">${c}</option>`).join('');
-    const body = `
-      <div class="form-group">
-        <label>事件标题</label>
-        <input type="text" id="sr-title" placeholder="比如：主动和新同学打招呼">
+/* ================================================================
+   天道视图
+   ================================================================ */
+const AdminView = {
+  // --- 任务管理 ---
+  async renderTaskManage() {
+    const main = document.getElementById('admin-main');
+    const tasks = await DB.getTasks();
+
+    main.innerHTML = `
+      <div class="page-title">📜 任务管理</div>
+      <div class="page-subtitle">发布和管理修仙任务</div>
+
+      <button class="btn btn-primary btn-block" style="margin-bottom:16px" onclick="AdminView.showCreateTask()">
+        ➕ 新建任务
+      </button>
+
+      <div class="filter-bar">
+        <div class="filter-chip active" data-filter="all" onclick="AdminView.filterAdminTasks('all')">全部</div>
+        <div class="filter-chip" data-filter="weekly" onclick="AdminView.filterAdminTasks('weekly')">每周</div>
+        <div class="filter-chip" data-filter="daily" onclick="AdminView.filterAdminTasks('daily')">每日</div>
       </div>
-      <div class="form-group">
-        <label>事件描述</label>
-        <textarea id="sr-desc" placeholder="详细描述一下发生了什么..."></textarea>
-      </div>
-      <div class="form-group">
-        <label>分类</label>
-        <select id="sr-category">${catOptions}</select>
-      </div>
-      <div class="form-group">
-        <label>期望星能</label>
-        <input type="number" id="sr-energy" placeholder="自己估计一下值多少星能" min="1" max="100">
-      </div>`;
-    const footer = `
-      <button class="btn btn-outline" onclick="UI.closeModal()">取消</button>
-      <button class="btn btn-primary" onclick="SelfReport.doSubmit()">提交申报</button>`;
-    UI.modal('自主申报', body, footer);
+
+      <div id="admin-task-list"></div>
+    `;
+
+    this._adminTasks = tasks;
+    this._adminTaskFilter = 'all';
+    this._renderAdminTaskList();
   },
 
-  async doSubmit() {
-    const title = document.getElementById('sr-title').value.trim();
-    const desc = document.getElementById('sr-desc').value.trim();
-    const category = document.getElementById('sr-category').value;
-    const energy = parseInt(document.getElementById('sr-energy').value);
-    const config = await DB.getConfig();
-    if (!title || !desc) { UI.toast('请填写完整信息', 'warn'); return; }
-    if (!energy || energy < 1) { UI.toast('请填写有效的星能值', 'warn'); return; }
-    await DB.createSelfReport({ title, description: desc, category, energy, submittedBy: config.userName });
-    UI.closeModal();
-    UI.toast('已提交申报，等待审核 🌟', 'success');
-    await Task._refreshView();
-  },
+  _adminTasks: [],
+  _adminTaskFilter: 'all',
 
-  async approve(id) {
-    const reports = await DB.getSelfReports();
-    const report = reports.find(r => r.id === id);
-    if (!report) return;
-    const body = `
-      <div class="form-group">
-        <label>审核评语（可选）</label>
-        <textarea id="sr-review-note" placeholder="给舰长一些反馈..."></textarea>
-      </div>`;
-    const footer = `
-      <button class="btn btn-outline" onclick="UI.closeModal()">取消</button>
-      <button class="btn btn-primary" onclick="SelfReport.doApprove(${id})">通过</button>`;
-    UI.modal('审核通过申报', body, footer);
-  },
-
-  async doApprove(id) {
-    const note = document.getElementById('sr-review-note').value.trim();
-    const reports = await DB.getSelfReports();
-    const report = reports.find(r => r.id === id);
-    if (!report) return;
-
-    const config = await DB.getConfig();
-    const newEnergy = config.starEnergy + report.energy;
-    const newLevel = Math.floor(newEnergy / 50) + 1;
-    const newPlanet = Task._calcCurrentPlanet(newEnergy);
-
-    await DB.reviewSelfReport(id, 'approved', note);
-    await DB.updateConfig({
-      starEnergy: newEnergy,
-      totalTasksCompleted: config.totalTasksCompleted + 1,
-      monthlyTasks: config.monthlyTasks + 1,
-      shipLevel: newLevel,
-      currentPlanet: newPlanet,
+  filterAdminTasks(filter) {
+    this._adminTaskFilter = filter;
+    document.querySelectorAll('.filter-chip').forEach(el => {
+      el.classList.toggle('active', el.dataset.filter === filter);
     });
-    UI.closeModal();
-    UI.toast(`审核通过，获得 ${report.energy} 星能 ⚡`, 'success');
-    await Task._refreshView();
+    this._renderAdminTaskList();
   },
 
-  async reject(id) {
-    const body = `
+  _renderAdminTaskList() {
+    const list = document.getElementById('admin-task-list');
+    if (!list) return;
+
+    const tasks = this._adminTaskFilter === 'all'
+      ? this._adminTasks
+      : this._adminTasks.filter(t => t.taskType === this._adminTaskFilter);
+
+    if (tasks.length === 0) {
+      list.innerHTML = `<div class="empty-state"><div class="emoji">📭</div><p>暂无任务</p></div>`;
+      return;
+    }
+
+    let html = '';
+    tasks.forEach(task => {
+      const rewardItems = task.rewardItems || [];
+      let rewardHtml = '';
+      if (task.rewardChopping > 0) rewardHtml += `<span class="reward-chopping">🪓 ×${task.rewardChopping}</span>`;
+      rewardItems.forEach(ri => {
+        const def = ITEMS[ri.item_id];
+        if (def) rewardHtml += `<span style="font-size:16px">${def.icon}×${ri.quantity}</span>`;
+      });
+
+      html += `
+        <div class="task-card">
+          <div class="task-card-header">
+            <div class="task-title">${task.title}</div>
+            ${task.difficulty ? UI.difficultyTag(task.difficulty) : ''}
+          </div>
+          <div class="task-desc">${task.description || ''}</div>
+          <div class="task-meta">
+            ${UI.taskTypeTag(task.taskType)}
+            ${rewardHtml}
+          </div>
+          <div class="task-actions">
+            <button class="btn btn-outline btn-sm" onclick="AdminView.deleteTask('${task.id}')">删除</button>
+          </div>
+        </div>
+      `;
+    });
+    list.innerHTML = html;
+  },
+
+  showCreateTask() {
+    const overlay = UI.modal(`
+      <div class="form-group">
+        <label>任务类型</label>
+        <select id="new-task-type">
+          <option value="weekly">每周任务</option>
+          <option value="daily">每日任务</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>任务名称</label>
+        <input type="text" id="new-task-title" placeholder="比如：主动和室友一起吃饭">
+      </div>
+      <div class="form-group">
+        <label>任务描述</label>
+        <textarea id="new-task-desc" placeholder="描述一下这个任务..."></textarea>
+      </div>
+      <div class="form-group">
+        <label>难度</label>
+        <select id="new-task-diff">
+          <option value="C">C级</option>
+          <option value="B">B级</option>
+          <option value="A">A级</option>
+          <option value="S">S级</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>奖励砍树次数</label>
+        <input type="number" id="new-task-chopping" value="3" min="0">
+      </div>
+      <div class="form-group">
+        <label>奖励道具（格式：道具ID:数量，用逗号分隔）</label>
+        <input type="text" id="new-task-items" placeholder="比如：stone_forge:2,money_mid_frag:1">
+        <div style="font-size:11px;color:var(--text-light);margin-top:4px">
+          道具ID：stone_forge(锻铁) / stone_break(破境石) / money_sm_frag(铜钱碎片) / money_mid_frag(银锭碎片) / money_lg_frag(金元宝碎片)
+        </div>
+      </div>
+    `, {
+      title: '新建任务',
+      footer: `<div class="modal-footer">
+        <button class="btn btn-outline btn-sm" onclick="this.closest('.modal-overlay').remove()">取消</button>
+        <button class="btn btn-primary btn-sm" id="create-task-ok">创建</button>
+      </div>`
+    });
+
+    overlay.querySelector('#create-task-ok').addEventListener('click', async () => {
+      const taskType = document.getElementById('new-task-type').value;
+      const title = document.getElementById('new-task-title').value.trim();
+      const desc = document.getElementById('new-task-desc').value.trim();
+      const difficulty = document.getElementById('new-task-diff').value;
+      const rewardChopping = parseInt(document.getElementById('new-task-chopping').value) || 0;
+      const itemsStr = document.getElementById('new-task-items').value.trim();
+
+      if (!title) { UI.toast('请填写任务名称', 'warn'); return; }
+
+      let rewardItems = [];
+      if (itemsStr) {
+        rewardItems = itemsStr.split(',').map(s => {
+          const [itemId, qty] = s.trim().split(':');
+          return { item_id: itemId.trim(), quantity: parseInt(qty) || 1 };
+        }).filter(i => i.item_id && ITEMS[i.item_id]);
+      }
+
+      await DB.createTask({
+        taskType,
+        title,
+        description: desc,
+        difficulty,
+        rewardChopping,
+        rewardItems,
+        sortOrder: this._adminTasks.length,
+      });
+
+      UI.closeModal(overlay);
+      UI.toast('任务创建成功', 'success');
+      this.renderTaskManage();
+    });
+  },
+
+  deleteTask(id) {
+    UI.confirm('确定删除这个任务吗？', async () => {
+      await DB.deleteTask(id);
+      UI.toast('已删除', 'success');
+      this.renderTaskManage();
+    });
+  },
+
+  // --- 审核 ---
+  async renderReview() {
+    const main = document.getElementById('admin-main');
+    const submissions = await DB.getSubmissions();
+
+    main.innerHTML = `
+      <div class="page-title">✅ 任务审核</div>
+      <div class="page-subtitle">审批修炼者提交的任务</div>
+
+      <div class="filter-bar">
+        <div class="filter-chip active" data-filter="pending" onclick="AdminView.filterReview('pending')">待审核</div>
+        <div class="filter-chip" data-filter="approved" onclick="AdminView.filterReview('approved')">已通过</div>
+        <div class="filter-chip" data-filter="rejected" onclick="AdminView.filterReview('rejected')">已驳回</div>
+        <div class="filter-chip" data-filter="all" onclick="AdminView.filterReview('all')">全部</div>
+      </div>
+
+      <div id="review-list"></div>
+    `;
+
+    this._submissions = submissions;
+    this._reviewFilter = 'pending';
+    this._renderReviewList();
+  },
+
+  _submissions: [],
+  _reviewFilter: 'pending',
+
+  filterReview(filter) {
+    this._reviewFilter = filter;
+    document.querySelectorAll('.filter-chip').forEach(el => {
+      el.classList.toggle('active', el.dataset.filter === filter);
+    });
+    this._renderReviewList();
+  },
+
+  _renderReviewList() {
+    const list = document.getElementById('review-list');
+    if (!list) return;
+
+    let subs = this._submissions;
+    if (this._reviewFilter !== 'all') {
+      subs = subs.filter(s => s.status === this._reviewFilter);
+    }
+
+    if (subs.length === 0) {
+      list.innerHTML = `<div class="empty-state"><div class="emoji">🎉</div><p>暂无${this._reviewFilter === 'pending' ? '待审核' : ''}任务</p></div>`;
+      return;
+    }
+
+    let html = '';
+    subs.forEach(sub => {
+      const date = new Date(sub.submittedAt).toLocaleDateString('zh-CN');
+      const isSelf = sub.isSelfTask;
+
+      html += `
+        <div class="task-card">
+          <div class="task-card-header">
+            <div class="task-title">${sub.selfTitle || sub.taskTitle}</div>
+            ${UI.statusTag(sub.status)}
+          </div>
+          <div class="task-meta">
+            ${UI.taskTypeTag(sub.taskType)}
+            ${isSelf ? '<span class="tag tag-type-self">自主申报</span>' : ''}
+            <span style="font-size:12px;color:var(--text-light)">${date}</span>
+          </div>
+          <div class="task-desc">📝 ${sub.description || ''}</div>
+          ${sub.reviewNote ? `<div class="task-desc" style="color:var(--accent)">💬 ${sub.reviewNote}</div>` : ''}
+          ${sub.status === 'pending' ? `
+            <div class="task-actions" style="margin-top:10px">
+              <button class="btn btn-outline btn-sm" onclick="AdminView.rejectSub('${sub.id}')">驳回</button>
+              <button class="btn btn-accent btn-sm" onclick="AdminView.approveSub('${sub.id}', ${sub.isSelfTask})">通过</button>
+            </div>
+          ` : ''}
+        </div>
+      `;
+    });
+    list.innerHTML = html;
+  },
+
+  approveSub(id, isSelf) {
+    if (isSelf) {
+      // 自主任务需要配置奖励
+      const overlay = UI.modal(`
+        <div class="form-group">
+          <label>奖励砍树次数</label>
+          <input type="number" id="approve-chopping" value="3" min="0">
+        </div>
+        <div class="form-group">
+          <label>奖励道具（道具ID:数量，逗号分隔）</label>
+          <input type="text" id="approve-items" placeholder="比如：stone_forge:2">
+        </div>
+        <div class="form-group">
+          <label>难度评级</label>
+          <select id="approve-diff">
+            <option value="C">C级</option>
+            <option value="B" selected>B级</option>
+            <option value="A">A级</option>
+            <option value="S">S级</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>评语</label>
+          <textarea id="approve-note" placeholder="给修炼者一些鼓励的话..."></textarea>
+        </div>
+      `, {
+        title: '审批通过 - 配置奖励',
+        footer: `<div class="modal-footer">
+          <button class="btn btn-outline btn-sm" onclick="this.closest('.modal-overlay').remove()">取消</button>
+          <button class="btn btn-accent btn-sm" id="approve-ok">确认通过</button>
+        </div>`
+      });
+
+      overlay.querySelector('#approve-ok').addEventListener('click', async () => {
+        const chopping = parseInt(document.getElementById('approve-chopping').value) || 0;
+        const itemsStr = document.getElementById('approve-items').value.trim();
+        const note = document.getElementById('approve-note').value.trim();
+
+        let rewardItems = [];
+        if (itemsStr) {
+          rewardItems = itemsStr.split(',').map(s => {
+            const [itemId, qty] = s.trim().split(':');
+            return { item_id: itemId.trim(), quantity: parseInt(qty) || 1 };
+          }).filter(i => i.item_id && ITEMS[i.item_id]);
+        }
+
+        await DB.reviewSubmission(id, 'approved', note, chopping, rewardItems);
+        await DB.sendMail(
+          '任务审核通过',
+          `你的自主申报任务已通过！奖励：${chopping} 次砍树${note ? '\n\n评语：' + note : ''}`,
+          rewardItems
+        );
+
+        UI.closeModal(overlay);
+        UI.toast('已通过', 'success');
+        this.renderReview();
+      });
+    } else {
+      // 固定任务直接通过
+      const sub = this._submissions.find(s => s.id === id);
+      UI.confirm('确定通过这个任务？', async () => {
+        await DB.reviewSubmission(id, 'approved', '任务完成得很好！', sub.rewardChopping, sub.rewardItems);
+        await DB.sendMail(
+          '任务审核通过',
+          `你的任务"${sub.taskTitle}"已通过审核，奖励已发放至任务列表，请前往领取。`,
+          []
+        );
+        UI.toast('已通过', 'success');
+        this.renderReview();
+      });
+    }
+  },
+
+  rejectSub(id) {
+    const overlay = UI.modal(`
       <div class="form-group">
         <label>驳回原因</label>
-        <textarea id="sr-reject-note" placeholder="说明一下为什么不符合..."></textarea>
-      </div>`;
-    const footer = `
-      <button class="btn btn-outline" onclick="UI.closeModal()">取消</button>
-      <button class="btn btn-accent" onclick="SelfReport.doReject(${id})">驳回</button>`;
-    UI.modal('驳回申报', body, footer);
+        <textarea id="reject-note" placeholder="告诉修炼者为什么被驳回..."></textarea>
+      </div>
+    `, {
+      title: '驳回任务',
+      footer: `<div class="modal-footer">
+        <button class="btn btn-outline btn-sm" onclick="this.closest('.modal-overlay').remove()">取消</button>
+        <button class="btn btn-primary btn-sm" id="reject-ok">确认驳回</button>
+      </div>`
+    });
+
+    overlay.querySelector('#reject-ok').addEventListener('click', async () => {
+      const note = document.getElementById('reject-note').value.trim() || '任务未完成，请继续努力';
+      await DB.reviewSubmission(id, 'rejected', note, 0, []);
+      const sub = this._submissions.find(s => s.id === id);
+      await DB.sendMail(
+        '任务审核未通过',
+        `你的任务"${sub?.selfTitle || sub?.taskTitle || ''}"未通过审核。\n\n原因：${note}`,
+        []
+      );
+      UI.closeModal(overlay);
+      UI.toast('已驳回', 'success');
+      this.renderReview();
+    });
   },
 
-  async doReject(id) {
-    const note = document.getElementById('sr-reject-note').value.trim();
-    if (!note) { UI.toast('请填写驳回原因', 'warn'); return; }
-    await DB.reviewSelfReport(id, 'rejected', note);
-    UI.closeModal();
-    UI.toast('已驳回', 'warn');
-    await Task._refreshView();
+  // --- 提现审批 ---
+  async renderWithdrawReview() {
+    const main = document.getElementById('admin-main');
+    const withdrawals = await DB.getWithdrawals();
+
+    main.innerHTML = `
+      <div class="page-title">💰 提现审批</div>
+      <div class="page-subtitle">审批修炼者的提现申请</div>
+
+      <div class="filter-bar">
+        <div class="filter-chip active" data-filter="pending" onclick="AdminView.filterWithdraw('pending')">待处理</div>
+        <div class="filter-chip" data-filter="approved" onclick="AdminView.filterWithdraw('approved')">已通过</div>
+        <div class="filter-chip" data-filter="rejected" onclick="AdminView.filterWithdraw('rejected')">已驳回</div>
+        <div class="filter-chip" data-filter="all" onclick="AdminView.filterWithdraw('all')">全部</div>
+      </div>
+
+      <div id="withdraw-review-list"></div>
+    `;
+
+    this._withdrawals = withdrawals;
+    this._withdrawFilter = 'pending';
+    this._renderWithdrawReviewList();
   },
-};
 
-/* ==========================================================================
-   Supply Station (Rewards)
-   ========================================================================== */
-const SupplyStation = {
-  // 用户端：兑换奖励
-  async redeem(itemId) {
-    const item = SUPPLY_ITEMS.find(i => i.id === itemId);
-    if (!item) return;
-    const config = await DB.getConfig();
+  _withdrawals: [],
+  _withdrawFilter: 'pending',
 
-    if (config.starEnergy < item.cost) {
-      UI.toast('星能不足，继续努力吧！', 'warn');
+  filterWithdraw(filter) {
+    this._withdrawFilter = filter;
+    document.querySelectorAll('.filter-chip').forEach(el => {
+      el.classList.toggle('active', el.dataset.filter === filter);
+    });
+    this._renderWithdrawReviewList();
+  },
+
+  _renderWithdrawReviewList() {
+    const list = document.getElementById('withdraw-review-list');
+    if (!list) return;
+
+    let ws = this._withdrawals;
+    if (this._withdrawFilter !== 'all') {
+      ws = ws.filter(w => w.status === this._withdrawFilter);
+    }
+
+    if (ws.length === 0) {
+      list.innerHTML = `<div class="empty-state"><div class="emoji">💸</div><p>暂无提现申请</p></div>`;
       return;
     }
 
-    UI.confirm(`兑换 ${item.name}`, `确定要消耗 ${item.cost} ⚡ 星能兑换 ${item.name} 吗？`, async () => {
-      const newEnergy = config.starEnergy - item.cost;
-
-      // 处理 buff / skin
-      let newEngineBuff = config.engineBuff;
-      let newRadarBuff = config.radarBuff;
-      let newSkin = config.shipSkin;
-
-      if (item.value === 'buff' && item.id === 'buff_engine') newEngineBuff = true;
-      if (item.value === 'buff' && item.id === 'buff_radar') newRadarBuff = true;
-      if (item.value === 'skin') newSkin = item.id;
-
-      await DB.updateConfig({
-        starEnergy: newEnergy,
-        engineBuff: newEngineBuff,
-        radarBuff: newRadarBuff,
-        shipSkin: newSkin,
-      });
-
-      // 记录奖励
-      await DB.addReward({
-        type: item.value === 'buff' || item.value === 'skin' ? 'virtual' : 'cash',
-        name: item.name,
-        amount: item.value || 0,
-        energyCost: item.cost,
-        note: item.desc,
-        grantedBy: '补给站兑换',
-        redeemed: item.value === 'buff' || item.value === 'skin',
-      });
-
-      UI.toast(`兑换成功！${item.emoji}`, 'success');
-      await Task._refreshView();
-    });
-  },
-
-  // 管理员：手动发放奖励
-  async grant() {
-    const typeOptions = ['monthly', 'semester', 'annual', 'custom'].map(t =>
-      `<option value="${t}">${t === 'monthly' ? '月度小红包' : t === 'semester' ? '学期成长基金' : t === 'annual' ? '年度突破奖励' : '自定义奖励'}</option>`
-    ).join('');
-    const body = `
-      <div class="form-group">
-        <label>奖励类型</label>
-        <select id="grant-type">${typeOptions}</select>
-      </div>
-      <div class="form-group">
-        <label>奖励名称</label>
-        <input type="text" id="grant-name" placeholder="比如：三月成长红包">
-      </div>
-      <div class="form-group">
-        <label>金额（元）</label>
-        <input type="number" id="grant-amount" placeholder="30">
-      </div>
-      <div class="form-group">
-        <label>备注</label>
-        <textarea id="grant-note" placeholder="一些鼓励的话..."></textarea>
-      </div>`;
-    const footer = `
-      <button class="btn btn-outline" onclick="UI.closeModal()">取消</button>
-      <button class="btn btn-gold" onclick="SupplyStation.doGrant()">发放奖励</button>`;
-    UI.modal('发放奖励', body, footer);
-  },
-
-  async doGrant() {
-    const type = document.getElementById('grant-type').value;
-    const name = document.getElementById('grant-name').value.trim();
-    const amount = parseFloat(document.getElementById('grant-amount').value);
-    const note = document.getElementById('grant-note').value.trim();
-    const config = await DB.getConfig();
-
-    if (!name) { UI.toast('请填写奖励名称', 'warn'); return; }
-    if (!amount || amount <= 0) { UI.toast('请填写有效金额', 'warn'); return; }
-
-    await DB.addReward({
-      type, name, amount, energyCost: 0, note,
-      grantedBy: config.adminName || '指挥官',
-      redeemed: false,
-    });
-    UI.closeModal();
-    UI.toast('奖励已发放 🎁', 'success');
-    await Task._refreshView();
-  },
-
-  async markRedeemed(id) {
-    UI.confirm('确认已发放', '确认这笔奖励已经实际发放给舰长了吗？', async () => {
-      await DB.redeemReward(id);
-      UI.toast('已标记为已发放', 'success');
-      await Task._refreshView();
-    });
-  },
-};
-
-/* ==========================================================================
-   Admin View
-   ========================================================================== */
-const AdminView = {
-  async renderTasks() {
-    const tasks = await DB.getTasks();
-    const config = await DB.getConfig();
-
-    const stats = {
-      total: tasks.length,
-      available: tasks.filter(t => t.status === 'available').length,
-      inProgress: tasks.filter(t => t.status === 'in_progress').length,
-      pending: tasks.filter(t => t.status === 'pending_review').length,
-      completed: tasks.filter(t => t.status === 'completed').length,
-    };
-
-    const html = `
-      <div class="page-title">任务库</div>
-      <div class="page-subtitle">管理所有星际任务</div>
-
-      <div class="stats-grid">
-        <div class="stat-card"><div class="stat-icon">📋</div><div class="stat-value">${stats.total}</div><div class="stat-label">总任务数</div></div>
-        <div class="stat-card"><div class="stat-icon">✨</div><div class="stat-value">${stats.available}</div><div class="stat-label">待领取</div></div>
-        <div class="stat-card"><div class="stat-icon">🚀</div><div class="stat-value">${stats.inProgress}</div><div class="stat-label">进行中</div></div>
-        <div class="stat-card"><div class="stat-value gold">⚡ ${config.starEnergy}</div><div class="stat-label">总星能</div></div>
-      </div>
-
-      <div class="section-header">
-        <div class="section-title">全部任务</div>
-        <button class="btn btn-primary btn-sm" onclick="AdminView.openCreateTask()">+ 新建任务</button>
-      </div>
-
-      <div class="filter-bar">
-        <select onchange="AdminView.filterTasks(this.value)">
-          <option value="all">全部状态</option>
-          <option value="available">待领取</option>
-          <option value="in_progress">进行中</option>
-          <option value="pending_review">待审核</option>
-          <option value="completed">已完成</option>
-          <option value="abandoned">已放弃</option>
-        </select>
-        <select onchange="AdminView.filterCategory(this.value)">
-          <option value="all">全部分类</option>
-          ${CATEGORIES.map(c => `<option value="${c}">${c}</option>`).join('')}
-        </select>
-      </div>
-
-      <div id="task-list">
-        ${tasks.length === 0 ? this._emptyState('还没有任务，点击右上角新建') : tasks.map(t => this._taskCard(t)).join('')}
-      </div>`;
-
-    document.getElementById('admin-main').innerHTML = html;
-  },
-
-  _taskCard(task) {
-    return `
-      <div class="task-card star-${task.starLevel}">
-        <div class="task-card-header">
-          <div class="task-card-title">${task.title}</div>
-          ${UI.statusTag(task.status)}
-        </div>
-        <div class="task-card-desc">${task.description}</div>
-        <div class="task-meta">
-          ${UI.categoryTag(task.category)}
-          ${UI.starTag(task.starLevel)}
-          ${UI.energyBadge(task.energy)}
-          ${task.claimedBy ? `<span class="tag" style="background:rgba(255,255,255,0.08);color:var(--text-secondary);">领取者：${task.claimedBy}</span>` : ''}
-        </div>
-        <div class="task-actions">
-          <button class="btn btn-outline btn-sm" onclick="AdminView.editTask(${task.id})">编辑</button>
-          <button class="btn btn-accent btn-sm" onclick="AdminView.deleteTask(${task.id})">删除</button>
-        </div>
-      </div>`;
-  },
-
-  _emptyState(msg) {
-    return `<div class="empty-state"><div class="emoji">🌌</div><p>${msg}</p></div>`;
-  },
-
-  async openCreateTask() {
-    const starOptions = STAR_LEVELS.map(l =>
-      `<option value="${l.stars}">${l.stars}星 · ${l.name} (${l.energyRange[0]}-${l.energyRange[1]}⚡)</option>`
-    ).join('');
-    const catOptions = CATEGORIES.map(c => `<option value="${c}">${c}</option>`).join('');
-    const body = `
-      <div class="form-group">
-        <label>任务标题</label>
-        <input type="text" id="new-task-title" placeholder="比如：主动和同桌说早上好">
-      </div>
-      <div class="form-group">
-        <label>任务描述</label>
-        <textarea id="new-task-desc" placeholder="详细描述任务内容和要求..."></textarea>
-      </div>
-      <div class="form-group">
-        <label>分类</label>
-        <select id="new-task-category">${catOptions}</select>
-      </div>
-      <div class="form-group">
-        <label>星级</label>
-        <select id="new-task-star" onchange="AdminView.updateEnergyHint()">${starOptions}</select>
-      </div>
-      <div class="form-group">
-        <label>星能奖励</label>
-        <input type="number" id="new-task-energy" value="10" min="1" max="100">
-        <p style="font-size:12px;color:var(--text-secondary);margin-top:4px;" id="energy-hint">建议：1星3-8，2星8-15，3星15-25，4星25-40，5星40-60</p>
-      </div>`;
-    const footer = `
-      <button class="btn btn-outline" onclick="UI.closeModal()">取消</button>
-      <button class="btn btn-primary" onclick="AdminView.createTask()">创建任务</button>`;
-    UI.modal('新建任务', body, footer);
-  },
-
-  updateEnergyHint() {
-    const star = parseInt(document.getElementById('new-task-star').value);
-    const range = STAR_LEVELS.find(l => l.stars === star)?.energyRange || [0, 0];
-    document.getElementById('energy-hint').textContent = `建议星能：${range[0]}-${range[1]} ⚡`;
-  },
-
-  async createTask() {
-    const title = document.getElementById('new-task-title').value.trim();
-    const desc = document.getElementById('new-task-desc').value.trim();
-    const category = document.getElementById('new-task-category').value;
-    const starLevel = parseInt(document.getElementById('new-task-star').value);
-    const energy = parseInt(document.getElementById('new-task-energy').value);
-
-    if (!title) { UI.toast('请填写任务标题', 'warn'); return; }
-    if (!energy || energy < 1) { UI.toast('请填写有效的星能值', 'warn'); return; }
-
-    await DB.createTask({
-      title, description: desc, category, starLevel, energy,
-      difficulty: DIFFICULTIES[starLevel - 1] || '中等',
-      status: 'available',
-    });
-    UI.closeModal();
-    UI.toast('任务创建成功 🎯', 'success');
-    this.renderTasks();
-  },
-
-  async editTask(id) {
-    const tasks = await DB.getTasks();
-    const task = tasks.find(t => t.id === id);
-    if (!task) return;
-
-    const starOptions = STAR_LEVELS.map(l =>
-      `<option value="${l.stars}" ${task.starLevel === l.stars ? 'selected' : ''}>${l.stars}星 · ${l.name}</option>`
-    ).join('');
-    const catOptions = CATEGORIES.map(c => `<option value="${c}" ${task.category === c ? 'selected' : ''}>${c}</option>`).join('');
-
-    const body = `
-      <div class="form-group">
-        <label>任务标题</label>
-        <input type="text" id="edit-task-title" value="${task.title}">
-      </div>
-      <div class="form-group">
-        <label>任务描述</label>
-        <textarea id="edit-task-desc">${task.description || ''}</textarea>
-      </div>
-      <div class="form-group">
-        <label>分类</label>
-        <select id="edit-task-category">${catOptions}</select>
-      </div>
-      <div class="form-group">
-        <label>星级</label>
-        <select id="edit-task-star">${starOptions}</select>
-      </div>
-      <div class="form-group">
-        <label>星能奖励</label>
-        <input type="number" id="edit-task-energy" value="${task.energy}" min="1" max="100">
-      </div>`;
-    const footer = `
-      <button class="btn btn-outline" onclick="UI.closeModal()">取消</button>
-      <button class="btn btn-primary" onclick="AdminView.updateTask(${id})">保存</button>`;
-    UI.modal('编辑任务', body, footer);
-  },
-
-  async updateTask(id) {
-    const title = document.getElementById('edit-task-title').value.trim();
-    const desc = document.getElementById('edit-task-desc').value.trim();
-    const category = document.getElementById('edit-task-category').value;
-    const starLevel = parseInt(document.getElementById('edit-task-star').value);
-    const energy = parseInt(document.getElementById('edit-task-energy').value);
-
-    if (!title) { UI.toast('请填写任务标题', 'warn'); return; }
-    await DB.updateTask(id, { title, description: desc, category, starLevel, energy });
-    UI.closeModal();
-    UI.toast('任务已更新', 'success');
-    this.renderTasks();
-  },
-
-  async deleteTask(id) {
-    UI.confirm('删除任务', '确定要删除这个任务吗？此操作不可恢复。', async () => {
-      await DB.deleteTask(id);
-      UI.toast('任务已删除', 'warn');
-      this.renderTasks();
-    });
-  },
-
-  filterTasks(status) {
-    // 简化版：前端筛选
-    const cards = document.querySelectorAll('#task-list .task-card');
-    cards.forEach(card => {
-      const tag = card.querySelector('.tag-status-done, .tag-status-available, .tag-status-progress, .tag-status-review, .tag-status-abandoned');
-      if (status === 'all' || tag?.textContent === STATUS_MAP[status]?.label) {
-        card.style.display = '';
-      } else {
-        card.style.display = 'none';
-      }
-    });
-  },
-
-  filterCategory(category) {
-    const cards = document.querySelectorAll('#task-list .task-card');
-    cards.forEach(card => {
-      const tag = card.querySelector('.tag-category');
-      if (category === 'all' || tag?.textContent === category) {
-        card.style.display = '';
-      } else {
-        card.style.display = 'none';
-      }
-    });
-  },
-
-  async renderReview() {
-    const tasks = await DB.getTasks();
-    const reports = await DB.getSelfReports();
-    const pendingTasks = tasks.filter(t => t.status === 'pending_review');
-    const pendingReports = reports.filter(r => r.status === 'pending');
-
-    const html = `
-      <div class="page-title">审核台</div>
-      <div class="page-subtitle">审核舰长提交的任务和自主申报</div>
-
-      <div class="stats-grid">
-        <div class="stat-card"><div class="stat-icon">📝</div><div class="stat-value">${pendingTasks.length}</div><div class="stat-label">待审核任务</div></div>
-        <div class="stat-card"><div class="stat-icon">📨</div><div class="stat-value">${pendingReports.length}</div><div class="stat-label">待审核申报</div></div>
-      </div>
-
-      <div class="section-title" style="margin-bottom:12px;">待审核任务</div>
-      ${pendingTasks.length === 0 ? this._emptyState('暂无待审核任务') : pendingTasks.map(t => `
-        <div class="task-card star-${t.starLevel}">
+    let html = '';
+    ws.forEach(w => {
+      const date = new Date(w.createdAt).toLocaleString('zh-CN');
+      html += `
+        <div class="task-card">
           <div class="task-card-header">
-            <div class="task-card-title">${t.title}</div>
-            ${UI.statusTag(t.status)}
+            <div class="task-title">提现 ¥${w.amount.toFixed(2)}</div>
+            ${UI.statusTag(w.status)}
           </div>
-          <div class="task-card-desc">${t.description}</div>
-          <div class="task-meta">
-            ${UI.categoryTag(t.category)}
-            ${UI.starTag(t.starLevel)}
-            ${UI.energyBadge(t.energy)}
-            <span class="tag" style="background:rgba(255,255,255,0.08);color:var(--text-secondary);">提交者：${t.claimedBy}</span>
-          </div>
-          <div style="background:rgba(15,10,31,0.5);padding:12px;border-radius:8px;margin-bottom:12px;">
-            <div style="font-size:13px;color:var(--text-secondary);margin-bottom:4px;">提交说明：</div>
-            <div style="font-size:14px;">${t.submittedNote || '-'}</div>
-            <div style="font-size:12px;color:var(--text-light);margin-top:4px;">提交时间：${UI.formatDate(t.submittedAt)}</div>
-          </div>
-          <div class="task-actions">
-            <button class="btn btn-primary btn-sm" onclick="Task.approve(${t.id})">通过</button>
-            <button class="btn btn-accent btn-sm" onclick="Task.reject(${t.id})">退回</button>
-          </div>
+          <div class="task-desc" style="font-size:12px">申请时间：${date}</div>
+          ${w.status === 'pending' ? `
+            <div class="task-actions" style="margin-top:10px">
+              <button class="btn btn-outline btn-sm" onclick="AdminView.rejectWithdraw('${w.id}')">驳回</button>
+              <button class="btn btn-accent btn-sm" onclick="AdminView.approveWithdraw('${w.id}')">通过</button>
+            </div>
+          ` : ''}
         </div>
-      `).join('')}
-
-      <div class="section-title" style="margin:24px 0 12px;">待审核自主申报</div>
-      ${pendingReports.length === 0 ? this._emptyState('暂无待审核申报') : pendingReports.map(r => `
-        <div class="task-card star-3">
-          <div class="task-card-header">
-            <div class="task-card-title">${r.title}</div>
-            <span class="tag tag-status-review">待审核</span>
-          </div>
-          <div class="task-card-desc">${r.description}</div>
-          <div class="task-meta">
-            ${UI.categoryTag(r.category)}
-            ${UI.energyBadge(r.energy)}
-            <span class="tag" style="background:rgba(255,255,255,0.08);color:var(--text-secondary);">申报者：${r.submittedBy}</span>
-          </div>
-          <div class="task-actions">
-            <button class="btn btn-primary btn-sm" onclick="SelfReport.approve(${r.id})">通过</button>
-            <button class="btn btn-accent btn-sm" onclick="SelfReport.reject(${r.id})">驳回</button>
-          </div>
-        </div>
-      `).join('')}`;
-
-    document.getElementById('admin-main').innerHTML = html;
-  },
-
-  async renderRewards() {
-    const rewards = await DB.getRewards();
-    const config = await DB.getConfig();
-
-    const html = `
-      <div class="page-title">补给站</div>
-      <div class="page-subtitle">管理奖励发放 · 当前星能：⚡ ${config.starEnergy}</div>
-
-      <div class="section-header">
-        <div class="section-title">奖励记录</div>
-        <button class="btn btn-gold btn-sm" onclick="SupplyStation.grant()">+ 手动发放</button>
-      </div>
-
-      ${rewards.length === 0 ? this._emptyState('还没有奖励记录') :
-        `<div class="data-table-wrap" style="overflow-x:auto;">
-          <table class="data-table">
-            <thead>
-              <tr><th>奖励</th><th>类型</th><th>金额</th><th>星能消耗</th><th>来源</th><th>状态</th><th>时间</th><th>操作</th></tr>
-            </thead>
-            <tbody>
-              ${rewards.map(r => `
-                <tr>
-                  <td><strong>${r.name}</strong></td>
-                  <td>${r.type === 'cash' ? '现金奖励' : r.type === 'virtual' ? '虚拟道具' : r.type}</td>
-                  <td>${r.amount ? '¥' + r.amount : '-'}</td>
-                  <td>${r.energyCost ? '⚡' + r.energyCost : '-'}</td>
-                  <td style="font-size:13px;color:var(--text-secondary);">${r.grantedBy || '-'}</td>
-                  <td>${r.redeemed ? '<span class="tag tag-status-done">已发放</span>' : '<span class="tag tag-status-progress">待发放</span>'}</td>
-                  <td style="font-size:13px;color:var(--text-secondary);">${UI.formatDate(r.createdAt)}</td>
-                  <td>${!r.redeemed && r.type !== 'virtual' ? `<button class="btn btn-sm btn-outline" onclick="SupplyStation.markRedeemed(${r.id})">标记已发</button>` : '-'}</td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
-        </div>`}`;
-
-    document.getElementById('admin-main').innerHTML = html;
-  },
-
-  async renderDashboard() {
-    const tasks = await DB.getTasks();
-    const config = await DB.getConfig();
-    const completed = tasks.filter(t => t.status === 'completed');
-
-    // Category scores
-    const catScores = CATEGORIES.map(cat => {
-      const catTasks = tasks.filter(t => t.category === cat);
-      const catDone = completed.filter(t => t.category === cat);
-      if (catTasks.length === 0) return 0;
-      const total = catTasks.reduce((s, t) => s + t.energy, 0);
-      const done = catDone.reduce((s, t) => s + t.energy, 0);
-      return Math.round((done / total) * 100);
+      `;
     });
+    list.innerHTML = html;
+  },
 
-    // Monthly data (simplified - last 6 weeks)
-    const weeks = ['第1周', '第2周', '第3周', '第4周', '第5周', '第6周'];
-    const weekData = weeks.map(() => Math.floor(Math.random() * 5 + 1)); // placeholder
+  approveWithdraw(id) {
+    UI.confirm('确定通过这笔提现申请？', async () => {
+      await DB.reviewWithdrawal(id, 'approved');
+      const w = this._withdrawals.find(x => x.id === id);
+      // 更新累计提现
+      const state = await DB.getPlayerState();
+      if (state) {
+        await DB.updatePlayerState({ totalWithdrawn: state.totalWithdrawn + w.amount });
+      }
+      await DB.sendMail(
+        '提现已到账',
+        `你的提现申请 ¥${w.amount.toFixed(2)} 已通过，款项已发放。`,
+        []
+      );
+      UI.toast('已通过', 'success');
+      this.renderWithdrawReview();
+    });
+  },
 
-    const currentPlanet = PLANETS.find(p => p.id === config.currentPlanet) || PLANETS[0];
-    const nextPlanet = PLANETS.find(p => p.energyNeeded > config.starEnergy);
-    const progressToNext = nextPlanet
-      ? Math.round(((config.starEnergy - currentPlanet.energyNeeded) / (nextPlanet.energyNeeded - currentPlanet.energyNeeded)) * 100)
-      : 100;
+  rejectWithdraw(id) {
+    UI.confirm('确定驳回这笔提现申请？', async () => {
+      // 把钱退回余额
+      const w = this._withdrawals.find(x => x.id === id);
+      const state = await DB.getPlayerState();
+      if (state && w) {
+        await DB.updatePlayerState({ balance: state.balance + w.amount });
+      }
+      await DB.reviewWithdrawal(id, 'rejected');
+      await DB.sendMail(
+        '提现申请被驳回',
+        `你的提现申请 ¥${w.amount.toFixed(2)} 被驳回，金额已退回余额。`,
+        []
+      );
+      UI.toast('已驳回', 'success');
+      this.renderWithdrawReview();
+    });
+  },
 
-    const html = `
-      <div class="page-title">航行监控</div>
-      <div class="page-subtitle">实时监控舰长的星际航行进度</div>
+  // --- 查看玩家 ---
+  async renderPlayerView() {
+    const main = document.getElementById('admin-main');
+    const state = await DB.getPlayerState();
+    const inventory = await DB.getInventory();
+    const mails = await DB.getMails();
 
-      <div class="stats-grid">
-        <div class="stat-card"><div class="stat-icon">⚡</div><div class="stat-value gold">${config.starEnergy}</div><div class="stat-label">总星能</div></div>
-        <div class="stat-card"><div class="stat-icon">🚀</div><div class="stat-value">Lv.${config.shipLevel}</div><div class="stat-label">飞船等级</div></div>
-        <div class="stat-card"><div class="stat-icon">✅</div><div class="stat-value">${config.totalTasksCompleted}</div><div class="stat-label">完成任务</div></div>
-        <div class="stat-card"><div class="stat-icon">🌟</div><div class="stat-value">${currentPlanet.icon}</div><div class="stat-label">${currentPlanet.name}</div></div>
-      </div>
+    const axeDef = ITEMS[state.axeId] || ITEMS.axe_stone;
 
-      <div class="card">
-        <div class="card-title">航行进度</div>
-        <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
-          <span>${currentPlanet.icon} ${currentPlanet.name}</span>
-          <span>${nextPlanet ? nextPlanet.icon + ' ' + nextPlanet.name : '🌌 银河中心'}</span>
+    main.innerHTML = `
+      <div class="page-title">👁️ 查看玩家</div>
+      <div class="page-subtitle">了解修炼者的修行进度</div>
+
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-num">${state.level}</div>
+          <div class="stat-label">等级</div>
         </div>
-        ${Charts.progressBar(config.starEnergy, nextPlanet ? nextPlanet.energyNeeded : config.starEnergy)}
-        <p style="font-size:12px;color:var(--text-secondary);margin-top:8px;">
-          ${nextPlanet ? `距离 ${nextPlanet.name} 还需 ${nextPlanet.energyNeeded - config.starEnergy} ⚡ (${progressToNext}%)` : '已抵达银河中心！'}
-        </p>
-      </div>
-
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
-        <div class="chart-wrap">
-          <div class="chart-title">能力雷达图</div>
-          <div class="chart-container">${Charts.radar(CATEGORIES, catScores)}</div>
+        <div class="stat-card">
+          <div class="stat-num">${state.choppingCount}</div>
+          <div class="stat-label">🪓 砍树次数</div>
         </div>
-        <div class="chart-wrap">
-          <div class="chart-title">本周完成趋势</div>
-          <div class="chart-container">${Charts.bar(weeks, weekData, 300, 200)}</div>
+        <div class="stat-card">
+          <div class="stat-num" style="font-size:18px">¥${state.balance.toFixed(2)}</div>
+          <div class="stat-label">余额</div>
         </div>
       </div>
 
       <div class="card">
-        <div class="card-title">飞船状态</div>
-        <div class="ship-status">
-          <div class="ship-stat"><div class="label">引擎等级</div><div class="value">${config.engineBuff ? '强化型' : '标准型'}</div></div>
-          <div class="ship-stat"><div class="label">雷达系统</div><div class="value">${config.radarBuff ? '高级' : '基础'}</div></div>
-          <div class="ship-stat"><div class="label">涂装</div><div class="value">${config.shipSkin === 'skin_gold' ? '金色' : '标准'}</div></div>
-        </div>
-      </div>`;
-
-    document.getElementById('admin-main').innerHTML = html;
-  },
-
-  async renderReports() {
-    const tasks = await DB.getTasks();
-    const config = await DB.getConfig();
-    const rewards = await DB.getRewards();
-    const completed = tasks.filter(t => t.status === 'completed');
-    const currentPlanet = PLANETS.find(p => p.id === config.currentPlanet) || PLANETS[0];
-
-    const catStats = CATEGORIES.map(cat => {
-      const done = completed.filter(t => t.category === cat).length;
-      const total = tasks.filter(t => t.category === cat).length;
-      return { cat, done, total };
-    });
-
-    const html = `
-      <div class="page-title">航行日志</div>
-      <div class="page-subtitle">阶段性航行总结与回顾</div>
-
-      <div class="report-card">
-        <div class="report-header">
-          <div class="report-title">本月航行报告</div>
-          <button class="btn btn-outline btn-sm" onclick="AdminView.editReport()">编辑评语</button>
-        </div>
-        <div class="report-stats">
-          <div class="report-stat"><div class="num">${config.monthlyTasks}</div><div class="label">本月任务</div></div>
-          <div class="report-stat"><div class="num">${config.totalTasksCompleted}</div><div class="label">累计任务</div></div>
-          <div class="report-stat"><div class="num gold">⚡${config.starEnergy}</div><div class="label">总星能</div></div>
-          <div class="report-stat"><div class="num">${currentPlanet.icon}</div><div class="label">${currentPlanet.name}</div></div>
-        </div>
-        <div class="report-section">
-          <h4>分类完成情况</h4>
-          ${catStats.map(s => `<p>• ${s.cat}：${s.done}/${s.total} 个任务</p>`).join('')}
-        </div>
-        <div class="report-section">
-          <h4>航行寄语</h4>
-          <p>亲爱的舰长：
-
-这个月你驾驶着飞船穿越了一片又一片星域，完成了 ${config.monthlyTasks} 个星际任务，获得了无数珍贵的星能。每一次尝试都是一次勇敢的跃迁，每一次突破都是一颗新的星星被点亮。
-
-你已经飞到了 ${currentPlanet.name}，前方还有更广阔的宇宙等着你去探索。继续前进吧，银河中心就在远方 🌌
-
-—— 指挥官</p>
-        </div>
-        <div style="display:flex;gap:8px;margin-top:16px;">
-          <button class="btn btn-primary btn-sm" onclick="AdminView.exportReport()">导出报告</button>
-        </div>
-      </div>`;
-
-    document.getElementById('admin-main').innerHTML = html;
-  },
-
-  editReport() {
-    UI.toast('评语编辑功能开发中...', 'warn');
-  },
-  exportReport() {
-    UI.toast('导出功能开发中...', 'warn');
-  },
-};
-
-/* ==========================================================================
-   User View
-   ========================================================================== */
-const UserView = {
-  // ===== 星图 =====
-  async renderStarMap() {
-    const config = await DB.getConfig();
-    const currentPlanet = PLANETS.find(p => p.id === config.currentPlanet) || PLANETS[0];
-    const nextPlanet = PLANETS.find(p => p.energyNeeded > config.starEnergy);
-    const currentIndex = PLANETS.findIndex(p => p.id === config.currentPlanet);
-
-    // 计算星球在星图上的位置（弧形排列）
-    const positions = PLANETS.map((planet, i) => {
-      const percent = i / (PLANETS.length - 1);
-      const x = 10 + percent * 80; // 10% - 90%
-      const y = 50 + Math.sin(percent * Math.PI) * 35; // 弧线
-      return { ...planet, x, y };
-    });
-
-    const currentPos = positions[currentIndex];
-
-    // 连线路径
-    let pathLines = '';
-    for (let i = 0; i < positions.length - 1; i++) {
-      const p1 = positions[i];
-      const p2 = positions[i + 1];
-      const dx = p2.x - p1.x;
-      const dy = p2.y - p1.y;
-      const length = Math.sqrt(dx * dx + dy * dy);
-      const angle = Math.atan2(dy, dx) * 180 / Math.PI;
-      const active = i < currentIndex;
-      pathLines += `<div class="path-line ${active ? 'active' : ''}" style="left:${p1.x}%;top:${p1.y}%;width:${length}%;transform:rotate(${angle}deg);"></div>`;
-    }
-
-    const progressToNext = nextPlanet
-      ? Math.round(((config.starEnergy - currentPlanet.energyNeeded) / (nextPlanet.energyNeeded - currentPlanet.energyNeeded)) * 100)
-      : 100;
-
-    const html = `
-      <div class="page-title">星图</div>
-      <div class="page-subtitle">你的星际航行轨迹</div>
-
-      <div class="journey-info">
-        <div class="journey-current">
-          <div class="planet-big">${currentPlanet.icon}</div>
-          <div class="info">
-            <h3>${currentPlanet.name}</h3>
-            <p>${currentPlanet.desc}</p>
+        <div class="card-title">🪓 装备：${axeDef.name}</div>
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="font-size:48px">${axeDef.icon}</div>
+          <div>
+            <div style="font-weight:600">${axeDef.name}</div>
+            <div style="font-size:12px;color:var(--text-secondary)">${axeDef.desc}</div>
+            ${axeDef.skillDesc ? `<div style="font-size:12px;color:var(--accent);margin-top:4px">🌟 ${axeDef.skillDesc}</div>` : ''}
           </div>
-        </div>
-        <div class="journey-next">
-          <div class="next-label">下一站</div>
-          <div class="next-planet">${nextPlanet ? nextPlanet.icon + ' ' + nextPlanet.name : '🏆 银河中心'}</div>
-          <div class="energy-needed">${nextPlanet ? `还需 ${nextPlanet.energyNeeded - config.starEnergy} ⚡` : '已抵达终点！'}</div>
         </div>
       </div>
 
-      <div class="star-map" id="star-map">
-        ${pathLines}
-        ${positions.map((p, i) => {
-          let cls = 'planet ';
-          if (i < currentIndex) cls += 'unlocked';
-          else if (i === currentIndex) cls += 'current unlocked';
-          else cls += 'locked';
-          return `
-            <div class="${cls}" style="left:${p.x}%;top:${p.y}%;" onclick="UserView.showPlanet('${p.id}')">
-              <div class="planet-icon">${p.icon}</div>
-              <div class="planet-name">${i <= currentIndex ? p.name : '???'}</div>
+      <div class="card">
+        <div class="card-title">🎒 背包（${inventory.length} 种道具）</div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px">
+          ${inventory.slice(0, 20).map(inv => {
+            const def = ITEMS[inv.itemId];
+            if (!def) return '';
+            return `<div style="text-align:center;width:48px">
+              <div style="font-size:24px">${def.icon}</div>
+              <div style="font-size:10px;color:var(--text-light)">×${inv.quantity}</div>
             </div>`;
-        }).join('')}
-        <div class="spaceship" id="spaceship" style="left:${currentPos.x}%;top:${currentPos.y - 8}%;">🚀</div>
-      </div>
-
-      <div class="card">
-        <div class="card-title">航行进度</div>
-        ${nextPlanet ? `
-          <div style="display:flex;justify-content:space-between;margin-bottom:8px;font-size:13px;">
-            <span>${currentPlanet.name}</span>
-            <span style="color:var(--star-gold);">${config.starEnergy} / ${nextPlanet.energyNeeded} ⚡ (${progressToNext}%)</span>
-            <span>${nextPlanet.name}</span>
-          </div>
-          ${Charts.progressBar(config.starEnergy, nextPlanet.energyNeeded)}
-        ` : `<p style="text-align:center;color:var(--star-gold);">🎉 恭喜你抵达了银河中心！</p>`}
-      </div>
-
-      <div class="stats-grid">
-        <div class="stat-card"><div class="stat-icon">⚡</div><div class="stat-value gold">${config.starEnergy}</div><div class="stat-label">总星能</div></div>
-        <div class="stat-card"><div class="stat-icon">🚀</div><div class="stat-value">Lv.${config.shipLevel}</div><div class="stat-label">飞船等级</div></div>
-        <div class="stat-card"><div class="stat-icon">✅</div><div class="stat-value">${config.totalTasksCompleted}</div><div class="stat-label">完成任务</div></div>
-        <div class="stat-card"><div class="stat-icon">🌍</div><div class="stat-value">${currentIndex + 1}</div><div class="stat-label">已探索星球</div></div>
-      </div>`;
-
-    document.getElementById('user-main').innerHTML = html;
-  },
-
-  showPlanet(planetId) {
-    const planet = PLANETS.find(p => p.id === planetId);
-    if (!planet) return;
-
-    const typeMap = { station: '起点站', planet: '任务星球', supply: '补给站', final: '最终目的地' };
-
-    const body = `
-      <div style="text-align:center;margin-bottom:20px;">
-        <div style="font-size:64px;margin-bottom:8px;">${planet.icon}</div>
-        <h3 style="font-size:22px;margin-bottom:4px;">${planet.name}</h3>
-        <p style="color:var(--text-secondary);font-size:13px;">${typeMap[planet.type] || '星球'}</p>
-      </div>
-      <p style="text-align:center;color:var(--text-secondary);">${planet.desc}</p>
-      <p style="text-align:center;margin-top:12px;font-size:13px;color:var(--star-gold);">
-        需要 ${planet.energyNeeded} ⚡ 星能解锁
-      </p>`;
-
-    UI.modal(planet.name, body, `<button class="btn btn-primary" onclick="UI.closeModal()">关闭</button>`);
-  },
-
-  // ===== 任务板 =====
-  async renderTasks() {
-    const tasks = await DB.getTasks();
-    const config = await DB.getConfig();
-
-    const available = tasks.filter(t => t.status === 'available');
-    const inProgress = tasks.filter(t => t.status === 'in_progress' && t.claimedBy === config.userName);
-    const pending = tasks.filter(t => t.status === 'pending_review' && t.claimedBy === config.userName);
-    const completed = tasks.filter(t => t.status === 'completed' && t.claimedBy === config.userName);
-
-    const html = `
-      <div class="page-title">任务板</div>
-      <div class="page-subtitle">选择任务，收集星能，飞向更远的星空</div>
-
-      <div class="stats-grid">
-        <div class="stat-card"><div class="stat-icon">✨</div><div class="stat-value">${available.length}</div><div class="stat-label">可领取</div></div>
-        <div class="stat-card"><div class="stat-icon">🚀</div><div class="stat-value">${inProgress.length}</div><div class="stat-label">进行中</div></div>
-        <div class="stat-card"><div class="stat-icon">📝</div><div class="stat-value">${pending.length}</div><div class="stat-label">审核中</div></div>
-        <div class="stat-card"><div class="stat-icon">⚡</div><div class="stat-value gold">${config.starEnergy}</div><div class="stat-label">我的星能</div></div>
-      </div>
-
-      <div class="filter-bar">
-        <select id="user-status-filter" onchange="UserView.filterTasks()">
-          <option value="available">可领取</option>
-          <option value="in_progress">进行中</option>
-          <option value="pending_review">审核中</option>
-          <option value="completed">已完成</option>
-        </select>
-        <select onchange="UserView.filterCategory(this.value)">
-          <option value="all">全部分类</option>
-          ${CATEGORIES.map(c => `<option value="${c}">${c}</option>`).join('')}
-        </select>
-      </div>
-
-      <div id="user-task-list">
-        ${available.length === 0 ? '<div class="empty-state"><div class="emoji">🌌</div><p>暂无可用任务</p></div>' :
-          available.map(t => this._taskCardAvailable(t)).join('')}
-      </div>
-
-      <div style="margin-top:24px;text-align:center;">
-        <button class="btn btn-outline" onclick="SelfReport.openSubmit()">+ 自主申报事件</button>
-      </div>`;
-
-    document.getElementById('user-main').innerHTML = html;
-  },
-
-  _taskCardAvailable(task) {
-    return `
-      <div class="task-card star-${task.starLevel}">
-        <div class="task-card-header">
-          <div class="task-card-title">${task.title}</div>
-          ${UI.statusTag('available')}
-        </div>
-        <div class="task-card-desc">${task.description}</div>
-        <div class="task-meta">
-          ${UI.categoryTag(task.category)}
-          ${UI.starTag(task.starLevel)}
-          ${UI.energyBadge(task.energy)}
-        </div>
-        <div class="task-actions">
-          <button class="btn btn-primary btn-sm" onclick="Task.claim(${task.id})">领取任务</button>
-        </div>
-      </div>`;
-  },
-
-  _taskCardInProgress(task) {
-    return `
-      <div class="task-card star-${task.starLevel}">
-        <div class="task-card-header">
-          <div class="task-card-title">${task.title}</div>
-          ${UI.statusTag('in_progress')}
-        </div>
-        <div class="task-card-desc">${task.description}</div>
-        <div class="task-meta">
-          ${UI.categoryTag(task.category)}
-          ${UI.starTag(task.starLevel)}
-          ${UI.energyBadge(task.energy)}
-        </div>
-        ${task.reviewNote ? `<div style="background:rgba(244,114,182,0.1);padding:10px;border-radius:8px;margin-bottom:12px;font-size:13px;color:var(--accent-light);">💬 指挥官反馈：${task.reviewNote}</div>` : ''}
-        <div class="task-actions">
-          <button class="btn btn-primary btn-sm" onclick="Task.submit(${task.id})">提交完成</button>
-          <button class="btn btn-outline btn-sm" onclick="Task.abandon(${task.id})">放弃</button>
-        </div>
-      </div>`;
-  },
-
-  _taskCardPending(task) {
-    return `
-      <div class="task-card star-${task.starLevel}">
-        <div class="task-card-header">
-          <div class="task-card-title">${task.title}</div>
-          ${UI.statusTag('pending_review')}
-        </div>
-        <div class="task-card-desc">${task.description}</div>
-        <div class="task-meta">
-          ${UI.categoryTag(task.category)}
-          ${UI.starTag(task.starLevel)}
-          ${UI.energyBadge(task.energy)}
-        </div>
-        <div style="background:rgba(15,10,31,0.5);padding:10px;border-radius:8px;margin-bottom:12px;">
-          <div style="font-size:12px;color:var(--text-secondary);margin-bottom:2px;">你提交的内容：</div>
-          <div style="font-size:13px;">${task.submittedNote || '-'}</div>
-        </div>
-        <p style="font-size:13px;color:var(--text-secondary);">等待指挥官审核中...</p>
-      </div>`;
-  },
-
-  _taskCardCompleted(task) {
-    return `
-      <div class="task-card star-${task.starLevel}" style="opacity:0.8;">
-        <div class="task-card-header">
-          <div class="task-card-title">${task.title}</div>
-          ${UI.statusTag('completed')}
-        </div>
-        <div class="task-card-desc">${task.description}</div>
-        <div class="task-meta">
-          ${UI.categoryTag(task.category)}
-          ${UI.starTag(task.starLevel)}
-          ${UI.energyBadge(task.energy)}
-        </div>
-        ${task.reviewNote ? `<div style="background:rgba(52,211,153,0.1);padding:10px;border-radius:8px;margin-top:8px;font-size:13px;color:#34d399;">💬 ${task.reviewNote}</div>` : ''}
-      </div>`;
-  },
-
-  async filterTasks() {
-    const status = document.getElementById('user-status-filter').value;
-    const tasks = await DB.getTasks();
-    const config = await DB.getConfig();
-    let filtered = [];
-
-    switch (status) {
-      case 'available':
-        filtered = tasks.filter(t => t.status === 'available');
-        break;
-      case 'in_progress':
-        filtered = tasks.filter(t => t.status === 'in_progress' && t.claimedBy === config.userName);
-        break;
-      case 'pending_review':
-        filtered = tasks.filter(t => t.status === 'pending_review' && t.claimedBy === config.userName);
-        break;
-      case 'completed':
-        filtered = tasks.filter(t => t.status === 'completed' && t.claimedBy === config.userName);
-        break;
-    }
-
-    const list = document.getElementById('user-task-list');
-    if (filtered.length === 0) {
-      list.innerHTML = '<div class="empty-state"><div class="emoji">🌌</div><p>这里还没有任务</p></div>';
-      return;
-    }
-
-    let renderer;
-    switch (status) {
-      case 'available': renderer = t => this._taskCardAvailable(t); break;
-      case 'in_progress': renderer = t => this._taskCardInProgress(t); break;
-      case 'pending_review': renderer = t => this._taskCardPending(t); break;
-      case 'completed': renderer = t => this._taskCardCompleted(t); break;
-    }
-    list.innerHTML = filtered.map(renderer).join('');
-  },
-
-  filterCategory(category) {
-    const cards = document.querySelectorAll('#user-task-list .task-card');
-    cards.forEach(card => {
-      const tag = card.querySelector('.tag-category');
-      if (category === 'all' || tag?.textContent === category) {
-        card.style.display = '';
-      } else {
-        card.style.display = 'none';
-      }
-    });
-  },
-
-  // ===== 我的飞船 =====
-  async renderGrowth() {
-    const tasks = await DB.getTasks();
-    const config = await DB.getConfig();
-    const completed = tasks.filter(t => t.status === 'completed' && t.claimedBy === config.userName);
-    const currentPlanet = PLANETS.find(p => p.id === config.currentPlanet) || PLANETS[0];
-    const nextPlanet = PLANETS.find(p => p.energyNeeded > config.starEnergy);
-
-    const catScores = CATEGORIES.map(cat => {
-      const catTasks = tasks.filter(t => t.category === cat);
-      const catDone = completed.filter(t => t.category === cat);
-      if (catTasks.length === 0) return 0;
-      const total = catTasks.reduce((s, t) => s + t.energy, 0);
-      const done = catDone.reduce((s, t) => s + t.energy, 0);
-      return Math.round((done / total) * 100);
-    });
-
-    const shipSkin = config.shipSkin === 'skin_gold' ? '✨ 金色涂装' : '🚀 标准涂装';
-
-    const html = `
-      <div class="page-title">我的飞船</div>
-      <div class="page-subtitle">飞船状态与成长数据</div>
-
-      <div class="card" style="text-align:center;">
-        <div style="font-size:72px;margin-bottom:8px;filter:drop-shadow(0 0 16px rgba(251,191,36,0.5));">🚀</div>
-        <h3 style="font-size:20px;margin-bottom:4px;">${config.userName || '舰长'} 的飞船</h3>
-        <p style="color:var(--text-secondary);font-size:14px;">Lv.${config.shipLevel} · ${shipSkin}</p>
-      </div>
-
-      <div class="ship-status" style="margin-bottom:16px;">
-        <div class="ship-stat"><div class="label">引擎</div><div class="value">${config.engineBuff ? '⚡ 强化' : '标准'}</div></div>
-        <div class="ship-stat"><div class="label">雷达</div><div class="value">${config.radarBuff ? '📡 高级' : '基础'}</div></div>
-        <div class="ship-stat"><div class="label">涂装</div><div class="value">${config.shipSkin === 'skin_gold' ? '✨ 金色' : '标准'}</div></div>
-      </div>
-
-      <div class="stats-grid">
-        <div class="stat-card"><div class="stat-icon">⚡</div><div class="stat-value gold">${config.starEnergy}</div><div class="stat-label">总星能</div></div>
-        <div class="stat-card"><div class="stat-icon">🏆</div><div class="stat-value">${config.totalTasksCompleted}</div><div class="stat-label">累计任务</div></div>
-        <div class="stat-card"><div class="stat-icon">🌍</div><div class="stat-value">${currentPlanet.icon}</div><div class="stat-label">${currentPlanet.name}</div></div>
-        <div class="stat-card"><div class="stat-icon">📅</div><div class="stat-value">${config.monthlyTasks}</div><div class="stat-label">本月任务</div></div>
-      </div>
-
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
-        <div class="chart-wrap">
-          <div class="chart-title">能力雷达图</div>
-          <div class="chart-container">${Charts.radar(CATEGORIES, catScores)}</div>
-        </div>
-        <div class="chart-wrap">
-          <div class="chart-title">下一站进度</div>
-          <div class="chart-container">
-            ${nextPlanet ? Charts.donut(config.starEnergy - currentPlanet.energyNeeded, nextPlanet.energyNeeded - currentPlanet.energyNeeded, 180, '#fbbf24') : Charts.donut(100, 100, 180, '#f472b6')}
-          </div>
+          }).join('')}
         </div>
       </div>
 
       <div class="card">
-        <div class="card-title">最近完成</div>
-        ${completed.length === 0 ? '<p style="color:var(--text-secondary);text-align:center;padding:20px;">还没有完成的任务</p>' :
-          completed.slice(0, 5).map(t => `
-            <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);">
-              <div>
-                <div style="font-size:14px;font-weight:500;">${t.title}</div>
-                <div style="font-size:12px;color:var(--text-secondary);">${UI.formatDate(t.reviewedAt)}</div>
-              </div>
-              ${UI.energyBadge(t.energy)}
-            </div>
-          `).join('')}
-      </div>`;
-
-    document.getElementById('user-main').innerHTML = html;
-  },
-
-  // ===== 补给站 =====
-  async renderRewards() {
-    const config = await DB.getConfig();
-    const rewards = await DB.getRewards();
-    const myRewards = rewards.filter(r => r.grantedBy !== '补给站兑换' || true); // 全部展示
-
-    // 按补给站类型分组可兑换物品
-    const cashItems = SUPPLY_ITEMS.filter(i => typeof i.value === 'number');
-    const buffItems = SUPPLY_ITEMS.filter(i => i.value === 'buff');
-    const skinItems = SUPPLY_ITEMS.filter(i => i.value === 'skin');
-
-    const renderItem = (item) => {
-      const canAfford = config.starEnergy >= item.cost;
-      const owned = (item.id === 'buff_engine' && config.engineBuff) ||
-                    (item.id === 'buff_radar' && config.radarBuff) ||
-                    (item.id === 'skin_gold' && config.shipSkin === 'skin_gold');
-      return `
-        <div class="supply-card">
-          <div class="supply-emoji">${item.emoji}</div>
-          <div class="supply-info">
-            <div class="supply-name">${item.name}</div>
-            <div class="supply-desc">${item.desc}</div>
-          </div>
-          <div style="text-align:right;">
-            <div class="supply-cost">⚡ ${item.cost}</div>
-            ${owned ? '<button class="btn btn-sm btn-outline" style="margin-top:8px;" disabled>已拥有</button>' :
-              `<button class="btn btn-sm ${canAfford ? 'btn-gold' : 'btn-outline'}" style="margin-top:8px;" ${canAfford ? '' : 'disabled'} onclick="SupplyStation.redeem('${item.id}')">兑换</button>`}
-          </div>
-        </div>`;
-    };
-
-    const html = `
-      <div class="page-title">补给站</div>
-      <div class="page-subtitle">用星能兑换奖励和升级</div>
-
-      <div class="card" style="text-align:center;">
-        <div style="font-size:14px;color:var(--text-secondary);margin-bottom:4px;">我的星能</div>
-        <div style="font-size:36px;font-weight:700;color:var(--star-gold);">⚡ ${config.starEnergy}</div>
+        <div class="card-title">📊 数据</div>
+        <table class="data-table">
+          <tr><td>仙树等级</td><td>Lv.${state.treeLevel} (${TREE_LEVELS[state.treeLevel]?.name || ''})</td></tr>
+          <tr><td>经验值</td><td>${state.exp} / ${getExpForLevel(state.level)}</td></tr>
+          <tr><td>累计提现</td><td>¥${state.totalWithdrawn.toFixed(2)}</td></tr>
+          <tr><td>邮件数</td><td>${mails.length} 封</td></tr>
+        </table>
       </div>
-
-      <div class="section-title" style="margin:24px 0 12px;font-size:16px;">🧧 现金奖励</div>
-      ${cashItems.map(renderItem).join('')}
-
-      <div class="section-title" style="margin:24px 0 12px;font-size:16px;">⚙️ 飞船升级</div>
-      ${buffItems.map(renderItem).join('')}
-
-      <div class="section-title" style="margin:24px 0 12px;font-size:16px;">🎨 外观涂装</div>
-      ${skinItems.map(renderItem).join('')}
-
-      <div class="section-title" style="margin:24px 0 12px;font-size:16px;">📋 兑换记录</div>
-      ${myRewards.length === 0 ? '<div class="empty-state"><div class="emoji">🎁</div><p>还没有兑换记录</p></div>' :
-        myRewards.slice(0, 10).map(r => `
-          <div class="supply-card">
-            <div class="supply-emoji">🎁</div>
-            <div class="supply-info">
-              <div class="supply-name">${r.name}</div>
-              <div class="supply-desc">${r.note || r.grantedBy} · ${UI.formatDate(r.createdAt)}</div>
-            </div>
-            <div style="text-align:right;">
-              ${r.energyCost ? `<div class="supply-cost">-${r.energyCost} ⚡</div>` : r.amount ? `<div style="font-weight:700;color:var(--accent);">¥${r.amount}</div>` : ''}
-              <div style="font-size:12px;margin-top:4px;">${r.redeemed ? '<span class="tag tag-status-done">已领取</span>' : '<span class="tag tag-status-progress">待发放</span>'}</div>
-            </div>
-          </div>
-        `).join('')}`;
-
-    document.getElementById('user-main').innerHTML = html;
+    `;
   },
 };
 
-/* ==========================================================================
-   Init
-   ========================================================================== */
-document.addEventListener('DOMContentLoaded', () => {
-  DB.init();
-});
+// 初始化（登录时调用 Game.init()）
+console.log('寻道大千 · 修仙系统加载完成 🎋');
