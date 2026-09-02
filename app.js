@@ -165,7 +165,7 @@ const DB = {
     if (updates.axeId !== undefined) dbUpdates.axe_id = updates.axeId;
     if (updates.balance !== undefined) dbUpdates.balance = updates.balance;
     if (updates.totalWithdrawn !== undefined) dbUpdates.total_withdrawn = updates.totalWithdrawn;
-    if (updates.lastDailyDate !== undefined) dbUpdates.last_daily_date = updates.lastDailyDate;
+    if (updates.lastDailyDate !== undefined) dbUpdates.last_daily_date = updates.lastDailyDate || null;
     dbUpdates.updated_at = new Date().toISOString();
 
     const { error } = await dbClient
@@ -190,7 +190,7 @@ const DB = {
       axe_id: 'axe_common',
       balance: 0,
       total_withdrawn: 0,
-      last_daily_date: '',
+      last_daily_date: null,
     };
 
     const { error } = await dbClient
