@@ -132,7 +132,7 @@ try {
 const DB = {
   // --- 玩家状态 ---
   async getPlayerState() {
-    const { data, error } = await supabase
+    const { data, error } = await dbClient
       .from('player_state')
       .select('*')
       .eq('user_role', 'player')
@@ -162,7 +162,7 @@ const DB = {
     if (updates.lastDailyDate !== undefined) dbUpdates.last_daily_date = updates.lastDailyDate;
     dbUpdates.updated_at = new Date().toISOString();
 
-    const { error } = await supabase
+    const { error } = await dbClient
       .from('player_state')
       .update(dbUpdates)
       .eq('user_role', 'player');
@@ -172,7 +172,7 @@ const DB = {
 
   // --- 背包 ---
   async getInventory() {
-    const { data, error } = await supabase
+    const { data, error } = await dbClient
       .from('inventory')
       .select('*')
       .eq('user_role', 'player')
@@ -186,7 +186,7 @@ const DB = {
   },
 
   async addItem(itemId, quantity = 1) {
-    const { data: existing } = await supabase
+    const { data: existing } = await dbClient
       .from('inventory')
       .select('*')
       .eq('user_role', 'player')
@@ -194,7 +194,7 @@ const DB = {
       .maybeSingle();
 
     if (existing) {
-      const { error } = await supabase
+      const { error } = await dbClient
         .from('inventory')
         .update({
           quantity: existing.quantity + quantity,
@@ -203,7 +203,7 @@ const DB = {
         .eq('id', existing.id);
       if (error) { console.error('DB addItem update error:', error); return false; }
     } else {
-      const { error } = await supabase
+      const { error } = await dbClient
         .from('inventory')
         .insert({
           user_role: 'player',
@@ -216,7 +216,7 @@ const DB = {
   },
 
   async removeItem(itemId, quantity = 1) {
-    const { data: existing } = await supabase
+    const { data: existing } = await dbClient
       .from('inventory')
       .select('*')
       .eq('user_role', 'player')
@@ -230,7 +230,7 @@ const DB = {
       const { error } = await dbClient.from('inventory').delete().eq('id', existing.id);
       if (error) { console.error('DB removeItem delete error:', error); return false; }
     } else {
-      const { error } = await supabase
+      const { error } = await dbClient
         .from('inventory')
         .update({ quantity: newQty, updated_at: new Date().toISOString() })
         .eq('id', existing.id);
@@ -257,7 +257,7 @@ const DB = {
   },
 
   async createTask(task) {
-    const { data, error } = await supabase
+    const { data, error } = await dbClient
       .from('xiu_tasks')
       .insert({
         task_type: task.taskType,
@@ -305,7 +305,7 @@ const DB = {
   },
 
   async submitTask(submission) {
-    const { data, error } = await supabase
+    const { data, error } = await dbClient
       .from('task_submissions')
       .insert({
         task_id: submission.taskId || null,
@@ -326,7 +326,7 @@ const DB = {
   },
 
   async reviewSubmission(id, status, note = '', rewardChopping = 0, rewardItems = []) {
-    const { error } = await supabase
+    const { error } = await dbClient
       .from('task_submissions')
       .update({
         status: status,
@@ -342,7 +342,7 @@ const DB = {
 
   // --- 邮件 ---
   async getMails() {
-    const { data, error } = await supabase
+    const { data, error } = await dbClient
       .from('mails')
       .select('*')
       .eq('user_role', 'player')
@@ -360,7 +360,7 @@ const DB = {
   },
 
   async sendMail(title, content, items = []) {
-    const { error } = await supabase
+    const { error } = await dbClient
       .from('mails')
       .insert({
         user_role: 'player',
@@ -373,7 +373,7 @@ const DB = {
   },
 
   async markMailRead(id) {
-    const { error } = await supabase
+    const { error } = await dbClient
       .from('mails')
       .update({ is_read: true })
       .eq('id', id);
@@ -382,7 +382,7 @@ const DB = {
   },
 
   async claimMail(id) {
-    const { error } = await supabase
+    const { error } = await dbClient
       .from('mails')
       .update({ is_claimed: true, is_read: true })
       .eq('id', id);
@@ -405,7 +405,7 @@ const DB = {
   },
 
   async requestWithdrawal(amount) {
-    const { data, error } = await supabase
+    const { data, error } = await dbClient
       .from('withdrawals')
       .insert({
         user_role: 'player',
@@ -419,7 +419,7 @@ const DB = {
   },
 
   async reviewWithdrawal(id, status) {
-    const { error } = await supabase
+    const { error } = await dbClient
       .from('withdrawals')
       .update({ status: status, reviewed_at: new Date().toISOString() })
       .eq('id', id);
