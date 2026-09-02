@@ -114,10 +114,10 @@ const TASK_TYPE_MAP = {
 };
 
 // ===== Supabase 初始化 =====
-let supabase = null;
+let dbClient = null;
 try {
   if (window.supabase && window.supabase.createClient) {
-    supabase = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_KEY);
+    dbClient = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_KEY);
     console.log('Supabase 初始化成功');
   } else {
     console.error('Supabase SDK 未加载');
@@ -227,7 +227,7 @@ const DB = {
 
     const newQty = existing.quantity - quantity;
     if (newQty <= 0) {
-      const { error } = await supabase.from('inventory').delete().eq('id', existing.id);
+      const { error } = await dbClient.from('inventory').delete().eq('id', existing.id);
       if (error) { console.error('DB removeItem delete error:', error); return false; }
     } else {
       const { error } = await supabase
@@ -241,7 +241,7 @@ const DB = {
 
   // --- 任务 ---
   async getTasks(type = null) {
-    let query = supabase.from('xiu_tasks').select('*').eq('status', 'published');
+    let query = dbClient.from('xiu_tasks').select('*').eq('status', 'published');
     if (type) query = query.eq('task_type', type);
     const { data, error } = await query.order('sort_order', { ascending: true });
     if (error) { console.error('DB getTasks error:', error); return []; }
@@ -276,14 +276,14 @@ const DB = {
   },
 
   async deleteTask(id) {
-    const { error } = await supabase.from('xiu_tasks').delete().eq('id', id);
+    const { error } = await dbClient.from('xiu_tasks').delete().eq('id', id);
     if (error) { console.error('DB deleteTask error:', error); return false; }
     return true;
   },
 
   // --- 任务提交 ---
   async getSubmissions(status = null) {
-    let query = supabase.from('task_submissions').select('*');
+    let query = dbClient.from('task_submissions').select('*');
     if (status) query = query.eq('status', status);
     const { data, error } = await query.order('submitted_at', { ascending: false });
     if (error) { console.error('DB getSubmissions error:', error); return []; }
@@ -392,7 +392,7 @@ const DB = {
 
   // --- 提现 ---
   async getWithdrawals(status = null) {
-    let query = supabase.from('withdrawals').select('*');
+    let query = dbClient.from('withdrawals').select('*');
     if (status) query = query.eq('status', status);
     const { data, error } = await query.order('created_at', { ascending: false });
     if (error) { console.error('DB getWithdrawals error:', error); return []; }
