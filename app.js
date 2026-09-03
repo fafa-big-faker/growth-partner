@@ -211,6 +211,7 @@ const DIFFICULTY_MAP = {
 const TASK_TYPE_MAP = {
   daily: { name: '每日', class: 'tag-type-daily' },
   weekly: { name: '每周', class: 'tag-type-weekly' },
+  theme: { name: '主题', class: 'tag-type-theme' },
   self: { name: '自主', class: 'tag-type-self' },
 };
 
@@ -264,6 +265,10 @@ const DB = {
       signInClaims: Array.isArray(data.signin_claims) ? data.signin_claims : [],
       // 商店月限购计数：{ "YYYY-MM": { shopId: count } }
       shopPurchases: (data.shop_purchases && typeof data.shop_purchases === 'object') ? data.shop_purchases : {},
+      // 成就系统：累计统计 + 已领取成就
+      totalChops: parseInt(data.total_chops) || 0,
+      totalCoinEarned: parseInt(data.total_coin_earned) || 0,
+      achievementClaims: Array.isArray(data.achievement_claims) ? data.achievement_claims : [],
     };
   },
 
@@ -288,6 +293,10 @@ const DB = {
     if (updates.signInClaims !== undefined) dbUpdates.signin_claims = updates.signInClaims;
     // 商店月限购
     if (updates.shopPurchases !== undefined) dbUpdates.shop_purchases = updates.shopPurchases;
+    // 成就累计统计
+    if (updates.totalChops !== undefined) dbUpdates.total_chops = updates.totalChops;
+    if (updates.totalCoinEarned !== undefined) dbUpdates.total_coin_earned = updates.totalCoinEarned;
+    if (updates.achievementClaims !== undefined) dbUpdates.achievement_claims = updates.achievementClaims;
     dbUpdates.updated_at = new Date().toISOString();
 
     const { error } = await dbClient
@@ -300,7 +309,7 @@ const DB = {
       if (msg.includes('does not exist') || msg.includes('Could not find')) {
         const safeUpdates = {};
         for (const k in dbUpdates) {
-          if (['coin', 'signin_month', 'signin_days', 'signin_claims', 'shop_purchases'].includes(k)) continue;
+          if (['coin', 'signin_month', 'signin_days', 'signin_claims', 'shop_purchases', 'total_chops', 'total_coin_earned', 'achievement_claims'].includes(k)) continue;
           safeUpdates[k] = dbUpdates[k];
         }
         const { error: err2 } = await dbClient
@@ -308,7 +317,7 @@ const DB = {
           .update(safeUpdates)
           .eq('user_role', 'player');
         if (err2) { console.error('DB updatePlayerState fallback error:', err2); return false; }
-        console.warn('player_state 缺少 coin/signin 字段，请执行 upgrade_v3.sql');
+        console.warn('player_state 缺少新字段，请执行 upgrade_v4.sql');
         return true;
       }
       console.error('DB updatePlayerState error:', error);
@@ -339,6 +348,9 @@ const DB = {
       signin_days: 0,
       signin_claims: [],
       shop_purchases: {},
+      total_chops: 0,
+      total_coin_earned: 0,
+      achievement_claims: [],
     };
 
     const { error } = await dbClient
@@ -386,6 +398,9 @@ const DB = {
       signInDays: 0,
       signInClaims: [],
       shopPurchases: {},
+      totalChops: 0,
+      totalCoinEarned: 0,
+      achievementClaims: [],
     };
   },
 
@@ -748,6 +763,39 @@ const DB = {
 /* ================================================================
    游戏逻辑
    ================================================================ */
+
+// 成就类型 → 玩家状态字段 / 图标 / 文案（页签与类型定义来自飞书成就表）
+// typeId 对应「成就类型表」：1角色等级 2仙阶 3仙树灵阶 4消耗砍树次数 5历史获得游戏币 6提现总额
+const ACH_TYPE_META = {
+  1: { stat: 'level',          icon: '📈', tab: 1 },
+  2: { stat: 'realmLevel',     icon: '⭐', tab: 1, isRealm: true },
+  3: { stat: 'treeLevel',      icon: '🌳', tab: 2 },
+  4: { stat: 'totalChops',     icon: '🪓', tab: 2 },
+  5: { stat: 'totalCoinEarned', icon: '🪙', tab: 3 },
+  6: { stat: 'totalWithdrawn', icon: '💰', tab: 3 },
+};
+
+// 成就目标文案：优先用配置里的展示文案（{value} 占位），否则按类型生成
+function achievementGoalText(typeId, value) {
+  const type = getAchievementTypes().find(t => t.typeId === typeId);
+  const meta = ACH_TYPE_META[typeId];
+  if (type && type.displayText) {
+    if (meta && meta.isRealm) {
+      const realm = REALMS.find(r => r.level == value);
+      return type.displayText.replace('{value}', realm ? realm.name : (value + '阶'));
+    }
+    return type.displayText.replace('{value}', value);
+  }
+  // 配置未给文案的类型（3~6），按类型生成
+  switch (typeId) {
+    case 3: return `仙树灵阶达到 ${value} 阶`;
+    case 4: return `累计砍树 ${value} 次`;
+    case 5: return `累计获得 ${value} 游戏币`;
+    case 6: return `累计提现 ¥${value}`;
+    default: return `达成成就 ${value}`;
+  }
+}
+
 const Game = {
   state: null,
   inventory: [],
@@ -776,7 +824,9 @@ const Game = {
     const def = ITEMS[id];
     if (def && def.type === 0) {
       this.state.coin = (this.state.coin || 0) + qty;
-      await DB.updatePlayerState({ coin: this.state.coin });
+      // 成就统计：历史累计获得游戏币
+      this.state.totalCoinEarned = (this.state.totalCoinEarned || 0) + qty;
+      await DB.updatePlayerState({ coin: this.state.coin, totalCoinEarned: this.state.totalCoinEarned });
       return { kind: 'coin', id, quantity: qty, def };
     }
     if (def && def.type === 6) {
@@ -803,6 +853,8 @@ const Game = {
 
     // 消耗砍树次数
     this.state.choppingCount -= 1;
+    // 成就统计：累计消耗砍树次数
+    this.state.totalChops = (this.state.totalChops || 0) + 1;
 
     // 随机掉落
     const treeConfig = TREE_LEVELS[this.state.treeLevel] || TREE_LEVELS[1];
@@ -843,6 +895,7 @@ const Game = {
       level: this.state.level,
       exp: this.state.exp,
       coin: this.state.coin,
+      totalChops: this.state.totalChops,
     }).catch(e => console.error('chop DB sync error:', e));
 
     return item;
@@ -960,6 +1013,56 @@ const Game = {
     return true;
   },
 
+  // ===== 成就系统 =====
+  // 计算全部成就进度
+  getAchievementProgress() {
+    const claims = Array.isArray(this.state.achievementClaims) ? this.state.achievementClaims : [];
+    return getAchievements().map(a => {
+      const meta = ACH_TYPE_META[a.typeId] || { stat: 'level', icon: '🏅', tab: 1 };
+      const current = parseInt(this.state[meta.stat]) || 0;
+      const target = a.typeParam || 1;
+      const claimed = claims.includes(a.achievementId);
+      const done = current >= target;
+      return {
+        ...a,
+        icon: meta.icon,
+        tabId: meta.tab,
+        current,
+        target,
+        progress: Math.min(1, current / target),
+        claimed,
+        claimable: done && !claimed,
+      };
+    });
+  },
+
+  // 是否有可领取成就（用于红点）
+  hasClaimableAchievements() {
+    return this.getAchievementProgress().some(a => a.claimable);
+  },
+
+  // 领取成就奖励
+  async claimAchievement(achievementId) {
+    const list = this.getAchievementProgress();
+    const ach = list.find(x => x.achievementId === achievementId);
+    if (!ach) return false;
+    const claims = Array.isArray(this.state.achievementClaims) ? this.state.achievementClaims : [];
+    if (claims.includes(achievementId)) { UI.toast('该成就已领取', 'warn'); return false; }
+    if (!ach.claimable) { UI.toast('尚未达成该成就', 'warn'); return false; }
+
+    // 发放奖励道具（游戏币/砍树次数自动路由）
+    await this.grantItem(ach.rewardItemId, ach.rewardCount);
+
+    const newClaims = [...claims, achievementId];
+    this.state.achievementClaims = newClaims;
+    await DB.updatePlayerState({ achievementClaims: newClaims });
+    await this.refresh();
+    const def = ITEMS[String(ach.rewardItemId)];
+    const rname = def ? def.name : '道具';
+    UI.toast(`成就达成！获得 ${rname} ×${ach.rewardCount}`, 'success');
+    return true;
+  },
+
   // 合成道具
   async compose(itemId) {
     const itemDef = ITEMS[itemId];
@@ -1011,7 +1114,9 @@ const Game = {
     }
     await DB.removeItem(itemId, 1);
     this.state.coin = (this.state.coin || 0) + itemDef.sellPrice;
-    await DB.updatePlayerState({ coin: this.state.coin });
+    // 成就统计：出售仙斧获得的游戏币计入累计
+    this.state.totalCoinEarned = (this.state.totalCoinEarned || 0) + itemDef.sellPrice;
+    await DB.updatePlayerState({ coin: this.state.coin, totalCoinEarned: this.state.totalCoinEarned });
     await this.refresh();
     UI.toast(`出售成功！获得 ${itemDef.sellPrice} 游戏币`, 'success');
     return true;
@@ -1415,10 +1520,17 @@ const Router = {
 const UI = {
   updateHeader() {
     if (!Game.state) return;
-    // 旧版 header 已移除，这里更新邮件 badge + 游戏币显示
+    // 旧版 header 已移除，这里更新邮件 badge + 游戏币显示 + 成就红点
     this._updateMailBadge();
+    this._updateAchBadge();
     const coinEl = document.getElementById('coin-count');
     if (coinEl) coinEl.textContent = Game.state.coin || 0;
+  },
+
+  _updateAchBadge() {
+    const dot = document.getElementById('ach-dot');
+    if (!dot) return;
+    dot.style.display = Game.hasClaimableAchievements() ? 'inline-block' : 'none';
   },
 
   async _updateMailBadge() {
@@ -1613,6 +1725,10 @@ const PlayerView = {
         <div class="status-mail" onclick="PlayerView.showMailModal()">
           <span>📮</span>
           <span class="mail-badge" id="mail-badge" style="display:none">0</span>
+        </div>
+        <div class="status-mail" onclick="PlayerView.showAchievements()" title="成就">
+          <span>🏆</span>
+          <span class="ach-dot" id="ach-dot" style="display:none"></span>
         </div>
         <div class="res-pill res-coin" id="coin-pill" title="游戏币 · 可在「天道酬勤」商店购买道具，砍树/出售仙斧可获得">
           <span class="res-icon">🪙</span><span class="res-val" id="coin-count">${Game.state.coin || 0}</span>
@@ -2120,9 +2236,10 @@ const PlayerView = {
   // --- 任务页 ---
   async renderTasks() {
     const main = document.getElementById('player-main');
-    const [dailyTasks, weeklyTasks, submissions] = await Promise.all([
+    const [dailyTasks, weeklyTasks, themeTasks, submissions] = await Promise.all([
       DB.getTasks('daily'),
       DB.getTasks('weekly'),
+      DB.getTasks('theme'),
       DB.getSubmissions(),
     ]);
 
@@ -2133,28 +2250,21 @@ const PlayerView = {
     // 数据去重：飞书/后台可能误插入重复任务（同类型+同标题+同排序），玩家侧只展示一条
     this._dailyTasks = this._dedupeTasks(dailyTasks, submissions, 'daily');
     this._weeklyTasks = this._dedupeTasks(weeklyTasks, submissions, 'weekly');
+    this._themeTasks = this._dedupeTasks(themeTasks, submissions, 'theme');
     this._submissions = submissions;
     this._dailyChecked = dailyChecked;
-
-    // 收集所有主题（基于去重后的任务）
-    const allTasks = [...this._dailyTasks, ...this._weeklyTasks];
-    const themes = [...new Set(allTasks.filter(t => t.themeName).map(t => t.themeName))];
-
-    let themeFilters = '';
-    themes.forEach(theme => {
-      themeFilters += `<div class="filter-chip" data-filter="theme:${theme}" onclick="PlayerView.filterTasks('theme:${theme}')">🎨 ${theme}</div>`;
-    });
 
     main.innerHTML = `
       <div class="page-title">📜 任务</div>
       <div class="page-subtitle">完成任务获得砍树次数，砍树掉落奖励</div>
+
+      <div id="theme-section">${this._themeSectionHtml()}</div>
 
       <div class="filter-bar">
         <div class="filter-chip active" data-filter="all" onclick="PlayerView.filterTasks('all')">全部</div>
         <div class="filter-chip" data-filter="daily" onclick="PlayerView.filterTasks('daily')">每日</div>
         <div class="filter-chip" data-filter="weekly" onclick="PlayerView.filterTasks('weekly')">每周</div>
         <div class="filter-chip" data-filter="self" onclick="PlayerView.filterTasks('self')">自主申报</div>
-        ${themeFilters}
       </div>
 
       <div id="task-list"></div>
@@ -2172,8 +2282,89 @@ const PlayerView = {
   currentTaskFilter: 'all',
   _dailyTasks: [],
   _weeklyTasks: [],
+  _themeTasks: [],
   _submissions: [],
   _dailyChecked: false,
+
+  // 计算当前进行中的主题活动：今天落在 [start, end] 区间内的主题；
+  // 多个重叠时取开始时间最新的一个；无则返回 null（前端显示“尽情期待”）。
+  _getActiveTheme() {
+    const today = localDateStr();
+    const groups = new Map();
+    this._themeTasks.forEach(t => {
+      if (!t.themeName) return;
+      if (!groups.has(t.themeName)) {
+        groups.set(t.themeName, { name: t.themeName, start: t.themeStart, end: t.themeEnd, tasks: [] });
+      }
+      const g = groups.get(t.themeName);
+      g.tasks.push(t);
+      // 同一主题内取最宽的时间区间，避免单条任务时间不一致
+      if (t.themeStart && (!g.start || t.themeStart < g.start)) g.start = t.themeStart;
+      if (t.themeEnd && (!g.end || t.themeEnd > g.end)) g.end = t.themeEnd;
+    });
+
+    let active = null;
+    groups.forEach(g => {
+      const started = !g.start || today >= g.start;
+      const notEnded = !g.end || today <= g.end;
+      if (started && notEnded) {
+        if (!active || (g.start && (!active.start || g.start > active.start))) active = g;
+      }
+    });
+    return active;
+  },
+
+  // 主题活动区：进行中 → 活动卡片（含系列任务）；否则 → 尽情期待占位
+  _themeSectionHtml() {
+    const theme = this._getActiveTheme();
+    if (!theme) {
+      return `
+        <div class="theme-card">
+          <div class="theme-soon">
+            <span class="soon-emoji">🎨</span>
+            <div class="soon-title">主题活动 · 尽情期待</div>
+            <div class="soon-sub">下一期主题活动正在筹备中，敬请期待～</div>
+          </div>
+        </div>
+      `;
+    }
+
+    const submissions = this._submissions || [];
+    const rangeText = (theme.start && theme.end)
+      ? `${theme.start.replace(/-/g, '.')} - ${theme.end.replace(/-/g, '.')}`
+      : '限时活动';
+
+    // 剩余天数（结束日当天也算）
+    let countdown = '';
+    if (theme.end) {
+      const today = new Date(localDateStr() + 'T00:00:00');
+      const end = new Date(theme.end + 'T00:00:00');
+      const days = Math.round((end - today) / 86400000) + 1;
+      countdown = days > 1 ? `剩 ${days} 天` : (days === 1 ? '今日结束' : '已结束');
+    }
+
+    let tasksHtml = '';
+    let doneCount = 0;
+    theme.tasks.forEach(task => {
+      const sub = submissions.find(s => s.taskId === task.id);
+      const status = sub ? sub.status : 'available';
+      if (status === 'claimed' || status === 'done' || status === 'approved') doneCount += (status === 'claimed' || status === 'done') ? 1 : 0;
+      tasksHtml += this._renderTaskCard(task, status, 'theme');
+    });
+    const total = theme.tasks.length;
+
+    return `
+      <div class="theme-card">
+        <div class="theme-head">
+          <span class="theme-badge">主题活动</span>
+          <span class="theme-name">🎨 ${theme.name}</span>
+          <span class="theme-countdown">${countdown}</span>
+        </div>
+        <div class="theme-meta">${rangeText} · 共 ${total} 个系列任务 · 已完成 ${doneCount}/${total}</div>
+        <div class="theme-tasks">${tasksHtml || '<div style="font-size:13px;color:#8a6bb0;text-align:center;padding:8px">活动任务陆续上架中～</div>'}</div>
+      </div>
+    `;
+  },
 
   async filterTasks(filter) {
     this.currentTaskFilter = filter;
@@ -2224,6 +2415,10 @@ const PlayerView = {
 
     const submissions = await DB.getSubmissions();
     this._submissions = submissions;
+
+    // 主题活动区随提交状态一起刷新（领取/审核状态变化）
+    const themeSec = document.getElementById('theme-section');
+    if (themeSec) themeSec.innerHTML = this._themeSectionHtml();
 
     const filter = this.currentTaskFilter;
     let html = '';
@@ -2463,7 +2658,7 @@ const PlayerView = {
   },
 
   submitTask(taskId) {
-    const task = [...this._dailyTasks, ...this._weeklyTasks].find(t => t.id == taskId);
+    const task = [...this._dailyTasks, ...this._weeklyTasks, ...(this._themeTasks || [])].find(t => t.id == taskId);
     if (!task) return;
 
     const overlay = UI.modal(`
@@ -2537,7 +2732,7 @@ const PlayerView = {
   },
 
   async claimTaskReward(taskId) {
-    const task = [...this._dailyTasks, ...this._weeklyTasks].find(t => t.id == taskId);
+    const task = [...this._dailyTasks, ...this._weeklyTasks, ...(this._themeTasks || [])].find(t => t.id == taskId);
     const sub = this._submissions.find(s => s.taskId == taskId);
     if (!task || !sub) return;
 
@@ -2844,6 +3039,101 @@ const PlayerView = {
 
     UI.modal(listHtml, { title: '📮 邮件' });
     UI._updateMailBadge();
+  },
+
+  // --- 成就 ---
+  _achTab: 1,
+  showAchievements() {
+    document.querySelectorAll('.modal-overlay').forEach(el => el.remove());
+    const tabs = getAchievementTabs();
+    if (!this._achTab || !tabs.find(t => t.tabId === this._achTab)) {
+      this._achTab = tabs[0] ? tabs[0].tabId : 1;
+    }
+    const overlay = UI.modal(`
+      <div class="ach-tabs" id="ach-tabs"></div>
+      <div class="ach-summary" id="ach-summary"></div>
+      <div class="ach-list" id="ach-list"></div>
+    `, { title: '🏆 成就' });
+
+    this._achOverlay = overlay;
+    this._renderAchTabs();
+    this._renderAchList();
+  },
+
+  _renderAchTabs() {
+    const tabs = getAchievementTabs();
+    const all = Game.getAchievementProgress();
+    const wrap = this._achOverlay.querySelector('#ach-tabs');
+    wrap.innerHTML = tabs.map(t => {
+      const claimable = all.filter(a => a.tabId === t.tabId && a.claimable).length;
+      const active = this._achTab === t.tabId;
+      return `<button class="ach-tab ${active ? 'active' : ''}" onclick="PlayerView.switchAchTab(${t.tabId})">
+        ${t.tabName}${claimable > 0 ? `<span class="ach-tab-dot">${claimable}</span>` : ''}
+      </button>`;
+    }).join('');
+
+    // 顶部汇总
+    const claimedCount = all.filter(a => a.claimed).length;
+    const sum = this._achOverlay.querySelector('#ach-summary');
+    sum.innerHTML = `已达成 <b>${claimedCount}</b> / ${all.length} 项成就`;
+  },
+
+  switchAchTab(tabId) {
+    this._achTab = tabId;
+    this._renderAchTabs();
+    this._renderAchList();
+  },
+
+  _renderAchList() {
+    const all = Game.getAchievementProgress();
+    const rows = all.filter(a => a.tabId === this._achTab);
+    // 排序：可领取 → 进行中 → 已领取；同组按目标值升序
+    const rank = a => a.claimable ? 0 : (a.claimed ? 2 : 1);
+    rows.sort((a, b) => (rank(a) - rank(b)) || (a.target - b.target));
+
+    const list = this._achOverlay.querySelector('#ach-list');
+    if (rows.length === 0) {
+      list.innerHTML = '<div class="empty-state"><div class="emoji">🏅</div><p>暂无成就</p></div>';
+      return;
+    }
+
+    list.innerHTML = rows.map(a => {
+      const def = ITEMS[String(a.rewardItemId)];
+      const rewardIcon = def ? (def.icon || '🎁') : '🎁';
+      const rewardName = def ? def.name : '道具';
+      const pct = Math.round(a.progress * 100);
+      let action;
+      if (a.claimed) {
+        action = '<button class="btn btn-outline btn-sm" disabled style="opacity:.55;cursor:default">已领取</button>';
+      } else if (a.claimable) {
+        action = `<button class="btn btn-primary btn-sm" onclick="PlayerView.claimAchievement(${a.achievementId})">领取</button>`;
+      } else {
+        action = '<button class="btn btn-outline btn-sm" disabled style="opacity:.55;cursor:default">未达成</button>';
+      }
+      return `
+        <div class="ach-row ${a.claimed ? 'claimed' : (a.claimable ? 'claimable' : '')}">
+          <div class="ach-icon">${a.icon}</div>
+          <div class="ach-info">
+            <div class="ach-name">${achievementGoalText(a.typeId, a.target)}</div>
+            <div class="ach-prog">
+              <div class="ach-prog-bar"><div class="ach-prog-fill" style="width:${pct}%"></div></div>
+              <span class="ach-prog-text">${Math.min(a.current, a.target)}/${a.target}</span>
+            </div>
+          </div>
+          <div class="ach-reward" title="${rewardName}">${rewardIcon}×${a.rewardCount}</div>
+          <div class="ach-action">${action}</div>
+        </div>
+      `;
+    }).join('');
+  },
+
+  async claimAchievement(achievementId) {
+    const ok = await Game.claimAchievement(achievementId);
+    if (ok) {
+      this._renderAchTabs();
+      this._renderAchList();
+      UI._updateAchBadge();
+    }
   },
 
   async renderMail() {
@@ -3359,6 +3649,7 @@ const AdminView = {
         <div class="filter-chip active" data-filter="all" onclick="AdminView.filterAdminTasks('all')">全部</div>
         <div class="filter-chip" data-filter="published" onclick="AdminView.filterAdminTasks('published')">已发布</div>
         <div class="filter-chip" data-filter="draft" onclick="AdminView.filterAdminTasks('draft')">发布池</div>
+        <div class="filter-chip" data-filter="theme" onclick="AdminView.filterAdminTasks('theme')">🎨 主题</div>
         <div class="filter-chip" data-filter="weekly" onclick="AdminView.filterAdminTasks('weekly')">每周</div>
         <div class="filter-chip" data-filter="daily" onclick="AdminView.filterAdminTasks('daily')">每日</div>
       </div>
@@ -3390,7 +3681,7 @@ const AdminView = {
     const f = this._adminTaskFilter;
     if (f === 'published' || f === 'draft') {
       tasks = tasks.filter(t => t.status === f);
-    } else if (f === 'weekly' || f === 'daily') {
+    } else if (f === 'weekly' || f === 'daily' || f === 'theme') {
       tasks = tasks.filter(t => t.taskType === f);
     }
 
@@ -3414,7 +3705,7 @@ const AdminView = {
         : '<span class="tag" style="background:#d4edda;color:#155724;font-size:11px">已发布</span>';
 
       const themeBadge = task.themeName
-        ? `<span class="tag" style="background:#e8daef;color:#6c3483;font-size:11px">🎨 ${task.themeName}</span>`
+        ? `<span class="tag" style="background:#e8daef;color:#6c3483;font-size:11px">🎨 ${task.themeName}${task.themeStart && task.themeEnd ? ` · ${task.themeStart}~${task.themeEnd}` : ''}</span>`
         : '';
 
       const statusBtn = task.status === 'draft'
@@ -3450,9 +3741,10 @@ const AdminView = {
     const overlay = UI.modal(`
       <div class="form-group">
         <label>任务类型</label>
-        <select id="new-task-type">
+        <select id="new-task-type" onchange="PlayerView._onCreateTaskTypeChange(this.closest('.modal-overlay'))">
           <option value="weekly">每周任务</option>
           <option value="daily">每日任务</option>
+          <option value="theme">🎨 主题任务（周期活动）</option>
         </select>
       </div>
       <div class="form-group">
@@ -3483,11 +3775,11 @@ const AdminView = {
           道具ID：40001(锻造石) / 30001(期石) / 30101(望石) / 30201(待石) / 20001(铜珠) / 20101(银锭) / 20201(金元宝) / 20301(灵玉)
         </div>
       </div>
-      <div style="border-top:1px solid var(--border);margin:12px 0;padding-top:12px">
-        <div style="font-weight:600;margin-bottom:8px;font-size:13px">🎨 主题设置（可选）</div>
+      <div style="border-top:1px solid var(--border);margin:12px 0;padding-top:12px" id="new-task-theme-box">
+        <div style="font-weight:600;margin-bottom:8px;font-size:13px">🎨 主题设置<span id="theme-required-hint" style="color:var(--danger);display:none">（主题任务必填）</span></div>
         <div class="form-group">
-          <label>主题名称</label>
-          <input type="text" id="new-task-theme" placeholder="比如：社交挑战周">
+          <label>主题名称（如：开学季）</label>
+          <input type="text" id="new-task-theme" placeholder="比如：开学季 · 收心行动">
         </div>
         <div style="display:flex;gap:8px">
           <div class="form-group" style="flex:1">
@@ -3498,6 +3790,9 @@ const AdminView = {
             <label>结束日期</label>
             <input type="date" id="new-task-theme-end">
           </div>
+        </div>
+        <div style="font-size:11px;color:var(--text-light);margin-top:-4px">
+          主题任务仅在起止时间内对玩家展示；活动结束后自动隐藏，显示“尽情期待”。
         </div>
       </div>
       <div class="form-group">
@@ -3529,6 +3824,15 @@ const AdminView = {
 
       if (!title) { UI.toast('请填写任务名称', 'warn'); return; }
 
+      // 主题任务：主题名 + 起止时间必填；非主题任务强制清空主题字段
+      let finalThemeName = null, finalThemeStart = null, finalThemeEnd = null;
+      if (taskType === 'theme') {
+        if (!themeName) { UI.toast('请填写主题名称', 'warn'); return; }
+        if (!themeStart || !themeEnd) { UI.toast('请设置主题活动的起止日期', 'warn'); return; }
+        if (themeEnd < themeStart) { UI.toast('结束日期不能早于开始日期', 'warn'); return; }
+        finalThemeName = themeName; finalThemeStart = themeStart; finalThemeEnd = themeEnd;
+      }
+
       let rewardItems = [];
       if (itemsStr) {
         rewardItems = itemsStr.split(',').map(s => {
@@ -3545,16 +3849,30 @@ const AdminView = {
         rewardChopping,
         rewardItems,
         status,
-        themeName,
-        themeStart,
-        themeEnd,
+        themeName: finalThemeName,
+        themeStart: finalThemeStart,
+        themeEnd: finalThemeEnd,
         sortOrder: this._adminTasks.length,
       });
 
       UI.closeModal(overlay);
-      UI.toast('任务创建成功', 'success');
+      UI.toast(taskType === 'theme' ? '主题任务创建成功' : '任务创建成功', 'success');
       this.renderTaskManage();
     });
+
+    // 初始化主题必填提示的显隐
+    this._onCreateTaskTypeChange(overlay);
+  },
+
+  // 创建任务弹窗：切换任务类型时，主题任务高亮主题设置为必填
+  _onCreateTaskTypeChange(overlayArg) {
+    const ov = overlayArg || document.querySelector('.modal-overlay:last-child');
+    if (!ov) return;
+    const typeEl = ov.querySelector('#new-task-type');
+    const hint = ov.querySelector('#theme-required-hint');
+    if (!typeEl || !hint) return;
+    const isTheme = typeEl.value === 'theme';
+    hint.style.display = isTheme ? 'inline' : 'none';
   },
 
   deleteTask(id) {

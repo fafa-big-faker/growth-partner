@@ -14,3 +14,8 @@ config_qr.png
 
 # 配置备份
 config-backup/
+
+# 运行时临时目录
+.uploads/
+.screenshots/
+.trae-html-share-packages/

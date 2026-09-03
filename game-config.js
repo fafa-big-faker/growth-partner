@@ -1,6 +1,6 @@
 // ===== 游戏配置文件（由 sync-config.py 从飞书表格自动生成）=====
 // 修改飞书表格后运行同步脚本即可更新，请勿手动编辑此文件
-// 最后同步: 2026-09-03 16:50:48
+// 最后同步: 2026-09-03 18:22:58
 
 const GAME_CONFIG = {
   // 角色等级经验表（共 150 条）
@@ -2176,7 +2176,7 @@ const GAME_CONFIG = {
   }
 ],
 
-  // 商店表（天道酬勤商店，售价单位：游戏币；limitType 1=不限 2=月限购 3=仙阶限购）（共 8 条）
+  // 天道酬勤商店表（共 8 条）
   shopTable: [
   {
     "shopId": 1,
@@ -2252,7 +2252,7 @@ const GAME_CONFIG = {
   }
 ],
 
-  // 累签奖励表（本月累计签到里程碑，按 requiredDays 升序）（共 4 条）
+  // 累签奖励配置表（共 4 条）
   signInTable: [
   {
     "rewardId": 1,
@@ -2297,6 +2297,696 @@ const GAME_CONFIG = {
     ],
     "note": "",
     "requiredDays": 28
+  }
+],
+
+  // 成就页签表（共 3 条）
+  achievementTabTable: [
+  {
+    "tabId": 1,
+    "tabName": "修身"
+  },
+  {
+    "tabId": 2,
+    "tabName": "锻体"
+  },
+  {
+    "tabId": 3,
+    "tabName": "致富"
+  }
+],
+
+  // 成就类型表（共 6 条）
+  achievementTypeTable: [
+  {
+    "typeId": 1,
+    "paramKey": "value",
+    "paramNote": "角色等级",
+    "displayText": "自身达到{value}级",
+    "tabId": 1
+  },
+  {
+    "typeId": 2,
+    "paramKey": "value",
+    "paramNote": "角色仙阶，展示文案里引用仙阶的名字",
+    "displayText": "自身突破至{value}",
+    "tabId": 1
+  },
+  {
+    "typeId": 3,
+    "paramKey": "value",
+    "paramNote": "仙树灵阶",
+    "displayText": "",
+    "tabId": 2
+  },
+  {
+    "typeId": 4,
+    "paramKey": "value",
+    "paramNote": "消耗砍树次数",
+    "displayText": "",
+    "tabId": 2
+  },
+  {
+    "typeId": 5,
+    "paramKey": "value",
+    "paramNote": "历史获取游戏币数量",
+    "displayText": "",
+    "tabId": 3
+  },
+  {
+    "typeId": 6,
+    "paramKey": "value",
+    "paramNote": "提现总额",
+    "displayText": "",
+    "tabId": 3
+  }
+],
+
+  // 成就奖励表（共 78 条）
+  achievementTable: [
+  {
+    "achievementId": 1,
+    "typeId": 1,
+    "typeParam": 5,
+    "rewardItemId": "1",
+    "rewardCount": 3,
+    "note": "成就ID意味着排序顺序，越小排越前"
+  },
+  {
+    "achievementId": 2,
+    "typeId": 1,
+    "typeParam": 10,
+    "rewardItemId": "1",
+    "rewardCount": 6,
+    "note": ""
+  },
+  {
+    "achievementId": 3,
+    "typeId": 1,
+    "typeParam": 15,
+    "rewardItemId": "1",
+    "rewardCount": 9,
+    "note": ""
+  },
+  {
+    "achievementId": 4,
+    "typeId": 1,
+    "typeParam": 20,
+    "rewardItemId": "1",
+    "rewardCount": 12,
+    "note": ""
+  },
+  {
+    "achievementId": 5,
+    "typeId": 1,
+    "typeParam": 25,
+    "rewardItemId": "1",
+    "rewardCount": 15,
+    "note": ""
+  },
+  {
+    "achievementId": 6,
+    "typeId": 1,
+    "typeParam": 30,
+    "rewardItemId": "1",
+    "rewardCount": 18,
+    "note": ""
+  },
+  {
+    "achievementId": 7,
+    "typeId": 1,
+    "typeParam": 35,
+    "rewardItemId": "1",
+    "rewardCount": 21,
+    "note": ""
+  },
+  {
+    "achievementId": 8,
+    "typeId": 1,
+    "typeParam": 40,
+    "rewardItemId": "1",
+    "rewardCount": 24,
+    "note": ""
+  },
+  {
+    "achievementId": 9,
+    "typeId": 1,
+    "typeParam": 45,
+    "rewardItemId": "1",
+    "rewardCount": 27,
+    "note": ""
+  },
+  {
+    "achievementId": 10,
+    "typeId": 1,
+    "typeParam": 50,
+    "rewardItemId": "1",
+    "rewardCount": 30,
+    "note": ""
+  },
+  {
+    "achievementId": 11,
+    "typeId": 1,
+    "typeParam": 55,
+    "rewardItemId": "1",
+    "rewardCount": 33,
+    "note": ""
+  },
+  {
+    "achievementId": 12,
+    "typeId": 1,
+    "typeParam": 60,
+    "rewardItemId": "1",
+    "rewardCount": 36,
+    "note": ""
+  },
+  {
+    "achievementId": 13,
+    "typeId": 1,
+    "typeParam": 65,
+    "rewardItemId": "1",
+    "rewardCount": 39,
+    "note": ""
+  },
+  {
+    "achievementId": 14,
+    "typeId": 1,
+    "typeParam": 70,
+    "rewardItemId": "1",
+    "rewardCount": 42,
+    "note": ""
+  },
+  {
+    "achievementId": 15,
+    "typeId": 1,
+    "typeParam": 75,
+    "rewardItemId": "1",
+    "rewardCount": 45,
+    "note": ""
+  },
+  {
+    "achievementId": 16,
+    "typeId": 1,
+    "typeParam": 80,
+    "rewardItemId": "1",
+    "rewardCount": 48,
+    "note": ""
+  },
+  {
+    "achievementId": 17,
+    "typeId": 1,
+    "typeParam": 85,
+    "rewardItemId": "1",
+    "rewardCount": 51,
+    "note": ""
+  },
+  {
+    "achievementId": 18,
+    "typeId": 1,
+    "typeParam": 90,
+    "rewardItemId": "1",
+    "rewardCount": 54,
+    "note": ""
+  },
+  {
+    "achievementId": 19,
+    "typeId": 1,
+    "typeParam": 95,
+    "rewardItemId": "1",
+    "rewardCount": 57,
+    "note": ""
+  },
+  {
+    "achievementId": 20,
+    "typeId": 1,
+    "typeParam": 100,
+    "rewardItemId": "1",
+    "rewardCount": 60,
+    "note": ""
+  },
+  {
+    "achievementId": 21,
+    "typeId": 1,
+    "typeParam": 105,
+    "rewardItemId": "1",
+    "rewardCount": 63,
+    "note": ""
+  },
+  {
+    "achievementId": 22,
+    "typeId": 1,
+    "typeParam": 110,
+    "rewardItemId": "1",
+    "rewardCount": 66,
+    "note": ""
+  },
+  {
+    "achievementId": 23,
+    "typeId": 1,
+    "typeParam": 115,
+    "rewardItemId": "1",
+    "rewardCount": 69,
+    "note": ""
+  },
+  {
+    "achievementId": 24,
+    "typeId": 1,
+    "typeParam": 120,
+    "rewardItemId": "1",
+    "rewardCount": 72,
+    "note": ""
+  },
+  {
+    "achievementId": 25,
+    "typeId": 1,
+    "typeParam": 125,
+    "rewardItemId": "1",
+    "rewardCount": 75,
+    "note": ""
+  },
+  {
+    "achievementId": 26,
+    "typeId": 1,
+    "typeParam": 130,
+    "rewardItemId": "1",
+    "rewardCount": 78,
+    "note": ""
+  },
+  {
+    "achievementId": 27,
+    "typeId": 1,
+    "typeParam": 135,
+    "rewardItemId": "1",
+    "rewardCount": 81,
+    "note": ""
+  },
+  {
+    "achievementId": 28,
+    "typeId": 1,
+    "typeParam": 140,
+    "rewardItemId": "1",
+    "rewardCount": 84,
+    "note": ""
+  },
+  {
+    "achievementId": 29,
+    "typeId": 1,
+    "typeParam": 145,
+    "rewardItemId": "1",
+    "rewardCount": 87,
+    "note": ""
+  },
+  {
+    "achievementId": 30,
+    "typeId": 1,
+    "typeParam": 150,
+    "rewardItemId": "1",
+    "rewardCount": 90,
+    "note": ""
+  },
+  {
+    "achievementId": 31,
+    "typeId": 2,
+    "typeParam": 2,
+    "rewardItemId": "40001",
+    "rewardCount": 5,
+    "note": ""
+  },
+  {
+    "achievementId": 32,
+    "typeId": 2,
+    "typeParam": 3,
+    "rewardItemId": "40001",
+    "rewardCount": 10,
+    "note": ""
+  },
+  {
+    "achievementId": 33,
+    "typeId": 2,
+    "typeParam": 4,
+    "rewardItemId": "40001",
+    "rewardCount": 15,
+    "note": ""
+  },
+  {
+    "achievementId": 34,
+    "typeId": 2,
+    "typeParam": 5,
+    "rewardItemId": "40001",
+    "rewardCount": 20,
+    "note": ""
+  },
+  {
+    "achievementId": 35,
+    "typeId": 2,
+    "typeParam": 6,
+    "rewardItemId": "40001",
+    "rewardCount": 25,
+    "note": ""
+  },
+  {
+    "achievementId": 36,
+    "typeId": 2,
+    "typeParam": 7,
+    "rewardItemId": "40001",
+    "rewardCount": 30,
+    "note": ""
+  },
+  {
+    "achievementId": 37,
+    "typeId": 2,
+    "typeParam": 8,
+    "rewardItemId": "40001",
+    "rewardCount": 35,
+    "note": ""
+  },
+  {
+    "achievementId": 38,
+    "typeId": 2,
+    "typeParam": 9,
+    "rewardItemId": "40001",
+    "rewardCount": 40,
+    "note": ""
+  },
+  {
+    "achievementId": 39,
+    "typeId": 2,
+    "typeParam": 10,
+    "rewardItemId": "40001",
+    "rewardCount": 45,
+    "note": ""
+  },
+  {
+    "achievementId": 40,
+    "typeId": 2,
+    "typeParam": 11,
+    "rewardItemId": "40001",
+    "rewardCount": 50,
+    "note": ""
+  },
+  {
+    "achievementId": 41,
+    "typeId": 2,
+    "typeParam": 12,
+    "rewardItemId": "40001",
+    "rewardCount": 55,
+    "note": ""
+  },
+  {
+    "achievementId": 42,
+    "typeId": 2,
+    "typeParam": 13,
+    "rewardItemId": "40001",
+    "rewardCount": 60,
+    "note": ""
+  },
+  {
+    "achievementId": 43,
+    "typeId": 2,
+    "typeParam": 14,
+    "rewardItemId": "40001",
+    "rewardCount": 65,
+    "note": ""
+  },
+  {
+    "achievementId": 44,
+    "typeId": 2,
+    "typeParam": 15,
+    "rewardItemId": "40001",
+    "rewardCount": 70,
+    "note": ""
+  },
+  {
+    "achievementId": 45,
+    "typeId": 3,
+    "typeParam": 1,
+    "rewardItemId": "1",
+    "rewardCount": 2,
+    "note": ""
+  },
+  {
+    "achievementId": 46,
+    "typeId": 3,
+    "typeParam": 2,
+    "rewardItemId": "1",
+    "rewardCount": 4,
+    "note": ""
+  },
+  {
+    "achievementId": 47,
+    "typeId": 3,
+    "typeParam": 3,
+    "rewardItemId": "1",
+    "rewardCount": 6,
+    "note": ""
+  },
+  {
+    "achievementId": 48,
+    "typeId": 3,
+    "typeParam": 4,
+    "rewardItemId": "1",
+    "rewardCount": 8,
+    "note": ""
+  },
+  {
+    "achievementId": 49,
+    "typeId": 3,
+    "typeParam": 5,
+    "rewardItemId": "1",
+    "rewardCount": 10,
+    "note": ""
+  },
+  {
+    "achievementId": 50,
+    "typeId": 3,
+    "typeParam": 6,
+    "rewardItemId": "1",
+    "rewardCount": 12,
+    "note": ""
+  },
+  {
+    "achievementId": 51,
+    "typeId": 3,
+    "typeParam": 7,
+    "rewardItemId": "1",
+    "rewardCount": 14,
+    "note": ""
+  },
+  {
+    "achievementId": 52,
+    "typeId": 3,
+    "typeParam": 8,
+    "rewardItemId": "1",
+    "rewardCount": 16,
+    "note": ""
+  },
+  {
+    "achievementId": 53,
+    "typeId": 3,
+    "typeParam": 9,
+    "rewardItemId": "1",
+    "rewardCount": 18,
+    "note": ""
+  },
+  {
+    "achievementId": 54,
+    "typeId": 3,
+    "typeParam": 10,
+    "rewardItemId": "1",
+    "rewardCount": 20,
+    "note": ""
+  },
+  {
+    "achievementId": 55,
+    "typeId": 3,
+    "typeParam": 11,
+    "rewardItemId": "1",
+    "rewardCount": 22,
+    "note": ""
+  },
+  {
+    "achievementId": 56,
+    "typeId": 3,
+    "typeParam": 12,
+    "rewardItemId": "1",
+    "rewardCount": 24,
+    "note": ""
+  },
+  {
+    "achievementId": 57,
+    "typeId": 3,
+    "typeParam": 13,
+    "rewardItemId": "1",
+    "rewardCount": 26,
+    "note": ""
+  },
+  {
+    "achievementId": 58,
+    "typeId": 3,
+    "typeParam": 14,
+    "rewardItemId": "1",
+    "rewardCount": 28,
+    "note": ""
+  },
+  {
+    "achievementId": 59,
+    "typeId": 3,
+    "typeParam": 15,
+    "rewardItemId": "1",
+    "rewardCount": 30,
+    "note": ""
+  },
+  {
+    "achievementId": 60,
+    "typeId": 4,
+    "typeParam": 99,
+    "rewardItemId": "1",
+    "rewardCount": 10,
+    "note": ""
+  },
+  {
+    "achievementId": 61,
+    "typeId": 4,
+    "typeParam": 233,
+    "rewardItemId": "1",
+    "rewardCount": 15,
+    "note": ""
+  },
+  {
+    "achievementId": 62,
+    "typeId": 4,
+    "typeParam": 666,
+    "rewardItemId": "1",
+    "rewardCount": 20,
+    "note": ""
+  },
+  {
+    "achievementId": 63,
+    "typeId": 4,
+    "typeParam": 888,
+    "rewardItemId": "1",
+    "rewardCount": 25,
+    "note": ""
+  },
+  {
+    "achievementId": 64,
+    "typeId": 4,
+    "typeParam": 2888,
+    "rewardItemId": "1",
+    "rewardCount": 30,
+    "note": ""
+  },
+  {
+    "achievementId": 65,
+    "typeId": 4,
+    "typeParam": 4888,
+    "rewardItemId": "1",
+    "rewardCount": 35,
+    "note": ""
+  },
+  {
+    "achievementId": 66,
+    "typeId": 4,
+    "typeParam": 6888,
+    "rewardItemId": "1",
+    "rewardCount": 40,
+    "note": ""
+  },
+  {
+    "achievementId": 67,
+    "typeId": 5,
+    "typeParam": 99,
+    "rewardItemId": "1",
+    "rewardCount": 10,
+    "note": ""
+  },
+  {
+    "achievementId": 68,
+    "typeId": 5,
+    "typeParam": 233,
+    "rewardItemId": "1",
+    "rewardCount": 15,
+    "note": ""
+  },
+  {
+    "achievementId": 69,
+    "typeId": 5,
+    "typeParam": 666,
+    "rewardItemId": "1",
+    "rewardCount": 20,
+    "note": ""
+  },
+  {
+    "achievementId": 70,
+    "typeId": 5,
+    "typeParam": 888,
+    "rewardItemId": "1",
+    "rewardCount": 25,
+    "note": ""
+  },
+  {
+    "achievementId": 71,
+    "typeId": 5,
+    "typeParam": 2888,
+    "rewardItemId": "1",
+    "rewardCount": 30,
+    "note": ""
+  },
+  {
+    "achievementId": 72,
+    "typeId": 5,
+    "typeParam": 4888,
+    "rewardItemId": "1",
+    "rewardCount": 35,
+    "note": ""
+  },
+  {
+    "achievementId": 73,
+    "typeId": 5,
+    "typeParam": 6888,
+    "rewardItemId": "1",
+    "rewardCount": 40,
+    "note": ""
+  },
+  {
+    "achievementId": 74,
+    "typeId": 6,
+    "typeParam": 100,
+    "rewardItemId": "40001",
+    "rewardCount": 5,
+    "note": ""
+  },
+  {
+    "achievementId": 75,
+    "typeId": 6,
+    "typeParam": 800,
+    "rewardItemId": "40001",
+    "rewardCount": 10,
+    "note": ""
+  },
+  {
+    "achievementId": 76,
+    "typeId": 6,
+    "typeParam": 1800,
+    "rewardItemId": "40001",
+    "rewardCount": 25,
+    "note": ""
+  },
+  {
+    "achievementId": 77,
+    "typeId": 6,
+    "typeParam": 3600,
+    "rewardItemId": "40001",
+    "rewardCount": 50,
+    "note": ""
+  },
+  {
+    "achievementId": 78,
+    "typeId": 6,
+    "typeParam": 7200,
+    "rewardItemId": "40001",
+    "rewardCount": 100,
+    "note": ""
   }
 ],
 };
@@ -2364,4 +3054,20 @@ function getShopItems() {
       quality: def ? def.quality : 1,
     };
   });
+}
+
+// 成就页签（修身/锻体/致富）
+function getAchievementTabs() {
+  return (GAME_CONFIG.achievementTabTable || []).slice().sort((a, b) => a.tabId - b.tabId);
+}
+
+// 成就类型定义
+function getAchievementTypes() {
+  return GAME_CONFIG.achievementTypeTable || [];
+}
+
+// 成就奖励配置（按类型、ID排序）
+function getAchievements() {
+  return (GAME_CONFIG.achievementTable || []).slice().sort((a, b) =>
+    (a.typeId - b.typeId) || (a.achievementId - b.achievementId));
 }

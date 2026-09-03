@@ -19,6 +19,7 @@ SHEETS = {
     "锻造表": "NaCas6rwihqLZgtgmUhcjzGLnFd",
     "商店表": "VwFKsb8UhhWBBvtaSmEcb597nvD",
     "累签表": "TfrNskLjxhOC5HtN5jbcLMPMncc",
+    "成就表": "HD17s9QeThiH2FtzJ5kcO9CTnge",
 }
 
 def lark_cli(*args):
@@ -254,39 +255,85 @@ for row in rows[2:]:
     })
 print(f"    {len(forge_table)} 条")
 
-# 12. 商店表（天道酬勤商店，售价单位：游戏币）
-print("  → 商店表（天道酬勤商店）")
-rows = read_sheet(SHEETS["商店表"], "天道酬勤商店表", "A1:G100")
+# 12. 天道酬勤商店表
+print("  → 天道酬勤商店表")
+rows = read_sheet(SHEETS["商店表"], "天道酬勤商店表", "A1:H100")
 shop_table = []
-for row in rows[2:]:  # 跳过表头2行
-    if not row[0] or not str(row[0]).strip():
+for row in rows[2:]:
+    if not row[0]:
         continue
     shop_table.append({
         "shopId": to_int(row[0]),
-        "itemId": str(to_int(row[1])) if str(row[1]).strip() else "",
+        "itemId": to_str(row[1]),
         "itemCount": to_int(row[2], 1),
-        "limitType": to_int(row[3], 1),
-        "limitParam": to_str(row[4]) if len(row) > 4 else "",
+        "limitType": to_int(row[3]),
+        "limitParam": to_str(row[4]),
         "price": to_int(row[5]),
         "note": to_str(row[6]) if len(row) > 6 else "",
     })
 print(f"    {len(shop_table)} 条")
 
-# 13. 累签奖励表（本月累计签到里程碑）
-print("  → 累签奖励表")
-rows = read_sheet(SHEETS["累签表"], "累签奖励配置", "A1:D50")
+# 13. 累签奖励配置表
+print("  → 累签奖励配置表")
+rows = read_sheet(SHEETS["累签表"], "累签奖励配置", "A1:F50")
 signin_table = []
-for row in rows[2:]:  # 跳过表头2行
-    if not row[0] or not str(row[0]).strip():
+for row in rows[2:]:
+    if not row[0]:
         continue
+    items = []
+    if row[1]:
+        for part in str(row[1]).split(";"):
+            nums = [to_int(x) for x in part.replace("，", ",").split(",") if str(x).strip()]
+            if len(nums) >= 2:
+                items.append({"itemId": str(nums[0]), "count": nums[1]})
+            elif len(nums) == 1:
+                items.append({"itemId": str(nums[0]), "count": 1})
     signin_table.append({
         "rewardId": to_int(row[0]),
-        "items": parse_req_items(row[1] if len(row) > 1 else ""),
-        "note": to_str(row[2]) if len(row) > 2 else "",
-        "requiredDays": to_int(row[3]) if len(row) > 3 else 0,
+        "items": items,
+        "note": to_str(row[2]),
+        "requiredDays": to_int(row[3]),
     })
-signin_table.sort(key=lambda x: x["requiredDays"])
+signin_table.sort(key=lambda r: r["requiredDays"])
 print(f"    {len(signin_table)} 条")
+
+# 14. 成就奖励表（含 页签表 / 成就类型表 / 成就奖励表 三个工作表）
+print("  → 成就奖励表")
+ach_tabs = []
+rows = read_sheet(SHEETS["成就表"], "页签表", "A1:B20")
+for row in rows[2:]:
+    if not row[0]:
+        continue
+    ach_tabs.append({"tabId": to_int(row[0]), "tabName": to_str(row[1])})
+
+ach_types = []
+rows = read_sheet(SHEETS["成就表"], "成就类型表", "A1:F30")
+for row in rows[2:]:
+    if not row[0]:
+        continue
+    ach_types.append({
+        "typeId": to_int(row[0]),
+        "paramKey": to_str(row[1]),
+        "paramNote": to_str(row[2]),
+        "displayText": to_str(row[3]),
+        "tabId": to_int(row[4]),
+    })
+
+ach_table = []
+rows = read_sheet(SHEETS["成就表"], "成就奖励表", "A1:F200")
+for row in rows[2:]:
+    if not row[0]:
+        continue
+    ach_table.append({
+        "achievementId": to_int(row[0]),
+        "typeId": to_int(row[1]),
+        "typeParam": to_int(row[2]),
+        "rewardItemId": to_str(row[3]),
+        "rewardCount": to_int(row[4]),
+        "note": to_str(row[5]) if len(row) > 5 else "",
+    })
+ach_table.sort(key=lambda a: (a["typeId"], a["achievementId"]))
+print(f"    页签 {len(ach_tabs)} | 类型 {len(ach_types)} | 成就 {len(ach_table)} 条")
 
 # ===== 生成 game-config.js =====
 print("\n📝 生成 game-config.js...")
@@ -331,11 +378,20 @@ const GAME_CONFIG = {{
   // 锻造表（共 {len(forge_table)} 条）
   forgeTable: {json.dumps(forge_table, ensure_ascii=False, indent=2)},
 
-  // 商店表（天道酬勤商店，售价单位：游戏币；limitType 1=不限 2=月限购 3=仙阶限购）（共 {len(shop_table)} 条）
+  // 天道酬勤商店表（共 {len(shop_table)} 条）
   shopTable: {json.dumps(shop_table, ensure_ascii=False, indent=2)},
 
-  // 累签奖励表（本月累计签到里程碑，按 requiredDays 升序）（共 {len(signin_table)} 条）
+  // 累签奖励配置表（共 {len(signin_table)} 条）
   signInTable: {json.dumps(signin_table, ensure_ascii=False, indent=2)},
+
+  // 成就页签表（共 {len(ach_tabs)} 条）
+  achievementTabTable: {json.dumps(ach_tabs, ensure_ascii=False, indent=2)},
+
+  // 成就类型表（共 {len(ach_types)} 条）
+  achievementTypeTable: {json.dumps(ach_types, ensure_ascii=False, indent=2)},
+
+  // 成就奖励表（共 {len(ach_table)} 条）
+  achievementTable: {json.dumps(ach_table, ensure_ascii=False, indent=2)},
 }};
 
 // ===== 辅助函数 =====
@@ -402,6 +458,22 @@ function getShopItems() {{
     }};
   }});
 }}
+
+// 成就页签（修身/锻体/致富）
+function getAchievementTabs() {{
+  return (GAME_CONFIG.achievementTabTable || []).slice().sort((a, b) => a.tabId - b.tabId);
+}}
+
+// 成就类型定义
+function getAchievementTypes() {{
+  return GAME_CONFIG.achievementTypeTable || [];
+}}
+
+// 成就奖励配置（按类型、ID排序）
+function getAchievements() {{
+  return (GAME_CONFIG.achievementTable || []).slice().sort((a, b) =>
+    (a.typeId - b.typeId) || (a.achievementId - b.achievementId));
+}}
 """
 
 with open(OUTPUT, "w", encoding="utf-8") as f:
@@ -411,4 +483,3 @@ print(f"✅ 已生成 {OUTPUT}")
 print(f"   经验: {len(exp_table)} | 仙阶: {len(realm_table)} | 道具: {len(item_table)} | 品质: {len(quality_table)}")
 print(f"   交互: {len(interaction_table)} | 技能: {len(skill_table)} | BUFF: {len(buff_table)}")
 print(f"   仙树: {len(tree_table)} | 奖池权重: {len(pool_weight_table)} | 奖励包: {len(pack_table)} | 锻造: {len(forge_table)}")
-print(f"   商店: {len(shop_table)} | 累签奖励: {len(signin_table)}")
