@@ -2773,6 +2773,8 @@ const PlayerView = {
 
   // 锻造弹窗
   showForge() {
+    // 清除可能残留的弹窗（避免锻造结果弹窗叠加导致按钮状态异常）
+    document.querySelectorAll('.modal-overlay').forEach(el => el.remove());
     const forgeQty = Game.inventory.find(i => i.itemId == '40001')?.quantity || 0;
 
     // 计算锻造奖池各品质概率（总权重1000）
@@ -2833,7 +2835,7 @@ const PlayerView = {
             🔒 需达到【${minRealm?.name || '?'}】才能装备，已放入背包
           </div>
         `;
-        UI.modal(`
+        const resultOverlay = UI.modal(`
           <div style="text-align:center;padding:16px 0">
             <div style="font-size:80px;margin-bottom:12px;animation:tree-shake 0.5s ease-in-out">${result.item.icon}</div>
             <div style="font-size:20px;font-weight:700;color:${q.color}">${result.item.name}</div>
@@ -2845,9 +2847,17 @@ const PlayerView = {
         `, {
           title: '🎉 锻造成功',
           footer: `<div class="modal-footer">
-            <button class="btn btn-primary btn-sm" onclick="this.closest('.modal-overlay').remove();PlayerView.showForge()">继续锻造</button>
+            <button class="btn btn-primary btn-sm" onclick="PlayerView.showForge()">继续锻造</button>
             ${canEquip ? `<button class="btn btn-accent btn-sm" onclick="PlayerView._equipFromForge('${result.itemId}')">立即装备</button>` : ''}
           </div>`
+        });
+        // X按钮和遮罩关闭后，回到锻造弹窗（刷新按钮状态和锻铁数量）
+        const closeBtn = resultOverlay.querySelector('.modal-close');
+        if (closeBtn) {
+          closeBtn.onclick = () => { resultOverlay.remove(); PlayerView.showForge(); };
+        }
+        resultOverlay.addEventListener('click', (e) => {
+          if (e.target === resultOverlay) { resultOverlay.remove(); PlayerView.showForge(); }
         });
       } else {
         btn.disabled = false;
