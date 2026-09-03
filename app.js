@@ -706,9 +706,10 @@ const Game = {
       return null;
     }
 
+    // === 本地状态变更（不等待DB）===
+
     // 消耗砍树次数
     this.state.choppingCount -= 1;
-    await DB.updatePlayerState({ choppingCount: this.state.choppingCount });
 
     // 随机掉落
     const treeConfig = TREE_LEVELS[this.state.treeLevel] || TREE_LEVELS[1];
@@ -717,23 +718,43 @@ const Game = {
     // 应用仙斧buff
     item = this._applyAxeBuffs(item);
 
-    // 发奖励
-    await DB.addItem(item.itemId, item.quantity);
+    // 更新本地背包
     const idx = this.inventory.findIndex(i => i.itemId == item.itemId);
     if (idx >= 0) this.inventory[idx].quantity += item.quantity;
     else this.inventory.push({ itemId: item.itemId, quantity: item.quantity });
 
-    // 返还砍树次数buff
+    // 返还砍树次数buff（仅本地状态，不写DB）
     const refund = this._checkRefundBuff();
     if (refund > 0) {
       item.refundChopping = refund;
     }
 
-    // 加经验
+    // 加经验（仅本地状态）
     const expGain = 2 + item.quality;
-    await this._addExp(expGain);
+    this.state.exp += expGain;
+    let leveledUp = false;
+    while (this.state.exp >= getExpForLevel(this.state.level)) {
+      this.state.exp -= getExpForLevel(this.state.level);
+      this.state.level += 1;
+      leveledUp = true;
+    }
+    if (leveledUp) {
+      UI.toast(`恭喜！升级到 Lv.${this.state.level}`, 'success');
+    }
 
     UI.updateHeader();
+
+    // === 批量异步写入DB（不阻塞返回）===
+    const stateUpdate = {
+      choppingCount: this.state.choppingCount,
+      level: this.state.level,
+      exp: this.state.exp,
+    };
+    Promise.all([
+      DB.updatePlayerState(stateUpdate),
+      DB.addItem(item.itemId, item.quantity),
+    ]).catch(e => console.error('chop DB sync error:', e));
+
     return item;
   },
 
@@ -1081,7 +1102,7 @@ const Game = {
         if (Math.random() < prob) {
           const refund = Math.round(refundAmount);
           this.state.choppingCount += refund;
-          DB.updatePlayerState({ choppingCount: this.state.choppingCount });
+          // DB写入由chop()批量处理，此处仅更新本地状态
           totalRefund += refund;
         }
       }
