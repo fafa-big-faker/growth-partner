@@ -88,55 +88,29 @@ if (Object.keys(QUALITY).length === 0) {
   QUALITY[5] = { name: '仙品', color: '#f0b429' };
 }
 
-// 仙树各灵阶品质权重（总权重1000，对应5个品质凡/精/珍/神/仙）
-// 从飞书表格配置动态构建，同品质内道具均分概率
-const TREE_QUALITY_WEIGHTS = [
-  [950, 40,  10,  0,   0],   // 灵阶0 (初始)
-  [900, 80,  20,  0,   0],   // 灵阶1
-  [800, 150, 50,  0,   0],   // 灵阶2
-  [700, 200, 80,  15,  5],   // 灵阶3
-  [600, 230, 120, 35,  15],  // 灵阶4
-  [500, 250, 160, 60,  30],  // 灵阶5
-  [400, 260, 200, 90,  50],  // 灵阶6
-  [320, 260, 240, 120, 60],  // 灵阶7
-  [250, 250, 270, 150, 80],  // 灵阶8
-  [180, 240, 290, 180, 110], // 灵阶9
-  [120, 220, 300, 220, 140], // 灵阶10
-  [80,  200, 310, 250, 160], // 灵阶11
-  [50,  180, 310, 280, 180], // 灵阶12
-  [30,  150, 300, 320, 200], // 灵阶13
-  [15,  120, 280, 350, 235], // 灵阶14
-  [5,   80,  250, 360, 305], // 灵阶15
-];
+// 仙树图标（按灵阶索引）
 const TREE_ICONS = ['🌱','🌱','🌿','🎋','🌳','🌲','🪴','🎍','🌴','🎄','🌵','🍀','🍁','🍂','🌾','🌟'];
 
-// 获取材料品质奖池（poolId 1001-1005）
-function _getMaterialPoolItems(quality) {
-  const pool = (GAME_CONFIG?.poolTable || []).find(p => p.qualityId === quality && String(p.poolId).startsWith('1'));
-  return pool ? pool.items.map(String) : [];
-}
-
-// 获取仙斧品质奖池（poolId 2001-2005）
-function _getAxePoolItems(quality) {
-  const pool = (GAME_CONFIG?.poolTable || []).find(p => p.qualityId === quality && String(p.poolId).startsWith('2'));
-  return pool ? pool.items.map(String) : [];
-}
-
+// 仙树各灵阶配置 → 从飞书表格动态构建（treeTable + poolWeightTable + packTable）
+// 每个灵阶对应一个奖池(poolId)，奖池内按奖励包权重分配，同包内道具均分概率
 const TREE_LEVELS = {};
 (GAME_CONFIG?.treeTable || []).forEach((tree, idx) => {
-  const weights = TREE_QUALITY_WEIGHTS[idx] || TREE_QUALITY_WEIGHTS[TREE_QUALITY_WEIGHTS.length - 1];
-  const pools = [];
-  for (let q = 1; q <= 5; q++) {
-    const items = _getMaterialPoolItems(q);
-    if (items.length > 0 && weights[q - 1] > 0) {
-      pools.push({ quality: q, weight: weights[q - 1], items });
-    }
-  }
+  const poolData = getPoolById(tree.poolId);
+  const pools = poolData.packs.map(p => ({
+    quality: p.qualityId,
+    weight: p.weight,
+    items: p.items,
+  }));
+  // 构建5品质权重数组（用于UI展示概率）
+  const qualityWeights = [0, 0, 0, 0, 0];
+  pools.forEach(p => {
+    if (p.quality >= 1 && p.quality <= 5) qualityWeights[p.quality - 1] = p.weight;
+  });
   TREE_LEVELS[tree.id] = {
     name: tree.name,
     icon: TREE_ICONS[idx] || '🌳',
     pools,
-    qualityWeights: weights,
+    qualityWeights,
   };
 });
 
@@ -189,17 +163,16 @@ const TREE_REALMS = (GAME_CONFIG?.treeTable || []).map((tree, idx) => ({
   desc: '',
 }));
 
-// 锻造奖池 → 品质权重系统（总权重1000，同品质内仙斧均分概率）
-const FORGE_QUALITY_WEIGHTS = [900, 50, 30, 19, 1]; // 凡/精/珍/神/仙
+// 锻造奖池 → 从飞书锻造表读取 forgePoolId，动态获取奖池配置
 const FORGE_POOL = (() => {
-  const result = [];
-  for (let q = 1; q <= 5; q++) {
-    const items = _getAxePoolItems(q);
-    if (items.length > 0 && FORGE_QUALITY_WEIGHTS[q - 1] > 0) {
-      result.push({ quality: q, weight: FORGE_QUALITY_WEIGHTS[q - 1], items });
-    }
-  }
-  return result;
+  const forgeConfig = (GAME_CONFIG?.forgeTable || [])[0];
+  if (!forgeConfig) return [];
+  const poolData = getPoolById(forgeConfig.forgePoolId);
+  return poolData.packs.map(p => ({
+    quality: p.qualityId,
+    weight: p.weight,
+    items: p.items,
+  }));
 })();
 
 // 难度颜色映射

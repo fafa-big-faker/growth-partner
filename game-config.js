@@ -1,6 +1,6 @@
 // ===== 游戏配置文件（由 sync-config.py 从飞书表格自动生成）=====
 // 修改飞书表格后运行同步脚本即可更新，请勿手动编辑此文件
-// 最后同步: 2026-09-03 13:37:54
+// 最后同步: 2026-09-03 15:43:39
 
 const GAME_CONFIG = {
   // 角色等级经验表（共 150 条）
@@ -626,15 +626,15 @@ const GAME_CONFIG = {
     "characterImage": "",
     "reqItems": [
       {
+        "itemId": "30001",
+        "count": 1
+      },
+      {
         "itemId": "30101",
         "count": 1
       },
       {
         "itemId": "30201",
-        "count": 1
-      },
-      {
-        "itemId": "30301",
         "count": 1
       }
     ],
@@ -648,15 +648,15 @@ const GAME_CONFIG = {
     "characterImage": "",
     "reqItems": [
       {
+        "itemId": "30001",
+        "count": 2
+      },
+      {
         "itemId": "30101",
         "count": 2
       },
       {
         "itemId": "30201",
-        "count": 2
-      },
-      {
-        "itemId": "30301",
         "count": 2
       }
     ],
@@ -670,15 +670,15 @@ const GAME_CONFIG = {
     "characterImage": "",
     "reqItems": [
       {
+        "itemId": "30001",
+        "count": 2
+      },
+      {
         "itemId": "30101",
         "count": 2
       },
       {
         "itemId": "30201",
-        "count": 2
-      },
-      {
-        "itemId": "30301",
         "count": 2
       }
     ],
@@ -692,15 +692,15 @@ const GAME_CONFIG = {
     "characterImage": "",
     "reqItems": [
       {
+        "itemId": "30001",
+        "count": 2
+      },
+      {
         "itemId": "30101",
         "count": 2
       },
       {
         "itemId": "30201",
-        "count": 2
-      },
-      {
-        "itemId": "30301",
         "count": 2
       }
     ],
@@ -714,15 +714,15 @@ const GAME_CONFIG = {
     "characterImage": "",
     "reqItems": [
       {
+        "itemId": "30001",
+        "count": 2
+      },
+      {
         "itemId": "30101",
         "count": 2
       },
       {
         "itemId": "30201",
-        "count": 2
-      },
-      {
-        "itemId": "30301",
         "count": 2
       }
     ],
@@ -736,15 +736,15 @@ const GAME_CONFIG = {
     "characterImage": "",
     "reqItems": [
       {
+        "itemId": "30001",
+        "count": 3
+      },
+      {
         "itemId": "30101",
         "count": 3
       },
       {
         "itemId": "30201",
-        "count": 3
-      },
-      {
-        "itemId": "30301",
         "count": 3
       }
     ],
@@ -758,15 +758,15 @@ const GAME_CONFIG = {
     "characterImage": "",
     "reqItems": [
       {
+        "itemId": "30001",
+        "count": 3
+      },
+      {
         "itemId": "30101",
         "count": 3
       },
       {
         "itemId": "30201",
-        "count": 3
-      },
-      {
-        "itemId": "30301",
         "count": 3
       }
     ],
@@ -780,15 +780,15 @@ const GAME_CONFIG = {
     "characterImage": "",
     "reqItems": [
       {
+        "itemId": "30001",
+        "count": 3
+      },
+      {
         "itemId": "30101",
         "count": 3
       },
       {
         "itemId": "30201",
-        "count": 3
-      },
-      {
-        "itemId": "30301",
         "count": 3
       }
     ],
@@ -802,15 +802,15 @@ const GAME_CONFIG = {
     "characterImage": "",
     "reqItems": [
       {
+        "itemId": "30001",
+        "count": 4
+      },
+      {
         "itemId": "30101",
         "count": 4
       },
       {
         "itemId": "30201",
-        "count": 4
-      },
-      {
-        "itemId": "30301",
         "count": 4
       }
     ],
@@ -824,15 +824,15 @@ const GAME_CONFIG = {
     "characterImage": "",
     "reqItems": [
       {
+        "itemId": "30001",
+        "count": 4
+      },
+      {
         "itemId": "30101",
         "count": 4
       },
       {
         "itemId": "30201",
-        "count": 4
-      },
-      {
-        "itemId": "30301",
         "count": 4
       }
     ],
@@ -846,15 +846,15 @@ const GAME_CONFIG = {
     "characterImage": "",
     "reqItems": [
       {
+        "itemId": "30001",
+        "count": 4
+      },
+      {
         "itemId": "30101",
         "count": 4
       },
       {
         "itemId": "30201",
-        "count": 4
-      },
-      {
-        "itemId": "30301",
         "count": 4
       }
     ],
@@ -868,15 +868,15 @@ const GAME_CONFIG = {
     "characterImage": "",
     "reqItems": [
       {
+        "itemId": "30001",
+        "count": 5
+      },
+      {
         "itemId": "30101",
         "count": 5
       },
       {
         "itemId": "30201",
-        "count": 5
-      },
-      {
-        "itemId": "30301",
         "count": 5
       }
     ],
@@ -890,15 +890,15 @@ const GAME_CONFIG = {
     "characterImage": "",
     "reqItems": [
       {
+        "itemId": "30001",
+        "count": 5
+      },
+      {
         "itemId": "30101",
         "count": 5
       },
       {
         "itemId": "30201",
-        "count": 5
-      },
-      {
-        "itemId": "30301",
         "count": 5
       }
     ],
@@ -912,15 +912,15 @@ const GAME_CONFIG = {
     "characterImage": "",
     "reqItems": [
       {
+        "itemId": "30001",
+        "count": 5
+      },
+      {
         "itemId": "30101",
         "count": 5
       },
       {
         "itemId": "30201",
-        "count": 5
-      },
-      {
-        "itemId": "30301",
         "count": 5
       }
     ],
@@ -934,15 +934,15 @@ const GAME_CONFIG = {
     "characterImage": "",
     "reqItems": [
       {
+        "itemId": "30001",
+        "count": 9
+      },
+      {
         "itemId": "30101",
         "count": 9
       },
       {
         "itemId": "30201",
-        "count": 9
-      },
-      {
-        "itemId": "30301",
         "count": 9
       }
     ],
@@ -1264,29 +1264,29 @@ const GAME_CONFIG = {
   }
 ],
 
-  // 交互类型参数表（共 4 条）
+  // 交互类型表（共 4 条）
   interactionTypeTable: [
   {
     "id": 0,
-    "name": "点击无任何交互",
+    "description": "点击无任何交互",
     "params": "",
     "paramsDesc": "无参数"
   },
   {
     "id": 1,
-    "name": "点击打开合成窗口",
+    "description": "点击打开合成窗口",
     "params": "value1,alue2",
     "paramsDesc": "value1代表合成的目标道具ID，value2代表合成所需数量"
   },
   {
     "id": 2,
-    "name": "点击打开兑现窗口",
+    "description": "点击打开兑现窗口",
     "params": "value",
     "paramsDesc": "代表等价的奖金数值"
   },
   {
     "id": 3,
-    "name": "点击打开装备和出售窗口",
+    "description": "点击打开装备和出售窗口",
     "params": "value1,value2",
     "paramsDesc": "value1代表出售可获得的砍树次数,value2拥有的技能ID，再继续接代表拥有不止一条技能，没有value2代表没有技能"
   }
@@ -1295,102 +1295,102 @@ const GAME_CONFIG = {
   // 技能表（共 20 条）
   skillTable: [
   {
-    "id": 1001,
+    "skillId": 1001,
     "buffId": 1,
     "buffParams": "1,15,2"
   },
   {
-    "id": 1002,
+    "skillId": 1002,
     "buffId": 1,
     "buffParams": "1,25,2"
   },
   {
-    "id": 1003,
+    "skillId": 1003,
     "buffId": 1,
     "buffParams": "2,15,2"
   },
   {
-    "id": 1004,
+    "skillId": 1004,
     "buffId": 1,
     "buffParams": "2,25,2"
   },
   {
-    "id": 1005,
+    "skillId": 1005,
     "buffId": 1,
     "buffParams": "3,11,2"
   },
   {
-    "id": 1006,
+    "skillId": 1006,
     "buffId": 1,
     "buffParams": "3,15,2"
   },
   {
-    "id": 1007,
+    "skillId": 1007,
     "buffId": 1,
     "buffParams": "1,15,3"
   },
   {
-    "id": 1008,
+    "skillId": 1008,
     "buffId": 1,
     "buffParams": "1,25,3"
   },
   {
-    "id": 1009,
+    "skillId": 1009,
     "buffId": 1,
     "buffParams": "2,15,3"
   },
   {
-    "id": 1010,
+    "skillId": 1010,
     "buffId": 1,
     "buffParams": "3,25,3"
   },
   {
-    "id": 2001,
+    "skillId": 2001,
     "buffId": 2,
     "buffParams": "6,1"
   },
   {
-    "id": 2002,
+    "skillId": 2002,
     "buffId": 2,
     "buffParams": "8,1"
   },
   {
-    "id": 2003,
+    "skillId": 2003,
     "buffId": 2,
     "buffParams": "10,1"
   },
   {
-    "id": 2004,
+    "skillId": 2004,
     "buffId": 2,
     "buffParams": "15,1"
   },
   {
-    "id": 2005,
+    "skillId": 2005,
     "buffId": 2,
     "buffParams": "6,2"
   },
   {
-    "id": 2006,
+    "skillId": 2006,
     "buffId": 2,
     "buffParams": "8,2"
   },
   {
-    "id": 2007,
+    "skillId": 2007,
     "buffId": 2,
     "buffParams": "12,2"
   },
   {
-    "id": 2008,
+    "skillId": 2008,
     "buffId": 2,
     "buffParams": "6,3"
   },
   {
-    "id": 2009,
+    "skillId": 2009,
     "buffId": 2,
     "buffParams": "8,3"
   },
   {
-    "id": 2010,
+    "skillId": 2010,
     "buffId": 2,
     "buffParams": "12,3"
   }
@@ -1399,21 +1399,29 @@ const GAME_CONFIG = {
   // BUFF表（共 2 条）
   buffTable: [
   {
-    "id": 1,
+    "buffId": 1,
     "description": "每次砍树时若抽到{vlaue1}的奖励，有{value2}的概率使其掉落量×{value3}倍",
     "paramsTypeDesc": "value1,value2,value3",
     "effectDesc": "value1代表砍树掉落道具的品质ID，在文本中替换为品质的名字，value2为概率中值，会从value2±10的范围内随机抽小数,value3代表翻倍的倍率"
   },
   {
-    "id": 2,
+    "buffId": 2,
     "description": "每次砍树时有{value1}的概率返还{value2}的砍树次数",
     "paramsTypeDesc": "value1,value2",
     "effectDesc": "value1为概率中值，会从value1±5的范围内随机抽小数，value2为返还砍树次数"
   }
 ],
 
-  // 仙树灵阶表（共 15 条）
+  // 仙树灵阶表（共 16 条，含灵阶0初始状态）
   treeTable: [
+  {
+    "id": 0,
+    "name": "仙树",
+    "appearance": "",
+    "poolId": 1000,
+    "reqItems": [],
+    "note": ""
+  },
   {
     "id": 1,
     "name": "仙树·灵阶1",
@@ -1421,7 +1429,7 @@ const GAME_CONFIG = {
     "poolId": 1001,
     "reqItems": [
       {
-        "itemId": 40002,
+        "itemId": "40002",
         "count": 1
       }
     ],
@@ -1434,7 +1442,7 @@ const GAME_CONFIG = {
     "poolId": 1002,
     "reqItems": [
       {
-        "itemId": 40002,
+        "itemId": "40002",
         "count": 2
       }
     ],
@@ -1447,7 +1455,7 @@ const GAME_CONFIG = {
     "poolId": 1003,
     "reqItems": [
       {
-        "itemId": 40002,
+        "itemId": "40002",
         "count": 3
       }
     ],
@@ -1460,7 +1468,7 @@ const GAME_CONFIG = {
     "poolId": 1004,
     "reqItems": [
       {
-        "itemId": 40002,
+        "itemId": "40002",
         "count": 4
       }
     ],
@@ -1473,7 +1481,7 @@ const GAME_CONFIG = {
     "poolId": 1005,
     "reqItems": [
       {
-        "itemId": 40002,
+        "itemId": "40002",
         "count": 5
       }
     ],
@@ -1486,7 +1494,7 @@ const GAME_CONFIG = {
     "poolId": 1006,
     "reqItems": [
       {
-        "itemId": 40002,
+        "itemId": "40002",
         "count": 6
       }
     ],
@@ -1499,7 +1507,7 @@ const GAME_CONFIG = {
     "poolId": 1007,
     "reqItems": [
       {
-        "itemId": 40002,
+        "itemId": "40002",
         "count": 7
       }
     ],
@@ -1512,7 +1520,7 @@ const GAME_CONFIG = {
     "poolId": 1008,
     "reqItems": [
       {
-        "itemId": 40002,
+        "itemId": "40002",
         "count": 8
       }
     ],
@@ -1525,7 +1533,7 @@ const GAME_CONFIG = {
     "poolId": 1009,
     "reqItems": [
       {
-        "itemId": 40002,
+        "itemId": "40002",
         "count": 9
       }
     ],
@@ -1538,7 +1546,7 @@ const GAME_CONFIG = {
     "poolId": 1010,
     "reqItems": [
       {
-        "itemId": 40002,
+        "itemId": "40002",
         "count": 10
       }
     ],
@@ -1551,7 +1559,7 @@ const GAME_CONFIG = {
     "poolId": 1011,
     "reqItems": [
       {
-        "itemId": 40002,
+        "itemId": "40002",
         "count": 11
       }
     ],
@@ -1564,7 +1572,7 @@ const GAME_CONFIG = {
     "poolId": 1012,
     "reqItems": [
       {
-        "itemId": 40002,
+        "itemId": "40002",
         "count": 12
       }
     ],
@@ -1577,7 +1585,7 @@ const GAME_CONFIG = {
     "poolId": 1013,
     "reqItems": [
       {
-        "itemId": 40002,
+        "itemId": "40002",
         "count": 13
       }
     ],
@@ -1590,7 +1598,7 @@ const GAME_CONFIG = {
     "poolId": 1014,
     "reqItems": [
       {
-        "itemId": 40002,
+        "itemId": "40002",
         "count": 14
       }
     ],
@@ -1603,7 +1611,7 @@ const GAME_CONFIG = {
     "poolId": 1015,
     "reqItems": [
       {
-        "itemId": 40002,
+        "itemId": "40002",
         "count": 15
       }
     ],
@@ -1611,10 +1619,439 @@ const GAME_CONFIG = {
   }
 ],
 
-  // 奖池表（共 10 条）
-  poolTable: [
+  // 奖池权重表（奖池→奖励包权重，每个奖池总权重1000）（共 85 条）
+  poolWeightTable: [
+  {
+    "poolId": 1000,
+    "packId": 1001,
+    "weight": 900
+  },
+  {
+    "poolId": 1000,
+    "packId": 1002,
+    "weight": 80
+  },
+  {
+    "poolId": 1000,
+    "packId": 1003,
+    "weight": 20
+  },
+  {
+    "poolId": 1000,
+    "packId": 1004,
+    "weight": 0
+  },
+  {
+    "poolId": 1000,
+    "packId": 1005,
+    "weight": 0
+  },
   {
     "poolId": 1001,
+    "packId": 1001,
+    "weight": 800
+  },
+  {
+    "poolId": 1001,
+    "packId": 1002,
+    "weight": 150
+  },
+  {
+    "poolId": 1001,
+    "packId": 1003,
+    "weight": 50
+  },
+  {
+    "poolId": 1001,
+    "packId": 1004,
+    "weight": 0
+  },
+  {
+    "poolId": 1001,
+    "packId": 1005,
+    "weight": 0
+  },
+  {
+    "poolId": 1002,
+    "packId": 1001,
+    "weight": 770
+  },
+  {
+    "poolId": 1002,
+    "packId": 1002,
+    "weight": 170
+  },
+  {
+    "poolId": 1002,
+    "packId": 1003,
+    "weight": 60
+  },
+  {
+    "poolId": 1002,
+    "packId": 1004,
+    "weight": 0
+  },
+  {
+    "poolId": 1002,
+    "packId": 1005,
+    "weight": 0
+  },
+  {
+    "poolId": 1003,
+    "packId": 1001,
+    "weight": 740
+  },
+  {
+    "poolId": 1003,
+    "packId": 1002,
+    "weight": 190
+  },
+  {
+    "poolId": 1003,
+    "packId": 1003,
+    "weight": 70
+  },
+  {
+    "poolId": 1003,
+    "packId": 1004,
+    "weight": 0
+  },
+  {
+    "poolId": 1003,
+    "packId": 1005,
+    "weight": 0
+  },
+  {
+    "poolId": 1004,
+    "packId": 1001,
+    "weight": 710
+  },
+  {
+    "poolId": 1004,
+    "packId": 1002,
+    "weight": 210
+  },
+  {
+    "poolId": 1004,
+    "packId": 1003,
+    "weight": 80
+  },
+  {
+    "poolId": 1004,
+    "packId": 1004,
+    "weight": 0
+  },
+  {
+    "poolId": 1004,
+    "packId": 1005,
+    "weight": 0
+  },
+  {
+    "poolId": 1005,
+    "packId": 1001,
+    "weight": 680
+  },
+  {
+    "poolId": 1005,
+    "packId": 1002,
+    "weight": 230
+  },
+  {
+    "poolId": 1005,
+    "packId": 1003,
+    "weight": 90
+  },
+  {
+    "poolId": 1005,
+    "packId": 1004,
+    "weight": 0
+  },
+  {
+    "poolId": 1005,
+    "packId": 1005,
+    "weight": 0
+  },
+  {
+    "poolId": 1006,
+    "packId": 1001,
+    "weight": 640
+  },
+  {
+    "poolId": 1006,
+    "packId": 1002,
+    "weight": 255
+  },
+  {
+    "poolId": 1006,
+    "packId": 1003,
+    "weight": 100
+  },
+  {
+    "poolId": 1006,
+    "packId": 1004,
+    "weight": 5
+  },
+  {
+    "poolId": 1006,
+    "packId": 1005,
+    "weight": 0
+  },
+  {
+    "poolId": 1007,
+    "packId": 1001,
+    "weight": 600
+  },
+  {
+    "poolId": 1007,
+    "packId": 1002,
+    "weight": 280
+  },
+  {
+    "poolId": 1007,
+    "packId": 1003,
+    "weight": 110
+  },
+  {
+    "poolId": 1007,
+    "packId": 1004,
+    "weight": 10
+  },
+  {
+    "poolId": 1007,
+    "packId": 1005,
+    "weight": 0
+  },
+  {
+    "poolId": 1008,
+    "packId": 1001,
+    "weight": 560
+  },
+  {
+    "poolId": 1008,
+    "packId": 1002,
+    "weight": 305
+  },
+  {
+    "poolId": 1008,
+    "packId": 1003,
+    "weight": 120
+  },
+  {
+    "poolId": 1008,
+    "packId": 1004,
+    "weight": 15
+  },
+  {
+    "poolId": 1008,
+    "packId": 1005,
+    "weight": 0
+  },
+  {
+    "poolId": 1009,
+    "packId": 1001,
+    "weight": 520
+  },
+  {
+    "poolId": 1009,
+    "packId": 1002,
+    "weight": 330
+  },
+  {
+    "poolId": 1009,
+    "packId": 1003,
+    "weight": 130
+  },
+  {
+    "poolId": 1009,
+    "packId": 1004,
+    "weight": 20
+  },
+  {
+    "poolId": 1009,
+    "packId": 1005,
+    "weight": 0
+  },
+  {
+    "poolId": 1010,
+    "packId": 1001,
+    "weight": 480
+  },
+  {
+    "poolId": 1010,
+    "packId": 1002,
+    "weight": 355
+  },
+  {
+    "poolId": 1010,
+    "packId": 1003,
+    "weight": 140
+  },
+  {
+    "poolId": 1010,
+    "packId": 1004,
+    "weight": 25
+  },
+  {
+    "poolId": 1010,
+    "packId": 1005,
+    "weight": 0
+  },
+  {
+    "poolId": 1011,
+    "packId": 1001,
+    "weight": 440
+  },
+  {
+    "poolId": 1011,
+    "packId": 1002,
+    "weight": 335
+  },
+  {
+    "poolId": 1011,
+    "packId": 1003,
+    "weight": 160
+  },
+  {
+    "poolId": 1011,
+    "packId": 1004,
+    "weight": 40
+  },
+  {
+    "poolId": 1011,
+    "packId": 1005,
+    "weight": 5
+  },
+  {
+    "poolId": 1012,
+    "packId": 1001,
+    "weight": 400
+  },
+  {
+    "poolId": 1012,
+    "packId": 1002,
+    "weight": 315
+  },
+  {
+    "poolId": 1012,
+    "packId": 1003,
+    "weight": 180
+  },
+  {
+    "poolId": 1012,
+    "packId": 1004,
+    "weight": 55
+  },
+  {
+    "poolId": 1012,
+    "packId": 1005,
+    "weight": 10
+  },
+  {
+    "poolId": 1013,
+    "packId": 1001,
+    "weight": 360
+  },
+  {
+    "poolId": 1013,
+    "packId": 1002,
+    "weight": 295
+  },
+  {
+    "poolId": 1013,
+    "packId": 1003,
+    "weight": 200
+  },
+  {
+    "poolId": 1013,
+    "packId": 1004,
+    "weight": 70
+  },
+  {
+    "poolId": 1013,
+    "packId": 1005,
+    "weight": 15
+  },
+  {
+    "poolId": 1014,
+    "packId": 1001,
+    "weight": 320
+  },
+  {
+    "poolId": 1014,
+    "packId": 1002,
+    "weight": 275
+  },
+  {
+    "poolId": 1014,
+    "packId": 1003,
+    "weight": 220
+  },
+  {
+    "poolId": 1014,
+    "packId": 1004,
+    "weight": 85
+  },
+  {
+    "poolId": 1014,
+    "packId": 1005,
+    "weight": 20
+  },
+  {
+    "poolId": 1015,
+    "packId": 1001,
+    "weight": 280
+  },
+  {
+    "poolId": 1015,
+    "packId": 1002,
+    "weight": 255
+  },
+  {
+    "poolId": 1015,
+    "packId": 1003,
+    "weight": 240
+  },
+  {
+    "poolId": 1015,
+    "packId": 1004,
+    "weight": 100
+  },
+  {
+    "poolId": 1015,
+    "packId": 1005,
+    "weight": 25
+  },
+  {
+    "poolId": 2001,
+    "packId": 2001,
+    "weight": 900
+  },
+  {
+    "poolId": 2001,
+    "packId": 2002,
+    "weight": 50
+  },
+  {
+    "poolId": 2001,
+    "packId": 2003,
+    "weight": 30
+  },
+  {
+    "poolId": 2001,
+    "packId": 2004,
+    "weight": 19
+  },
+  {
+    "poolId": 2001,
+    "packId": 2005,
+    "weight": 1
+  }
+],
+
+  // 奖励包表（奖励包→道具列表，同包内道具概率均分）（共 10 条）
+  packTable: [
+  {
+    "packId": 1001,
     "items": [
       10001,
       10002,
@@ -1625,7 +2062,7 @@ const GAME_CONFIG = {
     "qualityNote": "每个奖励包只会装对应品质的奖励，且概率均分"
   },
   {
-    "poolId": 1002,
+    "packId": 1002,
     "items": [
       10201,
       20001
@@ -1634,7 +2071,7 @@ const GAME_CONFIG = {
     "qualityNote": ""
   },
   {
-    "poolId": 1003,
+    "packId": 1003,
     "items": [
       10202,
       10301,
@@ -1644,7 +2081,7 @@ const GAME_CONFIG = {
     "qualityNote": ""
   },
   {
-    "poolId": 1004,
+    "packId": 1004,
     "items": [
       10302,
       20201
@@ -1653,7 +2090,7 @@ const GAME_CONFIG = {
     "qualityNote": ""
   },
   {
-    "poolId": 1005,
+    "packId": 1005,
     "items": [
       20301
     ],
@@ -1661,7 +2098,7 @@ const GAME_CONFIG = {
     "qualityNote": ""
   },
   {
-    "poolId": 2001,
+    "packId": 2001,
     "items": [
       51001,
       51002
@@ -1670,7 +2107,7 @@ const GAME_CONFIG = {
     "qualityNote": ""
   },
   {
-    "poolId": 2002,
+    "packId": 2002,
     "items": [
       52001,
       52002
@@ -1679,7 +2116,7 @@ const GAME_CONFIG = {
     "qualityNote": ""
   },
   {
-    "poolId": 2003,
+    "packId": 2003,
     "items": [
       53001,
       53002
@@ -1688,7 +2125,7 @@ const GAME_CONFIG = {
     "qualityNote": ""
   },
   {
-    "poolId": 2004,
+    "packId": 2004,
     "items": [
       54001,
       54002
@@ -1697,7 +2134,7 @@ const GAME_CONFIG = {
     "qualityNote": ""
   },
   {
-    "poolId": 2005,
+    "packId": 2005,
     "items": [
       55001
     ],
@@ -1715,74 +2152,9 @@ const GAME_CONFIG = {
     "note": "道具ID，道具数量"
   }
 ],
-
 };
 
-// 根据等级获取本级所需经验
-function getExpForLevel(level) {
-  const entry = GAME_CONFIG.expTable.find(e => e.level === level);
-  return entry ? entry.exp : Math.floor(10 * Math.pow(level, 1.5));
-}
-
-// 根据 realmId 获取仙阶信息
-function getRealmById(realmId) {
-  return GAME_CONFIG.realmTable.find(r => r.realmId === realmId);
-}
-
-// 根据角色等级获取当前仙阶
-function getRealmByLevel(level) {
-  let realm = GAME_CONFIG.realmTable[0];
-  for (const r of GAME_CONFIG.realmTable) {
-    if (level >= r.reqLevel) {
-      realm = r;
-    }
-  }
-  return realm;
-}
-
-// 根据角色等级获取下一个仙阶
-function getNextRealmByLevel(level) {
-  for (const r of GAME_CONFIG.realmTable) {
-    if (r.reqLevel > level) {
-      return r;
-    }
-  }
-  return null;
-}
-
-// 根据 item_id 获取道具信息
-function getItemById(id) {
-  return GAME_CONFIG.itemTable.find(i => i.id === id);
-}
-
-// 根据 skill_id 获取技能信息（含BUFF描述）
-function getSkillById(skillId) {
-  const skill = GAME_CONFIG.skillTable.find(s => s.id === skillId);
-  if (!skill) return null;
-  const buff = GAME_CONFIG.buffTable.find(b => b.id === skill.buffId);
-  return { ...skill, buff: buff || null };
-}
-
-// 根据 tree_id 获取仙树灵阶信息
-function getTreeById(id) {
-  return GAME_CONFIG.treeTable.find(t => t.id === id);
-}
-
-// 根据 pool_id 获取奖池信息
-function getPoolById(poolId) {
-  return GAME_CONFIG.poolTable.find(p => p.poolId === poolId);
-}
-
-// 根据 forge_pool_id 获取锻造池信息
-function getForgePoolById(forgePoolId) {
-  return GAME_CONFIG.forgeTable.find(f => f.forgePoolId === forgePoolId);
-}
-
-// 根据品质ID获取奖池中该品质的道具列表
-function getItemsByQuality(quality) {
-  const pool = GAME_CONFIG.poolTable.find(p => p.qualityId === quality);
-  return pool ? pool.items : [];
-}
+// ===== 辅助函数 =====
 
 // 品质颜色映射（代码维护，非飞书配置）
 const QUALITY_COLORS = {
@@ -1792,3 +2164,33 @@ const QUALITY_COLORS = {
   4: '#e85a8a', // 神品-粉
   5: '#f0b429', // 仙品-金
 };
+
+// 根据等级获取所需经验
+function getExpForLevel(level) {
+  const entry = GAME_CONFIG.expTable.find(e => e.level === level);
+  return entry ? entry.exp : 999999;
+}
+
+// 根据技能ID获取技能配置（含buff信息）
+function getSkillById(skillId) {
+  const skill = GAME_CONFIG.skillTable.find(s => s.skillId === skillId);
+  if (!skill) return null;
+  const buff = GAME_CONFIG.buffTable.find(b => b.buffId === skill.buffId);
+  return { ...skill, buff: buff || null };
+}
+
+// 根据奖池ID获取奖池配置（含奖励包权重和道具列表）
+// 返回: { poolId, packs: [{ packId, qualityId, weight, items }] }
+function getPoolById(poolId) {
+  const weights = GAME_CONFIG.poolWeightTable.filter(w => w.poolId === poolId);
+  const packs = weights.map(w => {
+    const pack = GAME_CONFIG.packTable.find(p => p.packId === w.packId);
+    return {
+      packId: w.packId,
+      qualityId: pack ? pack.qualityId : 0,
+      weight: w.weight,
+      items: pack ? pack.items.map(String) : [],
+    };
+  }).filter(p => p.items.length > 0 && p.weight > 0);
+  return { poolId, packs };
+}
