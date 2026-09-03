@@ -2146,6 +2146,9 @@ const PlayerView = {
 
   // --- 邮件 ---
   async showMailModal() {
+    // 关闭已有弹窗，防止堆叠
+    document.querySelectorAll('.modal-overlay').forEach(el => el.remove());
+
     const mails = await DB.getMails();
     let listHtml = '';
     if (mails.length === 0) {
@@ -2174,6 +2177,7 @@ const PlayerView = {
             <div style="font-size:12px;color:var(--text-secondary);margin-top:4px">${mail.content || ''}</div>
             ${itemsHtml}
             ${canClaim ? '<div style="margin-top:6px"><span style="font-size:11px;color:var(--accent);font-weight:600">可领取</span></div>' : ''}
+            ${mail.isClaimed && hasItems ? '<div style="margin-top:6px"><span style="font-size:11px;color:var(--text-light)">已领取</span></div>' : ''}
           </div>
         `;
       });
@@ -2235,6 +2239,9 @@ const PlayerView = {
   },
 
   async openMail(mailId) {
+    // 先关闭邮件列表弹窗
+    document.querySelectorAll('.modal-overlay').forEach(el => el.remove());
+
     const mails = await DB.getMails();
     const mail = mails.find(m => m.id == mailId);
     if (!mail) return;
@@ -2250,7 +2257,7 @@ const PlayerView = {
       mail.items.forEach(ri => {
         const def = ITEMS[ri.item_id];
         if (def) {
-          const q = QUALITY[def.quality];
+          const q = QUALITY[def.quality] || QUALITY[1];
           itemsHtml += `
             <div style="text-align:center">
               <div style="font-size:40px">${def.icon}</div>
@@ -2264,18 +2271,19 @@ const PlayerView = {
 
     const footer = canClaim
       ? `<div class="modal-footer">
-          <button class="btn btn-outline btn-sm" onclick="this.closest('.modal-overlay').remove();PlayerView.showMailModal()">关闭</button>
-          <button class="btn btn-outline btn-sm btn-danger" onclick="this.closest('.modal-overlay').remove();PlayerView.deleteMail('${mailId}')">删除</button>
+          <button class="btn btn-outline btn-sm" onclick="PlayerView.showMailModal()">关闭</button>
+          <button class="btn btn-outline btn-sm btn-danger" onclick="PlayerView.deleteMail('${mailId}')">删除</button>
           <button class="btn btn-accent btn-sm" onclick="PlayerView.claimMailReward('${mailId}')">领取奖励</button>
         </div>`
       : `<div class="modal-footer">
-          <button class="btn btn-outline btn-sm btn-danger" onclick="this.closest('.modal-overlay').remove();PlayerView.deleteMail('${mailId}')">删除</button>
-          <button class="btn btn-primary btn-sm" onclick="this.closest('.modal-overlay').remove();PlayerView.showMailModal()">关闭</button>
+          <button class="btn btn-outline btn-sm btn-danger" onclick="PlayerView.deleteMail('${mailId}')">删除</button>
+          <button class="btn btn-primary btn-sm" onclick="PlayerView.showMailModal()">关闭</button>
         </div>`;
 
     UI.modal(`
       <p style="font-size:14px;line-height:1.8;color:var(--text-secondary)">${mail.content || ''}</p>
       ${itemsHtml}
+      ${mail.isClaimed && hasItems ? '<div style="text-align:center;margin-top:12px"><span style="font-size:12px;color:var(--text-light)">奖励已领取</span></div>' : ''}
     `, { title: mail.title, footer });
   },
 
@@ -2291,7 +2299,8 @@ const PlayerView = {
     await DB.claimMail(mailId);
     await Game.refresh();
 
-    document.querySelector('.modal-overlay')?.remove();
+    // 关闭所有弹窗
+    document.querySelectorAll('.modal-overlay').forEach(el => el.remove());
     UI.toast('奖励已领取！', 'success');
     this.showMailModal();
   },
@@ -2577,7 +2586,9 @@ const PlayerView = {
     UI.confirm('确定删除这封邮件吗？', async () => {
       await DB.deleteMail(mailId);
       UI.toast('已删除', 'success');
-      this.renderMail();
+      // 关闭所有弹窗并重新打开邮件列表
+      document.querySelectorAll('.modal-overlay').forEach(el => el.remove());
+      this.showMailModal();
     });
   },
 
