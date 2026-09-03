@@ -536,6 +536,40 @@ body {
 }
 .item-slot.empty:hover { transform: none; box-shadow: none; }
 
+/* 仙阶锁定的仙斧 */
+.item-slot.item-locked {
+  opacity: 0.55;
+  filter: grayscale(0.6);
+}
+.item-slot.item-locked:hover {
+  transform: none;
+}
+.item-lock-badge {
+  position: absolute;
+  top: 2px;
+  right: 3px;
+  font-size: 12px;
+  filter: grayscale(0);
+}
+
+/* 已装备的仙斧 */
+.item-slot.item-equipped {
+  box-shadow: 0 0 0 2px var(--accent), 0 0 10px rgba(74, 144, 217, 0.4);
+}
+.item-equipped-badge {
+  position: absolute;
+  bottom: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--accent);
+  background: var(--card);
+  padding: 0 4px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
 /* ===== 卡片 ===== */
 .card {
   background: var(--card);

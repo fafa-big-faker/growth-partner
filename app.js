@@ -175,6 +175,24 @@ const FORGE_POOL = (() => {
   }));
 })();
 
+// ===== 仙斧装备仙阶限制 =====
+// 根据仙斧品质，获取可装备该品质的最低仙阶（realmId最小的满足 maxAxeQuality>=quality 的仙阶）
+function getMinRealmForAxeQuality(quality) {
+  let result = null;
+  for (const r of REALMS) {
+    if (r.maxAxeQuality >= quality) {
+      if (!result || r.level < result.level) result = r;
+    }
+  }
+  return result;
+}
+
+// 判断指定仙阶能否装备某品质仙斧
+function canEquipAxeQuality(quality, realmLevel) {
+  const realm = REALMS.find(r => r.level == realmLevel) || REALMS[0];
+  return (realm.maxAxeQuality || 1) >= quality;
+}
+
 // 难度颜色映射
 const DIFFICULTY_MAP = {
   S: { name: 'S级', class: 'tag-difficulty-S' },
@@ -870,6 +888,14 @@ const Game = {
     if (!itemDef || itemDef.type !== 5) return false;
     if (this.state.axeId === itemId) {
       UI.toast('已经装备了', 'warn');
+      return false;
+    }
+    // 仙阶限制校验：仙斧品质不能超过当前仙阶允许的最高品质
+    if (!canEquipAxeQuality(itemDef.quality, this.state.realmLevel)) {
+      const minRealm = getMinRealmForAxeQuality(itemDef.quality);
+      const qName = QUALITY[itemDef.quality]?.name || `品质${itemDef.quality}`;
+      const curRealm = REALMS.find(r => r.level == this.state.realmLevel) || REALMS[0];
+      UI.toast(`仙阶不足！${qName}仙斧需达到【${minRealm?.name || '?'}】，当前为【${curRealm.name}】`, 'warn');
       return false;
     }
     // 旧斧头放回背包
@@ -1628,10 +1654,14 @@ const PlayerView = {
       if (!def) return;
       if (def.type === 5) {
         // 武器：每把占一个格子，不显示数量
+        const axeLocked = !canEquipAxeQuality(def.quality, Game.state.realmLevel) && Game.state.axeId !== inv.itemId;
+        const isEquipped = Game.state.axeId === inv.itemId;
         for (let i = 0; i < inv.quantity; i++) {
           html += `
-            <div class="item-slot quality-${def.quality}" onclick="PlayerView.showItemDetail('${inv.itemId}')">
+            <div class="item-slot quality-${def.quality} ${axeLocked ? 'item-locked' : ''} ${isEquipped ? 'item-equipped' : ''}" onclick="PlayerView.showItemDetail('${inv.itemId}')">
               <div class="item-icon">${def.icon}</div>
+              ${axeLocked ? '<div class="item-lock-badge">🔒</div>' : ''}
+              ${isEquipped ? '<div class="item-equipped-badge">装备中</div>' : ''}
             </div>
           `;
         }
@@ -1659,6 +1689,25 @@ const PlayerView = {
     const qty = Game._getItemQty(itemId);
     const q = QUALITY[def.quality];
 
+    // 仙斧专属：仙阶限制
+    let axeRealmHtml = '';
+    let axeLocked = false;
+    if (def.type === 5) {
+      const minRealm = getMinRealmForAxeQuality(def.quality);
+      const canEquip = canEquipAxeQuality(def.quality, Game.state.realmLevel);
+      axeLocked = !canEquip && Game.state.axeId !== itemId;
+      const curRealm = REALMS.find(r => r.level == Game.state.realmLevel) || REALMS[0];
+      axeRealmHtml = `
+        <div style="background:${canEquip ? 'var(--success)' : 'var(--error)'}15;border:1px solid ${canEquip ? 'var(--success)' : 'var(--error)'}40;border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:13px;display:flex;align-items:center;gap:8px;justify-content:center">
+          <span>${canEquip ? '✅' : '🔒'}</span>
+          <span style="color:${canEquip ? 'var(--success)' : 'var(--error)'}">
+            适配仙阶：<b>${minRealm?.name || '?'}</b>及以上
+            ${canEquip ? '' : `（当前：${curRealm.name}）`}
+          </span>
+        </div>
+      `;
+    }
+
     let actionBtn = '';
     if (def.type === 1) {
       actionBtn = `<button class="btn btn-primary btn-sm" onclick="PlayerView.composeItem('${itemId}')">合成 (${qty}/${def.composeCount})</button>`;
@@ -1666,25 +1715,35 @@ const PlayerView = {
       actionBtn = `<button class="btn btn-primary btn-sm" onclick="PlayerView.cashItem('${itemId}')">提现 ¥${def.value}</button>`;
     } else if (def.type === 5) {
       const isEquipped = Game.state.axeId === itemId;
-      actionBtn = `
-        ${isEquipped
-          ? `<button class="btn btn-outline btn-sm" disabled>已装备</button>`
-          : `<button class="btn btn-primary btn-sm" onclick="PlayerView.equipItem('${itemId}')">装备</button>
-             <button class="btn btn-outline btn-sm" onclick="PlayerView.sellItem('${itemId}')">出售 +${def.sellPrice}🪓</button>`
-        }
-      `;
+      if (isEquipped) {
+        actionBtn = `<button class="btn btn-outline btn-sm" disabled>已装备</button>`;
+      } else if (axeLocked) {
+        actionBtn = `
+          <button class="btn btn-outline btn-sm" disabled style="opacity:0.5">🔒 仙阶不足</button>
+          <button class="btn btn-outline btn-sm" onclick="PlayerView.sellItem('${itemId}')">出售 +${def.sellPrice}🪓</button>
+        `;
+      } else {
+        actionBtn = `
+          <button class="btn btn-primary btn-sm" onclick="PlayerView.equipItem('${itemId}')">装备</button>
+          <button class="btn btn-outline btn-sm" onclick="PlayerView.sellItem('${itemId}')">出售 +${def.sellPrice}🪓</button>
+        `;
+      }
     }
 
     UI.modal(`
       <div style="text-align:center;margin-bottom:16px">
-        <div style="font-size:60px;margin-bottom:8px">${def.icon}</div>
+        <div style="font-size:60px;margin-bottom:8px;position:relative;display:inline-block">
+          ${def.icon}
+          ${axeLocked ? '<span style="position:absolute;top:-4px;right:-16px;font-size:24px">🔒</span>' : ''}
+        </div>
         <div style="font-size:18px;font-weight:700">${def.name}</div>
         <div style="margin-top:4px"><span class="tag" style="background:${q.color}20;color:${q.color}">${q.name}</span></div>
         <div style="margin-top:8px;font-size:13px;color:var(--text-secondary)">数量：${qty}</div>
       </div>
+      ${axeRealmHtml}
       <p style="font-size:13px;color:var(--text-secondary);text-align:center;margin-bottom:16px">${def.desc || ''}</p>
       ${def.skillDesc ? `<p style="font-size:12px;color:var(--accent);text-align:center;margin-bottom:16px">🌟 ${def.skillDesc}</p>` : ''}
-      <div style="display:flex;gap:8px;justify-content:center">
+      <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
         ${actionBtn}
       </div>
     `, { title: '物品详情' });
@@ -1788,6 +1847,16 @@ const PlayerView = {
         this.renderCultivate();
       }
     });
+  },
+
+  // 锻造结果页直接装备
+  async _equipFromForge(itemId) {
+    const ok = await Game.equipAxe(itemId);
+    if (ok) {
+      document.querySelectorAll('.modal-overlay').forEach(el => el.remove());
+      this.renderInventory('weapons');
+      this.renderCultivate();
+    }
   },
 
   sellItem(itemId) {
@@ -2593,12 +2662,36 @@ const PlayerView = {
       </div>`;
     }).join('');
 
+    // 突破后解锁的仙斧品质
+    let unlockHtml = '';
+    const curMaxQ = currentRealm.maxAxeQuality || 1;
+    const nextMaxQ = nextRealm.maxAxeQuality || 1;
+    if (nextMaxQ > curMaxQ) {
+      const newQualities = [];
+      for (let q = curMaxQ + 1; q <= nextMaxQ; q++) {
+        const qInfo = QUALITY[q];
+        if (qInfo) {
+          newQualities.push(`<span style="display:inline-block;padding:2px 10px;border-radius:10px;font-size:12px;font-weight:600;background:${qInfo.color}20;color:${qInfo.color};margin:2px">${qInfo.name}仙斧</span>`);
+        }
+      }
+      if (newQualities.length > 0) {
+        unlockHtml = `
+          <div style="background:var(--accent)12;border:1px solid var(--accent)30;border-radius:8px;padding:10px 12px;margin:12px 0">
+            <div style="font-size:13px;font-weight:600;color:var(--accent);margin-bottom:6px">🎁 突破解锁</div>
+            <div style="font-size:12px;color:var(--text-secondary);margin-bottom:6px">可装备更高品质仙斧：</div>
+            <div>${newQualities.join('')}</div>
+          </div>
+        `;
+      }
+    }
+
     UI.modal(`
       <div style="text-align:center;margin-bottom:16px">
         <div style="font-size:48px;margin-bottom:8px">${currentRealm.icon} → ${nextRealm.icon}</div>
         <div style="font-size:18px;font-weight:700">${currentRealm.name} → ${nextRealm.name}</div>
         <div style="font-size:12px;color:var(--text-secondary);margin-top:4px">${nextRealm.desc}</div>
       </div>
+      ${unlockHtml}
       <div style="margin-bottom:12px;font-weight:600">突破条件</div>
       <div style="font-size:13px;margin-bottom:8px">等级要求：${Game.state.level}/${nextRealm.reqLevel} ${Game.state.level >= nextRealm.reqLevel ? '✅' : '❌'}</div>
       ${reqItemsHtml}
@@ -2691,6 +2784,8 @@ const PlayerView = {
         const def = ITEMS[id];
         return def ? def.name : id;
       }).join('、');
+      const minRealm = getMinRealmForAxeQuality(pool.quality);
+      const canEquip = canEquipAxeQuality(pool.quality, Game.state.realmLevel);
       return {
         quality: pool.quality,
         name: qInfo.name,
@@ -2698,15 +2793,17 @@ const PlayerView = {
         pct: pct,
         items: itemNames,
         count: pool.items.length,
+        minRealmName: minRealm?.name || '?',
+        canEquip,
       };
     }).sort((a, b) => a.quality - b.quality);
 
     const poolHtml = qualityList.map(q => `
-      <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);${q.canEquip ? '' : 'opacity:0.6'}">
         <span style="display:inline-block;padding:3px 10px;border-radius:12px;font-size:12px;font-weight:600;background:${q.color}20;color:${q.color};min-width:44px;text-align:center">${q.name}</span>
         <div style="flex:1">
-          <div style="font-size:13px">${q.items}</div>
-          <div style="font-size:11px;color:var(--text-secondary)">共 ${q.count} 把，概率均分</div>
+          <div style="font-size:13px">${q.items} ${q.canEquip ? '' : '🔒'}</div>
+          <div style="font-size:11px;color:var(--text-secondary)">共 ${q.count} 把，概率均分 · 适配 ${q.minRealmName}及以上</div>
         </div>
         <span style="font-weight:700;font-size:15px;color:${q.color}">${q.pct.toFixed(1)}%</span>
       </div>
@@ -2740,6 +2837,13 @@ const PlayerView = {
       if (result) {
         // 显示锻造结果
         const q = QUALITY[result.quality] || QUALITY[1];
+        const canEquip = canEquipAxeQuality(result.quality, Game.state.realmLevel);
+        const minRealm = getMinRealmForAxeQuality(result.quality);
+        const lockHint = canEquip ? '' : `
+          <div style="margin-top:10px;font-size:12px;color:var(--error);background:var(--error)12;border-radius:8px;padding:6px 10px;display:inline-block">
+            🔒 需达到【${minRealm?.name || '?'}】才能装备，已放入背包
+          </div>
+        `;
         UI.modal(`
           <div style="text-align:center;padding:16px 0">
             <div style="font-size:80px;margin-bottom:12px;animation:tree-shake 0.5s ease-in-out">${result.item.icon}</div>
@@ -2747,12 +2851,13 @@ const PlayerView = {
             <div style="margin-top:4px">${UI.qualityTag(result.quality)}</div>
             <div style="font-size:12px;color:var(--text-secondary);margin-top:8px">${result.item.desc}</div>
             ${result.item.skillDesc ? `<div style="font-size:12px;color:var(--accent);margin-top:8px">🌟 ${result.item.skillDesc}</div>` : ''}
+            ${lockHint}
           </div>
         `, {
           title: '🎉 锻造成功',
           footer: `<div class="modal-footer">
             <button class="btn btn-primary btn-sm" onclick="this.closest('.modal-overlay').remove();PlayerView.showForge()">继续锻造</button>
-            <button class="btn btn-accent btn-sm" onclick="this.closest('.modal-overlay').remove();PlayerView.renderCultivate()">完成</button>
+            ${canEquip ? `<button class="btn btn-accent btn-sm" onclick="PlayerView._equipFromForge('${result.itemId}')">立即装备</button>` : ''}
           </div>`
         });
       } else {
