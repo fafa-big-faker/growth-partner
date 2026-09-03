@@ -26,6 +26,12 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='xiu_tasks' AND column_name='theme_end') THEN
     ALTER TABLE xiu_tasks ADD COLUMN theme_end DATE;
   END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='xiu_tasks' AND column_name='is_published') THEN
+    ALTER TABLE xiu_tasks ADD COLUMN is_published BOOLEAN DEFAULT true;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='xiu_tasks' AND column_name='theme_extra_reward') THEN
+    ALTER TABLE xiu_tasks ADD COLUMN theme_extra_reward JSONB DEFAULT '[]'::jsonb;
+  END IF;
 END $$;
 
 -- 3. 邮件表：新增 is_deleted 字段（软删除）

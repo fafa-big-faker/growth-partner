@@ -345,26 +345,83 @@ const DB = {
       difficulty: t.difficulty,
       rewardChopping: t.reward_chopping,
       rewardItems: t.reward_items || [],
+      themeName: t.theme_name || null,
+      themeStart: t.theme_start || null,
+      themeEnd: t.theme_end || null,
+      themeExtraReward: t.theme_extra_reward || [],
+    }));
+  },
+
+  async getAllTasks(type = null) {
+    let query = dbClient.from('xiu_tasks').select('*');
+    if (type) query = query.eq('task_type', type);
+    const { data, error } = await query.order('sort_order', { ascending: true });
+    if (error) { console.error('DB getAllTasks error:', error); return []; }
+    return data.map(t => ({
+      id: t.id,
+      taskType: t.task_type,
+      title: t.title,
+      description: t.description,
+      difficulty: t.difficulty,
+      rewardChopping: t.reward_chopping,
+      rewardItems: t.reward_items || [],
+      status: t.status,
+      themeName: t.theme_name || null,
+      themeStart: t.theme_start || null,
+      themeEnd: t.theme_end || null,
+      themeExtraReward: t.theme_extra_reward || [],
     }));
   },
 
   async createTask(task) {
-    const { data, error } = await dbClient
+    const insertData = {
+      task_type: task.taskType,
+      title: task.title,
+      description: task.description,
+      difficulty: task.difficulty,
+      reward_chopping: task.rewardChopping || 0,
+      reward_items: task.rewardItems || [],
+      status: task.status || 'draft',
+      sort_order: task.sortOrder || 0,
+    };
+
+    // 尝试带主题字段插入
+    try {
+      const { data, error } = await dbClient
+        .from('xiu_tasks')
+        .insert({
+          ...insertData,
+          theme_name: task.themeName || null,
+          theme_start: task.themeStart || null,
+          theme_end: task.themeEnd || null,
+          theme_extra_reward: task.themeExtraReward || [],
+        })
+        .select()
+        .single();
+      if (!error) return data;
+      // 如果是字段不存在错误，走降级插入
+      if (error.message && error.message.includes('does not exist')) {
+        // fall through to fallback
+      } else {
+        console.error('DB createTask error:', error);
+        return null;
+      }
+    } catch (e) {}
+
+    // 降级：不带主题字段插入
+    const { data: data2, error: err2 } = await dbClient
       .from('xiu_tasks')
-      .insert({
-        task_type: task.taskType,
-        title: task.title,
-        description: task.description,
-        difficulty: task.difficulty,
-        reward_chopping: task.rewardChopping || 0,
-        reward_items: task.rewardItems || [],
-        status: 'published',
-        sort_order: task.sortOrder || 0,
-      })
+      .insert(insertData)
       .select()
       .single();
-    if (error) { console.error('DB createTask error:', error); return null; }
-    return data;
+    if (err2) { console.error('DB createTask fallback error:', err2); return null; }
+    return data2;
+  },
+
+  async updateTaskStatus(id, status) {
+    const { error } = await dbClient.from('xiu_tasks').update({ status }).eq('id', id);
+    if (error) { console.error('DB updateTaskStatus error:', error); return false; }
+    return true;
   },
 
   async deleteTask(id) {
@@ -1190,6 +1247,8 @@ const UI = {
    ================================================================ */
 const PlayerView = {
   // --- 修仙主页 ---
+  _tenChopMode: false,
+
   async renderCultivate() {
     const main = document.getElementById('player-main');
     const treeConfig = TREE_LEVELS[Game.state.treeLevel] || TREE_LEVELS[1];
@@ -1199,15 +1258,32 @@ const PlayerView = {
     const nextTreeRealm = TREE_REALMS.find(r => r.level == Game.state.treeRealm + 1);
     const axeDef = ITEMS[Game.state.axeId] || ITEMS.axe_stone;
     const forgeStoneQty = Game.inventory.find(i => i.itemId == 'stone_forge')?.quantity || 0;
+    const expMax = getExpForLevel(Game.state.level);
 
     main.innerHTML = `
-      <!-- 仙阶信息栏 -->
-      <div class="card realm-bar">
-        <div style="display:flex;align-items:center;gap:12px;flex:1">
-          <div style="font-size:32px">${realm.icon}</div>
-          <div>
-            <div style="font-weight:700;font-size:16px">${realm.name}</div>
-            <div style="font-size:12px;color:var(--text-secondary)">Lv.${Game.state.level} · 经验 ${Game.state.exp}/${getExpForLevel(Game.state.level)}</div>
+      <!-- ① 场景区：仙树 + 人物 -->
+      <div class="cult-scene" id="tree-area">
+        <div class="cult-tree" id="tree-icon" onclick="PlayerView.showTreeDetail()">
+          <span class="tree-emoji">${treeConfig.icon}</span>
+          <div class="tree-label">${treeRealm.name} · ${treeConfig.name}</div>
+          <div class="tree-sub">灵阶 ${Game.state.treeRealm} · 树 Lv.${Game.state.treeLevel}</div>
+        </div>
+        <div class="cult-char">
+          <span class="char-emoji">🧑‍🌾</span>
+        </div>
+      </div>
+
+      <!-- ② 状态栏：邮件 / 等级·仙阶 + 经验条 / 突破 -->
+      <div class="cult-status">
+        <div class="status-mail" onclick="Router.playerTab('mail')">
+          <span>📮</span>
+          <span class="mail-badge" id="mail-badge" style="display:none">0</span>
+        </div>
+        <div class="status-center">
+          <div class="status-realm">${realm.icon} ${Game.state.level}级 · ${realm.name}</div>
+          <div class="status-exp-row">
+            <div class="status-exp-bar"><div class="status-exp-fill" style="width:${Math.min(100, Game.state.exp / expMax * 100)}%"></div></div>
+            <span class="status-exp-text">${Game.state.exp}/${expMax}</span>
           </div>
         </div>
         ${nextRealm ? `
@@ -1215,72 +1291,99 @@ const PlayerView = {
         ` : '<span class="tag" style="background:var(--quality-5)20;color:var(--quality-5)">已满阶</span>'}
       </div>
 
-      <!-- 仙树区域 -->
-      <div class="tree-area" id="tree-area">
-        <div class="tree-container">
-          <div class="tree-icon" id="tree-icon" onclick="PlayerView.doChop()">${treeConfig.icon}</div>
-          <div class="tree-info">
-            <div class="tree-name">${treeRealm.name} · ${treeConfig.name}</div>
-            <div class="tree-level">灵阶 ${Game.state.treeRealm} · 树 Lv.${Game.state.treeLevel}</div>
-          </div>
-          ${nextTreeRealm ? `<button class="tree-upgrade-btn" onclick="PlayerView.showTreeUpgrade()">↑ 升阶</button>` : ''}
-        </div>
-        <div style="display:flex;gap:8px">
-          <button class="chop-btn" id="chop-btn" onclick="PlayerView.doChop()" ${Game.state.choppingCount <= 0 ? 'disabled' : ''} style="flex:1">
-            🪓 砍树 (${Game.state.choppingCount})
-          </button>
-          <button class="chop-btn chop-btn-ten" id="chop-ten-btn" onclick="PlayerView.doChopTen()" ${Game.state.choppingCount < 10 ? 'disabled' : ''}>
-            ⚡ 十连
-          </button>
-        </div>
-      </div>
-
-      <!-- 锻造入口 -->
-      <div class="forge-entry" onclick="PlayerView.showForge()">
-        <div class="forge-icon">🔨</div>
-        <div class="forge-info">
-          <div class="forge-title">锻造仙斧</div>
-          <div class="forge-desc">消耗锻铁抽取新仙斧</div>
-        </div>
-        <div class="forge-count">🔩 ${forgeStoneQty}</div>
-      </div>
-
-      <!-- 当前装备 -->
-      <div class="card">
-        <div class="section-header">
-          <div class="section-title">🪓 当前装备</div>
-        </div>
-        <div style="display:flex;align-items:center;gap:12px;padding:8px 0">
-          <div style="font-size:40px">${axeDef.icon}</div>
-          <div style="flex:1">
-            <div style="font-weight:600">${axeDef.name} ${UI.qualityTag(axeDef.quality)}</div>
-            <div style="font-size:12px;color:var(--text-secondary)">${axeDef.desc}</div>
-            ${axeDef.skillDesc ? `<div style="font-size:12px;color:var(--accent);margin-top:4px">🌟 ${axeDef.skillDesc}</div>` : ''}
-          </div>
-        </div>
-      </div>
-
-      <!-- 背包 -->
-      <div class="card">
-        <div class="section-header">
-          <div class="section-title">🎒 背包</div>
-        </div>
-        <div class="inventory-tabs">
-          <div class="inv-tab active" data-tab="items" onclick="PlayerView.switchInvTab('items')">道具</div>
-          <div class="inv-tab" data-tab="weapons" onclick="PlayerView.switchInvTab('weapons')">武器</div>
-        </div>
+      <!-- ③ 背包区（页签在右侧） -->
+      <div class="cult-inventory">
         <div class="inventory-grid" id="inventory-grid"></div>
+        <div class="inv-tabs-v">
+          <div class="inv-tab-v active" data-tab="items" onclick="PlayerView.switchInvTab('items')">道具</div>
+          <div class="inv-tab-v" data-tab="weapons" onclick="PlayerView.switchInvTab('weapons')">武器</div>
+        </div>
+      </div>
+
+      <!-- ④ 操作区：砍树按钮 + 十连勾选 + 锻造 -->
+      <div class="cult-action">
+        <div class="action-chop-area">
+          <button class="chop-circle-btn" id="chop-btn" onclick="PlayerView.doChop()" ${Game.state.choppingCount <= 0 ? 'disabled' : ''}>
+            <span class="chop-axe-icon">${axeDef.icon}</span>
+          </button>
+          <span class="chop-count-badge">${Game.state.choppingCount}</span>
+          <label class="ten-toggle">
+            <input type="checkbox" id="ten-chop-toggle" ${this._tenChopMode ? 'checked' : ''} onchange="PlayerView.toggleTenChop(this.checked)" ${Game.state.choppingCount < 10 ? 'disabled' : ''} />
+            <span class="ten-toggle-label">十连砍</span>
+          </label>
+        </div>
+        <div class="action-forge-area">
+          <button class="forge-circle-btn" onclick="PlayerView.showForge()">
+            <span>🔨</span>
+          </button>
+          <span class="forge-count-badge">🔩 ${forgeStoneQty}</span>
+          <div class="forge-label">锻造</div>
+        </div>
+      </div>
+
+      <!-- 装备信息（紧凑显示） -->
+      <div class="equip-info-bar">
+        <span style="font-size:28px">${axeDef.icon}</span>
+        <div style="flex:1">
+          <span style="font-weight:600;font-size:13px">${axeDef.name}</span>
+          ${UI.qualityTag(axeDef.quality)}
+          ${axeDef.skillDesc ? `<span style="font-size:11px;color:var(--accent);margin-left:6px">🌟 ${axeDef.skillDesc}</span>` : ''}
+        </div>
       </div>
     `;
 
     this.renderInventory('items');
+    UI._updateMailBadge();
+  },
+
+  toggleTenChop(checked) {
+    this._tenChopMode = checked;
+  },
+
+  showTreeDetail() {
+    const treeConfig = TREE_LEVELS[Game.state.treeLevel] || TREE_LEVELS[1];
+    const treeRealm = TREE_REALMS.find(r => r.level == Game.state.treeRealm) || TREE_REALMS[0];
+    const nextTreeRealm = TREE_REALMS.find(r => r.level == Game.state.treeRealm + 1);
+
+    UI.modal(`
+      <div style="text-align:center;margin-bottom:16px">
+        <div style="font-size:72px;margin-bottom:8px">${treeConfig.icon}</div>
+        <div style="font-size:18px;font-weight:700">${treeRealm.name} · ${treeConfig.name}</div>
+        <div style="font-size:13px;color:var(--text-secondary);margin-top:4px">
+          灵阶 ${Game.state.treeRealm} · 树 Lv.${Game.state.treeLevel}
+        </div>
+        <div style="font-size:12px;color:var(--text-secondary);margin-top:8px">${treeRealm.desc || ''}</div>
+      </div>
+      ${nextTreeRealm ? `
+        <div style="border-top:1px solid var(--border);padding-top:12px;margin-bottom:12px">
+          <div style="font-weight:600;font-size:14px;margin-bottom:8px">升阶到：${nextTreeRealm.name}</div>
+          <div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px">${nextTreeRealm.desc || ''}</div>
+          ${nextTreeRealm.reqItems ? nextTreeRealm.reqItems.map(req => {
+            const def = ITEMS[req.itemId];
+            const have = Game.inventory.find(i => i.itemId == req.itemId)?.quantity || 0;
+            const ok = have >= req.count;
+            return `<div style="display:flex;align-items:center;gap:8px;padding:4px 0">
+              <span style="font-size:20px">${def.icon}</span>
+              <span style="flex:1;font-size:13px">${def.name}</span>
+              <span style="font-size:13px;color:${ok ? 'var(--success)' : 'var(--error)'}">${have}/${req.count}</span>
+            </div>`;
+          }).join('') : ''}
+        </div>
+      ` : '<div style="text-align:center;color:var(--text-secondary);padding:12px">已达到最高灵阶</div>'}
+    `, {
+      title: '🌳 仙树详情',
+      footer: nextTreeRealm ? `<div class="modal-footer">
+        <button class="btn btn-outline btn-sm" onclick="this.closest('.modal-overlay').remove()">关闭</button>
+        <button class="btn btn-primary btn-sm" onclick="this.closest('.modal-overlay').remove();PlayerView.showTreeUpgrade()">升阶</button>
+      </div>` : undefined
+    });
   },
 
   currentInvTab: 'items',
 
   switchInvTab(tab) {
     this.currentInvTab = tab;
-    document.querySelectorAll('.inv-tab').forEach(el => {
+    document.querySelectorAll('.inv-tab-v').forEach(el => {
       el.classList.toggle('active', el.dataset.tab === tab);
     });
     this.renderInventory(tab);
@@ -1402,6 +1505,12 @@ const PlayerView = {
   },
 
   async doChop() {
+    // 十连砍模式
+    if (this._tenChopMode) {
+      this.doChopTen();
+      return;
+    }
+
     if (Game.state.choppingCount <= 0) {
       UI.toast('没有砍树次数了', 'warn');
       return;
@@ -1409,37 +1518,32 @@ const PlayerView = {
 
     const treeIcon = document.getElementById('tree-icon');
     const chopBtn = document.getElementById('chop-btn');
-
-    // 禁用按钮
-    chopBtn.disabled = true;
+    if (chopBtn) chopBtn.disabled = true;
 
     // 摇晃动画
-    treeIcon.classList.add('shaking');
-    setTimeout(() => treeIcon.classList.remove('shaking'), 300);
+    if (treeIcon) {
+      treeIcon.classList.add('shaking');
+      setTimeout(() => treeIcon.classList.remove('shaking'), 300);
+    }
 
     // 掉落延迟
     setTimeout(async () => {
       try {
         const item = await Game.chop();
         if (item) {
-          UI.playDropAnimation(item, treeIcon);
+          if (treeIcon) UI.playDropAnimation(item, treeIcon);
 
-          // 显示获得弹窗
           setTimeout(() => {
             this._showRewardModal(item);
           }, 800);
         }
 
-        // 更新砍树按钮文字
-        chopBtn.textContent = `🪓 砍树 (${Game.state.choppingCount})`;
-        chopBtn.disabled = Game.state.choppingCount <= 0;
-
-        // 刷新背包
-        this.renderInventory(this.currentInvTab);
+        // 刷新整个修仙界面（包含按钮状态、次数、背包）
+        this.renderCultivate();
       } catch (e) {
         console.error('doChop error:', e);
         UI.toast('砍树失败，请重试', 'error');
-        chopBtn.disabled = false;
+        if (chopBtn) chopBtn.disabled = false;
       }
     }, 200);
   },
@@ -1476,6 +1580,15 @@ const PlayerView = {
     const today = new Date().toISOString().split('T')[0];
     const dailyChecked = Game.state.lastDailyDate === today;
 
+    // 收集所有主题
+    const allTasks = [...dailyTasks, ...weeklyTasks];
+    const themes = [...new Set(allTasks.filter(t => t.themeName).map(t => t.themeName))];
+
+    let themeFilters = '';
+    themes.forEach(theme => {
+      themeFilters += `<div class="filter-chip" data-filter="theme:${theme}" onclick="PlayerView.filterTasks('theme:${theme}')">🎨 ${theme}</div>`;
+    });
+
     main.innerHTML = `
       <div class="page-title">📜 任务</div>
       <div class="page-subtitle">完成任务获得砍树次数，砍树掉落奖励</div>
@@ -1485,6 +1598,7 @@ const PlayerView = {
         <div class="filter-chip" data-filter="daily" onclick="PlayerView.filterTasks('daily')">每日</div>
         <div class="filter-chip" data-filter="weekly" onclick="PlayerView.filterTasks('weekly')">每周</div>
         <div class="filter-chip" data-filter="self" onclick="PlayerView.filterTasks('self')">自主申报</div>
+        ${themeFilters}
       </div>
 
       <div id="task-list"></div>
@@ -1523,10 +1637,68 @@ const PlayerView = {
     const submissions = await DB.getSubmissions();
     this._submissions = submissions;
 
+    const filter = this.currentTaskFilter;
     let html = '';
 
+    // 主题筛选
+    if (filter.startsWith('theme:')) {
+      const themeName = filter.substring(6);
+      const themeTasks = [...this._dailyTasks, ...this._weeklyTasks].filter(t => t.themeName === themeName);
+      html += `<div style="font-size:13px;font-weight:600;color:var(--text-secondary);margin:12px 4px 8px">🎨 ${themeName} · 主题任务</div>`;
+      if (themeTasks.length === 0) {
+        html += `<div class="empty-state" style="padding:24px"><div class="emoji">🎨</div><p>该主题暂无任务</p></div>`;
+      } else {
+        themeTasks.forEach(task => {
+          const type = task.taskType;
+          let status = 'available';
+          if (type === 'daily') {
+            status = this._dailyChecked ? 'done' : 'available';
+          } else {
+            const sub = submissions.find(s => s.taskId === task.id);
+            status = sub ? sub.status : 'available';
+          }
+          html += this._renderTaskCard(task, status, type);
+        });
+
+        // 主题额外奖励（样例：硬编码显示主题完成进度）
+        const completedCount = themeTasks.filter(t => {
+          if (t.taskType === 'daily') return this._dailyChecked;
+          const sub = submissions.find(s => s.taskId === t.id);
+          return sub && (sub.status === 'approved' || sub.status === 'done');
+        }).length;
+        const totalCount = themeTasks.length;
+        const extraReward = themeTasks[0]?.themeExtraReward || [];
+        let extraRewardHtml = '';
+        if (extraReward.length > 0) {
+          extraReward.forEach(ri => {
+            const def = ITEMS[ri.item_id];
+            if (def) extraRewardHtml += `<span style="font-size:20px;margin:0 4px">${def.icon}×${ri.quantity}</span>`;
+          });
+        }
+        const allDone = completedCount >= totalCount && totalCount > 0;
+        html += `
+          <div style="margin-top:16px;padding:12px;background:linear-gradient(135deg,#f3e5f5,#e1bee7);border-radius:12px">
+            <div style="font-weight:600;font-size:14px;margin-bottom:8px;color:#6a1b9a">🎁 主题额外奖励</div>
+            <div style="font-size:12px;color:#7b1fa2;margin-bottom:8px">完成全部 ${totalCount} 个主题任务即可领取</div>
+            <div style="margin-bottom:8px">${extraRewardHtml || '<span style="color:#9e9e9e">暂无额外奖励</span>'}</div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <div style="flex:1;height:6px;background:#fff;border-radius:3px;overflow:hidden">
+                <div style="height:100%;width:${(completedCount/totalCount*100)||0}%;background:#9c27b0;border-radius:3px;transition:width 0.3s"></div>
+              </div>
+              <span style="font-size:12px;color:#7b1fa2;font-weight:600">${completedCount}/${totalCount}</span>
+            </div>
+            <button class="btn btn-primary btn-sm btn-block" style="margin-top:10px" ${allDone ? '' : 'disabled'} onclick="PlayerView.claimThemeExtraReward('${themeName}')">
+              ${allDone ? '🎁 领取额外奖励' : '完成全部任务后解锁'}
+            </button>
+          </div>
+        `;
+      }
+      list.innerHTML = html;
+      return;
+    }
+
     // 每日任务
-    if (this.currentTaskFilter === 'all' || this.currentTaskFilter === 'daily') {
+    if (filter === 'all' || filter === 'daily') {
       html += `<div style="font-size:13px;font-weight:600;color:var(--text-secondary);margin:12px 4px 8px">☀️ 每日任务</div>`;
       this._dailyTasks.forEach(task => {
         const checked = this._dailyChecked;
@@ -1535,7 +1707,7 @@ const PlayerView = {
     }
 
     // 每周任务
-    if (this.currentTaskFilter === 'all' || this.currentTaskFilter === 'weekly') {
+    if (filter === 'all' || filter === 'weekly') {
       html += `<div style="font-size:13px;font-weight:600;color:var(--text-secondary);margin:16px 4px 8px">📅 每周任务</div>`;
       this._weeklyTasks.forEach(task => {
         const sub = submissions.find(s => s.taskId === task.id);
@@ -1545,7 +1717,7 @@ const PlayerView = {
     }
 
     // 自主申报
-    if (this.currentTaskFilter === 'all' || this.currentTaskFilter === 'self') {
+    if (filter === 'all' || filter === 'self') {
       html += `<div style="font-size:13px;font-weight:600;color:var(--text-secondary);margin:16px 4px 8px">✍️ 自主申报</div>`;
       const selfSubs = submissions.filter(s => s.isSelfTask);
       if (selfSubs.length === 0) {
@@ -1596,7 +1768,10 @@ const PlayerView = {
       <div class="task-card">
         <div class="task-card-header">
           <div class="task-title">${task.title}</div>
-          ${task.difficulty ? UI.difficultyTag(task.difficulty) : ''}
+          <div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end">
+            ${task.themeName ? `<span class="tag" style="background:#e8daef;color:#6c3483;font-size:10px">🎨 ${task.themeName}</span>` : ''}
+            ${task.difficulty ? UI.difficultyTag(task.difficulty) : ''}
+          </div>
         </div>
         <div class="task-desc">${task.description || ''}</div>
         <div class="task-meta">
@@ -1755,6 +1930,60 @@ const PlayerView = {
     await DB.reviewSubmission(sub.id, 'claimed', '', sub.rewardChopping, sub.rewardItems);
     await Game.refresh();
     UI.toast('奖励已领取！', 'success');
+    this._renderTaskList();
+  },
+
+  // 已领取的主题额外奖励（内存记录，样例实现）
+  _claimedThemeRewards: {},
+
+  async claimThemeExtraReward(themeName) {
+    if (this._claimedThemeRewards[themeName]) {
+      UI.toast('已领取过主题额外奖励', 'warn');
+      return;
+    }
+
+    const allTasks = [...this._dailyTasks, ...this._weeklyTasks];
+    const themeTasks = allTasks.filter(t => t.themeName === themeName);
+    if (themeTasks.length === 0) return;
+
+    // 检查是否全部完成
+    const submissions = this._submissions;
+    const allDone = themeTasks.every(t => {
+      if (t.taskType === 'daily') return this._dailyChecked;
+      const sub = submissions.find(s => s.taskId === t.id);
+      return sub && (sub.status === 'approved' || sub.status === 'claimed' || sub.status === 'done');
+    });
+
+    if (!allDone) {
+      UI.toast('请先完成全部主题任务', 'warn');
+      return;
+    }
+
+    // 发放额外奖励（从第一个主题任务的 themeExtraReward 中获取）
+    const extraReward = themeTasks[0]?.themeExtraReward || [];
+    let totalChopping = 0;
+    for (const ri of extraReward) {
+      if (ri.item_id === 'chopping') {
+        totalChopping += ri.quantity;
+      } else {
+        await DB.addItem(ri.item_id, ri.quantity);
+      }
+    }
+    if (totalChopping > 0) {
+      Game.state.choppingCount += totalChopping;
+      await DB.updatePlayerState({ choppingCount: Game.state.choppingCount });
+    }
+
+    // 发送邮件通知
+    await DB.sendMail(
+      `🎨 主题「${themeName}」完成奖励`,
+      `恭喜你完成了主题「${themeName}」的全部任务，额外奖励已发放！`,
+      extraReward
+    );
+
+    this._claimedThemeRewards[themeName] = true;
+    await Game.refresh();
+    UI.toast('🎉 主题额外奖励已领取！', 'success');
     this._renderTaskList();
   },
 
@@ -2169,12 +2398,19 @@ const PlayerView = {
       UI.toast('砍树次数不足10次', 'warn');
       return;
     }
-    const btn = document.getElementById('chop-ten-btn');
-    if (btn) btn.disabled = true;
+    const chopBtn = document.getElementById('chop-btn');
+    const treeIcon = document.getElementById('tree-icon');
+    if (chopBtn) chopBtn.disabled = true;
+
+    // 摇晃动画
+    if (treeIcon) {
+      treeIcon.classList.add('shaking');
+      setTimeout(() => treeIcon.classList.remove('shaking'), 300);
+    }
 
     const results = await Game.chopTen();
     if (!results) {
-      if (btn) btn.disabled = false;
+      if (chopBtn) chopBtn.disabled = false;
       return;
     }
 
@@ -2243,7 +2479,7 @@ const AdminView = {
   // --- 任务管理 ---
   async renderTaskManage() {
     const main = document.getElementById('admin-main');
-    const tasks = await DB.getTasks();
+    const tasks = await DB.getAllTasks();
 
     main.innerHTML = `
       <div class="page-title">📜 任务管理</div>
@@ -2255,6 +2491,8 @@ const AdminView = {
 
       <div class="filter-bar">
         <div class="filter-chip active" data-filter="all" onclick="AdminView.filterAdminTasks('all')">全部</div>
+        <div class="filter-chip" data-filter="published" onclick="AdminView.filterAdminTasks('published')">已发布</div>
+        <div class="filter-chip" data-filter="draft" onclick="AdminView.filterAdminTasks('draft')">发布池</div>
         <div class="filter-chip" data-filter="weekly" onclick="AdminView.filterAdminTasks('weekly')">每周</div>
         <div class="filter-chip" data-filter="daily" onclick="AdminView.filterAdminTasks('daily')">每日</div>
       </div>
@@ -2282,9 +2520,13 @@ const AdminView = {
     const list = document.getElementById('admin-task-list');
     if (!list) return;
 
-    const tasks = this._adminTaskFilter === 'all'
-      ? this._adminTasks
-      : this._adminTasks.filter(t => t.taskType === this._adminTaskFilter);
+    let tasks = this._adminTasks;
+    const f = this._adminTaskFilter;
+    if (f === 'published' || f === 'draft') {
+      tasks = tasks.filter(t => t.status === f);
+    } else if (f === 'weekly' || f === 'daily') {
+      tasks = tasks.filter(t => t.taskType === f);
+    }
 
     if (tasks.length === 0) {
       list.innerHTML = `<div class="empty-state"><div class="emoji">📭</div><p>暂无任务</p></div>`;
@@ -2301,11 +2543,27 @@ const AdminView = {
         if (def) rewardHtml += `<span style="font-size:16px">${def.icon}×${ri.quantity}</span>`;
       });
 
+      const statusBadge = task.status === 'draft'
+        ? '<span class="tag" style="background:#fff3cd;color:#856404;font-size:11px">发布池</span>'
+        : '<span class="tag" style="background:#d4edda;color:#155724;font-size:11px">已发布</span>';
+
+      const themeBadge = task.themeName
+        ? `<span class="tag" style="background:#e8daef;color:#6c3483;font-size:11px">🎨 ${task.themeName}</span>`
+        : '';
+
+      const statusBtn = task.status === 'draft'
+        ? `<button class="btn btn-primary btn-sm" onclick="AdminView.publishTask('${task.id}')">发布</button>`
+        : `<button class="btn btn-outline btn-sm" onclick="AdminView.unpublishTask('${task.id}')">撤回</button>`;
+
       html += `
         <div class="task-card">
           <div class="task-card-header">
             <div class="task-title">${task.title}</div>
-            ${task.difficulty ? UI.difficultyTag(task.difficulty) : ''}
+            <div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end">
+              ${themeBadge}
+              ${statusBadge}
+              ${task.difficulty ? UI.difficultyTag(task.difficulty) : ''}
+            </div>
           </div>
           <div class="task-desc">${task.description || ''}</div>
           <div class="task-meta">
@@ -2313,7 +2571,8 @@ const AdminView = {
             ${rewardHtml}
           </div>
           <div class="task-actions">
-            <button class="btn btn-outline btn-sm" onclick="AdminView.deleteTask('${task.id}')">删除</button>
+            ${statusBtn}
+            <button class="btn btn-outline btn-sm btn-danger" onclick="AdminView.deleteTask('${task.id}')">删除</button>
           </div>
         </div>
       `;
@@ -2358,6 +2617,30 @@ const AdminView = {
           道具ID：stone_forge(锻铁) / stone_break(破境石) / money_sm_frag(铜钱碎片) / money_mid_frag(银锭碎片) / money_lg_frag(金元宝碎片)
         </div>
       </div>
+      <div style="border-top:1px solid var(--border);margin:12px 0;padding-top:12px">
+        <div style="font-weight:600;margin-bottom:8px;font-size:13px">🎨 主题设置（可选）</div>
+        <div class="form-group">
+          <label>主题名称</label>
+          <input type="text" id="new-task-theme" placeholder="比如：社交挑战周">
+        </div>
+        <div style="display:flex;gap:8px">
+          <div class="form-group" style="flex:1">
+            <label>开始日期</label>
+            <input type="date" id="new-task-theme-start">
+          </div>
+          <div class="form-group" style="flex:1">
+            <label>结束日期</label>
+            <input type="date" id="new-task-theme-end">
+          </div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>发布状态</label>
+        <select id="new-task-status">
+          <option value="draft">放入发布池（不立即发布）</option>
+          <option value="published">直接发布</option>
+        </select>
+      </div>
     `, {
       title: '新建任务',
       footer: `<div class="modal-footer">
@@ -2373,6 +2656,10 @@ const AdminView = {
       const difficulty = document.getElementById('new-task-diff').value;
       const rewardChopping = parseInt(document.getElementById('new-task-chopping').value) || 0;
       const itemsStr = document.getElementById('new-task-items').value.trim();
+      const themeName = document.getElementById('new-task-theme').value.trim() || null;
+      const themeStart = document.getElementById('new-task-theme-start').value || null;
+      const themeEnd = document.getElementById('new-task-theme-end').value || null;
+      const status = document.getElementById('new-task-status').value;
 
       if (!title) { UI.toast('请填写任务名称', 'warn'); return; }
 
@@ -2391,6 +2678,10 @@ const AdminView = {
         difficulty,
         rewardChopping,
         rewardItems,
+        status,
+        themeName,
+        themeStart,
+        themeEnd,
         sortOrder: this._adminTasks.length,
       });
 
@@ -2405,6 +2696,24 @@ const AdminView = {
       await DB.deleteTask(id);
       UI.toast('已删除', 'success');
       this.renderTaskManage();
+    });
+  },
+
+  async publishTask(id) {
+    const ok = await DB.updateTaskStatus(id, 'published');
+    if (ok) {
+      UI.toast('任务已发布', 'success');
+      this.renderTaskManage();
+    }
+  },
+
+  async unpublishTask(id) {
+    UI.confirm('确定撤回这个任务吗？玩家将看不到它。', async () => {
+      const ok = await DB.updateTaskStatus(id, 'draft');
+      if (ok) {
+        UI.toast('任务已撤回到发布池', 'success');
+        this.renderTaskManage();
+      }
     });
   },
 

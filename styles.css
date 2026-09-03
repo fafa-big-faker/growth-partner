@@ -8,6 +8,8 @@
   --danger: #c96565;
   --warning: #d4a84b;
   --info: #6b8ec9;
+  --success: #6b8e6b;
+  --error: #c96565;
   --bg: #f5f0e6;
   --bg-secondary: #ebe4d4;
   --card: #fffdf7;
@@ -408,11 +410,7 @@ body {
 .tree-level { font-size: 12px; color: var(--text-secondary); }
 
 .chop-btn {
-  position: absolute;
-  bottom: 16px;
-  left: 50%;
-  transform: translateX(-50%);
-  padding: 12px 32px;
+  padding: 12px 24px;
   font-size: 16px;
   font-weight: 700;
   background: linear-gradient(135deg, var(--accent), #557a55);
@@ -424,9 +422,9 @@ body {
   transition: var(--transition);
 }
 
-.chop-btn:hover { transform: translateX(-50%) translateY(-2px); box-shadow: 0 6px 20px rgba(107, 142, 107, 0.5); }
-.chop-btn:active { transform: translateX(-50%) scale(0.95); }
-.chop-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: translateX(-50%); }
+.chop-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(107, 142, 107, 0.5); }
+.chop-btn:active { transform: scale(0.95); }
+.chop-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* 掉落物动画 */
 .falling-item {
@@ -1066,4 +1064,410 @@ body {
 }
 .shaking {
   animation: tree-shake 0.3s ease-in-out;
+}
+
+/* ===== 修仙界面新布局 ===== */
+
+/* ① 场景区：仙树 + 人物 */
+.cult-scene {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 30px;
+  padding: 20px 16px 12px;
+  background: linear-gradient(180deg, #e8dcc4 0%, var(--card-solid) 100%);
+  border-radius: var(--radius);
+  margin-bottom: 12px;
+  min-height: 180px;
+  position: relative;
+  overflow: hidden;
+}
+
+.cult-scene::before {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 30px;
+  background: linear-gradient(180deg, transparent, rgba(201, 169, 110, 0.12));
+  pointer-events: none;
+}
+
+.cult-tree {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  transition: var(--transition);
+  position: relative;
+  z-index: 1;
+  user-select: none;
+}
+
+.cult-tree:hover { transform: scale(1.05); }
+.cult-tree:active { transform: scale(0.97); }
+
+.cult-tree .tree-emoji {
+  font-size: 64px;
+  line-height: 1.2;
+  filter: drop-shadow(0 4px 8px rgba(0,0,0,0.1));
+  animation: tree-sway 4s ease-in-out infinite;
+}
+
+@keyframes tree-sway {
+  0%, 100% { transform: rotate(-2deg); }
+  50% { transform: rotate(2deg); }
+}
+
+.cult-tree .tree-label {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--primary-dark);
+  margin-top: 4px;
+  white-space: nowrap;
+}
+
+.cult-tree .tree-sub {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-top: 1px;
+}
+
+.cult-char {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  position: relative;
+  z-index: 1;
+}
+
+.cult-char .char-emoji {
+  font-size: 48px;
+  line-height: 1.2;
+  filter: drop-shadow(0 4px 6px rgba(0,0,0,0.08));
+  animation: char-bob 3s ease-in-out infinite;
+}
+
+@keyframes char-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+/* ② 状态栏：邮件 / 等级·仙阶 + 经验条 / 突破 */
+.cult-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--card);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  margin-bottom: 12px;
+}
+
+.status-mail {
+  position: relative;
+  font-size: 22px;
+  cursor: pointer;
+  transition: var(--transition);
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--bg-secondary);
+}
+
+.status-mail:hover { transform: scale(1.1); background: var(--primary-light); }
+.status-mail .mail-badge {
+  position: absolute;
+  top: -2px; right: -2px;
+  background: var(--danger);
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 10px;
+  min-width: 16px;
+  text-align: center;
+  line-height: 1.4;
+}
+
+.status-center {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.status-realm {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.status-exp-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.status-exp-bar {
+  flex: 1;
+  height: 6px;
+  background: var(--bg-secondary);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.status-exp-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--accent-light));
+  border-radius: 3px;
+  transition: width 0.5s ease;
+}
+
+.status-exp-text {
+  font-size: 11px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ③ 背包区（页签在右侧） */
+.cult-inventory {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.cult-inventory .inventory-grid {
+  flex: 1;
+  grid-template-columns: repeat(5, 1fr);
+}
+
+.inv-tabs-v {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 52px;
+  flex-shrink: 0;
+}
+
+.inv-tab-v {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 10px 4px;
+  border-radius: var(--radius-sm);
+  background: var(--card-solid);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  transition: var(--transition);
+  border: 1.5px solid transparent;
+  writing-mode: vertical-lr;
+  letter-spacing: 2px;
+}
+
+.inv-tab-v.active {
+  color: var(--primary-dark);
+  background: linear-gradient(135deg, #faf3e3, #f0e6cf);
+  border-color: var(--primary-light);
+  box-shadow: var(--shadow);
+}
+
+.inv-tab-v:hover:not(.active) {
+  color: var(--primary);
+  background: var(--bg-secondary);
+}
+
+/* ④ 操作区：砍树按钮 + 十连勾选 + 锻造 */
+.cult-action {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 20px;
+  padding: 12px 0;
+  margin-bottom: 8px;
+}
+
+.action-chop-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+}
+
+.chop-circle-btn {
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  border: none;
+  background: linear-gradient(135deg, var(--accent), #557a55);
+  color: white;
+  font-size: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(107, 142, 107, 0.4);
+  transition: var(--transition);
+  position: relative;
+}
+
+.chop-circle-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 24px rgba(107, 142, 107, 0.5);
+}
+
+.chop-circle-btn:active { transform: scale(0.93); }
+.chop-circle-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: var(--bg-secondary);
+  box-shadow: none;
+}
+
+.chop-axe-icon {
+  font-size: 36px;
+  line-height: 1;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+}
+
+.chop-count-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background: var(--danger);
+  color: white;
+  font-size: 13px;
+  font-weight: 700;
+  min-width: 24px;
+  height: 24px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 6px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+}
+
+.ten-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--text-secondary);
+  user-select: none;
+  background: var(--card-solid);
+  padding: 4px 12px;
+  border-radius: 20px;
+  border: 1.5px solid var(--border);
+  transition: var(--transition);
+}
+
+.ten-toggle:hover { border-color: var(--primary-light); }
+.ten-toggle:has(input:disabled) { opacity: 0.5; cursor: not-allowed; }
+
+.ten-toggle input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+  cursor: pointer;
+  margin: 0;
+}
+
+.ten-toggle-label {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.action-forge-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  position: relative;
+  padding-top: 8px;
+}
+
+.forge-circle-btn {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: none;
+  background: linear-gradient(135deg, #d4a84b, #b8861f);
+  color: white;
+  font-size: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(212, 168, 75, 0.4);
+  transition: var(--transition);
+}
+
+.forge-circle-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(212, 168, 75, 0.5);
+}
+
+.forge-circle-btn:active { transform: scale(0.93); }
+
+.forge-count-badge {
+  position: absolute;
+  top: 2px;
+  right: -8px;
+  background: var(--card);
+  color: var(--primary-dark);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 12px;
+  border: 1.5px solid var(--primary-light);
+  white-space: nowrap;
+}
+
+.forge-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+/* ⑤ 装备信息栏 */
+.equip-info-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--card-solid);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  margin-bottom: 12px;
+}
+
+/* 响应式微调 */
+@media (max-width: 380px) {
+  .cult-scene { gap: 16px; min-height: 150px; }
+  .cult-tree .tree-emoji { font-size: 52px; }
+  .cult-char .char-emoji { font-size: 40px; }
+  .chop-circle-btn { width: 76px; height: 76px; }
+  .chop-axe-icon { font-size: 30px; }
+  .forge-circle-btn { width: 56px; height: 56px; }
+  .cult-inventory .inventory-grid { grid-template-columns: repeat(4, 1fr); }
+  .inv-tabs-v { width: 44px; }
 }
