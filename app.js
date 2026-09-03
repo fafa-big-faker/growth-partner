@@ -1050,7 +1050,6 @@ const Auth = {
     } else {
       document.getElementById('login-screen').style.display = 'none';
       document.getElementById('player-dashboard').style.display = 'flex';
-      document.getElementById('player-name').textContent = '小修士';
       UI.updateHeader();
       Router.playerTab('cultivate');
     }
@@ -1108,13 +1107,7 @@ const Router = {
 const UI = {
   updateHeader() {
     if (!Game.state) return;
-    document.getElementById('chopping-count').textContent = Game.state.choppingCount;
-    document.getElementById('player-level-num').textContent = Game.state.level;
-    const expNeeded = getExpForLevel(Game.state.level);
-    const pct = Math.min(100, (Game.state.exp / expNeeded) * 100);
-    document.getElementById('player-exp-bar').style.width = pct + '%';
-
-    // 未读邮件数
+    // 旧版 header 已移除，这里只更新邮件 badge
     this._updateMailBadge();
   },
 
@@ -1240,6 +1233,38 @@ const UI = {
     container.appendChild(el);
     setTimeout(() => el.remove(), 1200);
   },
+
+  playScatterAnimation(item, treeElement, index) {
+    const container = document.getElementById('floating-items-container');
+    const el = document.createElement('div');
+    el.className = 'scatter-item';
+    el.textContent = item.item.icon;
+
+    const treeRect = treeElement.getBoundingClientRect();
+    const startX = treeRect.left + treeRect.width / 2 - 16;
+    const startY = treeRect.top + treeRect.height / 3;
+
+    // 随机散落位置：以树底部为中心，左右散开
+    const sceneRect = treeElement.parentElement.getBoundingClientRect();
+    const groundY = sceneRect.bottom - 30;
+    const scatterRange = 100;
+    const offsetX = (Math.random() - 0.5) * scatterRange * 2;
+    const offsetY = groundY - startY + (Math.random() * 10);
+
+    el.style.left = startX + 'px';
+    el.style.top = startY + 'px';
+    el.style.zIndex = 400 + index;
+
+    container.appendChild(el);
+
+    // 下一帧开始动画
+    requestAnimationFrame(() => {
+      el.style.transform = `translate(${offsetX}px, ${offsetY}px) rotate(${(Math.random() - 0.5) * 30}deg)`;
+      el.classList.add('scatter-landed');
+    });
+
+    return el;
+  },
 };
 
 /* ================================================================
@@ -1275,7 +1300,7 @@ const PlayerView = {
 
       <!-- ② 状态栏：邮件 / 等级·仙阶 + 经验条 / 突破 -->
       <div class="cult-status">
-        <div class="status-mail" onclick="Router.playerTab('mail')">
+        <div class="status-mail" onclick="PlayerView.showMailModal()">
           <span>📮</span>
           <span class="mail-badge" id="mail-badge" style="display:none">0</span>
         </div>
@@ -1307,8 +1332,8 @@ const PlayerView = {
             <span class="chop-axe-icon">${axeDef.icon}</span>
           </button>
           <span class="chop-count-badge">${Game.state.choppingCount}</span>
-          <label class="ten-toggle">
-            <input type="checkbox" id="ten-chop-toggle" ${this._tenChopMode ? 'checked' : ''} onchange="PlayerView.toggleTenChop(this.checked)" ${Game.state.choppingCount < 10 ? 'disabled' : ''} />
+          <label class="ten-toggle ${Game.state.choppingCount < 10 ? 'unavailable' : ''}">
+            <input type="checkbox" id="ten-chop-toggle" ${this._tenChopMode ? 'checked' : ''} onchange="PlayerView.toggleTenChop(this.checked)" />
             <span class="ten-toggle-label">十连砍</span>
           </label>
         </div>
@@ -1337,6 +1362,13 @@ const PlayerView = {
   },
 
   toggleTenChop(checked) {
+    if (checked && Game.state.choppingCount < 10) {
+      UI.toast('砍树次数不足10次，无法开启十连砍', 'warn');
+      this._tenChopMode = false;
+      const cb = document.getElementById('ten-chop-toggle');
+      if (cb) cb.checked = false;
+      return;
+    }
     this._tenChopMode = checked;
   },
 
@@ -2113,6 +2145,44 @@ const PlayerView = {
   },
 
   // --- 邮件 ---
+  async showMailModal() {
+    const mails = await DB.getMails();
+    let listHtml = '';
+    if (mails.length === 0) {
+      listHtml = '<div style="text-align:center;padding:32px;color:var(--text-secondary)"><div style="font-size:48px">📭</div><p>暂无邮件</p></div>';
+    } else {
+      mails.forEach(mail => {
+        const hasItems = mail.items && mail.items.length > 0;
+        const canClaim = hasItems && !mail.isClaimed;
+        const unread = !mail.isRead || canClaim;
+        let itemsHtml = '';
+        if (hasItems) {
+          itemsHtml = '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">';
+          mail.items.forEach(ri => {
+            const def = ITEMS[ri.item_id];
+            if (def) itemsHtml += `<span style="font-size:13px;background:var(--bg-secondary);padding:2px 8px;border-radius:6px">${def.icon}×${ri.quantity}</span>`;
+          });
+          itemsHtml += '</div>';
+        }
+        const date = new Date(mail.createdAt).toLocaleDateString('zh-CN');
+        listHtml += `
+          <div onclick="PlayerView.openMail('${mail.id}')" style="padding:12px;border-radius:10px;background:${unread ? 'var(--bg-secondary)' : 'var(--card-solid)'};border:1px solid var(--border);margin-bottom:8px;cursor:pointer;transition:var(--transition)" onmouseover="this.style.borderColor='var(--primary-light)'" onmouseout="this.style.borderColor='var(--border)'">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <span style="font-weight:${unread ? '700' : '500'};font-size:14px">${unread ? '🔵 ' : ''}${mail.title}</span>
+              <span style="font-size:11px;color:var(--text-light)">${date}</span>
+            </div>
+            <div style="font-size:12px;color:var(--text-secondary);margin-top:4px">${mail.content || ''}</div>
+            ${itemsHtml}
+            ${canClaim ? '<div style="margin-top:6px"><span style="font-size:11px;color:var(--accent);font-weight:600">可领取</span></div>' : ''}
+          </div>
+        `;
+      });
+    }
+
+    UI.modal(listHtml, { title: '📮 邮件' });
+    UI._updateMailBadge();
+  },
+
   async renderMail() {
     const main = document.getElementById('player-main');
     const mails = await DB.getMails();
@@ -2194,21 +2264,19 @@ const PlayerView = {
 
     const footer = canClaim
       ? `<div class="modal-footer">
-          <button class="btn btn-outline btn-sm" onclick="this.closest('.modal-overlay').remove()">关闭</button>
+          <button class="btn btn-outline btn-sm" onclick="this.closest('.modal-overlay').remove();PlayerView.showMailModal()">关闭</button>
           <button class="btn btn-outline btn-sm btn-danger" onclick="this.closest('.modal-overlay').remove();PlayerView.deleteMail('${mailId}')">删除</button>
           <button class="btn btn-accent btn-sm" onclick="PlayerView.claimMailReward('${mailId}')">领取奖励</button>
         </div>`
       : `<div class="modal-footer">
           <button class="btn btn-outline btn-sm btn-danger" onclick="this.closest('.modal-overlay').remove();PlayerView.deleteMail('${mailId}')">删除</button>
-          <button class="btn btn-primary btn-sm" onclick="this.closest('.modal-overlay').remove()">关闭</button>
+          <button class="btn btn-primary btn-sm" onclick="this.closest('.modal-overlay').remove();PlayerView.showMailModal()">关闭</button>
         </div>`;
 
     UI.modal(`
       <p style="font-size:14px;line-height:1.8;color:var(--text-secondary)">${mail.content || ''}</p>
       ${itemsHtml}
     `, { title: mail.title, footer });
-
-    this.renderMail();
   },
 
   async claimMailReward(mailId) {
@@ -2225,7 +2293,7 @@ const PlayerView = {
 
     document.querySelector('.modal-overlay')?.remove();
     UI.toast('奖励已领取！', 'success');
-    this.renderMail();
+    this.showMailModal();
   },
 
   // 仙阶突破弹窗
@@ -2395,26 +2463,88 @@ const PlayerView = {
   // 十连砍
   async doChopTen() {
     if (Game.state.choppingCount < 10) {
-      UI.toast('砍树次数不足10次', 'warn');
+      UI.toast('砍树次数不足10次，已自动取消十连砍', 'warn');
+      this._tenChopMode = false;
+      this.renderCultivate();
       return;
     }
+
     const chopBtn = document.getElementById('chop-btn');
     const treeIcon = document.getElementById('tree-icon');
     if (chopBtn) chopBtn.disabled = true;
 
-    // 摇晃动画
-    if (treeIcon) {
-      treeIcon.classList.add('shaking');
-      setTimeout(() => treeIcon.classList.remove('shaking'), 300);
+    const results = [];
+    const scatterEls = [];
+
+    // 10次连续砍树 + 散落动画
+    for (let i = 0; i < 10; i++) {
+      // 摇晃树
+      if (treeIcon) {
+        treeIcon.classList.add('shaking');
+        setTimeout(() => treeIcon && treeIcon.classList.remove('shaking'), 250);
+      }
+
+      // 砍树
+      const item = await Game.chop();
+      if (item) {
+        results.push(item);
+        // 散落动画
+        if (treeIcon) {
+          const el = UI.playScatterAnimation(item, treeIcon, i);
+          if (el) scatterEls.push(el);
+        }
+      }
+
+      // 等待下一次砍树
+      await new Promise(r => setTimeout(r, 320));
     }
 
-    const results = await Game.chopTen();
-    if (!results) {
-      if (chopBtn) chopBtn.disabled = false;
-      return;
+    // 十连保底：额外送1件珍品及以上
+    const treeConfig = TREE_LEVELS[Game.state.treeLevel] || TREE_LEVELS[1];
+    const rarePools = treeConfig.pools.filter(p => p.quality >= 3);
+    if (rarePools.length > 0) {
+      const totalWeight = rarePools.reduce((sum, p) => sum + p.weight, 0);
+      let roll = Math.random() * totalWeight;
+      let selectedPool = rarePools[0];
+      for (const pool of rarePools) {
+        roll -= pool.weight;
+        if (roll <= 0) { selectedPool = pool; break; }
+      }
+      const itemId = selectedPool.items[Math.floor(Math.random() * selectedPool.items.length)];
+      const itemDef = ITEMS[itemId];
+      await DB.addItem(itemId, 1);
+      const idx = Game.inventory.findIndex(i => i.itemId == itemId);
+      if (idx >= 0) Game.inventory[idx].quantity += 1;
+      else Game.inventory.push({ itemId, quantity: 1 });
+
+      const bonusItem = {
+        itemId, quantity: 1, quality: selectedPool.quality,
+        qualityName: QUALITY[selectedPool.quality].name,
+        item: itemDef, isBonus: true,
+      };
+      results.push(bonusItem);
+
+      // 保底物品也散落
+      if (treeIcon) {
+        if (treeIcon) treeIcon.classList.add('shaking');
+        const el = UI.playScatterAnimation(bonusItem, treeIcon, 10);
+        if (el) scatterEls.push(el);
+        setTimeout(() => treeIcon && treeIcon.classList.remove('shaking'), 250);
+      }
+      await new Promise(r => setTimeout(r, 400));
     }
 
-    // 十连结果弹窗（2行5列）
+    // 等待一会儿让玩家看清地上的物品
+    await new Promise(r => setTimeout(r, 700));
+
+    // 淡出所有散落物品
+    scatterEls.forEach(el => {
+      if (el) el.classList.add('scatter-fade');
+    });
+    await new Promise(r => setTimeout(r, 500));
+    scatterEls.forEach(el => { if (el) el.remove(); });
+
+    // 显示结果弹窗
     const itemsHtml = results.map(r => {
       const q = QUALITY[r.quality] || QUALITY[1];
       const bonusTag = r.isBonus ? '<div style="font-size:10px;color:var(--accent);font-weight:600">保底</div>' : '';
