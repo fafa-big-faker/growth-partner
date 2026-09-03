@@ -4,122 +4,167 @@
 
 // ===== 配置数据（后续迁到飞书表格） =====
 
-// 道具配置
-const ITEMS = {
-  // 奖金碎片
-  money_sm_frag: { id: 'money_sm_frag', name: '铜钱碎片', type: 1, quality: 1, icon: '🪙',
-    composeTo: 'money_sm', composeCount: 10, desc: '零散的铜钱，集齐10枚可合成一贯' },
-  money_mid_frag: { id: 'money_mid_frag', name: '银锭碎片', type: 1, quality: 2, icon: '🥈',
-    composeTo: 'money_mid', composeCount: 5, desc: '银锭碎块，集齐5块可合成一锭' },
-  money_lg_frag: { id: 'money_lg_frag', name: '金元宝碎片', type: 1, quality: 3, icon: '🥇',
-    composeTo: 'money_lg', composeCount: 3, desc: '金元宝碎片，集齐3片可合成一锭' },
-  // 奖金成品
-  money_sm: { id: 'money_sm', name: '一贯铜钱', type: 2, quality: 2, icon: '💰',
-    value: 10, desc: '可提现10元' },
-  money_mid: { id: 'money_mid', name: '一锭白银', type: 2, quality: 3, icon: '🪙',
-    value: 50, desc: '可提现50元' },
-  money_lg: { id: 'money_lg', name: '金元宝', type: 2, quality: 4, icon: '👑',
-    value: 200, desc: '可提现200元' },
-  // 突破道具
-  stone_break: { id: 'stone_break', name: '破境石', type: 3, quality: 3, icon: '💎',
-    desc: '突破仙阶所需的神石' },
-  // 锻造道具
-  stone_forge: { id: 'stone_forge', name: '锻铁', type: 4, quality: 1, icon: '🔩',
-    desc: '锻造仙斧的材料' },
-  // 仙斧
-  axe_stone: { id: 'axe_stone', name: '石斧', type: 5, quality: 1, icon: '🪓',
-    skill: null, sellPrice: 1, desc: '最普通的石斧，勉强能用' },
-  axe_iron: { id: 'axe_iron', name: '铁斧', type: 5, quality: 2, icon: '⛏️',
-    skill: 'double_common', skillDesc: '砍树掉落凡品时有概率双倍', sellPrice: 3, desc: '铁制斧头，锋利了不少' },
-  axe_bronze: { id: 'axe_bronze', name: '青铜斧', type: 5, quality: 3, icon: '🔨',
-    skill: 'refund_chopping', skillDesc: '有概率返还砍树次数', sellPrice: 5, desc: '青铜锻造，蕴含灵气' },
-  axe_jade: { id: 'axe_jade', name: '玉斧', type: 5, quality: 4, icon: '🗡️',
-    skill: 'double_rare', skillDesc: '砍树掉落珍品及以上时有概率双倍', sellPrice: 10, desc: '灵玉雕琢，仙气缭绕' },
-  axe_gold: { id: 'axe_gold', name: '开天斧', type: 5, quality: 5, icon: '⚔️',
-    skill: 'super_lucky', skillDesc: '大幅提升稀有道具掉落率', sellPrice: 20, desc: '传说中的神器' },
+// 道具配置 → 从飞书表格配置动态构建（game-config.js → itemTable）
+const ITEMS = {};
+(GAME_CONFIG?.itemTable || []).forEach(item => {
+  const id = String(item.id);
+  const entry = {
+    id: id,
+    name: item.name,
+    type: item.type,
+    quality: item.quality,
+    stackLimit: item.stackLimit || 999,
+    icon: item.icon || '❓',
+    desc: item.description || '',
+    interactionType: item.interactionType || 0,
+    interactionParams: item.interactionParams || '',
+    // 解析交互参数 → 派生字段
+    composeTo: null, composeCount: 0,
+    value: 0,
+    skillIds: [], skillDesc: '',
+    sellPrice: 0,
+  };
+  // 解析交互参数
+  const params = item.interactionParams ? item.interactionParams.split(',') : [];
+  if (item.interactionType === 1) {
+    // 合成: "目标ID,所需数量"
+    entry.composeTo = params[0]?.trim() || null;
+    entry.composeCount = parseInt(params[1]?.trim()) || 0;
+  } else if (item.interactionType === 2) {
+    // 兑现: "奖金数值"
+    entry.value = parseInt(params[0]?.trim()) || 0;
+  } else if (item.interactionType === 3) {
+    // 装备出售: "售价,技能ID[,技能ID2...]"
+    entry.sellPrice = parseInt(params[0]?.trim()) || 0;
+    entry.skillIds = params.slice(1).map(s => parseInt(s.trim())).filter(s => !isNaN(s));
+    if (entry.skillIds.length > 0) {
+      const descs = entry.skillIds.map(sid => {
+        const sk = getSkillById(sid);
+        return sk?.buff?.description || `技能${sid}`;
+      });
+      entry.skillDesc = descs.join('; ');
+    }
+  }
+  ITEMS[id] = entry;
+});
+// 向后兼容: 旧字符串ID → 新数字ID 别名
+const ITEM_ALIASES = {
+  'money_sm_frag': '10001', 'money_mid_frag': '10101', 'money_lg_frag': '10202',
+  'money_sm': '20001', 'money_mid': '20101', 'money_lg': '20201',
+  'stone_break': '30001', 'stone_forge': '40001',
+  'axe_stone': '51001', 'axe_iron': '52001', 'axe_bronze': '53001',
+  'axe_jade': '54001', 'axe_gold': '55001',
 };
+Object.entries(ITEM_ALIASES).forEach(([oldId, newId]) => {
+  if (ITEMS[newId] && !ITEMS[oldId]) ITEMS[oldId] = ITEMS[newId];
+});
 
-// 品质配置
-const QUALITY = {
-  1: { name: '凡品', color: '#9e9e9e' },
-  2: { name: '精品', color: '#4a90d9' },
-  3: { name: '珍品', color: '#9c6bd4' },
-  4: { name: '神品', color: '#e85a8a' },
-  5: { name: '仙品', color: '#f0b429' },
-};
+// 品质配置 → 从飞书表格配置构建（game-config.js → qualityTable + 代码颜色）
+const QUALITY = {};
+(GAME_CONFIG?.qualityTable || []).forEach(q => {
+  QUALITY[q.id] = { name: q.name, color: QUALITY_COLORS[q.id] || '#9e9e9e' };
+});
+// fallback 硬编码品质（飞书表为空时）
+if (Object.keys(QUALITY).length === 0) {
+  QUALITY[1] = { name: '凡品', color: '#9e9e9e' };
+  QUALITY[2] = { name: '精品', color: '#4a90d9' };
+  QUALITY[3] = { name: '珍品', color: '#9c6bd4' };
+  QUALITY[4] = { name: '神品', color: '#e85a8a' };
+  QUALITY[5] = { name: '仙品', color: '#f0b429' };
+}
 
-// 奖池配置（按树等级）
+// 奖池配置（按树等级）→ 道具ID已更新为飞书道具表的5位数字ID
 const TREE_LEVELS = {
   1: {
     name: '小树苗',
     icon: '🌱',
     pools: [
-      { quality: 1, weight: 60, items: ['money_sm_frag', 'stone_forge'] },
-      { quality: 2, weight: 25, items: ['money_mid_frag', 'stone_forge'] },
-      { quality: 3, weight: 12, items: ['money_lg_frag', 'stone_break'] },
-      { quality: 4, weight: 2.5, items: ['money_mid', 'stone_break'] },
-      { quality: 5, weight: 0.5, items: ['money_lg'] },
+      { quality: 1, weight: 60, items: ['10001', '40001'] },
+      { quality: 2, weight: 25, items: ['10101', '40001'] },
+      { quality: 3, weight: 12, items: ['10202', '30001'] },
+      { quality: 4, weight: 2.5, items: ['20101', '30001'] },
+      { quality: 5, weight: 0.5, items: ['20201'] },
     ],
   },
   2: {
     name: '小树',
     icon: '🌿',
     pools: [
-      { quality: 1, weight: 50, items: ['money_sm_frag', 'stone_forge'] },
-      { quality: 2, weight: 30, items: ['money_mid_frag', 'stone_forge'] },
-      { quality: 3, weight: 14, items: ['money_lg_frag', 'stone_break'] },
-      { quality: 4, weight: 4.5, items: ['money_mid', 'stone_break'] },
-      { quality: 5, weight: 1.5, items: ['money_lg', 'axe_iron'] },
+      { quality: 1, weight: 50, items: ['10001', '40001'] },
+      { quality: 2, weight: 30, items: ['10102', '40001'] },
+      { quality: 3, weight: 14, items: ['10201', '30001'] },
+      { quality: 4, weight: 4.5, items: ['20101', '30001'] },
+      { quality: 5, weight: 1.5, items: ['20201', '51002'] },
     ],
   },
   3: {
     name: '仙树',
     icon: '🎋',
     pools: [
-      { quality: 1, weight: 40, items: ['money_sm_frag', 'stone_forge'] },
-      { quality: 2, weight: 32, items: ['money_mid_frag', 'stone_forge'] },
-      { quality: 3, weight: 18, items: ['money_lg_frag', 'stone_break'] },
-      { quality: 4, weight: 7, items: ['money_mid', 'stone_break'] },
-      { quality: 5, weight: 3, items: ['money_lg', 'axe_bronze'] },
+      { quality: 1, weight: 40, items: ['10002', '40001'] },
+      { quality: 2, weight: 32, items: ['10102', '40001'] },
+      { quality: 3, weight: 18, items: ['10301', '30001'] },
+      { quality: 4, weight: 7, items: ['20101', '30101'] },
+      { quality: 5, weight: 3, items: ['20201', '53001'] },
     ],
   },
 };
 
-// 角色等级经验表
-function getExpForLevel(level) {
-  return Math.floor(10 * Math.pow(level, 1.5));
-}
+// 角色等级经验表 → 使用飞书表格配置（game-config.js）
+// getExpForLevel 已在 game-config.js 中定义
 
-// 商店（天道酬勤兑换）
+// 商店（天道酬勤兑换）→ 道具ID已更新为飞书道具表的5位数字ID
 const SHOP_ITEMS = [
   { id: 'shop_chopping_5', name: '砍树次数×5', icon: '🪓', costType: 'money', costValue: 10, rewardType: 'chopping', rewardValue: 5 },
-  { id: 'shop_money_sm', name: '一贯铜钱', icon: '💰', costType: 'chopping', costValue: 3, rewardType: 'item', rewardId: 'money_sm', rewardValue: 1 },
-  { id: 'shop_break', name: '破境石', icon: '💎', costType: 'chopping', costValue: 10, rewardType: 'item', rewardId: 'stone_break', rewardValue: 1 },
-  { id: 'shop_forge_10', name: '锻铁×10', icon: '🔩', costType: 'chopping', costValue: 5, rewardType: 'item', rewardId: 'stone_forge', rewardValue: 10 },
+  { id: 'shop_money_sm', name: '铜珠', icon: '🔴', costType: 'chopping', costValue: 3, rewardType: 'item', rewardId: '20001', rewardValue: 1 },
+  { id: 'shop_break', name: '期石', icon: '🟤', costType: 'chopping', costValue: 10, rewardType: 'item', rewardId: '30001', rewardValue: 1 },
+  { id: 'shop_forge_10', name: '锻造石×10', icon: '🔩', costType: 'chopping', costValue: 5, rewardType: 'item', rewardId: '40001', rewardValue: 10 },
 ];
 
-// 仙阶表
-const REALMS = [
-  { level: 1, name: '凡人', icon: '👤', reqLevel: 1, reqItems: [], desc: '初入修仙界的凡人' },
-  { level: 2, name: '炼气期', icon: '🌬️', reqLevel: 5, reqItems: [{ itemId: 'stone_break', count: 3 }], desc: '感知天地灵气，可使用精品仙斧' },
-  { level: 3, name: '筑基期', icon: '🏔️', reqLevel: 15, reqItems: [{ itemId: 'stone_break', count: 8 }], desc: '筑就道基，可使用珍品仙斧' },
-  { level: 4, name: '金丹期', icon: '🔮', reqLevel: 30, reqItems: [{ itemId: 'stone_break', count: 20 }], desc: '凝结金丹，可使用神品仙斧' },
-  { level: 5, name: '元婴期', icon: '👶', reqLevel: 50, reqItems: [{ itemId: 'stone_break', count: 50 }], desc: '元婴出窍，可使用仙品仙斧' },
-];
+// 仙阶表 → 从飞书表格配置合并生成（game-config.js）
+// 飞书表提供: reqLevel, realmId, name, maxAxeQuality, characterImage, reqItems(数字ID), icon
+// 道具ID直接使用飞书道具表的5位数字ID，无需映射
+// 仙阶描述 fallback（飞书表无 desc 列，代码维护）
+const REALM_FALLBACK = {
+  1:  { desc: '初入修仙界' },  2:  { desc: '踏上修仙路' },
+  3:  { desc: '渐入佳境' },   4:  { desc: '初窥门径' },
+  5:  { desc: '灵气环绕' },   6:  { desc: '功力渐深' },
+  7:  { desc: '雷劫初现' },   8:  { desc: '星尘加身' },
+  9:  { desc: '月华灌顶' },   10: { desc: '日辉照耀' },
+  11: { desc: '星河倒灌' },   12: { desc: '神器认主' },
+  13: { desc: '仙界封侯' },   14: { desc: '仙宫待启' },
+  15: { desc: '龙气加身' },   16: { desc: '大罗金仙' },
+};
+const REALMS = (GAME_CONFIG?.realmTable || []).map(r => {
+  const fb = REALM_FALLBACK[r.realmId] || {};
+  return {
+    level: r.realmId,
+    name: r.name,
+    reqLevel: r.reqLevel,
+    maxAxeQuality: r.maxAxeQuality || 1,
+    characterImage: r.characterImage || '',
+    icon: r.icon || '⭐',
+    reqItems: r.reqItems || [],
+    desc: fb.desc || '',
+  };
+});
 
-// 仙树灵阶表
+// 仙树灵阶表 → 使用飞书道具表的5位数字ID
 const TREE_REALMS = [
   { level: 1, name: '凡木', icon: '🌱', treeLevel: 1, reqItems: [], desc: '最普通的灵树' },
-  { level: 2, name: '灵木', icon: '🌳', treeLevel: 2, reqItems: [{ itemId: 'stone_forge', count: 20 }, { itemId: 'stone_break', count: 2 }], desc: '蕴含灵气的树木，掉落更佳' },
-  { level: 3, name: '仙木', icon: '🎋', treeLevel: 3, reqItems: [{ itemId: 'stone_forge', count: 50 }, { itemId: 'stone_break', count: 8 }], desc: '传说中的仙树，有神品掉落' },
+  { level: 2, name: '灵木', icon: '🌳', treeLevel: 2, reqItems: [{ itemId: '40001', count: 20 }, { itemId: '30001', count: 2 }], desc: '蕴含灵气的树木，掉落更佳' },
+  { level: 3, name: '仙木', icon: '🎋', treeLevel: 3, reqItems: [{ itemId: '40001', count: 50 }, { itemId: '30001', count: 8 }], desc: '传说中的仙树，有神品掉落' },
 ];
 
-// 锻造奖池
+// 锻造奖池 → 道具ID已更新为飞书道具表的5位数字ID
 const FORGE_POOL = [
-  { itemId: 'axe_iron', weight: 50, quality: 2 },
-  { itemId: 'axe_bronze', weight: 30, quality: 3 },
-  { itemId: 'axe_jade', weight: 15, quality: 4 },
-  { itemId: 'axe_gold', weight: 5, quality: 5 },
+  { itemId: '52001', weight: 30, quality: 2 },  // 物理劝学斧
+  { itemId: '52002', weight: 20, quality: 2 },  // 给大树修脚斧
+  { itemId: '53001', weight: 20, quality: 3 },  // 河神拒收的金斧
+  { itemId: '53002', weight: 15, quality: 3 },  // 镇海斧
+  { itemId: '54001', weight: 8,  quality: 4 },  // 疯狂星期四V我50斧
+  { itemId: '54002', weight: 5,  quality: 4 },  // 电子木鱼连点斧
+  { itemId: '55001', weight: 2,  quality: 5 },  // 盘古开天劈歪斧
 ];
 
 // 难度颜色映射
@@ -217,7 +262,7 @@ const DB = {
       tree_level: 1,
       tree_realm: 1,
       realm_level: 1,
-      axe_id: 'axe_stone',
+      axe_id: '51001',
       balance: 0,
       total_withdrawn: 0,
       last_daily_date: null,
@@ -235,7 +280,7 @@ const DB = {
           exp: 0,
           chopping_count: 10,
           tree_level: 1,
-          axe_id: 'axe_stone',
+          axe_id: '51001',
           balance: 0,
           total_withdrawn: 0,
           last_daily_date: null,
@@ -255,7 +300,7 @@ const DB = {
       treeLevel: 1,
       treeRealm: 1,
       realmLevel: 1,
-      axeId: 'axe_stone',
+      axeId: '51001',
       balance: 0,
       totalWithdrawn: 0,
       lastDailyDate: null,
@@ -778,7 +823,7 @@ const Game = {
       return false;
     }
     // 旧斧头放回背包
-    if (this.state.axeId && this.state.axeId !== 'axe_stone') {
+    if (this.state.axeId && this.state.axeId !== '51001') {
       await DB.addItem(this.state.axeId, 1);
     }
     // 从背包扣新斧头
@@ -911,11 +956,11 @@ const Game = {
 
   // 锻造
   async forge() {
-    if (this._getItemQty('stone_forge') < 1) {
-      UI.toast('锻铁不足', 'warn');
+    if (this._getItemQty('40001') < 1) {
+      UI.toast('锻造石不足', 'warn');
       return null;
     }
-    await DB.removeItem('stone_forge', 1);
+    await DB.removeItem('40001', 1);
 
     // 加权随机抽取
     const totalWeight = FORGE_POOL.reduce((sum, p) => sum + p.weight, 0);
@@ -970,46 +1015,63 @@ const Game = {
     return results;
   },
 
-  // 应用仙斧buff（返回修正后的掉落结果）
+  // 应用仙斧buff（返回修正后的掉落结果）→ 动态读取 skillTable/buffTable
   _applyAxeBuffs(dropItem) {
-    const axeDef = ITEMS[this.state.axeId] || ITEMS.axe_stone;
-    if (!axeDef.skill) return dropItem;
+    const axeDef = ITEMS[this.state.axeId] || ITEMS['51001'];
+    if (!axeDef.skillIds || axeDef.skillIds.length === 0) return dropItem;
 
-    // 技能1：指定品质掉落时概率双倍
-    if (axeDef.skill === 'double_common' && dropItem.quality <= 2) {
-      if (Math.random() < 0.2) {
-        dropItem.quantity *= 2;
-        dropItem.buffText = '双倍掉落！';
-      }
-    }
-    if (axeDef.skill === 'double_rare' && dropItem.quality >= 3) {
-      if (Math.random() < 0.3) {
-        dropItem.quantity *= 2;
-        dropItem.buffText = '双倍掉落！';
-      }
-    }
-    if (axeDef.skill === 'super_lucky') {
-      // 提升稀有掉落：重roll一次
-      if (dropItem.quality <= 2 && Math.random() < 0.3) {
-        dropItem.quality += 1;
-        dropItem.qualityName = QUALITY[dropItem.quality]?.name || dropItem.qualityName;
-        dropItem.buffText = '幸运暴击！';
+    for (const skillId of axeDef.skillIds) {
+      const skill = getSkillById(skillId);
+      if (!skill || !skill.buff) continue;
+
+      if (skill.buffId === 1) {
+        // BUFF类型1: 品质掉落倍率
+        // buffParams: "qualityId,probabilityCenter,multiplier"
+        const parts = skill.buffParams.split(',').map(s => parseFloat(s.trim()));
+        const targetQuality = parts[0];
+        const probCenter = parts[1];
+        const multiplier = parts[2];
+        if (dropItem.quality === targetQuality) {
+          // 概率中值 ±10 范围随机
+          const prob = (probCenter + (Math.random() * 20 - 10)) / 100;
+          if (Math.random() < prob) {
+            dropItem.quantity *= multiplier;
+            const qName = QUALITY[targetQuality]?.name || `品质${targetQuality}`;
+            dropItem.buffText = `${qName}×${multiplier}倍！`;
+          }
+        }
       }
     }
     return dropItem;
   },
 
-  // 返还砍树次数buff（砍树后调用）
+  // 返还砍树次数buff（砍树后调用）→ 动态读取 skillTable/buffTable
   _checkRefundBuff() {
-    const axeDef = ITEMS[this.state.axeId] || ITEMS.axe_stone;
-    if (axeDef.skill === 'refund_chopping') {
-      if (Math.random() < 0.15) {
-        this.state.choppingCount += 1;
-        DB.updatePlayerState({ choppingCount: this.state.choppingCount });
-        return 1;
+    const axeDef = ITEMS[this.state.axeId] || ITEMS['51001'];
+    if (!axeDef.skillIds || axeDef.skillIds.length === 0) return 0;
+
+    let totalRefund = 0;
+    for (const skillId of axeDef.skillIds) {
+      const skill = getSkillById(skillId);
+      if (!skill || !skill.buff) continue;
+
+      if (skill.buffId === 2) {
+        // BUFF类型2: 返还砍树次数
+        // buffParams: "probabilityCenter,refundAmount"
+        const parts = skill.buffParams.split(',').map(s => parseFloat(s.trim()));
+        const probCenter = parts[0];
+        const refundAmount = parts[1];
+        // 概率中值 ±5 范围随机
+        const prob = (probCenter + (Math.random() * 10 - 5)) / 100;
+        if (Math.random() < prob) {
+          const refund = Math.round(refundAmount);
+          this.state.choppingCount += refund;
+          DB.updatePlayerState({ choppingCount: this.state.choppingCount });
+          totalRefund += refund;
+        }
       }
     }
-    return 0;
+    return totalRefund;
   },
 };
 
@@ -1281,8 +1343,8 @@ const PlayerView = {
     const realm = REALMS.find(r => r.level == Game.state.realmLevel) || REALMS[0];
     const nextRealm = REALMS.find(r => r.level == Game.state.realmLevel + 1);
     const nextTreeRealm = TREE_REALMS.find(r => r.level == Game.state.treeRealm + 1);
-    const axeDef = ITEMS[Game.state.axeId] || ITEMS.axe_stone;
-    const forgeStoneQty = Game.inventory.find(i => i.itemId == 'stone_forge')?.quantity || 0;
+    const axeDef = ITEMS[Game.state.axeId] || ITEMS['51001'];
+    const forgeStoneQty = Game.inventory.find(i => i.itemId == '40001')?.quantity || 0;
     const expMax = getExpForLevel(Game.state.level);
 
     main.innerHTML = `
@@ -2421,7 +2483,7 @@ const PlayerView = {
 
   // 锻造弹窗
   showForge() {
-    const forgeQty = Game.inventory.find(i => i.itemId == 'stone_forge')?.quantity || 0;
+    const forgeQty = Game.inventory.find(i => i.itemId == '40001')?.quantity || 0;
 
     UI.modal(`
       <div style="text-align:center;margin-bottom:16px">
@@ -2764,9 +2826,9 @@ const AdminView = {
       </div>
       <div class="form-group">
         <label>奖励道具（格式：道具ID:数量，用逗号分隔）</label>
-        <input type="text" id="new-task-items" placeholder="比如：stone_forge:2,money_mid_frag:1">
+        <input type="text" id="new-task-items" placeholder="比如：40001:2,20001:1">
         <div style="font-size:11px;color:var(--text-light);margin-top:4px">
-          道具ID：stone_forge(锻铁) / stone_break(破境石) / money_sm_frag(铜钱碎片) / money_mid_frag(银锭碎片) / money_lg_frag(金元宝碎片)
+          道具ID：40001(锻造石) / 30001(期石) / 30101(望石) / 30201(待石) / 20001(铜珠) / 20101(银锭) / 20201(金元宝) / 20301(灵玉)
         </div>
       </div>
       <div style="border-top:1px solid var(--border);margin:12px 0;padding-top:12px">
@@ -2958,7 +3020,7 @@ const AdminView = {
         </div>
         <div class="form-group">
           <label>奖励道具（道具ID:数量，逗号分隔）</label>
-          <input type="text" id="approve-items" placeholder="比如：stone_forge:2">
+          <input type="text" id="approve-items" placeholder="比如：40001:2,20001:1">
         </div>
         <div class="form-group">
           <label>难度评级</label>
@@ -3184,7 +3246,7 @@ const AdminView = {
       return;
     }
 
-    const axeDef = ITEMS[state.axeId] || ITEMS.axe_stone;
+    const axeDef = ITEMS[state.axeId] || ITEMS['51001'];
 
     main.innerHTML = `
       <div class="page-title">👁️ 查看玩家</div>

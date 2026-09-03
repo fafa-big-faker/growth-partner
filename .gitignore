@@ -11,3 +11,6 @@ Thumbs.db
 
 # 临时文件
 config_qr.png
+
+# 配置备份
+config-backup/
