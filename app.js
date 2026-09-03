@@ -1325,7 +1325,7 @@ const PlayerView = {
         </div>
       </div>
 
-      <!-- ④ 操作区：砍树按钮 + 十连勾选 + 锻造 -->
+      <!-- ④ 操作区：砍树按钮 + 十连勾选 -->
       <div class="cult-action">
         <div class="action-chop-area">
           <button class="chop-circle-btn" id="chop-btn" onclick="PlayerView.doChop()" ${Game.state.choppingCount <= 0 ? 'disabled' : ''}>
@@ -1337,23 +1337,22 @@ const PlayerView = {
             <span class="ten-toggle-label">十连砍</span>
           </label>
         </div>
-        <div class="action-forge-area">
-          <button class="forge-circle-btn" onclick="PlayerView.showForge()">
-            <span>🔨</span>
-          </button>
-          <span class="forge-count-badge">🔩 ${forgeStoneQty}</span>
-          <div class="forge-label">锻造</div>
-        </div>
       </div>
 
-      <!-- 装备信息（紧凑显示） -->
+      <!-- 装备信息 + 锻造按钮 -->
       <div class="equip-info-bar">
-        <span style="font-size:28px">${axeDef.icon}</span>
-        <div style="flex:1">
-          <span style="font-weight:600;font-size:13px">${axeDef.name}</span>
-          ${UI.qualityTag(axeDef.quality)}
-          ${axeDef.skillDesc ? `<span style="font-size:11px;color:var(--accent);margin-left:6px">🌟 ${axeDef.skillDesc}</span>` : ''}
+        <span class="equip-icon">${axeDef.icon}</span>
+        <div class="equip-detail">
+          <div class="equip-name-row">
+            <span class="equip-name">${axeDef.name}</span>
+            ${UI.qualityTag(axeDef.quality)}
+          </div>
+          ${axeDef.skillDesc ? `<div class="equip-skill">🌟 ${axeDef.skillDesc}</div>` : ''}
         </div>
+        <button class="forge-btn" onclick="PlayerView.showForge()">
+          <span class="forge-btn-icon">🔨</span>
+          <span class="forge-btn-stone">🔩${forgeStoneQty}</span>
+        </button>
       </div>
     `;
 

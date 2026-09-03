@@ -1425,59 +1425,7 @@ body {
   white-space: nowrap;
 }
 
-.action-forge-area {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  position: relative;
-  padding-top: 8px;
-}
-
-.forge-circle-btn {
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
-  border: none;
-  background: linear-gradient(135deg, #d4a84b, #b8861f);
-  color: white;
-  font-size: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  box-shadow: 0 4px 12px rgba(212, 168, 75, 0.4);
-  transition: var(--transition);
-}
-
-.forge-circle-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 18px rgba(212, 168, 75, 0.5);
-}
-
-.forge-circle-btn:active { transform: scale(0.93); }
-
-.forge-count-badge {
-  position: absolute;
-  top: 2px;
-  right: -8px;
-  background: var(--card);
-  color: var(--primary-dark);
-  font-size: 11px;
-  font-weight: 700;
-  padding: 2px 8px;
-  border-radius: 12px;
-  border: 1.5px solid var(--primary-light);
-  white-space: nowrap;
-}
-
-.forge-label {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-secondary);
-}
-
-/* ⑤ 装备信息栏 */
+/* ⑤ 装备信息栏 + 锻造按钮 */
 .equip-info-bar {
   display: flex;
   align-items: center;
@@ -1489,6 +1437,66 @@ body {
   margin-bottom: 12px;
 }
 
+.equip-icon {
+  font-size: 28px;
+  flex-shrink: 0;
+}
+
+.equip-detail {
+  flex: 1;
+  min-width: 0;
+}
+
+.equip-name-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.equip-name {
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.equip-skill {
+  font-size: 11px;
+  color: var(--accent);
+  margin-top: 2px;
+}
+
+.forge-btn {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  border: 1.5px solid var(--primary-light);
+  background: linear-gradient(135deg, #f5ecd6, #e8d5a8);
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.forge-btn:hover {
+  border-color: var(--primary);
+  box-shadow: 0 2px 10px rgba(201, 169, 110, 0.3);
+}
+
+.forge-btn:active { transform: scale(0.95); }
+
+.forge-btn-icon {
+  font-size: 18px;
+}
+
+.forge-btn-stone {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--primary-dark);
+  white-space: nowrap;
+}
+
 /* 响应式微调 */
 @media (max-width: 380px) {
   .cult-scene { gap: 16px; min-height: 150px; }
@@ -1496,7 +1504,8 @@ body {
   .cult-char .char-emoji { font-size: 40px; }
   .chop-circle-btn { width: 76px; height: 76px; }
   .chop-axe-icon { font-size: 30px; }
-  .forge-circle-btn { width: 56px; height: 56px; }
   .cult-inventory .inventory-grid { grid-template-columns: repeat(4, 1fr); }
   .inv-tabs-v { width: 44px; }
+  .forge-btn { padding: 5px 8px; }
+  .forge-btn-icon { font-size: 16px; }
 }
