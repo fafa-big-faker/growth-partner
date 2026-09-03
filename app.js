@@ -74,16 +74,7 @@ Object.entries(ITEM_ALIASES).forEach(([oldId, newId]) => {
   if (ITEMS[newId] && !ITEMS[oldId]) ITEMS[oldId] = ITEMS[newId];
 });
 
-// 品质颜色映射
-const QUALITY_COLORS = {
-  1: '#9e9e9e', // 凡品 - 灰
-  2: '#4a90d9', // 精品 - 蓝
-  3: '#9c6bd4', // 珍品 - 紫
-  4: '#e85a8a', // 神品 - 粉
-  5: '#f0b429', // 仙品 - 金
-};
-
-// 品质配置 → 从飞书表格配置构建（game-config.js → qualityTable + 代码颜色）
+// 品质配置 → 从飞书表格配置构建（game-config.js → qualityTable + QUALITY_COLORS 颜色）
 const QUALITY = {};
 (GAME_CONFIG?.qualityTable || []).forEach(q => {
   QUALITY[q.id] = { name: q.name, color: QUALITY_COLORS[q.id] || '#9e9e9e' };
