@@ -2780,32 +2780,21 @@ const PlayerView = {
     const qualityList = FORGE_POOL.map(pool => {
       const qInfo = QUALITY[pool.quality] || { name: `品质${pool.quality}`, color: '#999' };
       const pct = pool.weight / forgeTotalWeight * 100;
-      const itemNames = pool.items.map(id => {
-        const def = ITEMS[id];
-        return def ? def.name : id;
-      }).join('、');
-      const minRealm = getMinRealmForAxeQuality(pool.quality);
-      const canEquip = canEquipAxeQuality(pool.quality, Game.state.realmLevel);
       return {
         quality: pool.quality,
         name: qInfo.name,
         color: qInfo.color,
         pct: pct,
-        items: itemNames,
-        count: pool.items.length,
-        minRealmName: minRealm?.name || '?',
-        canEquip,
       };
     }).sort((a, b) => a.quality - b.quality);
 
     const poolHtml = qualityList.map(q => `
-      <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);${q.canEquip ? '' : 'opacity:0.6'}">
-        <span style="display:inline-block;padding:3px 10px;border-radius:12px;font-size:12px;font-weight:600;background:${q.color}20;color:${q.color};min-width:44px;text-align:center">${q.name}</span>
-        <div style="flex:1">
-          <div style="font-size:13px">${q.items} ${q.canEquip ? '' : '🔒'}</div>
-          <div style="font-size:11px;color:var(--text-secondary)">共 ${q.count} 把，概率均分 · 适配 ${q.minRealmName}及以上</div>
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">
+        <span style="display:inline-block;padding:4px 12px;border-radius:12px;font-size:13px;font-weight:600;background:${q.color}20;color:${q.color};min-width:48px;text-align:center">${q.name}</span>
+        <div style="flex:1;height:8px;background:var(--border);border-radius:4px;overflow:hidden">
+          <div style="height:100%;width:${Math.max(q.pct, 2)}%;background:${q.color};border-radius:4px;transition:width 0.6s ease"></div>
         </div>
-        <span style="font-weight:700;font-size:15px;color:${q.color}">${q.pct.toFixed(1)}%</span>
+        <span style="font-weight:700;font-size:15px;color:${q.color};min-width:52px;text-align:right">${q.pct.toFixed(1)}%</span>
       </div>
     `).join('');
 
