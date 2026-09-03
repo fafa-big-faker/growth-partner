@@ -88,42 +88,43 @@ if (Object.keys(QUALITY).length === 0) {
   QUALITY[5] = { name: '仙品', color: '#f0b429' };
 }
 
-// 奖池配置（按树等级）→ 道具ID已更新为飞书道具表的5位数字ID
-const TREE_LEVELS = {
-  1: {
-    name: '小树苗',
-    icon: '🌱',
-    pools: [
-      { quality: 1, weight: 60, items: ['10001', '40001'] },
-      { quality: 2, weight: 25, items: ['10101', '40001'] },
-      { quality: 3, weight: 12, items: ['10202', '30001'] },
-      { quality: 4, weight: 2.5, items: ['20101', '30001'] },
-      { quality: 5, weight: 0.5, items: ['20201'] },
-    ],
-  },
-  2: {
-    name: '小树',
-    icon: '🌿',
-    pools: [
-      { quality: 1, weight: 50, items: ['10001', '40001'] },
-      { quality: 2, weight: 30, items: ['10102', '40001'] },
-      { quality: 3, weight: 14, items: ['10201', '30001'] },
-      { quality: 4, weight: 4.5, items: ['20101', '30001'] },
-      { quality: 5, weight: 1.5, items: ['20201', '51002'] },
-    ],
-  },
-  3: {
-    name: '仙树',
-    icon: '🎋',
-    pools: [
-      { quality: 1, weight: 40, items: ['10002', '40001'] },
-      { quality: 2, weight: 32, items: ['10102', '40001'] },
-      { quality: 3, weight: 18, items: ['10301', '30001'] },
-      { quality: 4, weight: 7, items: ['20101', '30101'] },
-      { quality: 5, weight: 3, items: ['20201', '53001'] },
-    ],
-  },
-};
+// 奖池配置（按树等级）→ 从飞书表格配置动态构建（game-config.js → treeTable + poolTable）
+const TREE_WEIGHTS = [
+  [50, 30, 15, 4, 1],   // 灵阶1
+  [45, 30, 17, 5, 3],   // 灵阶2
+  [40, 30, 19, 6, 5],   // 灵阶3
+  [35, 30, 21, 7, 7],   // 灵阶4
+  [30, 30, 23, 8, 9],   // 灵阶5
+  [25, 30, 25, 10, 10], // 灵阶6
+  [20, 28, 27, 12, 13], // 灵阶7
+  [15, 25, 30, 15, 15], // 灵阶8
+  [12, 22, 32, 17, 17], // 灵阶9
+  [10, 20, 33, 20, 17], // 灵阶10
+  [8, 18, 33, 22, 19],  // 灵阶11
+  [6, 15, 33, 25, 21],  // 灵阶12
+  [4, 12, 32, 28, 24],  // 灵阶13
+  [2, 10, 30, 30, 28],  // 灵阶14
+  [1, 8, 28, 32, 31],   // 灵阶15
+];
+const TREE_ICONS = ['🌱','🌿','🎋','🌳','🌲','🪴','🎍','🌴','🎄','🌵','🍀','🍁','🍂','🌾','🌟'];
+
+const TREE_LEVELS = {};
+(GAME_CONFIG?.treeTable || []).forEach((tree, idx) => {
+  const weights = TREE_WEIGHTS[idx] || TREE_WEIGHTS[TREE_WEIGHTS.length - 1];
+  const pools = [];
+  for (let q = 1; q <= 5; q++) {
+    const pool = (GAME_CONFIG?.poolTable || []).find(p => p.qualityId === q && String(p.poolId).startsWith('1'));
+    const items = pool ? pool.items.map(String) : [];
+    if (items.length > 0) {
+      pools.push({ quality: q, weight: weights[q - 1], items });
+    }
+  }
+  TREE_LEVELS[tree.id] = {
+    name: tree.name,
+    icon: TREE_ICONS[idx] || '🌳',
+    pools,
+  };
+});
 
 // 角色等级经验表 → 使用飞书表格配置（game-config.js）
 // getExpForLevel 已在 game-config.js 中定义
@@ -164,23 +165,31 @@ const REALMS = (GAME_CONFIG?.realmTable || []).map(r => {
   };
 });
 
-// 仙树灵阶表 → 使用飞书道具表的5位数字ID
-const TREE_REALMS = [
-  { level: 1, name: '凡木', icon: '🌱', treeLevel: 1, reqItems: [], desc: '最普通的灵树' },
-  { level: 2, name: '灵木', icon: '🌳', treeLevel: 2, reqItems: [{ itemId: '40001', count: 20 }, { itemId: '30001', count: 2 }], desc: '蕴含灵气的树木，掉落更佳' },
-  { level: 3, name: '仙木', icon: '🎋', treeLevel: 3, reqItems: [{ itemId: '40001', count: 50 }, { itemId: '30001', count: 8 }], desc: '传说中的仙树，有神品掉落' },
-];
+// 仙树灵阶表 → 从飞书表格配置动态构建（game-config.js → treeTable）
+const TREE_REALMS = (GAME_CONFIG?.treeTable || []).map((tree, idx) => ({
+  level: tree.id,
+  name: tree.name,
+  icon: TREE_ICONS[idx] || '🌳',
+  treeLevel: tree.id,
+  reqItems: (tree.reqItems || []).map(req => ({ ...req, itemId: String(req.itemId) })),
+  desc: tree.displayText || tree.note || '',
+}));
 
-// 锻造奖池 → 道具ID已更新为飞书道具表的5位数字ID
-const FORGE_POOL = [
-  { itemId: '52001', weight: 30, quality: 2 },  // 物理劝学斧
-  { itemId: '52002', weight: 20, quality: 2 },  // 给大树修脚斧
-  { itemId: '53001', weight: 20, quality: 3 },  // 河神拒收的金斧
-  { itemId: '53002', weight: 15, quality: 3 },  // 镇海斧
-  { itemId: '54001', weight: 8,  quality: 4 },  // 疯狂星期四V我50斧
-  { itemId: '54002', weight: 5,  quality: 4 },  // 电子木鱼连点斧
-  { itemId: '55001', weight: 2,  quality: 5 },  // 盘古开天劈歪斧
-];
+// 锻造奖池 → 从飞书表格配置动态构建（game-config.js → forgeTable + poolTable仙斧池）
+const FORGE_AXE_WEIGHTS = [30, 25, 20, 15, 10]; // 品质1-5的权重
+const FORGE_POOL = (() => {
+  const result = [];
+  for (let q = 1; q <= 5; q++) {
+    const pool = (GAME_CONFIG?.poolTable || []).find(p => p.qualityId === q && String(p.poolId).startsWith('2'));
+    if (pool) {
+      pool.items.forEach((itemId, itemIdx) => {
+        const w = FORGE_AXE_WEIGHTS[q - 1] / pool.items.length;
+        result.push({ itemId: String(itemId), weight: Math.round(w * 10) / 10, quality: q });
+      });
+    }
+  }
+  return result;
+})();
 
 // 难度颜色映射
 const DIFFICULTY_MAP = {
@@ -730,7 +739,7 @@ const Game = {
     }
 
     // 加经验（仅本地状态）
-    const expGain = 2 + item.quality;
+    const expGain = 1;
     this.state.exp += expGain;
     let leveledUp = false;
     while (this.state.exp >= getExpForLevel(this.state.level)) {
@@ -992,11 +1001,19 @@ const Game = {
 
   // 锻造
   async forge() {
-    if (this._getItemQty('40001') < 1) {
-      UI.toast('锻造石不足', 'warn');
+    const forgeConfig = (GAME_CONFIG?.forgeTable || [])[0];
+    if (!forgeConfig) {
+      UI.toast('锻造配置缺失', 'warn');
       return null;
     }
-    await DB.removeItem('40001', 1);
+    const costItemId = String(forgeConfig.costItemId);
+    const costCount = forgeConfig.costCount;
+    const costItem = ITEMS[costItemId];
+    if (this._getItemQty(costItemId) < costCount) {
+      UI.toast(`${costItem?.name || '材料'}不足，需要 ${costCount} 个`, 'warn');
+      return null;
+    }
+    await DB.removeItem(costItemId, costCount);
 
     // 加权随机抽取
     const totalWeight = FORGE_POOL.reduce((sum, p) => sum + p.weight, 0);

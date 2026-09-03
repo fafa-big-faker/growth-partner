@@ -1,6 +1,6 @@
 // ===== 游戏配置文件（由 sync-config.py 从飞书表格自动生成）=====
 // 修改飞书表格后运行同步脚本即可更新，请勿手动编辑此文件
-// 最后同步: 2026-09-03 09:41:55
+// 最后同步: 2026-09-03 13:15:57
 
 const GAME_CONFIG = {
   // 角色等级经验表（共 150 条）
@@ -950,7 +950,7 @@ const GAME_CONFIG = {
   }
 ],
 
-  // 道具表（共 25 条）
+  // 道具表（共 26 条）
   itemTable: [
   {
     "id": 10001,
@@ -967,7 +967,7 @@ const GAME_CONFIG = {
     "id": 10002,
     "name": "铜币",
     "type": 1,
-    "quality": 2,
+    "quality": 1,
     "stackLimit": 999,
     "interactionType": 1,
     "interactionParams": "20001,3",
@@ -989,7 +989,7 @@ const GAME_CONFIG = {
     "id": 10102,
     "name": "银叶",
     "type": 1,
-    "quality": 2,
+    "quality": 1,
     "stackLimit": 999,
     "interactionType": 1,
     "interactionParams": "20101,3",
@@ -1127,6 +1127,17 @@ const GAME_CONFIG = {
     "interactionParams": "",
     "description": "拿去抽点好的武器吧，不要让隔壁老外看不起",
     "icon": "🔩"
+  },
+  {
+    "id": 40002,
+    "name": "菩提涎",
+    "type": 4,
+    "quality": 5,
+    "stackLimit": 999,
+    "interactionType": 0,
+    "interactionParams": "",
+    "description": "浇浇你的树吧，快被薅秃噜皮了",
+    "icon": "💧"
   },
   {
     "id": 51001,
@@ -1401,6 +1412,325 @@ const GAME_CONFIG = {
   }
 ],
 
+  // 仙树灵阶表（共 15 条）
+  treeTable: [
+  {
+    "id": 1,
+    "name": "仙树·灵阶1",
+    "appearance": "",
+    "poolId": 1001,
+    "reqItems": [
+      {
+        "itemId": 40002,
+        "count": 1
+      }
+    ],
+    "note": "第一个参数是道具ID，第二个参数是道具数量",
+    "displayText": ""
+  },
+  {
+    "id": 2,
+    "name": "仙树·灵阶2",
+    "appearance": "",
+    "poolId": 1002,
+    "reqItems": [
+      {
+        "itemId": 40002,
+        "count": 2
+      }
+    ],
+    "note": "",
+    "displayText": ""
+  },
+  {
+    "id": 3,
+    "name": "仙树·灵阶3",
+    "appearance": "",
+    "poolId": 1003,
+    "reqItems": [
+      {
+        "itemId": 40002,
+        "count": 3
+      }
+    ],
+    "note": "",
+    "displayText": ""
+  },
+  {
+    "id": 4,
+    "name": "仙树·灵阶4",
+    "appearance": "",
+    "poolId": 1004,
+    "reqItems": [
+      {
+        "itemId": 40002,
+        "count": 4
+      }
+    ],
+    "note": "",
+    "displayText": ""
+  },
+  {
+    "id": 5,
+    "name": "仙树·灵阶5",
+    "appearance": "",
+    "poolId": 1005,
+    "reqItems": [
+      {
+        "itemId": 40002,
+        "count": 5
+      }
+    ],
+    "note": "",
+    "displayText": ""
+  },
+  {
+    "id": 6,
+    "name": "仙树·灵阶6",
+    "appearance": "",
+    "poolId": 1006,
+    "reqItems": [
+      {
+        "itemId": 40002,
+        "count": 6
+      }
+    ],
+    "note": "",
+    "displayText": ""
+  },
+  {
+    "id": 7,
+    "name": "仙树·灵阶7",
+    "appearance": "",
+    "poolId": 1007,
+    "reqItems": [
+      {
+        "itemId": 40002,
+        "count": 7
+      }
+    ],
+    "note": "",
+    "displayText": ""
+  },
+  {
+    "id": 8,
+    "name": "仙树·灵阶8",
+    "appearance": "",
+    "poolId": 1008,
+    "reqItems": [
+      {
+        "itemId": 40002,
+        "count": 8
+      }
+    ],
+    "note": "",
+    "displayText": ""
+  },
+  {
+    "id": 9,
+    "name": "仙树·灵阶9",
+    "appearance": "",
+    "poolId": 1009,
+    "reqItems": [
+      {
+        "itemId": 40002,
+        "count": 9
+      }
+    ],
+    "note": "",
+    "displayText": ""
+  },
+  {
+    "id": 10,
+    "name": "仙树·灵阶10",
+    "appearance": "",
+    "poolId": 1010,
+    "reqItems": [
+      {
+        "itemId": 40002,
+        "count": 10
+      }
+    ],
+    "note": "",
+    "displayText": ""
+  },
+  {
+    "id": 11,
+    "name": "仙树·灵阶11",
+    "appearance": "",
+    "poolId": 1011,
+    "reqItems": [
+      {
+        "itemId": 40002,
+        "count": 11
+      }
+    ],
+    "note": "",
+    "displayText": ""
+  },
+  {
+    "id": 12,
+    "name": "仙树·灵阶12",
+    "appearance": "",
+    "poolId": 1012,
+    "reqItems": [
+      {
+        "itemId": 40002,
+        "count": 12
+      }
+    ],
+    "note": "",
+    "displayText": ""
+  },
+  {
+    "id": 13,
+    "name": "仙树·灵阶13",
+    "appearance": "",
+    "poolId": 1013,
+    "reqItems": [
+      {
+        "itemId": 40002,
+        "count": 13
+      }
+    ],
+    "note": "",
+    "displayText": ""
+  },
+  {
+    "id": 14,
+    "name": "仙树·灵阶14",
+    "appearance": "",
+    "poolId": 1014,
+    "reqItems": [
+      {
+        "itemId": 40002,
+        "count": 14
+      }
+    ],
+    "note": "",
+    "displayText": ""
+  },
+  {
+    "id": 15,
+    "name": "仙树·灵阶15",
+    "appearance": "",
+    "poolId": 1015,
+    "reqItems": [
+      {
+        "itemId": 40002,
+        "count": 15
+      }
+    ],
+    "note": "",
+    "displayText": ""
+  }
+],
+
+  // 奖池表（共 10 条）
+  poolTable: [
+  {
+    "poolId": 1001,
+    "items": [
+      10001,
+      10002,
+      10101,
+      10102
+    ],
+    "qualityId": 1,
+    "qualityNote": "每个奖励包只会装对应品质的奖励，且概率均分"
+  },
+  {
+    "poolId": 1002,
+    "items": [
+      10201,
+      20001
+    ],
+    "qualityId": 2,
+    "qualityNote": ""
+  },
+  {
+    "poolId": 1003,
+    "items": [
+      10202,
+      10301,
+      20101
+    ],
+    "qualityId": 3,
+    "qualityNote": ""
+  },
+  {
+    "poolId": 1004,
+    "items": [
+      10302,
+      20201
+    ],
+    "qualityId": 4,
+    "qualityNote": ""
+  },
+  {
+    "poolId": 1005,
+    "items": [
+      20301
+    ],
+    "qualityId": 5,
+    "qualityNote": ""
+  },
+  {
+    "poolId": 2001,
+    "items": [
+      51001,
+      51002
+    ],
+    "qualityId": 1,
+    "qualityNote": ""
+  },
+  {
+    "poolId": 2002,
+    "items": [
+      52001,
+      52002
+    ],
+    "qualityId": 2,
+    "qualityNote": ""
+  },
+  {
+    "poolId": 2003,
+    "items": [
+      53001,
+      53002
+    ],
+    "qualityId": 3,
+    "qualityNote": ""
+  },
+  {
+    "poolId": 2004,
+    "items": [
+      54001,
+      54002
+    ],
+    "qualityId": 4,
+    "qualityNote": ""
+  },
+  {
+    "poolId": 2005,
+    "items": [
+      55001
+    ],
+    "qualityId": 5,
+    "qualityNote": ""
+  }
+],
+
+  // 锻造表（共 1 条）
+  forgeTable: [
+  {
+    "forgePoolId": 2001,
+    "costItemId": 40001,
+    "costCount": 1,
+    "note": "道具ID，道具数量"
+  }
+],
+
 };
 
 // 根据等级获取本级所需经验
@@ -1446,6 +1776,27 @@ function getSkillById(skillId) {
   if (!skill) return null;
   const buff = GAME_CONFIG.buffTable.find(b => b.id === skill.buffId);
   return { ...skill, buff: buff || null };
+}
+
+// 根据 tree_id 获取仙树灵阶信息
+function getTreeById(id) {
+  return GAME_CONFIG.treeTable.find(t => t.id === id);
+}
+
+// 根据 pool_id 获取奖池信息
+function getPoolById(poolId) {
+  return GAME_CONFIG.poolTable.find(p => p.poolId === poolId);
+}
+
+// 根据 forge_pool_id 获取锻造池信息
+function getForgePoolById(forgePoolId) {
+  return GAME_CONFIG.forgeTable.find(f => f.forgePoolId === forgePoolId);
+}
+
+// 根据品质ID获取奖池中该品质的道具列表
+function getItemsByQuality(quality) {
+  const pool = GAME_CONFIG.poolTable.find(p => p.qualityId === quality);
+  return pool ? pool.items : [];
 }
 
 // 品质颜色映射（代码维护，非飞书配置）
