@@ -174,7 +174,7 @@ const REALMS = (GAME_CONFIG?.realmTable || []).map(r => {
     maxAxeQuality: r.maxAxeQuality || 1,
     characterImage: r.characterImage || '',
     icon: r.icon || '⭐',
-    reqItems: r.reqItems || [],
+    reqItems: (r.reqItems || []).map(req => ({ ...req, itemId: String(req.itemId) })),
     desc: fb.desc || '',
   };
 });
@@ -986,7 +986,7 @@ const Game = {
     for (const req of nextRealm.reqItems) {
       if (this._getItemQty(req.itemId) < req.count) {
         const def = ITEMS[req.itemId];
-        UI.toast(`${def.name}不足，需要 ${req.count} 个`, 'warn');
+        UI.toast(`${def?.name || '道具'+req.itemId}不足，需要 ${req.count} 个`, 'warn');
         return false;
       }
     }
@@ -1014,7 +1014,7 @@ const Game = {
     for (const req of nextTreeRealm.reqItems) {
       if (this._getItemQty(req.itemId) < req.count) {
         const def = ITEMS[req.itemId];
-        UI.toast(`${def.name}不足，需要 ${req.count} 个`, 'warn');
+        UI.toast(`${def?.name || '道具'+req.itemId}不足，需要 ${req.count} 个`, 'warn');
         return false;
       }
     }
@@ -2611,9 +2611,11 @@ const PlayerView = {
       const def = ITEMS[req.itemId];
       const have = Game.inventory.find(i => i.itemId == req.itemId)?.quantity || 0;
       const ok = have >= req.count;
+      const icon = def?.icon || '❓';
+      const name = def?.name || `道具${req.itemId}`;
       return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0">
-        <span style="font-size:24px">${def.icon}</span>
-        <span style="flex:1">${def.name}</span>
+        <span style="font-size:24px">${icon}</span>
+        <span style="flex:1">${name}</span>
         <span style="color:${ok ? 'var(--success)' : 'var(--error)'}">${have}/${req.count}</span>
       </div>`;
     }).join('');
@@ -2662,9 +2664,11 @@ const PlayerView = {
       const def = ITEMS[req.itemId];
       const have = Game.inventory.find(i => i.itemId == req.itemId)?.quantity || 0;
       const ok = have >= req.count;
+      const icon = def?.icon || '❓';
+      const name = def?.name || `道具${req.itemId}`;
       return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0">
-        <span style="font-size:24px">${def.icon}</span>
-        <span style="flex:1">${def.name}</span>
+        <span style="font-size:24px">${icon}</span>
+        <span style="flex:1">${name}</span>
         <span style="color:${ok ? 'var(--success)' : 'var(--error)'}">${have}/${req.count}</span>
       </div>`;
     }).join('');
