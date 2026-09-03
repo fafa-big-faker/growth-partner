@@ -476,6 +476,7 @@ const DB = {
       themeStart: t.theme_start || null,
       themeEnd: t.theme_end || null,
       themeExtraReward: t.theme_extra_reward || [],
+      sortOrder: t.sort_order || 0,
     }));
   },
 
@@ -2119,17 +2120,24 @@ const PlayerView = {
   // --- 任务页 ---
   async renderTasks() {
     const main = document.getElementById('player-main');
-    const [dailyTasks, weeklyTasks] = await Promise.all([
+    const [dailyTasks, weeklyTasks, submissions] = await Promise.all([
       DB.getTasks('daily'),
       DB.getTasks('weekly'),
+      DB.getSubmissions(),
     ]);
 
     // 检查今日是否已签到（本地日期，与 dailyCheckIn 保持一致）
     const today = localDateStr();
     const dailyChecked = Game.state.lastDailyDate === today;
 
-    // 收集所有主题
-    const allTasks = [...dailyTasks, ...weeklyTasks];
+    // 数据去重：飞书/后台可能误插入重复任务（同类型+同标题+同排序），玩家侧只展示一条
+    this._dailyTasks = this._dedupeTasks(dailyTasks, submissions, 'daily');
+    this._weeklyTasks = this._dedupeTasks(weeklyTasks, submissions, 'weekly');
+    this._submissions = submissions;
+    this._dailyChecked = dailyChecked;
+
+    // 收集所有主题（基于去重后的任务）
+    const allTasks = [...this._dailyTasks, ...this._weeklyTasks];
     const themes = [...new Set(allTasks.filter(t => t.themeName).map(t => t.themeName))];
 
     let themeFilters = '';
@@ -2157,9 +2165,6 @@ const PlayerView = {
     `;
 
     this.currentTaskFilter = 'all';
-    this._dailyTasks = dailyTasks;
-    this._weeklyTasks = weeklyTasks;
-    this._dailyChecked = dailyChecked;
 
     this._renderTaskList();
   },
@@ -2176,6 +2181,41 @@ const PlayerView = {
       el.classList.toggle('active', el.dataset.filter === filter);
     });
     this._renderTaskList();
+  },
+
+  // 任务去重：后台/表格可能误插入重复任务（同类型 + 同标题 + 同排序），
+  // 玩家侧每个逻辑任务只展示一条，避免「每日签到」等出现两遍。
+  // weekly 重复副本可能各自带提交记录，取进度最靠前的一条作为代表，防止重复领取。
+  _dedupeTasks(tasks, submissions, type) {
+    const groups = new Map();
+    tasks.forEach(t => {
+      const key = `${t.taskType}|${t.title}|${t.sortOrder ?? 0}`;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(t);
+    });
+
+    // 提交状态优先级：已领取 > 已通过(待领) > 审核中 > 已驳回 > 未提交
+    const statusRank = { claimed: 5, approved: 4, pending: 3, rejected: 2 };
+    const result = [];
+    groups.forEach(group => {
+      if (group.length === 1) { result.push(group[0]); return; }
+      if (type === 'daily') {
+        // 每日签到是全局动作，任意一条副本触发的都是同一个签到，取第一条即可
+        result.push(group[0]);
+      } else {
+        let best = group[0];
+        let bestRank = -1;
+        group.forEach(t => {
+          const sub = submissions.find(s => s.taskId === t.id);
+          const rank = sub ? (statusRank[sub.status] ?? 1) : 0;
+          if (rank > bestRank) { bestRank = rank; best = t; }
+        });
+        result.push(best);
+      }
+    });
+    // 保持原有排序
+    result.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+    return result;
   },
 
   async _renderTaskList() {
