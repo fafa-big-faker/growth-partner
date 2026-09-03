@@ -2984,10 +2984,11 @@ const AdminView = {
         }
 
         await DB.reviewSubmission(id, 'approved', note, chopping, rewardItems);
+        // 邮件只做通知，奖励物品在任务列表领取（防止双倍领取）
         await DB.sendMail(
           '任务审核通过',
-          `你的自主申报任务已通过！奖励：${chopping} 次砍树${note ? '\n\n评语：' + note : ''}`,
-          rewardItems
+          `你的自主申报任务已通过！奖励：${chopping} 次砍树${note ? '\n\n评语：' + note : ''}\n\n请前往任务列表领取奖励。`,
+          []
         );
 
         UI.closeModal(overlay);
@@ -2997,6 +2998,10 @@ const AdminView = {
     } else {
       // 固定任务直接通过
       const sub = this._submissions.find(s => s.id == id);
+      if (sub && (sub.status === 'approved' || sub.status === 'claimed')) {
+        UI.toast('该任务已审核通过，请勿重复操作', 'warn');
+        return;
+      }
       UI.confirm('确定通过这个任务？', async () => {
         await DB.reviewSubmission(id, 'approved', '任务完成得很好！', sub.rewardChopping, sub.rewardItems);
         await DB.sendMail(
