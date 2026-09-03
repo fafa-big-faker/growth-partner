@@ -46,7 +46,7 @@ const ITEMS = {};
         const bp = sk.buffParams ? sk.buffParams.split(',').map(s => s.trim()) : [];
         if (sk.buffId === 1) {
           // "qualityId,probCenter,multiplier" → {vlaue1}=品质名, {value2}=概率%, {value3}=倍率
-          const qName = QUALITY[parseInt(bp[0])]?.name || `品质${bp[0]}`;
+          const qName = (GAME_CONFIG?.qualityTable || []).find(q => q.id === parseInt(bp[0]))?.name || `品质${bp[0]}`;
           text = text.replace(/\{vlaue1\}/g, qName).replace(/\{value1\}/g, qName);
           text = text.replace(/\{value2\}/g, `${bp[1]}%`);
           text = text.replace(/\{value3\}/g, bp[2] || '');
