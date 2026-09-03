@@ -40,7 +40,22 @@ const ITEMS = {};
     if (entry.skillIds.length > 0) {
       const descs = entry.skillIds.map(sid => {
         const sk = getSkillById(sid);
-        return sk?.buff?.description || `技能${sid}`;
+        if (!sk || !sk.buff) return `技能${sid}`;
+        // 解析buffParams并替换模板变量
+        let text = sk.buff.description || '';
+        const bp = sk.buffParams ? sk.buffParams.split(',').map(s => s.trim()) : [];
+        if (sk.buffId === 1) {
+          // "qualityId,probCenter,multiplier" → {vlaue1}=品质名, {value2}=概率%, {value3}=倍率
+          const qName = QUALITY[parseInt(bp[0])]?.name || `品质${bp[0]}`;
+          text = text.replace(/\{vlaue1\}/g, qName).replace(/\{value1\}/g, qName);
+          text = text.replace(/\{value2\}/g, `${bp[1]}%`);
+          text = text.replace(/\{value3\}/g, bp[2] || '');
+        } else if (sk.buffId === 2) {
+          // "probCenter,refundAmount" → {value1}=概率%, {value2}=返还次数
+          text = text.replace(/\{value1\}/g, `${bp[0]}%`);
+          text = text.replace(/\{value2\}/g, bp[1] || '');
+        }
+        return text;
       });
       entry.skillDesc = descs.join('; ');
     }
