@@ -88,6 +88,15 @@ if (Object.keys(QUALITY).length === 0) {
   QUALITY[5] = { name: '仙品', color: '#f0b429' };
 }
 
+// 本地日期字符串（按玩家时区 YYYY-MM-DD，避免 UTC 跨天误差）
+function localDateStr(d) {
+  const dt = d || new Date();
+  const y = dt.getFullYear();
+  const m = String(dt.getMonth() + 1).padStart(2, '0');
+  const day = String(dt.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 // 仙树图标（按灵阶索引）
 const TREE_ICONS = ['🌱','🌱','🌿','🎋','🌳','🌲','🪴','🎍','🌴','🎄','🌵','🍀','🍁','🍂','🌾','🌟'];
 
@@ -117,13 +126,10 @@ const TREE_LEVELS = {};
 // 角色等级经验表 → 使用飞书表格配置（game-config.js）
 // getExpForLevel 已在 game-config.js 中定义
 
-// 商店（天道酬勤兑换）→ 道具ID已更新为飞书道具表的5位数字ID
-const SHOP_ITEMS = [
-  { id: 'shop_chopping_5', name: '砍树次数×5', icon: '🪓', costType: 'money', costValue: 10, rewardType: 'chopping', rewardValue: 5 },
-  { id: 'shop_money_sm', name: '铜珠', icon: '🔴', costType: 'chopping', costValue: 3, rewardType: 'item', rewardId: '20001', rewardValue: 1 },
-  { id: 'shop_break', name: '期石', icon: '🟤', costType: 'chopping', costValue: 10, rewardType: 'item', rewardId: '30001', rewardValue: 1 },
-  { id: 'shop_forge_10', name: '锻造石×10', icon: '🔩', costType: 'chopping', costValue: 5, rewardType: 'item', rewardId: '40001', rewardValue: 10 },
-];
+// 商店（天道酬勤商店）→ 从飞书「商店表」配置动态构建
+// 通过 getShopItems()（game-config.js）读取，售价单位为游戏币(道具type0)
+// limitType: 1=不限 2=月限购(limitParam=每月次数) 3=仙阶限购(limitParam=所需仙阶ID)
+const SHOP_LIMIT_TYPE = { UNLIMITED: 1, MONTHLY: 2, REALM: 3 };
 
 // 仙阶表 → 从飞书表格配置合并生成（game-config.js）
 // 飞书表提供: reqLevel, realmId, name, maxAxeQuality, characterImage, reqItems(数字ID), icon
@@ -247,9 +253,17 @@ const DB = {
       treeRealm: data.tree_realm !== null && data.tree_realm !== undefined ? data.tree_realm : 0,
       realmLevel: data.realm_level || 1,
       axeId: data.axe_id,
-      balance: parseFloat(data.balance),
-      totalWithdrawn: parseFloat(data.total_withdrawn),
+      balance: parseFloat(data.balance) || 0,
+      totalWithdrawn: parseFloat(data.total_withdrawn) || 0,
       lastDailyDate: data.last_daily_date,
+      // 游戏币（道具type 0）
+      coin: parseInt(data.coin) || 0,
+      // 本月累签追踪
+      signInMonth: data.signin_month || null,
+      signInDays: parseInt(data.signin_days) || 0,
+      signInClaims: Array.isArray(data.signin_claims) ? data.signin_claims : [],
+      // 商店月限购计数：{ "YYYY-MM": { shopId: count } }
+      shopPurchases: (data.shop_purchases && typeof data.shop_purchases === 'object') ? data.shop_purchases : {},
     };
   },
 
@@ -264,14 +278,42 @@ const DB = {
     if (updates.axeId !== undefined) dbUpdates.axe_id = updates.axeId;
     if (updates.balance !== undefined) dbUpdates.balance = updates.balance;
     if (updates.totalWithdrawn !== undefined) dbUpdates.total_withdrawn = updates.totalWithdrawn;
+    // 日期字段：空字符串统一转 null，避免 Postgres "invalid input syntax for type date"
     if (updates.lastDailyDate !== undefined) dbUpdates.last_daily_date = updates.lastDailyDate || null;
+    // 游戏币
+    if (updates.coin !== undefined) dbUpdates.coin = updates.coin;
+    // 本月累签
+    if (updates.signInMonth !== undefined) dbUpdates.signin_month = updates.signInMonth || null;
+    if (updates.signInDays !== undefined) dbUpdates.signin_days = updates.signInDays;
+    if (updates.signInClaims !== undefined) dbUpdates.signin_claims = updates.signInClaims;
+    // 商店月限购
+    if (updates.shopPurchases !== undefined) dbUpdates.shop_purchases = updates.shopPurchases;
     dbUpdates.updated_at = new Date().toISOString();
 
     const { error } = await dbClient
       .from('player_state')
       .update(dbUpdates)
       .eq('user_role', 'player');
-    if (error) { console.error('DB updatePlayerState error:', error); return false; }
+    if (error) {
+      // 新字段（coin/signin_*）若尚未执行升级SQL会报列不存在 → 剔除后重试
+      const msg = error.message || '';
+      if (msg.includes('does not exist') || msg.includes('Could not find')) {
+        const safeUpdates = {};
+        for (const k in dbUpdates) {
+          if (['coin', 'signin_month', 'signin_days', 'signin_claims', 'shop_purchases'].includes(k)) continue;
+          safeUpdates[k] = dbUpdates[k];
+        }
+        const { error: err2 } = await dbClient
+          .from('player_state')
+          .update(safeUpdates)
+          .eq('user_role', 'player');
+        if (err2) { console.error('DB updatePlayerState fallback error:', err2); return false; }
+        console.warn('player_state 缺少 coin/signin 字段，请执行 upgrade_v3.sql');
+        return true;
+      }
+      console.error('DB updatePlayerState error:', error);
+      return false;
+    }
     return true;
   },
 
@@ -292,44 +334,58 @@ const DB = {
       balance: 0,
       total_withdrawn: 0,
       last_daily_date: null,
+      coin: 0,
+      signin_month: null,
+      signin_days: 0,
+      signin_claims: [],
+      shop_purchases: {},
     };
 
     const { error } = await dbClient
       .from('player_state')
       .insert(defaultState);
     if (error) {
-      // 如果字段不存在（还没跑升级SQL），降级插入
-      if (error.message && error.message.includes('does not exist')) {
-        const fallbackState = {
-          user_role: 'player',
-          level: 1,
-          exp: 0,
-          chopping_count: 10,
-          tree_level: 1,
-          axe_id: '51001',
-          balance: 0,
-          total_withdrawn: 0,
-          last_daily_date: null,
-        };
-        const { error: err2 } = await dbClient.from('player_state').insert(fallbackState);
-        if (err2) { console.error('DB initPlayerState fallback error:', err2); return null; }
-      } else {
-        console.error('DB initPlayerState error:', error);
-        return null;
+      // 字段不存在（未跑升级SQL）或日期空值等 → 降级为最小字段插入
+      const fallbackState = {
+        user_role: 'player',
+        level: 1,
+        exp: 0,
+        chopping_count: 10,
+        tree_level: 1,
+        axe_id: '51001',
+        balance: 0,
+        total_withdrawn: 0,
+      };
+      const { error: err2 } = await dbClient.from('player_state').insert(fallbackState);
+      if (err2) {
+        console.error('DB initPlayerState fallback error:', err2);
+        // 即使插入失败也返回内存默认值，避免整页 null 崩溃
+        return this._defaultPlayerState();
       }
+      console.warn('player_state 新字段缺失，建议执行 upgrade_v3.sql（coin/累签 将仅本次会话生效）');
     }
 
+    return this._defaultPlayerState();
+  },
+
+  // 内存中的默认玩家状态（新建行后立即返回，避免多一次查询）
+  _defaultPlayerState() {
     return {
       level: 1,
       exp: 0,
       choppingCount: 10,
-      treeLevel: 1,
-      treeRealm: 1,
+      treeLevel: 0,
+      treeRealm: 0,
       realmLevel: 1,
       axeId: '51001',
       balance: 0,
       totalWithdrawn: 0,
       lastDailyDate: null,
+      coin: 0,
+      signInMonth: null,
+      signInDays: 0,
+      signInClaims: [],
+      shopPurchases: {},
     };
   },
 
@@ -710,6 +766,31 @@ const Game = {
     UI.updateHeader();
   },
 
+  // 统一发放道具（特殊道具不进背包）：
+  //   type 0 游戏币 → state.coin；type 6 砍树次数 → state.choppingCount；其余 → 背包
+  // 返回 { kind: 'coin'|'chopping'|'item', id, quantity, def }
+  async grantItem(itemId, quantity = 1) {
+    const id = String(itemId);
+    const qty = Math.max(1, parseInt(quantity) || 1);
+    const def = ITEMS[id];
+    if (def && def.type === 0) {
+      this.state.coin = (this.state.coin || 0) + qty;
+      await DB.updatePlayerState({ coin: this.state.coin });
+      return { kind: 'coin', id, quantity: qty, def };
+    }
+    if (def && def.type === 6) {
+      this.state.choppingCount += qty;
+      await DB.updatePlayerState({ choppingCount: this.state.choppingCount });
+      return { kind: 'chopping', id, quantity: qty, def };
+    }
+    // 普通道具 → 背包（本地 + DB）
+    const idx = this.inventory.findIndex(i => i.itemId == id);
+    if (idx >= 0) this.inventory[idx].quantity += qty;
+    else this.inventory.push({ itemId: id, quantity: qty });
+    await DB.addItem(id, qty);
+    return { kind: 'item', id, quantity: qty, def };
+  },
+
   // 砍树
   async chop() {
     if (this.state.choppingCount <= 0) {
@@ -729,10 +810,9 @@ const Game = {
     // 应用仙斧buff
     item = this._applyAxeBuffs(item);
 
-    // 更新本地背包
-    const idx = this.inventory.findIndex(i => i.itemId == item.itemId);
-    if (idx >= 0) this.inventory[idx].quantity += item.quantity;
-    else this.inventory.push({ itemId: item.itemId, quantity: item.quantity });
+    // 发放掉落（特殊道具路由：游戏币/砍树次数不进背包，直接加到货币/次数）
+    const grant = await this.grantItem(item.itemId, item.quantity);
+    item.kind = grant.kind;
 
     // 返还砍树次数buff（仅本地状态，不写DB）
     const refund = this._checkRefundBuff();
@@ -755,16 +835,14 @@ const Game = {
 
     UI.updateHeader();
 
-    // === 批量异步写入DB（不阻塞返回）===
-    const stateUpdate = {
+    // === 批量异步写入玩家状态（不阻塞返回）===
+    // 道具/货币已由 grantItem 写入，这里只同步次数/等级/经验/金币兜底
+    DB.updatePlayerState({
       choppingCount: this.state.choppingCount,
       level: this.state.level,
       exp: this.state.exp,
-    };
-    Promise.all([
-      DB.updatePlayerState(stateUpdate),
-      DB.addItem(item.itemId, item.quantity),
-    ]).catch(e => console.error('chop DB sync error:', e));
+      coin: this.state.coin,
+    }).catch(e => console.error('chop DB sync error:', e));
 
     return item;
   },
@@ -807,21 +885,77 @@ const Game = {
     return leveledUp;
   },
 
-  // 每日签到
+  // 每日签到（同时累计本月签到天数）
   async dailyCheckIn() {
-    const today = new Date().toISOString().split('T')[0];
+    const today = localDateStr();
     if (this.state.lastDailyDate === today) {
       UI.toast('今日已签到', 'warn');
       return false;
     }
+    const month = today.slice(0, 7);
+    // 跨月自动重置累签
+    if (this.state.signInMonth !== month) {
+      this.state.signInMonth = month;
+      this.state.signInDays = 0;
+      this.state.signInClaims = [];
+    }
     this.state.choppingCount += 1;
     this.state.lastDailyDate = today;
+    this.state.signInDays = (this.state.signInDays || 0) + 1;
     await DB.updatePlayerState({
       choppingCount: this.state.choppingCount,
       lastDailyDate: today,
+      signInMonth: this.state.signInMonth,
+      signInDays: this.state.signInDays,
+      signInClaims: this.state.signInClaims,
     });
     UI.updateHeader();
-    UI.toast('签到成功！获得 1 次砍树机会', 'success');
+    UI.toast(`签到成功！获得 1 次砍树机会（本月已签 ${this.state.signInDays} 天）`, 'success');
+    return true;
+  },
+
+  // 获取本月累签状态（跨月自动归零）
+  getSignInState() {
+    const month = localDateStr().slice(0, 7);
+    if (this.state.signInMonth !== month) {
+      return { month, days: 0, claims: [] };
+    }
+    return {
+      month,
+      days: this.state.signInDays || 0,
+      claims: Array.isArray(this.state.signInClaims) ? this.state.signInClaims : [],
+    };
+  },
+
+  // 领取累签里程碑奖励
+  async claimSignInReward(reward) {
+    const si = this.getSignInState();
+    if (si.claims.includes(reward.rewardId)) {
+      UI.toast('该奖励已领取', 'warn');
+      return false;
+    }
+    if (si.days < reward.requiredDays) {
+      UI.toast(`需累计签到 ${reward.requiredDays} 天（本月已签 ${si.days} 天）`, 'warn');
+      return false;
+    }
+    // 发放奖励（含游戏币/砍树次数自动路由）
+    for (const it of reward.items) {
+      await this.grantItem(it.itemId, it.count);
+    }
+    // 记录领取 + 确保月份字段已初始化
+    const claims = [...si.claims, reward.rewardId];
+    this.state.signInClaims = claims;
+    if (this.state.signInMonth !== si.month) {
+      this.state.signInMonth = si.month;
+      this.state.signInDays = si.days;
+    }
+    await DB.updatePlayerState({
+      signInClaims: claims,
+      signInMonth: this.state.signInMonth,
+      signInDays: this.state.signInDays,
+    });
+    await this.refresh();
+    UI.toast(`累计签到 ${reward.requiredDays} 天奖励已领取！`, 'success');
     return true;
   },
 
@@ -866,7 +1000,7 @@ const Game = {
     return true;
   },
 
-  // 出售仙斧
+  // 出售仙斧（售价为游戏币）
   async sellAxe(itemId) {
     const itemDef = ITEMS[itemId];
     if (!itemDef || itemDef.type !== 5) return false;
@@ -875,10 +1009,10 @@ const Game = {
       return false;
     }
     await DB.removeItem(itemId, 1);
-    this.state.choppingCount += itemDef.sellPrice;
-    await DB.updatePlayerState({ choppingCount: this.state.choppingCount });
+    this.state.coin = (this.state.coin || 0) + itemDef.sellPrice;
+    await DB.updatePlayerState({ coin: this.state.coin });
     await this.refresh();
-    UI.toast(`出售成功！获得 ${itemDef.sellPrice} 次砍树`, 'success');
+    UI.toast(`出售成功！获得 ${itemDef.sellPrice} 游戏币`, 'success');
     return true;
   },
 
@@ -934,33 +1068,59 @@ const Game = {
     return true;
   },
 
-  // 商店购买
+  // 商店购买（天道酬勤商店，消耗游戏币）
+  // shopItem 来自 getShopItems()：{ shopId, itemId, itemCount, limitType, limitParam, price, name, icon }
   async shopBuy(shopItem) {
-    if (shopItem.costType === 'chopping') {
-      if (this.state.choppingCount < shopItem.costValue) {
-        UI.toast('砍树次数不足', 'warn');
+    const price = parseInt(shopItem.price) || 0;
+    const month = new Date().toISOString().slice(0, 7); // YYYY-MM
+
+    // 限购类型3：仙阶限购
+    if (parseInt(shopItem.limitType) === SHOP_LIMIT_TYPE.REALM) {
+      const needRealm = parseInt(shopItem.limitParam) || 0;
+      if ((this.state.realmLevel || 1) < needRealm) {
+        const realm = REALMS.find(r => r.level == needRealm);
+        UI.toast(`仙阶不足！需达到【${realm ? realm.name : needRealm}】才可购买`, 'warn');
         return false;
       }
-      this.state.choppingCount -= shopItem.costValue;
-      await DB.updatePlayerState({ choppingCount: this.state.choppingCount });
-    } else if (shopItem.costType === 'money') {
-      if (this.state.balance < shopItem.costValue) {
-        UI.toast('余额不足', 'warn');
-        return false;
-      }
-      this.state.balance -= shopItem.costValue;
-      await DB.updatePlayerState({ balance: this.state.balance });
     }
 
-    if (shopItem.rewardType === 'chopping') {
-      this.state.choppingCount += shopItem.rewardValue;
-      await DB.updatePlayerState({ choppingCount: this.state.choppingCount });
-    } else if (shopItem.rewardType === 'item') {
-      await DB.addItem(shopItem.rewardId, shopItem.rewardValue);
+    // 限购类型2：月限购
+    const purchases = this.state.shopPurchases || {};
+    const monthPurchases = purchases[month] || {};
+    if (parseInt(shopItem.limitType) === SHOP_LIMIT_TYPE.MONTHLY) {
+      const max = parseInt(shopItem.limitParam) || 0;
+      if ((monthPurchases[shopItem.shopId] || 0) >= max) {
+        UI.toast(`本月限购 ${max} 次，已达上限（每月1号刷新）`, 'warn');
+        return false;
+      }
     }
+
+    // 游戏币校验
+    if ((this.state.coin || 0) < price) {
+      UI.toast('游戏币不足，砍树掉落/出售仙斧可获得游戏币', 'warn');
+      return false;
+    }
+
+    // 扣游戏币
+    this.state.coin -= price;
+
+    // 月限购计数 +1
+    if (parseInt(shopItem.limitType) === SHOP_LIMIT_TYPE.MONTHLY) {
+      if (!purchases[month]) purchases[month] = {};
+      purchases[month][shopItem.shopId] = (purchases[month][shopItem.shopId] || 0) + 1;
+      this.state.shopPurchases = purchases;
+    }
+
+    await DB.updatePlayerState({
+      coin: this.state.coin,
+      shopPurchases: this.state.shopPurchases,
+    });
+
+    // 发放道具（游戏币/砍树次数自动路由，普通道具进背包）
+    await this.grantItem(shopItem.itemId, shopItem.itemCount);
 
     await this.refresh();
-    UI.toast(`兑换成功！`, 'success');
+    UI.toast(`购买成功！获得 ${shopItem.name} ×${shopItem.itemCount}`, 'success');
     return true;
   },
 
@@ -1254,8 +1414,10 @@ const Router = {
 const UI = {
   updateHeader() {
     if (!Game.state) return;
-    // 旧版 header 已移除，这里只更新邮件 badge
+    // 旧版 header 已移除，这里更新邮件 badge + 游戏币显示
     this._updateMailBadge();
+    const coinEl = document.getElementById('coin-count');
+    if (coinEl) coinEl.textContent = Game.state.coin || 0;
   },
 
   async _updateMailBadge() {
@@ -1450,6 +1612,9 @@ const PlayerView = {
         <div class="status-mail" onclick="PlayerView.showMailModal()">
           <span>📮</span>
           <span class="mail-badge" id="mail-badge" style="display:none">0</span>
+        </div>
+        <div class="res-pill res-coin" id="coin-pill" title="游戏币 · 可在「天道酬勤」商店购买道具，砍树/出售仙斧可获得">
+          <span class="res-icon">🪙</span><span class="res-val" id="coin-count">${Game.state.coin || 0}</span>
         </div>
         <div class="status-center">
           <div class="status-realm">${realm.icon} ${Game.state.level}级 · ${realm.name}</div>
@@ -1720,12 +1885,12 @@ const PlayerView = {
       } else if (axeLocked) {
         actionBtn = `
           <button class="btn btn-outline btn-sm" disabled style="opacity:0.5">🔒 仙阶不足</button>
-          <button class="btn btn-outline btn-sm" onclick="PlayerView.sellItem('${itemId}')">出售 +${def.sellPrice}🪓</button>
+          <button class="btn btn-outline btn-sm" onclick="PlayerView.sellItem('${itemId}')">出售 +${def.sellPrice}🪙</button>
         `;
       } else {
         actionBtn = `
           <button class="btn btn-primary btn-sm" onclick="PlayerView.equipItem('${itemId}')">装备</button>
-          <button class="btn btn-outline btn-sm" onclick="PlayerView.sellItem('${itemId}')">出售 +${def.sellPrice}🪓</button>
+          <button class="btn btn-outline btn-sm" onclick="PlayerView.sellItem('${itemId}')">出售 +${def.sellPrice}🪙</button>
         `;
       }
     }
@@ -1861,7 +2026,7 @@ const PlayerView = {
 
   sellItem(itemId) {
     const def = ITEMS[itemId];
-    UI.confirm(`确定出售 ${def.name}，获得 ${def.sellPrice} 次砍树？`, async () => {
+    UI.confirm(`确定出售 ${def.name}，获得 ${def.sellPrice} 游戏币？`, async () => {
       const ok = await Game.sellAxe(itemId);
       if (ok) {
         this.renderInventory(this.currentInvTab);
@@ -1916,18 +2081,34 @@ const PlayerView = {
   },
 
   _showRewardModal(item) {
-    const q = QUALITY[item.quality];
     const buffHtml = item.buffText
       ? `<div style="color:var(--quality-4);font-size:14px;font-weight:600;margin-bottom:8px">🌟 ${item.buffText}</div>`
       : '';
     const refundHtml = item.refundChopping
       ? `<div style="color:var(--accent);font-size:13px;margin-bottom:8px">🪓 返还 ${item.refundChopping} 次砍树</div>`
       : '';
-    const overlay = UI.modal(`
+
+    // 特殊道具（游戏币/砍树次数）单独展示
+    let icon, name, color, label;
+    if (item.kind === 'coin') {
+      icon = '🪙'; name = '游戏币'; color = '#d4af37';
+      label = `货币 · 获得 ×${item.quantity}`;
+    } else if (item.kind === 'chopping') {
+      icon = '🪓'; name = '砍树次数'; color = '#4a90d9';
+      label = `体力 · 获得 ×${item.quantity}`;
+    } else {
+      const q = QUALITY[item.quality] || { name: '', color: '#9e9e9e' };
+      icon = item.item ? item.item.icon : '🎁';
+      name = item.item ? item.item.name : '道具';
+      color = q.color;
+      label = `${q.name} · 获得 ×${item.quantity}`;
+    }
+
+    UI.modal(`
       <div class="reward-modal">
-        <div class="reward-icon">${item.item.icon}</div>
-        <div class="reward-name" style="color:${q.color}">${item.item.name}</div>
-        <div class="reward-quality">${q.name} · 获得 ×${item.quantity}</div>
+        <div class="reward-icon">${icon}</div>
+        <div class="reward-name" style="color:${color}">${name}</div>
+        <div class="reward-quality">${label}</div>
         ${buffHtml}
         ${refundHtml}
         <button class="btn btn-primary btn-block" onclick="this.closest('.modal-overlay').remove()">收下</button>
@@ -1943,8 +2124,8 @@ const PlayerView = {
       DB.getTasks('weekly'),
     ]);
 
-    // 检查今日是否已签到
-    const today = new Date().toISOString().split('T')[0];
+    // 检查今日是否已签到（本地日期，与 dailyCheckIn 保持一致）
+    const today = localDateStr();
     const dailyChecked = Game.state.lastDailyDate === today;
 
     // 收集所有主题
@@ -2071,6 +2252,8 @@ const PlayerView = {
         const checked = this._dailyChecked;
         html += this._renderTaskCard(task, checked ? 'done' : 'available', 'daily');
       });
+      // 本月累签奖励时间轴
+      html += this._signInTimelineHtml();
     }
 
     // 每周任务
@@ -2181,6 +2364,64 @@ const PlayerView = {
     }
   },
 
+  // 本月累签奖励时间轴
+  _signInTimelineHtml() {
+    const rewards = getSignInRewards();
+    if (!rewards || rewards.length === 0) return '';
+    const si = Game.getSignInState();
+    const { days, claims } = si;
+
+    // 进度线填充：到达最后一个已达成节点
+    let reachedIdx = -1;
+    rewards.forEach((r, i) => {
+      if (claims.includes(r.rewardId) || days >= r.requiredDays) reachedIdx = i;
+    });
+    const fillPct = rewards.length > 1
+      ? (reachedIdx / (rewards.length - 1)) * 100
+      : (reachedIdx >= 0 ? 100 : 0);
+
+    let nodes = '';
+    rewards.forEach(r => {
+      const claimed = claims.includes(r.rewardId);
+      const claimable = !claimed && days >= r.requiredDays;
+      const state = claimed ? 'claimed' : (claimable ? 'claimable' : 'locked');
+      const first = (r.items && r.items[0]) || null;
+      const def = first ? ITEMS[String(first.itemId)] : null;
+      const icon = def ? (def.icon || '🎁') : '🎁';
+      const count = first ? first.count : '';
+      const circleContent = claimed ? '✓' : icon;
+      const click = claimable ? `onclick="PlayerView.claimSignIn(${r.rewardId})"` : '';
+      nodes += `
+        <div class="signin-node ${state}" ${click}>
+          <div class="node-reward">${icon}${count ? '×' + count : ''}</div>
+          <div class="node-circle">${circleContent}</div>
+          <div class="node-day">${r.requiredDays}天</div>
+        </div>
+      `;
+    });
+
+    return `
+      <div class="signin-card">
+        <div class="signin-head">
+          <span class="signin-title">🎯 本月累签奖励</span>
+          <span class="signin-days">本月已签 <b>${days}</b> 天</span>
+        </div>
+        <div class="signin-track-wrap">
+          <div class="signin-line"><div class="signin-line-fill" style="width:${fillPct}%"></div></div>
+          <div class="signin-nodes">${nodes}</div>
+        </div>
+        <div class="signin-hint">累计签到 3 / 7 / 14 / 28 天可领取对应奖励，每月 1 号重置</div>
+      </div>
+    `;
+  },
+
+  async claimSignIn(rewardId) {
+    const reward = getSignInRewards().find(r => r.rewardId === parseInt(rewardId));
+    if (!reward) return;
+    const ok = await Game.claimSignInReward(reward);
+    if (ok) this._renderTaskList();
+  },
+
   submitTask(taskId) {
     const task = [...this._dailyTasks, ...this._weeklyTasks].find(t => t.id == taskId);
     if (!task) return;
@@ -2266,10 +2507,10 @@ const PlayerView = {
       await DB.updatePlayerState({ choppingCount: Game.state.choppingCount });
     }
 
-    // 发道具
+    // 发道具（游戏币/砍树次数自动路由到货币，其余进背包）
     const items = sub.rewardItems || [];
     for (const ri of items) {
-      await DB.addItem(ri.item_id, ri.quantity);
+      await Game.grantItem(ri.item_id, ri.quantity);
     }
 
     // 更新状态为已完成
@@ -2291,7 +2532,7 @@ const PlayerView = {
 
     const items = sub.rewardItems || [];
     for (const ri of items) {
-      await DB.addItem(ri.item_id, ri.quantity);
+      await Game.grantItem(ri.item_id, ri.quantity);
     }
 
     await DB.reviewSubmission(sub.id, 'claimed', '', sub.rewardChopping, sub.rewardItems);
@@ -2333,7 +2574,7 @@ const PlayerView = {
       if (ri.item_id === 'chopping') {
         totalChopping += ri.quantity;
       } else {
-        await DB.addItem(ri.item_id, ri.quantity);
+        await Game.grantItem(ri.item_id, ri.quantity);
       }
     }
     if (totalChopping > 0) {
@@ -2376,11 +2617,15 @@ const PlayerView = {
         <button class="btn btn-outline btn-block" style="margin-top:8px" onclick="PlayerView.showWithdrawRecords()">📋 提现记录</button>
       </div>
 
-      <!-- 道具兑换商店 -->
+      <!-- 天道酬勤商店（游戏币购买） -->
       <div class="shop-section">
-        <div class="section-header">
-          <div class="section-title">🛒 道具兑换</div>
+        <div class="section-header" style="align-items:center">
+          <div class="section-title">🛒 天道酬勤商店</div>
+          <div class="res-pill res-coin" title="游戏币余额">
+            <span class="res-icon">🪙</span><span class="res-val" id="shop-coin-balance">${Game.state.coin || 0}</span>
+          </div>
         </div>
+        <div class="shop-tip">砍树掉落、出售仙斧可获得游戏币，用于在此兑换道具</div>
         <div class="shop-grid" id="shop-grid"></div>
       </div>
 
@@ -2426,32 +2671,71 @@ const PlayerView = {
   _renderShop() {
     const grid = document.getElementById('shop-grid');
     if (!grid) return;
-    let html = '';
-    SHOP_ITEMS.forEach(item => {
-      let costText = '';
-      if (item.costType === 'chopping') costText = `🪓 ${item.costValue} 次`;
-      else costText = `¥${item.costValue}`;
+    const items = getShopItems();
+    const coin = Game.state.coin || 0;
+    const month = new Date().toISOString().slice(0, 7);
+    const monthPurchases = (Game.state.shopPurchases || {})[month] || {};
 
+    if (items.length === 0) {
+      grid.innerHTML = '<div class="empty-state" style="padding:24px;grid-column:1/-1"><div class="emoji">🛒</div><p>商店暂未上架商品</p></div>';
+      return;
+    }
+
+    let html = '';
+    items.forEach(item => {
+      const qColor = QUALITY_COLORS[item.quality] || '#9e9e9e';
+      const limitType = parseInt(item.limitType);
+      let badge = '';
+      let disabled = false;
+
+      // 限购类型3：仙阶限购
+      if (limitType === SHOP_LIMIT_TYPE.REALM) {
+        const needRealm = parseInt(item.limitParam) || 0;
+        const realm = REALMS.find(r => r.level == needRealm);
+        const realmName = realm ? realm.name : `仙阶${needRealm}`;
+        if ((Game.state.realmLevel || 1) < needRealm) {
+          disabled = true;
+          badge = `<div class="shop-tag shop-lock">🔒 ${realmName}</div>`;
+        } else {
+          badge = `<div class="shop-tag">${realmName}可购</div>`;
+        }
+      }
+      // 限购类型2：月限购
+      if (limitType === SHOP_LIMIT_TYPE.MONTHLY) {
+        const max = parseInt(item.limitParam) || 0;
+        const bought = monthPurchases[item.shopId] || 0;
+        if (bought >= max) {
+          disabled = true;
+          badge = `<div class="shop-tag shop-soldout">本月已达上限</div>`;
+        } else {
+          badge = `<div class="shop-tag shop-monthly">月限 ${bought}/${max}</div>`;
+        }
+      }
+
+      const afford = coin >= item.price;
+      const countText = item.itemCount > 1 ? ` ×${item.itemCount}` : '';
       html += `
-        <div class="shop-item" onclick="PlayerView.buyShopItem('${item.id}')">
-          <div class="shop-icon">${item.icon}</div>
-          <div class="shop-name">${item.name}</div>
-          <div class="shop-cost">${costText}</div>
+        <div class="shop-item ${disabled ? 'shop-disabled' : ''}" ${disabled ? '' : `onclick="PlayerView.buyShopItem(${item.shopId})"`}>
+          <div class="shop-badge-slot">${badge}</div>
+          <div class="shop-icon" style="box-shadow:inset 0 0 0 2px ${qColor}66;border-radius:12px">${item.icon}</div>
+          <div class="shop-name">${item.name}${countText}</div>
+          <div class="shop-cost ${afford ? '' : 'shop-cost-no'}">🪙 ${item.price}</div>
         </div>
       `;
     });
     grid.innerHTML = html;
+
+    const bal = document.getElementById('shop-coin-balance');
+    if (bal) bal.textContent = coin;
   },
 
-  buyShopItem(itemId) {
-    const item = SHOP_ITEMS.find(s => s.id === itemId);
+  buyShopItem(shopId) {
+    const item = getShopItems().find(s => s.shopId === parseInt(shopId));
     if (!item) return;
-    let costText = item.costType === 'chopping' ? `${item.costValue} 次砍树` : `¥${item.costValue}`;
-    UI.confirm(`确定消耗 ${costText} 兑换 ${item.name}？`, async () => {
+    const countText = item.itemCount > 1 ? ` ×${item.itemCount}` : '';
+    UI.confirm(`确定花费 🪙${item.price} 游戏币购买 ${item.name}${countText}？`, async () => {
       const ok = await Game.shopBuy(item);
-      if (ok) {
-        this._renderShop();
-      }
+      if (ok) this._renderShop();
     });
   },
 
@@ -2628,7 +2912,7 @@ const PlayerView = {
     if (!mail || !mail.items || mail.items.length === 0) return;
 
     for (const ri of mail.items) {
-      await DB.addItem(ri.item_id, ri.quantity);
+      await Game.grantItem(ri.item_id, ri.quantity);
     }
 
     await DB.claimMail(mailId);
@@ -2917,15 +3201,12 @@ const PlayerView = {
       }
       const itemId = selectedPool.items[Math.floor(Math.random() * selectedPool.items.length)];
       const itemDef = ITEMS[itemId];
-      await DB.addItem(itemId, 1);
-      const idx = Game.inventory.findIndex(i => i.itemId == itemId);
-      if (idx >= 0) Game.inventory[idx].quantity += 1;
-      else Game.inventory.push({ itemId, quantity: 1 });
+      const bonusGrant = await Game.grantItem(itemId, 1);
 
       const bonusItem = {
         itemId, quantity: 1, quality: selectedPool.quality,
         qualityName: QUALITY[selectedPool.quality].name,
-        item: itemDef, isBonus: true,
+        item: itemDef, isBonus: true, kind: bonusGrant.kind,
       };
       results.push(bonusItem);
 
@@ -2951,12 +3232,20 @@ const PlayerView = {
 
     // 显示结果弹窗
     const itemsHtml = results.map(r => {
-      const q = QUALITY[r.quality] || QUALITY[1];
       const bonusTag = r.isBonus ? '<div style="font-size:10px;color:var(--accent);font-weight:600">保底</div>' : '';
       const buffTag = r.buffText ? `<div style="font-size:10px;color:var(--quality-4)">${r.buffText}</div>` : '';
-      return `<div style="text-align:center;padding:8px;border:1px solid ${q.color}40;border-radius:8px;background:${q.color}10">
-        <div style="font-size:32px">${r.item.icon}</div>
-        <div style="font-size:11px;font-weight:600;color:${q.color};margin-top:2px">${r.item.name}</div>
+      let icon, name, color;
+      if (r.kind === 'coin') { icon = '🪙'; name = '游戏币'; color = '#d4af37'; }
+      else if (r.kind === 'chopping') { icon = '🪓'; name = '砍树次数'; color = '#4a90d9'; }
+      else {
+        const q = QUALITY[r.quality] || QUALITY[1];
+        icon = r.item ? r.item.icon : '🎁';
+        name = r.item ? r.item.name : '道具';
+        color = q.color;
+      }
+      return `<div style="text-align:center;padding:8px;border:1px solid ${color}40;border-radius:8px;background:${color}10">
+        <div style="font-size:32px">${icon}</div>
+        <div style="font-size:11px;font-weight:600;color:${color};margin-top:2px">${name}</div>
         <div style="font-size:10px;color:var(--text-light)">×${r.quantity}</div>
         ${bonusTag}
         ${buffTag}
@@ -3771,9 +4060,23 @@ const AdminView = {
     const itemId = document.getElementById('gm-item-id')?.value;
     const qty = parseInt(document.getElementById('gm-item-qty')?.value) || 1;
     if (!itemId) { UI.toast('请选择道具', 'error'); return; }
-    await DB.addItem(itemId, qty);
-    const def = ITEMS[itemId];
-    UI.toast(`发放 ${def?.icon || ''} ${def?.name || itemId} ×${qty}`, 'success');
+    const def = ITEMS[String(itemId)];
+    if (def && def.type === 0) {
+      // 游戏币 → 写入 player_state.coin
+      const state = await DB.getPlayerState();
+      const newCoin = (state?.coin || 0) + qty;
+      await DB.updatePlayerState({ coin: newCoin });
+      UI.toast(`发放 ${def.icon} ${def.name} ×${qty}（当前 ${newCoin}）`, 'success');
+    } else if (def && def.type === 6) {
+      // 砍树次数 → 写入 player_state.choppingCount
+      const state = await DB.getPlayerState();
+      const newCount = (state?.choppingCount || 0) + qty;
+      await DB.updatePlayerState({ choppingCount: newCount });
+      UI.toast(`发放 ${def.icon} ${def.name} ×${qty}（当前 ${newCount}）`, 'success');
+    } else {
+      await DB.addItem(itemId, qty);
+      UI.toast(`发放 ${def?.icon || ''} ${def?.name || itemId} ×${qty}`, 'success');
+    }
     this.renderGM();
   },
 

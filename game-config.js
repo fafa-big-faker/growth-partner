@@ -1,6 +1,6 @@
 // ===== 游戏配置文件（由 sync-config.py 从飞书表格自动生成）=====
 // 修改飞书表格后运行同步脚本即可更新，请勿手动编辑此文件
-// 最后同步: 2026-09-03 15:43:39
+// 最后同步: 2026-09-03 16:50:48
 
 const GAME_CONFIG = {
   // 角色等级经验表（共 150 条）
@@ -950,8 +950,30 @@ const GAME_CONFIG = {
   }
 ],
 
-  // 道具表（共 26 条）
+  // 道具表（共 28 条）
   itemTable: [
+  {
+    "id": 0,
+    "name": "游戏币",
+    "type": 0,
+    "quality": 2,
+    "stackLimit": 999,
+    "interactionType": 0,
+    "interactionParams": "",
+    "description": "",
+    "icon": "🪙"
+  },
+  {
+    "id": 1,
+    "name": "砍树次数",
+    "type": 6,
+    "quality": 2,
+    "stackLimit": 999,
+    "interactionType": 0,
+    "interactionParams": "",
+    "description": "",
+    "icon": "🪓"
+  },
   {
     "id": 10001,
     "name": "碎铜",
@@ -1196,13 +1218,13 @@ const GAME_CONFIG = {
   },
   {
     "id": 53002,
-    "name": "镇海斧",
+    "name": "二向箔贴纸斧",
     "type": 5,
     "quality": 3,
     "stackLimit": 1,
     "interactionType": 3,
     "interactionParams": "20,1003",
-    "description": "古仙人镇压江海的法宝，威能惊人。",
+    "description": "砍中敌人后，直接把对方拍成一张A4纸大小的二维平面。",
     "icon": "⚓"
   },
   {
@@ -1288,7 +1310,7 @@ const GAME_CONFIG = {
     "id": 3,
     "description": "点击打开装备和出售窗口",
     "params": "value1,value2",
-    "paramsDesc": "value1代表出售可获得的砍树次数,value2拥有的技能ID，再继续接代表拥有不止一条技能，没有value2代表没有技能"
+    "paramsDesc": "value1代表出售可获得的游戏币,value2拥有的技能ID，再继续接代表拥有不止一条技能，没有value2代表没有技能"
   }
 ],
 
@@ -2065,7 +2087,8 @@ const GAME_CONFIG = {
     "packId": 1002,
     "items": [
       10201,
-      20001
+      20001,
+      0
     ],
     "qualityId": 2,
     "qualityNote": ""
@@ -2152,6 +2175,130 @@ const GAME_CONFIG = {
     "note": "道具ID，道具数量"
   }
 ],
+
+  // 商店表（天道酬勤商店，售价单位：游戏币；limitType 1=不限 2=月限购 3=仙阶限购）（共 8 条）
+  shopTable: [
+  {
+    "shopId": 1,
+    "itemId": "10001",
+    "itemCount": 1,
+    "limitType": 1,
+    "limitParam": "",
+    "price": 20,
+    "note": "购买消耗道具固定为游戏币"
+  },
+  {
+    "shopId": 2,
+    "itemId": "10101",
+    "itemCount": 1,
+    "limitType": 1,
+    "limitParam": "",
+    "price": 40,
+    "note": ""
+  },
+  {
+    "shopId": 3,
+    "itemId": "10201",
+    "itemCount": 1,
+    "limitType": 1,
+    "limitParam": "",
+    "price": 80,
+    "note": ""
+  },
+  {
+    "shopId": 4,
+    "itemId": "10301",
+    "itemCount": 1,
+    "limitType": 1,
+    "limitParam": "",
+    "price": 188,
+    "note": ""
+  },
+  {
+    "shopId": 5,
+    "itemId": "20001",
+    "itemCount": 1,
+    "limitType": 1,
+    "limitParam": "",
+    "price": 50,
+    "note": ""
+  },
+  {
+    "shopId": 6,
+    "itemId": "40001",
+    "itemCount": 1,
+    "limitType": 2,
+    "limitParam": "10",
+    "price": 100,
+    "note": ""
+  },
+  {
+    "shopId": 7,
+    "itemId": "40002",
+    "itemCount": 1,
+    "limitType": 3,
+    "limitParam": "3",
+    "price": 100,
+    "note": ""
+  },
+  {
+    "shopId": 8,
+    "itemId": "20301",
+    "itemCount": 1,
+    "limitType": 1,
+    "limitParam": "",
+    "price": 1888,
+    "note": ""
+  }
+],
+
+  // 累签奖励表（本月累计签到里程碑，按 requiredDays 升序）（共 4 条）
+  signInTable: [
+  {
+    "rewardId": 1,
+    "items": [
+      {
+        "itemId": "40001",
+        "count": 3
+      }
+    ],
+    "note": "道具ID，数量",
+    "requiredDays": 3
+  },
+  {
+    "rewardId": 2,
+    "items": [
+      {
+        "itemId": "40001",
+        "count": 5
+      }
+    ],
+    "note": "",
+    "requiredDays": 7
+  },
+  {
+    "rewardId": 3,
+    "items": [
+      {
+        "itemId": "40001",
+        "count": 8
+      }
+    ],
+    "note": "",
+    "requiredDays": 14
+  },
+  {
+    "rewardId": 4,
+    "items": [
+      {
+        "itemId": "40001",
+        "count": 10
+      }
+    ],
+    "note": "",
+    "requiredDays": 28
+  }
+],
 };
 
 // ===== 辅助函数 =====
@@ -2193,4 +2340,28 @@ function getPoolById(poolId) {
     };
   }).filter(p => p.items.length > 0 && p.weight > 0);
   return { poolId, packs };
+}
+
+// 获取本月累签奖励配置（按需要天数升序）
+function getSignInRewards() {
+  return (GAME_CONFIG.signInTable || []).slice().sort((a, b) => a.requiredDays - b.requiredDays);
+}
+
+// 获取天道酬勤商店商品配置（合并道具表信息）
+function getShopItems() {
+  return (GAME_CONFIG.shopTable || []).map(s => {
+    const def = (GAME_CONFIG.itemTable || []).find(it => String(it.id) === String(s.itemId));
+    return {
+      shopId: s.shopId,
+      itemId: String(s.itemId),
+      itemCount: s.itemCount || 1,
+      limitType: s.limitType || 1,
+      limitParam: s.limitParam || '',
+      price: s.price || 0,
+      note: s.note || '',
+      name: def ? def.name : ('道具' + s.itemId),
+      icon: def ? (def.icon || '❓') : '❓',
+      quality: def ? def.quality : 1,
+    };
+  });
 }

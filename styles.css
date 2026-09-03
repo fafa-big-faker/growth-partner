@@ -749,12 +749,167 @@ body {
   transform: translateY(-2px);
   box-shadow: var(--shadow-hover);
 }
-.shop-item .shop-icon { font-size: 40px; margin-bottom: 6px; }
+.shop-item .shop-icon { font-size: 40px; margin-bottom: 6px; border-radius: 12px; }
 .shop-item .shop-name { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
 .shop-item .shop-cost {
+  font-size: 13px;
+  color: #b8860b;
+  font-weight: 700;
+}
+.shop-item .shop-cost.shop-cost-no { color: var(--text-light); }
+
+.shop-tip {
   font-size: 12px;
-  color: var(--primary-dark);
-  font-weight: 600;
+  color: var(--text-secondary);
+  margin: 2px 0 10px;
+}
+
+/* 商品角标（限购/仙阶） */
+.shop-badge-slot {
+  position: relative;
+  height: 0;
+}
+.shop-tag {
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  z-index: 2;
+}
+.shop-tag.shop-monthly { background: #e8f4fd; color: #2a7fb8; border-color: #b9dcf2; }
+.shop-tag.shop-lock { background: #fdecea; color: #c0392b; border-color: #f5c6c0; }
+.shop-tag.shop-soldout { background: #eee; color: #888; border-color: #ddd; }
+
+.shop-item.shop-disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.shop-item.shop-disabled:hover {
+  border-color: var(--border);
+  transform: none;
+  box-shadow: none;
+}
+
+/* ===== 本月累签奖励时间轴 ===== */
+.signin-card {
+  margin: 14px 0 4px;
+  padding: 16px 14px 12px;
+  background: linear-gradient(135deg, #fffdf5, #fdf3d8);
+  border: 1px solid #f0e0a8;
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+}
+.signin-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+.signin-title { font-size: 14px; font-weight: 700; color: #7a5a12; }
+.signin-days { font-size: 12px; color: #8a6a1c; }
+.signin-days b { color: #d4af37; font-size: 15px; }
+
+.signin-track-wrap {
+  position: relative;
+  padding: 26px 6px 0;
+}
+.signin-line {
+  position: absolute;
+  top: 54px;
+  left: 34px;
+  right: 34px;
+  height: 6px;
+  background: #e8dcc0;
+  border-radius: 3px;
+  overflow: hidden;
+}
+.signin-line-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #f0d27a, #d4af37);
+  border-radius: 3px;
+  transition: width 0.5s ease;
+}
+.signin-nodes {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+}
+.signin-node {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 64px;
+  flex-shrink: 0;
+}
+.node-reward {
+  font-size: 12px;
+  font-weight: 700;
+  color: #8a6a1c;
+  margin-bottom: 6px;
+  white-space: nowrap;
+}
+.node-circle {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: #fff;
+  border: 3px solid #d9cdb0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  transition: var(--transition);
+}
+.node-day {
+  margin-top: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+/* 已领取 */
+.signin-node.claimed .node-circle {
+  background: linear-gradient(135deg, #f0d27a, #d4af37);
+  border-color: #b8941f;
+  color: #fff;
+  font-size: 24px;
+}
+.signin-node.claimed .node-reward { color: #b9ac8a; }
+.signin-node.claimed .node-day { color: #b9ac8a; }
+
+/* 可领取 */
+.signin-node.claimable { cursor: pointer; }
+.signin-node.claimable .node-circle {
+  border-color: #d4af37;
+  box-shadow: 0 0 0 4px #f6dd9a, 0 4px 10px rgba(212, 175, 55, 0.35);
+  animation: signin-pulse 1.4s ease-in-out infinite;
+}
+.signin-node.claimable:hover .node-circle { transform: scale(1.08); }
+.signin-node.claimable .node-day { color: #b8941f; }
+
+/* 未达成 */
+.signin-node.locked .node-circle { opacity: 0.5; }
+.signin-node.locked .node-reward { color: #b9ac8a; }
+.signin-node.locked .node-day { color: var(--text-light); }
+
+@keyframes signin-pulse {
+  0%, 100% { box-shadow: 0 0 0 4px #f6dd9a, 0 4px 10px rgba(212, 175, 55, 0.35); }
+  50% { box-shadow: 0 0 0 8px rgba(246, 221, 154, 0.4), 0 4px 14px rgba(212, 175, 55, 0.5); }
+}
+
+.signin-hint {
+  margin-top: 10px;
+  font-size: 11px;
+  color: var(--text-light);
+  text-align: center;
 }
 
 /* ===== 邮件 ===== */
@@ -1303,6 +1458,29 @@ body {
   white-space: nowrap;
   flex-shrink: 0;
 }
+
+/* 资源药丸（游戏币等，顶栏展示） */
+.res-pill {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 10px;
+  height: 30px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  flex-shrink: 0;
+  white-space: nowrap;
+  background: var(--bg-secondary);
+  color: var(--text);
+}
+.res-pill .res-icon { font-size: 15px; line-height: 1; }
+.res-coin {
+  background: linear-gradient(135deg, #fdf3d4, #f6dd9a);
+  color: #8a6a1c;
+  box-shadow: inset 0 0 0 1px #e9c96a;
+}
+.res-coin .res-val { min-width: 12px; text-align: center; }
 
 /* ③ 背包区（页签在右侧） */
 .cult-inventory {

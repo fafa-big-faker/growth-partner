@@ -17,6 +17,8 @@ SHEETS = {
     "仙树表": "SnkfsCnHFhMjQbt0UzsctKdOnSg",
     "奖池表": "DqbisAD8ch8Abvt69gicA8TMn5b",
     "锻造表": "NaCas6rwihqLZgtgmUhcjzGLnFd",
+    "商店表": "VwFKsb8UhhWBBvtaSmEcb597nvD",
+    "累签表": "TfrNskLjxhOC5HtN5jbcLMPMncc",
 }
 
 def lark_cli(*args):
@@ -252,6 +254,40 @@ for row in rows[2:]:
     })
 print(f"    {len(forge_table)} 条")
 
+# 12. 商店表（天道酬勤商店，售价单位：游戏币）
+print("  → 商店表（天道酬勤商店）")
+rows = read_sheet(SHEETS["商店表"], "天道酬勤商店表", "A1:G100")
+shop_table = []
+for row in rows[2:]:  # 跳过表头2行
+    if not row[0] or not str(row[0]).strip():
+        continue
+    shop_table.append({
+        "shopId": to_int(row[0]),
+        "itemId": str(to_int(row[1])) if str(row[1]).strip() else "",
+        "itemCount": to_int(row[2], 1),
+        "limitType": to_int(row[3], 1),
+        "limitParam": to_str(row[4]) if len(row) > 4 else "",
+        "price": to_int(row[5]),
+        "note": to_str(row[6]) if len(row) > 6 else "",
+    })
+print(f"    {len(shop_table)} 条")
+
+# 13. 累签奖励表（本月累计签到里程碑）
+print("  → 累签奖励表")
+rows = read_sheet(SHEETS["累签表"], "累签奖励配置", "A1:D50")
+signin_table = []
+for row in rows[2:]:  # 跳过表头2行
+    if not row[0] or not str(row[0]).strip():
+        continue
+    signin_table.append({
+        "rewardId": to_int(row[0]),
+        "items": parse_req_items(row[1] if len(row) > 1 else ""),
+        "note": to_str(row[2]) if len(row) > 2 else "",
+        "requiredDays": to_int(row[3]) if len(row) > 3 else 0,
+    })
+signin_table.sort(key=lambda x: x["requiredDays"])
+print(f"    {len(signin_table)} 条")
+
 # ===== 生成 game-config.js =====
 print("\n📝 生成 game-config.js...")
 
@@ -294,6 +330,12 @@ const GAME_CONFIG = {{
 
   // 锻造表（共 {len(forge_table)} 条）
   forgeTable: {json.dumps(forge_table, ensure_ascii=False, indent=2)},
+
+  // 商店表（天道酬勤商店，售价单位：游戏币；limitType 1=不限 2=月限购 3=仙阶限购）（共 {len(shop_table)} 条）
+  shopTable: {json.dumps(shop_table, ensure_ascii=False, indent=2)},
+
+  // 累签奖励表（本月累计签到里程碑，按 requiredDays 升序）（共 {len(signin_table)} 条）
+  signInTable: {json.dumps(signin_table, ensure_ascii=False, indent=2)},
 }};
 
 // ===== 辅助函数 =====
@@ -336,6 +378,30 @@ function getPoolById(poolId) {{
   }}).filter(p => p.items.length > 0 && p.weight > 0);
   return {{ poolId, packs }};
 }}
+
+// 获取本月累签奖励配置（按需要天数升序）
+function getSignInRewards() {{
+  return (GAME_CONFIG.signInTable || []).slice().sort((a, b) => a.requiredDays - b.requiredDays);
+}}
+
+// 获取天道酬勤商店商品配置（合并道具表信息）
+function getShopItems() {{
+  return (GAME_CONFIG.shopTable || []).map(s => {{
+    const def = (GAME_CONFIG.itemTable || []).find(it => String(it.id) === String(s.itemId));
+    return {{
+      shopId: s.shopId,
+      itemId: String(s.itemId),
+      itemCount: s.itemCount || 1,
+      limitType: s.limitType || 1,
+      limitParam: s.limitParam || '',
+      price: s.price || 0,
+      note: s.note || '',
+      name: def ? def.name : ('道具' + s.itemId),
+      icon: def ? (def.icon || '❓') : '❓',
+      quality: def ? def.quality : 1,
+    }};
+  }});
+}}
 """
 
 with open(OUTPUT, "w", encoding="utf-8") as f:
@@ -345,3 +411,4 @@ print(f"✅ 已生成 {OUTPUT}")
 print(f"   经验: {len(exp_table)} | 仙阶: {len(realm_table)} | 道具: {len(item_table)} | 品质: {len(quality_table)}")
 print(f"   交互: {len(interaction_table)} | 技能: {len(skill_table)} | BUFF: {len(buff_table)}")
 print(f"   仙树: {len(tree_table)} | 奖池权重: {len(pool_weight_table)} | 奖励包: {len(pack_table)} | 锻造: {len(forge_table)}")
+print(f"   商店: {len(shop_table)} | 累签奖励: {len(signin_table)}")
