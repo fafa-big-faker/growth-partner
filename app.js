@@ -1159,6 +1159,7 @@ const Router = {
       case 'review': AdminView.renderReview(); break;
       case 'withdraw': AdminView.renderWithdrawReview(); break;
       case 'player-view': AdminView.renderPlayerView(); break;
+      case 'gm': AdminView.renderGM(); break;
     }
   },
 };
@@ -3303,6 +3304,222 @@ const AdminView = {
         </table>
       </div>
     `;
+  },
+
+  // --- GM工具 ---
+  async renderGM() {
+    const main = document.getElementById('admin-main');
+    const state = await DB.getPlayerState();
+    const inventory = state ? await DB.getInventory() : [];
+
+    // 按类型分组道具列表
+    const typeNames = { 1: '合成材料', 2: '兑现道具', 3: '突破道具', 4: '锻造道具', 5: '仙斧装备' };
+    let itemOptions = '<option value="">-- 选择道具 --</option>';
+    const groupedItems = {};
+    (GAME_CONFIG?.itemTable || []).forEach(item => {
+      const t = item.type;
+      if (!groupedItems[t]) groupedItems[t] = [];
+      groupedItems[t].push(item);
+    });
+    Object.keys(groupedItems).sort().forEach(t => {
+      itemOptions += `<optgroup label="${typeNames[t] || '类型' + t}">`;
+      groupedItems[t].forEach(item => {
+        const qName = QUALITY[item.quality]?.name || '';
+        itemOptions += `<option value="${item.id}">${item.icon} ${item.name} (${qName}) [${item.id}]</option>`;
+      });
+      itemOptions += '</optgroup>';
+    });
+
+    main.innerHTML = `
+      <div class="page-title">🛠️ GM工具</div>
+      <div class="page-subtitle">测试用·发放资源与道具</div>
+
+      ${state ? `
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-num">${state.choppingCount}</div>
+          <div class="stat-label">🪓 砍树次数</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num">${state.level}</div>
+          <div class="stat-label">等级</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num" style="font-size:16px">${ITEMS[state.axeId]?.name || '未知'}</div>
+          <div class="stat-label">🪓 装备</div>
+        </div>
+      </div>
+      ` : '<div class="empty-state" style="padding:24px"><p>玩家尚未初始化，先去玩家端登录一次</p></div>'}
+
+      <!-- 发放砍树次数 -->
+      <div class="card">
+        <div class="card-title">🪓 发放砍树次数</div>
+        <div style="display:flex;gap:8px;align-items:flex-end">
+          <div class="form-group" style="flex:1;margin-bottom:0">
+            <label>数量</label>
+            <input type="number" id="gm-chopping-count" value="100" min="1" style="width:100%">
+          </div>
+          <button class="btn btn-primary" onclick="AdminView.gmGiveChopping()">发放</button>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+          <button class="btn btn-outline btn-sm" onclick="AdminView.gmSetChopping(1000)">设为1000</button>
+          <button class="btn btn-outline btn-sm" onclick="AdminView.gmSetChopping(9999)">设为9999</button>
+          <button class="btn btn-outline btn-sm" onclick="AdminView.gmGiveChopping(10)">+10</button>
+          <button class="btn btn-outline btn-sm" onclick="AdminView.gmGiveChopping(100)">+100</button>
+        </div>
+      </div>
+
+      <!-- 发放道具 -->
+      <div class="card">
+        <div class="card-title">🎒 发放道具</div>
+        <div class="form-group">
+          <label>选择道具</label>
+          <select id="gm-item-id" style="width:100%">
+            ${itemOptions}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>数量</label>
+          <input type="number" id="gm-item-qty" value="10" min="1" style="width:100%">
+        </div>
+        <button class="btn btn-primary btn-block" onclick="AdminView.gmGiveItem()">发放道具</button>
+        <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+          <button class="btn btn-outline btn-sm" onclick="AdminView.gmGiveAllMaterials()">发放全套材料×10</button>
+          <button class="btn btn-outline btn-sm" onclick="AdminView.gmGiveAllAxes()">发放全套仙斧×1</button>
+          <button class="btn btn-outline btn-sm" onclick="AdminView.gmGiveBreakthroughItems()">发放突破道具×9</button>
+        </div>
+      </div>
+
+      <!-- 等级/仙阶控制 -->
+      <div class="card">
+        <div class="card-title">⭐ 等级/仙阶控制</div>
+        <div class="form-group">
+          <label>设置等级</label>
+          <input type="number" id="gm-level" value="${state?.level || 1}" min="1" max="150" style="width:100%">
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-primary btn-sm" style="flex:1" onclick="AdminView.gmSetLevel()">设置等级</button>
+          <button class="btn btn-outline btn-sm" style="flex:1" onclick="AdminView.gmSetLevel(150)">直接满级</button>
+        </div>
+      </div>
+
+      <!-- 重置数据 -->
+      <div class="card" style="border:2px solid var(--danger,#e85a5a)">
+        <div class="card-title" style="color:var(--danger,#e85a5a)">⚠️ 危险操作</div>
+        <button class="btn btn-outline btn-block" style="border-color:var(--danger,#e85a5a);color:var(--danger,#e85a5a)" onclick="AdminView.gmClearInventory()">清空背包</button>
+        <button class="btn btn-outline btn-block" style="border-color:var(--danger,#e85a5a);color:var(--danger,#e85a5a);margin-top:8px" onclick="AdminView.gmResetAll()">重置全部数据</button>
+      </div>
+
+      <!-- 当前背包 -->
+      ${inventory.length > 0 ? `
+      <div class="card">
+        <div class="card-title">📋 当前背包（${inventory.length} 种）</div>
+        <table class="data-table">
+          ${inventory.map(inv => {
+            const def = ITEMS[inv.itemId];
+            const name = def ? `${def.icon} ${def.name}` : inv.itemId;
+            return `<tr><td>${name}</td><td>×${inv.quantity}</td><td style="font-size:11px;color:var(--text-light)">${inv.itemId}</td></tr>`;
+          }).join('')}
+        </table>
+      </div>
+      ` : ''}
+    `;
+  },
+
+  async gmGiveChopping(extra) {
+    const count = extra || parseInt(document.getElementById('gm-chopping-count')?.value) || 0;
+    if (count <= 0) { UI.toast('数量无效', 'error'); return; }
+    const state = await DB.getPlayerState();
+    if (!state) { UI.toast('玩家未初始化', 'error'); return; }
+    const newCount = state.choppingCount + count;
+    await DB.updatePlayerState({ choppingCount: newCount });
+    UI.toast(`发放 ${count} 次砍树，当前 ${newCount} 次`, 'success');
+    this.renderGM();
+  },
+
+  async gmSetChopping(count) {
+    const state = await DB.getPlayerState();
+    if (!state) { UI.toast('玩家未初始化', 'error'); return; }
+    await DB.updatePlayerState({ choppingCount: count });
+    UI.toast(`砍树次数设为 ${count}`, 'success');
+    this.renderGM();
+  },
+
+  async gmGiveItem() {
+    const itemId = document.getElementById('gm-item-id')?.value;
+    const qty = parseInt(document.getElementById('gm-item-qty')?.value) || 1;
+    if (!itemId) { UI.toast('请选择道具', 'error'); return; }
+    await DB.addItem(itemId, qty);
+    const def = ITEMS[itemId];
+    UI.toast(`发放 ${def?.icon || ''} ${def?.name || itemId} ×${qty}`, 'success');
+    this.renderGM();
+  },
+
+  async gmGiveAllMaterials() {
+    const materials = (GAME_CONFIG?.itemTable || []).filter(i => i.type === 1 || i.type === 2 || i.type === 4);
+    for (const item of materials) {
+      await DB.addItem(String(item.id), 10);
+    }
+    UI.toast(`已发放全套材料（${materials.length}种×10）`, 'success');
+    this.renderGM();
+  },
+
+  async gmGiveAllAxes() {
+    const axes = (GAME_CONFIG?.itemTable || []).filter(i => i.type === 5);
+    for (const item of axes) {
+      await DB.addItem(String(item.id), 1);
+    }
+    UI.toast(`已发放全套仙斧（${axes.length}种×1）`, 'success');
+    this.renderGM();
+  },
+
+  async gmGiveBreakthroughItems() {
+    const items = ['30101', '30201', '30301'];
+    for (const id of items) {
+      await DB.addItem(id, 9);
+    }
+    UI.toast('已发放突破道具（望石/待石/期石×9）', 'success');
+    this.renderGM();
+  },
+
+  async gmSetLevel(level) {
+    const lvl = level || parseInt(document.getElementById('gm-level')?.value) || 1;
+    const state = await DB.getPlayerState();
+    if (!state) { UI.toast('玩家未初始化', 'error'); return; }
+    await DB.updatePlayerState({ level: lvl, exp: 0 });
+    // 根据等级自动设置仙阶
+    const realm = getRealmByLevel(lvl);
+    await DB.updatePlayerState({ realmLevel: realm.realmId });
+    UI.toast(`等级设为 ${lvl}（${realm.name}）`, 'success');
+    this.renderGM();
+  },
+
+  async gmClearInventory() {
+    UI.confirm('确定清空背包中所有道具？此操作不可恢复！', async () => {
+      const { error } = await dbClient.from('inventory').delete().eq('user_role', 'player');
+      if (error) { UI.toast('清空失败: ' + error.message, 'error'); return; }
+      UI.toast('背包已清空', 'success');
+      this.renderGM();
+    });
+  },
+
+  async gmResetAll() {
+    UI.confirm('确定重置全部数据？等级、背包、仙阶都会回到初始状态！', async () => {
+      // 清空背包
+      await dbClient.from('inventory').delete().eq('user_role', 'player');
+      // 清空邮件
+      await dbClient.from('mails').delete().eq('user_role', 'player');
+      // 清空提现记录
+      await dbClient.from('withdrawals').delete().eq('user_role', 'player');
+      // 清空任务提交记录
+      await dbClient.from('task_submissions').delete().eq('user_role', 'player');
+      // 重置玩家状态
+      await dbClient.from('player_state').delete().eq('user_role', 'player');
+      UI.toast('全部数据已重置，请重新登录', 'success');
+      // 重新初始化
+      await Game.init();
+      this.renderGM();
+    });
   },
 };
 
