@@ -1,6 +1,6 @@
 // ===== 游戏配置文件（由 sync-config.py 从飞书表格自动生成）=====
 // 修改飞书表格后运行同步脚本即可更新，请勿手动编辑此文件
-// 最后同步: 2026-09-03 13:15:57
+// 最后同步: 2026-09-03 13:37:54
 
 const GAME_CONFIG = {
   // 角色等级经验表（共 150 条）
@@ -1425,8 +1425,7 @@ const GAME_CONFIG = {
         "count": 1
       }
     ],
-    "note": "第一个参数是道具ID，第二个参数是道具数量",
-    "displayText": ""
+    "note": "第一个参数是道具ID，第二个参数是道具数量"
   },
   {
     "id": 2,
@@ -1439,8 +1438,7 @@ const GAME_CONFIG = {
         "count": 2
       }
     ],
-    "note": "",
-    "displayText": ""
+    "note": ""
   },
   {
     "id": 3,
@@ -1453,8 +1451,7 @@ const GAME_CONFIG = {
         "count": 3
       }
     ],
-    "note": "",
-    "displayText": ""
+    "note": ""
   },
   {
     "id": 4,
@@ -1467,8 +1464,7 @@ const GAME_CONFIG = {
         "count": 4
       }
     ],
-    "note": "",
-    "displayText": ""
+    "note": ""
   },
   {
     "id": 5,
@@ -1481,8 +1477,7 @@ const GAME_CONFIG = {
         "count": 5
       }
     ],
-    "note": "",
-    "displayText": ""
+    "note": ""
   },
   {
     "id": 6,
@@ -1495,8 +1490,7 @@ const GAME_CONFIG = {
         "count": 6
       }
     ],
-    "note": "",
-    "displayText": ""
+    "note": ""
   },
   {
     "id": 7,
@@ -1509,8 +1503,7 @@ const GAME_CONFIG = {
         "count": 7
       }
     ],
-    "note": "",
-    "displayText": ""
+    "note": ""
   },
   {
     "id": 8,
@@ -1523,8 +1516,7 @@ const GAME_CONFIG = {
         "count": 8
       }
     ],
-    "note": "",
-    "displayText": ""
+    "note": ""
   },
   {
     "id": 9,
@@ -1537,8 +1529,7 @@ const GAME_CONFIG = {
         "count": 9
       }
     ],
-    "note": "",
-    "displayText": ""
+    "note": ""
   },
   {
     "id": 10,
@@ -1551,8 +1542,7 @@ const GAME_CONFIG = {
         "count": 10
       }
     ],
-    "note": "",
-    "displayText": ""
+    "note": ""
   },
   {
     "id": 11,
@@ -1565,8 +1555,7 @@ const GAME_CONFIG = {
         "count": 11
       }
     ],
-    "note": "",
-    "displayText": ""
+    "note": ""
   },
   {
     "id": 12,
@@ -1579,8 +1568,7 @@ const GAME_CONFIG = {
         "count": 12
       }
     ],
-    "note": "",
-    "displayText": ""
+    "note": ""
   },
   {
     "id": 13,
@@ -1593,8 +1581,7 @@ const GAME_CONFIG = {
         "count": 13
       }
     ],
-    "note": "",
-    "displayText": ""
+    "note": ""
   },
   {
     "id": 14,
@@ -1607,8 +1594,7 @@ const GAME_CONFIG = {
         "count": 14
       }
     ],
-    "note": "",
-    "displayText": ""
+    "note": ""
   },
   {
     "id": 15,
@@ -1621,8 +1607,7 @@ const GAME_CONFIG = {
         "count": 15
       }
     ],
-    "note": "",
-    "displayText": ""
+    "note": ""
   }
 ],
 

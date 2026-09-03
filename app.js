@@ -172,7 +172,7 @@ const TREE_REALMS = (GAME_CONFIG?.treeTable || []).map((tree, idx) => ({
   icon: TREE_ICONS[idx] || '🌳',
   treeLevel: tree.id,
   reqItems: (tree.reqItems || []).map(req => ({ ...req, itemId: String(req.itemId) })),
-  desc: tree.displayText || tree.note || '',
+  desc: '',
 }));
 
 // 锻造奖池 → 从飞书表格配置动态构建（game-config.js → forgeTable + poolTable仙斧池）
@@ -843,6 +843,27 @@ const Game = {
     return true;
   },
 
+  // 批量合成道具
+  async composeMulti(itemId, qty) {
+    const itemDef = ITEMS[itemId];
+    if (!itemDef || itemDef.type !== 1) return false;
+
+    const totalNeed = itemDef.composeCount * qty;
+    const have = this._getItemQty(itemId);
+    if (have < totalNeed) {
+      UI.toast(`材料不足，需要 ${totalNeed} 个`, 'warn');
+      return false;
+    }
+
+    await DB.removeItem(itemId, totalNeed);
+    await DB.addItem(itemDef.composeTo, qty);
+    await this.refresh();
+
+    const targetItem = ITEMS[itemDef.composeTo];
+    UI.toast(`合成成功！获得 ${targetItem.name} ×${qty}`, 'success');
+    return true;
+  },
+
   // 出售仙斧
   async sellAxe(itemId) {
     const itemDef = ITEMS[itemId];
@@ -1406,7 +1427,7 @@ const PlayerView = {
       <div class="cult-scene" id="tree-area">
         <div class="cult-tree" id="tree-icon" onclick="PlayerView.showTreeDetail()">
           <span class="tree-emoji">${treeConfig.icon}</span>
-          <div class="tree-label">${treeRealm.name} · ${treeConfig.name}</div>
+          <div class="tree-label">${treeConfig.name}</div>
           <div class="tree-sub">灵阶 ${Game.state.treeRealm} · 树 Lv.${Game.state.treeLevel}</div>
         </div>
         <div class="cult-char">
@@ -1495,16 +1516,14 @@ const PlayerView = {
     UI.modal(`
       <div style="text-align:center;margin-bottom:16px">
         <div style="font-size:72px;margin-bottom:8px">${treeConfig.icon}</div>
-        <div style="font-size:18px;font-weight:700">${treeRealm.name} · ${treeConfig.name}</div>
+        <div style="font-size:18px;font-weight:700">${treeConfig.name}</div>
         <div style="font-size:13px;color:var(--text-secondary);margin-top:4px">
           灵阶 ${Game.state.treeRealm} · 树 Lv.${Game.state.treeLevel}
         </div>
-        <div style="font-size:12px;color:var(--text-secondary);margin-top:8px">${treeRealm.desc || ''}</div>
       </div>
       ${nextTreeRealm ? `
         <div style="border-top:1px solid var(--border);padding-top:12px;margin-bottom:12px">
           <div style="font-weight:600;font-size:14px;margin-bottom:8px">升阶到：${nextTreeRealm.name}</div>
-          <div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px">${nextTreeRealm.desc || ''}</div>
           ${nextTreeRealm.reqItems ? nextTreeRealm.reqItems.map(req => {
             const def = ITEMS[req.itemId];
             const have = Game.inventory.find(i => i.itemId == req.itemId)?.quantity || 0;
@@ -1619,26 +1638,93 @@ const PlayerView = {
   },
 
   composeItem(itemId) {
-    Game.compose(itemId).then(ok => {
-      if (ok) {
-        this.renderInventory(this.currentInvTab);
-        document.querySelector('.modal-overlay')?.remove();
-      }
-    });
+    const def = ITEMS[itemId];
+    const have = Game._getItemQty(itemId);
+    const need = def.composeCount || 1;
+    const maxCompose = Math.floor(have / need);
+    if (maxCompose < 1) {
+      UI.toast(`需要 ${need} 个才能合成`, 'warn');
+      return;
+    }
+    const targetDef = ITEMS[def.composeTo];
+    const max = Math.min(maxCompose, 99);
+
+    UI.modal(`
+      <div style="text-align:center;margin-bottom:16px">
+        <div style="font-size:48px;margin-bottom:4px">${def.icon}</div>
+        <div style="font-size:14px;color:var(--text-secondary)">${def.name}</div>
+        <div style="margin:4px 0;font-size:20px">⬇️</div>
+        <div style="font-size:48px;margin-bottom:4px">${targetDef?.icon || '❓'}</div>
+        <div style="font-size:16px;font-weight:700">${targetDef?.name || '?'}</div>
+      </div>
+      <div style="text-align:center;font-size:13px;color:var(--text-secondary);margin-bottom:16px">
+        每次消耗 ${need} 个 · 可合成 ${maxCompose} 次
+      </div>
+      <div style="display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:16px">
+        <button class="btn btn-outline btn-sm" onclick="this.parentNode.querySelector('.qty-input').stepDown()" style="font-size:18px;padding:4px 12px">−</button>
+        <input type="number" class="qty-input" min="1" max="${max}" value="1" style="width:60px;text-align:center;font-size:18px;border:1px solid var(--border);border-radius:6px;padding:4px" oninput="document.getElementById('compose-cost').textContent=this.value*${need}+'个'" />
+        <button class="btn btn-outline btn-sm" onclick="this.parentNode.querySelector('.qty-input').stepUp()" style="font-size:18px;padding:4px 12px">+</button>
+        <button class="btn btn-outline btn-sm" onclick="const i=this.parentNode.querySelector('.qty-input');i.value=${max};document.getElementById('compose-cost').textContent=${max}*${need}+'个'" style="font-size:12px">全部</button>
+      </div>
+      <div style="text-align:center;margin-bottom:16px">
+        <div style="font-size:13px;color:var(--text-secondary)">消耗 ${def.name}：<span id="compose-cost">${need}个</span></div>
+      </div>
+      <button class="btn btn-primary btn-block" onclick="
+        const q=parseInt(this.parentNode.querySelector('.qty-input').value)||1;
+        PlayerView._doCompose('${itemId}',q);
+      ">确认合成</button>
+    `, { title: '合成' });
+  },
+
+  async _doCompose(itemId, qty) {
+    const ok = await Game.composeMulti(itemId, qty);
+    if (ok) {
+      this.renderInventory(this.currentInvTab);
+      document.querySelector('.modal-overlay')?.remove();
+    }
   },
 
   cashItem(itemId) {
     const def = ITEMS[itemId];
-    UI.confirm(`确定要将 ${def.name} 提现 ¥${def.value} 吗？`, async () => {
-      const ok = await DB.removeItem(itemId, 1);
-      if (!ok) { UI.toast('操作失败', 'error'); return; }
-      Game.state.balance += def.value;
-      await DB.updatePlayerState({ balance: Game.state.balance });
-      await Game.refresh();
-      this.renderInventory(this.currentInvTab);
-      UI.toast(`到账 ¥${def.value}`, 'success');
-      document.querySelector('.modal-overlay')?.remove();
-    });
+    const have = Game._getItemQty(itemId);
+    const max = Math.min(have, 99);
+    if (max < 1) { UI.toast('数量不足', 'warn'); return; }
+
+    let qty = 1;
+    UI.modal(`
+      <div style="text-align:center;margin-bottom:16px">
+        <div style="font-size:48px;margin-bottom:8px">${def.icon}</div>
+        <div style="font-size:16px;font-weight:700">${def.name}</div>
+        <div style="font-size:13px;color:var(--text-secondary);margin-top:4px">持有 ${have} 个 · 每个 ¥${def.value}</div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:16px">
+        <button class="btn btn-outline btn-sm" onclick="this.parentNode.querySelector('.qty-input').stepDown()" style="font-size:18px;padding:4px 12px">−</button>
+        <input type="number" class="qty-input" min="1" max="${max}" value="1" style="width:60px;text-align:center;font-size:18px;border:1px solid var(--border);border-radius:6px;padding:4px" oninput="document.getElementById('cash-total').textContent='¥'+(this.value*${def.value}).toFixed(2)" />
+        <button class="btn btn-outline btn-sm" onclick="this.parentNode.querySelector('.qty-input').stepUp()" style="font-size:18px;padding:4px 12px">+</button>
+        <button class="btn btn-outline btn-sm" onclick="const i=this.parentNode.querySelector('.qty-input');i.value=${max};document.getElementById('cash-total').textContent='¥'+(${max}*${def.value}).toFixed(2)" style="font-size:12px">全部</button>
+      </div>
+      <div style="text-align:center;margin-bottom:16px">
+        <div style="font-size:13px;color:var(--text-secondary)">提现金额</div>
+        <div id="cash-total" style="font-size:24px;font-weight:700;color:var(--success)">¥${def.value.toFixed(2)}</div>
+      </div>
+      <button class="btn btn-primary btn-block" onclick="
+        const q=parseInt(this.parentNode.querySelector('.qty-input').value)||1;
+        PlayerView._doCash('${itemId}',q);
+      ">确认提现</button>
+    `, { title: '提现' });
+  },
+
+  async _doCash(itemId, qty) {
+    const def = ITEMS[itemId];
+    const ok = await DB.removeItem(itemId, qty);
+    if (!ok) { UI.toast('操作失败', 'error'); return; }
+    const total = def.value * qty;
+    Game.state.balance += total;
+    await DB.updatePlayerState({ balance: Game.state.balance });
+    await Game.refresh();
+    this.renderInventory(this.currentInvTab);
+    UI.toast(`到账 ¥${total.toFixed(2)}`, 'success');
+    document.querySelector('.modal-overlay')?.remove();
   },
 
   equipItem(itemId) {
