@@ -1438,12 +1438,23 @@ const PlayerView = {
     items.forEach(inv => {
       const def = ITEMS[inv.itemId];
       if (!def) return;
-      html += `
-        <div class="item-slot quality-${def.quality}" onclick="PlayerView.showItemDetail('${inv.itemId}')">
-          <div class="item-icon">${def.icon}</div>
-          <div class="item-count">${inv.quantity}</div>
-        </div>
-      `;
+      if (def.type === 5) {
+        // 武器：每把占一个格子，不显示数量
+        for (let i = 0; i < inv.quantity; i++) {
+          html += `
+            <div class="item-slot quality-${def.quality}" onclick="PlayerView.showItemDetail('${inv.itemId}')">
+              <div class="item-icon">${def.icon}</div>
+            </div>
+          `;
+        }
+      } else {
+        html += `
+          <div class="item-slot quality-${def.quality}" onclick="PlayerView.showItemDetail('${inv.itemId}')">
+            <div class="item-icon">${def.icon}</div>
+            <div class="item-count">${inv.quantity}</div>
+          </div>
+        `;
+      }
     });
 
     // 空槽位
@@ -1519,7 +1530,7 @@ const PlayerView = {
       if (ok) {
         this.renderInventory(this.currentInvTab);
         document.querySelector('.modal-overlay')?.remove();
-        UI.updateHeader();
+        this.renderCultivate();
       }
     });
   },
@@ -1531,6 +1542,7 @@ const PlayerView = {
       if (ok) {
         this.renderInventory(this.currentInvTab);
         document.querySelector('.modal-overlay')?.remove();
+        this.renderCultivate();
       }
     });
   },
