@@ -74,6 +74,15 @@ Object.entries(ITEM_ALIASES).forEach(([oldId, newId]) => {
   if (ITEMS[newId] && !ITEMS[oldId]) ITEMS[oldId] = ITEMS[newId];
 });
 
+// 品质颜色映射
+const QUALITY_COLORS = {
+  1: '#9e9e9e', // 凡品 - 灰
+  2: '#4a90d9', // 精品 - 蓝
+  3: '#9c6bd4', // 珍品 - 紫
+  4: '#e85a8a', // 神品 - 粉
+  5: '#f0b429', // 仙品 - 金
+};
+
 // 品质配置 → 从飞书表格配置构建（game-config.js → qualityTable + 代码颜色）
 const QUALITY = {};
 (GAME_CONFIG?.qualityTable || []).forEach(q => {
@@ -88,34 +97,47 @@ if (Object.keys(QUALITY).length === 0) {
   QUALITY[5] = { name: '仙品', color: '#f0b429' };
 }
 
-// 奖池配置（按树等级）→ 从飞书表格配置动态构建（game-config.js → treeTable + poolTable）
-const TREE_WEIGHTS = [
-  [50, 30, 15, 4, 1],   // 灵阶1
-  [45, 30, 17, 5, 3],   // 灵阶2
-  [40, 30, 19, 6, 5],   // 灵阶3
-  [35, 30, 21, 7, 7],   // 灵阶4
-  [30, 30, 23, 8, 9],   // 灵阶5
-  [25, 30, 25, 10, 10], // 灵阶6
-  [20, 28, 27, 12, 13], // 灵阶7
-  [15, 25, 30, 15, 15], // 灵阶8
-  [12, 22, 32, 17, 17], // 灵阶9
-  [10, 20, 33, 20, 17], // 灵阶10
-  [8, 18, 33, 22, 19],  // 灵阶11
-  [6, 15, 33, 25, 21],  // 灵阶12
-  [4, 12, 32, 28, 24],  // 灵阶13
-  [2, 10, 30, 30, 28],  // 灵阶14
-  [1, 8, 28, 32, 31],   // 灵阶15
+// 仙树各灵阶品质权重（总权重1000，对应5个品质凡/精/珍/神/仙）
+// 从飞书表格配置动态构建，同品质内道具均分概率
+const TREE_QUALITY_WEIGHTS = [
+  [950, 40,  10,  0,   0],   // 灵阶0 (初始)
+  [900, 80,  20,  0,   0],   // 灵阶1
+  [800, 150, 50,  0,   0],   // 灵阶2
+  [700, 200, 80,  15,  5],   // 灵阶3
+  [600, 230, 120, 35,  15],  // 灵阶4
+  [500, 250, 160, 60,  30],  // 灵阶5
+  [400, 260, 200, 90,  50],  // 灵阶6
+  [320, 260, 240, 120, 60],  // 灵阶7
+  [250, 250, 270, 150, 80],  // 灵阶8
+  [180, 240, 290, 180, 110], // 灵阶9
+  [120, 220, 300, 220, 140], // 灵阶10
+  [80,  200, 310, 250, 160], // 灵阶11
+  [50,  180, 310, 280, 180], // 灵阶12
+  [30,  150, 300, 320, 200], // 灵阶13
+  [15,  120, 280, 350, 235], // 灵阶14
+  [5,   80,  250, 360, 305], // 灵阶15
 ];
-const TREE_ICONS = ['🌱','🌿','🎋','🌳','🌲','🪴','🎍','🌴','🎄','🌵','🍀','🍁','🍂','🌾','🌟'];
+const TREE_ICONS = ['🌱','🌱','🌿','🎋','🌳','🌲','🪴','🎍','🌴','🎄','🌵','🍀','🍁','🍂','🌾','🌟'];
+
+// 获取材料品质奖池（poolId 1001-1005）
+function _getMaterialPoolItems(quality) {
+  const pool = (GAME_CONFIG?.poolTable || []).find(p => p.qualityId === quality && String(p.poolId).startsWith('1'));
+  return pool ? pool.items.map(String) : [];
+}
+
+// 获取仙斧品质奖池（poolId 2001-2005）
+function _getAxePoolItems(quality) {
+  const pool = (GAME_CONFIG?.poolTable || []).find(p => p.qualityId === quality && String(p.poolId).startsWith('2'));
+  return pool ? pool.items.map(String) : [];
+}
 
 const TREE_LEVELS = {};
 (GAME_CONFIG?.treeTable || []).forEach((tree, idx) => {
-  const weights = TREE_WEIGHTS[idx] || TREE_WEIGHTS[TREE_WEIGHTS.length - 1];
+  const weights = TREE_QUALITY_WEIGHTS[idx] || TREE_QUALITY_WEIGHTS[TREE_QUALITY_WEIGHTS.length - 1];
   const pools = [];
   for (let q = 1; q <= 5; q++) {
-    const pool = (GAME_CONFIG?.poolTable || []).find(p => p.qualityId === q && String(p.poolId).startsWith('1'));
-    const items = pool ? pool.items.map(String) : [];
-    if (items.length > 0) {
+    const items = _getMaterialPoolItems(q);
+    if (items.length > 0 && weights[q - 1] > 0) {
       pools.push({ quality: q, weight: weights[q - 1], items });
     }
   }
@@ -123,6 +145,7 @@ const TREE_LEVELS = {};
     name: tree.name,
     icon: TREE_ICONS[idx] || '🌳',
     pools,
+    qualityWeights: weights,
   };
 });
 
@@ -175,17 +198,14 @@ const TREE_REALMS = (GAME_CONFIG?.treeTable || []).map((tree, idx) => ({
   desc: '',
 }));
 
-// 锻造奖池 → 从飞书表格配置动态构建（game-config.js → forgeTable + poolTable仙斧池）
-const FORGE_AXE_WEIGHTS = [30, 25, 20, 15, 10]; // 品质1-5的权重
+// 锻造奖池 → 品质权重系统（总权重1000，同品质内仙斧均分概率）
+const FORGE_QUALITY_WEIGHTS = [900, 50, 30, 19, 1]; // 凡/精/珍/神/仙
 const FORGE_POOL = (() => {
   const result = [];
   for (let q = 1; q <= 5; q++) {
-    const pool = (GAME_CONFIG?.poolTable || []).find(p => p.qualityId === q && String(p.poolId).startsWith('2'));
-    if (pool) {
-      pool.items.forEach((itemId, itemIdx) => {
-        const w = FORGE_AXE_WEIGHTS[q - 1] / pool.items.length;
-        result.push({ itemId: String(itemId), weight: Math.round(w * 10) / 10, quality: q });
-      });
+    const items = _getAxePoolItems(q);
+    if (items.length > 0 && FORGE_QUALITY_WEIGHTS[q - 1] > 0) {
+      result.push({ quality: q, weight: FORGE_QUALITY_WEIGHTS[q - 1], items });
     }
   }
   return result;
@@ -242,7 +262,7 @@ const DB = {
       exp: data.exp,
       choppingCount: data.chopping_count,
       treeLevel: data.tree_level,
-      treeRealm: data.tree_realm || 1,
+      treeRealm: data.tree_realm !== null && data.tree_realm !== undefined ? data.tree_realm : 0,
       realmLevel: data.realm_level || 1,
       axeId: data.axe_id,
       balance: parseFloat(data.balance),
@@ -283,8 +303,8 @@ const DB = {
       level: 1,
       exp: 0,
       chopping_count: 10,
-      tree_level: 1,
-      tree_realm: 1,
+      tree_level: 0,
+      tree_realm: 0,
       realm_level: 1,
       axe_id: '51001',
       balance: 0,
@@ -1036,19 +1056,19 @@ const Game = {
     }
     await DB.removeItem(costItemId, costCount);
 
-    // 加权随机抽取
+    // 加权随机抽取品质，同品质内均分
     const totalWeight = FORGE_POOL.reduce((sum, p) => sum + p.weight, 0);
     let roll = Math.random() * totalWeight;
-    let selected = FORGE_POOL[0];
+    let selectedPool = FORGE_POOL[0];
     for (const pool of FORGE_POOL) {
       roll -= pool.weight;
-      if (roll <= 0) { selected = pool; break; }
+      if (roll <= 0) { selectedPool = pool; break; }
     }
-
-    const axeDef = ITEMS[selected.itemId];
-    await DB.addItem(selected.itemId, 1);
+    const itemId = selectedPool.items[Math.floor(Math.random() * selectedPool.items.length)];
+    const axeDef = ITEMS[itemId];
+    await DB.addItem(itemId, 1);
     await this.refresh();
-    return { itemId: selected.itemId, quality: selected.quality, item: axeDef };
+    return { itemId, quality: selectedPool.quality, item: axeDef };
   },
 
   // 十连砍
@@ -1512,37 +1532,106 @@ const PlayerView = {
     const treeConfig = TREE_LEVELS[Game.state.treeLevel] || TREE_LEVELS[1];
     const treeRealm = TREE_REALMS.find(r => r.level == Game.state.treeRealm) || TREE_REALMS[0];
     const nextTreeRealm = TREE_REALMS.find(r => r.level == Game.state.treeRealm + 1);
+    const nextTreeConfig = nextTreeRealm ? (TREE_LEVELS[nextTreeRealm.treeLevel] || null) : null;
+
+    // 计算当前各品质概率（总权重1000，转百分比）
+    const curWeights = treeConfig.qualityWeights || [0, 0, 0, 0, 0];
+    const curTotal = curWeights.reduce((a, b) => a + b, 0) || 1000;
+    const nextWeights = nextTreeConfig ? (nextTreeConfig.qualityWeights || [0, 0, 0, 0, 0]) : null;
+    const nextTotal = nextWeights ? (nextWeights.reduce((a, b) => a + b, 0) || 1000) : 0;
+
+    // 构建品质概率行
+    const qualityRows = [];
+    for (let q = 1; q <= 5; q++) {
+      const qInfo = QUALITY[q] || { name: `品质${q}`, color: '#999' };
+      const curPct = curWeights[q - 1] / curTotal * 100;
+      let nextPct = null;
+      let arrow = '';
+      if (nextWeights) {
+        nextPct = nextWeights[q - 1] / nextTotal * 100;
+        const diff = nextPct - curPct;
+        if (Math.abs(diff) < 0.01) {
+          arrow = '<span style="color:var(--text-secondary)">—</span>';
+        } else if (diff > 0) {
+          arrow = `<span style="color:var(--success)">↑</span>`;
+        } else {
+          arrow = `<span style="color:var(--error)">↓</span>`;
+        }
+      }
+      qualityRows.push(`
+        <div style="display:flex;align-items:center;padding:6px 0">
+          <div style="width:60px;text-align:right">
+            <span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:12px;background:${qInfo.color}20;color:${qInfo.color}">${qInfo.name}</span>
+          </div>
+          <div style="flex:1;text-align:center;font-weight:600;font-size:16px">${curPct.toFixed(1)}%</div>
+          <div style="width:40px;text-align:center;font-size:20px">${nextWeights ? '➡' : ''}</div>
+          <div style="flex:1;text-align:center;font-weight:600;font-size:16px;display:flex;align-items:center;justify-content:center;gap:4px">
+            ${nextWeights ? `${nextPct.toFixed(1)}% ${arrow}` : '—'}
+          </div>
+        </div>
+      `);
+    }
+
+    // 升阶消耗
+    let costHtml = '';
+    let canUpgrade = false;
+    if (nextTreeRealm && nextTreeRealm.reqItems && nextTreeRealm.reqItems.length > 0) {
+      canUpgrade = nextTreeRealm.reqItems.every(req =>
+        (Game.inventory.find(i => i.itemId == req.itemId)?.quantity || 0) >= req.count
+      );
+      costHtml = nextTreeRealm.reqItems.map(req => {
+        const def = ITEMS[req.itemId];
+        const have = Game.inventory.find(i => i.itemId == req.itemId)?.quantity || 0;
+        const ok = have >= req.count;
+        return `<div style="display:flex;align-items:center;gap:8px;justify-content:center;padding:4px 0">
+          <span style="font-size:20px">${def?.icon || '❓'}</span>
+          <span>${def?.name || req.itemId}</span>
+          <span style="color:${ok ? 'var(--success)' : 'var(--error)'};font-weight:600">${have}/${req.count}</span>
+        </div>`;
+      }).join('');
+    }
 
     UI.modal(`
-      <div style="text-align:center;margin-bottom:16px">
+      <div style="text-align:center;margin-bottom:20px">
         <div style="font-size:72px;margin-bottom:8px">${treeConfig.icon}</div>
-        <div style="font-size:18px;font-weight:700">${treeConfig.name}</div>
-        <div style="font-size:13px;color:var(--text-secondary);margin-top:4px">
-          灵阶 ${Game.state.treeRealm} · 树 Lv.${Game.state.treeLevel}
-        </div>
+        <div style="font-size:20px;font-weight:700">${treeConfig.name}</div>
+      </div>
+      <div style="display:flex;margin-bottom:8px">
+        <div style="flex:1;text-align:center;font-size:14px;font-weight:600;color:var(--text-secondary)">当前</div>
+        <div style="width:40px"></div>
+        <div style="flex:1;text-align:center;font-size:14px;font-weight:600;color:var(--text-secondary)">下一级</div>
+      </div>
+      <div style="background:var(--bg-secondary);border-radius:12px;padding:8px 12px;margin-bottom:16px">
+        ${qualityRows.join('')}
       </div>
       ${nextTreeRealm ? `
-        <div style="border-top:1px solid var(--border);padding-top:12px;margin-bottom:12px">
-          <div style="font-weight:600;font-size:14px;margin-bottom:8px">升阶到：${nextTreeRealm.name}</div>
-          ${nextTreeRealm.reqItems ? nextTreeRealm.reqItems.map(req => {
-            const def = ITEMS[req.itemId];
-            const have = Game.inventory.find(i => i.itemId == req.itemId)?.quantity || 0;
-            const ok = have >= req.count;
-            return `<div style="display:flex;align-items:center;gap:8px;padding:4px 0">
-              <span style="font-size:20px">${def.icon}</span>
-              <span style="flex:1;font-size:13px">${def.name}</span>
-              <span style="font-size:13px;color:${ok ? 'var(--success)' : 'var(--error)'}">${have}/${req.count}</span>
-            </div>`;
-          }).join('') : ''}
+        <div style="margin-bottom:8px">
+          ${costHtml}
         </div>
       ` : '<div style="text-align:center;color:var(--text-secondary);padding:12px">已达到最高灵阶</div>'}
     `, {
       title: '🌳 仙树详情',
       footer: nextTreeRealm ? `<div class="modal-footer">
         <button class="btn btn-outline btn-sm" onclick="this.closest('.modal-overlay').remove()">关闭</button>
-        <button class="btn btn-primary btn-sm" onclick="this.closest('.modal-overlay').remove();PlayerView.showTreeUpgrade()">升阶</button>
-      </div>` : undefined
+        <button class="btn btn-primary btn-sm" id="tree-upgrade-btn" ${canUpgrade ? '' : 'disabled'}>升阶</button>
+      </div>` : `<div class="modal-footer">
+        <button class="btn btn-outline btn-sm" onclick="this.closest('.modal-overlay').remove()">关闭</button>
+      </div>`
     });
+
+    const upgradeBtn = document.getElementById('tree-upgrade-btn');
+    if (upgradeBtn) {
+      upgradeBtn.addEventListener('click', async () => {
+        upgradeBtn.disabled = true;
+        const ok = await Game.upgradeTreeRealm();
+        if (ok) {
+          document.querySelector('.modal-overlay')?.remove();
+          PlayerView.renderCultivate();
+        } else {
+          upgradeBtn.disabled = false;
+        }
+      });
+    }
   },
 
   currentInvTab: 'items',
@@ -2625,6 +2714,36 @@ const PlayerView = {
   showForge() {
     const forgeQty = Game.inventory.find(i => i.itemId == '40001')?.quantity || 0;
 
+    // 计算锻造奖池各品质概率（总权重1000）
+    const forgeTotalWeight = FORGE_POOL.reduce((sum, p) => sum + p.weight, 0);
+    const qualityList = FORGE_POOL.map(pool => {
+      const qInfo = QUALITY[pool.quality] || { name: `品质${pool.quality}`, color: '#999' };
+      const pct = pool.weight / forgeTotalWeight * 100;
+      const itemNames = pool.items.map(id => {
+        const def = ITEMS[id];
+        return def ? def.name : id;
+      }).join('、');
+      return {
+        quality: pool.quality,
+        name: qInfo.name,
+        color: qInfo.color,
+        pct: pct,
+        items: itemNames,
+        count: pool.items.length,
+      };
+    }).sort((a, b) => a.quality - b.quality);
+
+    const poolHtml = qualityList.map(q => `
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
+        <span style="display:inline-block;padding:3px 10px;border-radius:12px;font-size:12px;font-weight:600;background:${q.color}20;color:${q.color};min-width:44px;text-align:center">${q.name}</span>
+        <div style="flex:1">
+          <div style="font-size:13px">${q.items}</div>
+          <div style="font-size:11px;color:var(--text-secondary)">共 ${q.count} 把，概率均分</div>
+        </div>
+        <span style="font-weight:700;font-size:15px;color:${q.color}">${q.pct.toFixed(1)}%</span>
+      </div>
+    `).join('');
+
     UI.modal(`
       <div style="text-align:center;margin-bottom:16px">
         <div style="font-size:64px;margin-bottom:8px">🔨</div>
@@ -2632,16 +2751,8 @@ const PlayerView = {
         <div style="font-size:12px;color:var(--text-secondary);margin-top:4px">消耗锻铁，随机获得一把仙斧</div>
       </div>
       <div style="margin-bottom:16px">
-        <div style="font-weight:600;margin-bottom:8px">锻造奖池</div>
-        ${FORGE_POOL.map(p => {
-          const def = ITEMS[p.itemId];
-          return `<div style="display:flex;align-items:center;gap:8px;padding:4px 0">
-            <span style="font-size:24px">${def.icon}</span>
-            <span style="flex:1">${def.name}</span>
-            ${UI.qualityTag(p.quality)}
-            <span style="font-size:12px;color:var(--text-light)">${p.weight}%</span>
-          </div>`;
-        }).join('')}
+        <div style="font-weight:600;margin-bottom:8px">奖池概率</div>
+        ${poolHtml}
       </div>
       <div style="text-align:center;font-size:13px;color:var(--text-secondary)">
         当前锻铁：🔩 ${forgeQty} 个
