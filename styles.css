@@ -543,6 +543,14 @@ body {
 .item-icon-sm { width: 36px; height: 36px; object-fit: contain; border-radius: 4px; image-rendering: pixelated; image-rendering: crisp-edges; }
 .item-icon-lg { width: 56px; height: 56px; object-fit: contain; border-radius: 6px; image-rendering: pixelated; image-rendering: crisp-edges; }
 .shop-icon .item-icon-img { width: 44px; height: 44px; image-rendering: pixelated; image-rendering: crisp-edges; }
+
+/* 武器（仙斧）格子：竖长方形 2:3，斧头图标竖直撑满 */
+.item-slot.weapon-slot { aspect-ratio: 2/3; }
+.item-slot.weapon-slot .item-icon { height: 100%; width: 100%; padding: 8px 6px 12px; }
+.item-slot.weapon-slot .item-icon-img { width: 100%; height: 100%; }
+/* 弹窗/详情里的大斧头图标也保持竖长 */
+.item-icon-lg.item-icon-axe { width: 44px; height: 66px; }
+.item-icon-sm.item-icon-axe { width: 28px; height: 42px; }
 .item-slot .item-count {
   position: absolute;
   bottom: 2px;

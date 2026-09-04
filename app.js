@@ -163,10 +163,14 @@ const ITEM_IMAGES = {
   '55001': 'assets/images/icons/55001.png',   // 盘古开天劈歪斧
 };
 
-// 统一道具图标渲染：有AI图用<img>，否则用emoji
+// 统一道具图标渲染：有像素图用<img>，否则回退emoji；斧头(type5)追加竖长class
 function renderItemIcon(itemId, fallbackEmoji, cls = 'item-icon-img') {
   const img = ITEM_IMAGES[String(itemId)];
-  if (img) return `<img src="${img}" class="${cls}" alt="${fallbackEmoji}" />`;
+  if (img) {
+    const isAxe = (typeof ITEMS !== 'undefined' && ITEMS[itemId] && ITEMS[itemId].type === 5);
+    const axeCls = isAxe ? ' item-icon-axe' : '';
+    return `<img src="${img}" class="${cls}${axeCls}" alt="${fallbackEmoji}" />`;
+  }
   return fallbackEmoji;
 }
 
@@ -2042,7 +2046,7 @@ const PlayerView = {
         const isEquipped = Game.state.axeId === inv.itemId;
         for (let i = 0; i < inv.quantity; i++) {
           html += `
-            <div class="item-slot quality-${def.quality} ${axeLocked ? 'item-locked' : ''} ${isEquipped ? 'item-equipped' : ''}" onclick="PlayerView.showItemDetail('${inv.itemId}')">
+            <div class="item-slot weapon-slot quality-${def.quality} ${axeLocked ? 'item-locked' : ''} ${isEquipped ? 'item-equipped' : ''}" onclick="PlayerView.showItemDetail('${inv.itemId}')">
               <div class="item-icon">${renderItemIcon(inv.itemId, def.icon)}</div>
               ${axeLocked ? '<div class="item-lock-badge">🔒</div>' : ''}
               ${isEquipped ? '<div class="item-equipped-badge">装备中</div>' : ''}
