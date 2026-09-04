@@ -873,6 +873,17 @@ const Game = {
       item.refundChopping = refund;
     }
 
+    // 每10次砍树额外掉落（从奖池1003抽取）
+    if (this.state.totalChops > 0 && this.state.totalChops % 10 === 0) {
+      const extraItem = this._rollPoolDrop(1003);
+      if (extraItem) {
+        const extraGrant = await this.grantItem(extraItem.itemId, extraItem.quantity);
+        extraItem.kind = extraGrant.kind;
+        extraItem.isExtra = true;
+        item.extraDrop = extraItem;
+      }
+    }
+
     // 加经验（仅本地状态）
     const expGain = 1;
     this.state.exp += expGain;
@@ -920,6 +931,34 @@ const Game = {
       quantity: 1,
       quality: selectedPool.quality,
       qualityName: QUALITY[selectedPool.quality].name,
+      item: itemDef,
+    };
+  },
+
+  // 从指定奖池ID抽取一个奖励（用于额外掉落等场景）
+  _rollPoolDrop(poolId) {
+    const poolData = getPoolById(poolId);
+    if (!poolData || !poolData.packs || poolData.packs.length === 0) return null;
+
+    const totalWeight = poolData.packs.reduce((sum, p) => sum + p.weight, 0);
+    if (totalWeight <= 0) return null;
+    let roll = Math.random() * totalWeight;
+    let selectedPack = null;
+    for (const pack of poolData.packs) {
+      roll -= pack.weight;
+      if (roll <= 0) { selectedPack = pack; break; }
+    }
+    if (!selectedPack) selectedPack = poolData.packs[0];
+
+    const itemId = selectedPack.items[Math.floor(Math.random() * selectedPack.items.length)];
+    const itemDef = ITEMS[itemId];
+    if (!itemDef) return null;
+
+    return {
+      itemId: itemId,
+      quantity: 1,
+      quality: selectedPack.qualityId,
+      qualityName: QUALITY[selectedPack.qualityId] ? QUALITY[selectedPack.qualityId].name : '',
       item: itemDef,
     };
   },
@@ -2221,6 +2260,32 @@ const PlayerView = {
       label = `${q.name} · 获得 ×${item.quantity}`;
     }
 
+    // 额外掉落（每10次砍树触发，从奖池1003抽取）
+    let extraDropHtml = '';
+    if (item.extraDrop) {
+      let eIcon, eName, eColor;
+      if (item.extraDrop.kind === 'coin') {
+        eIcon = '🪙'; eName = '游戏币'; eColor = '#d4af37';
+      } else if (item.extraDrop.kind === 'chopping') {
+        eIcon = '🪓'; eName = '砍树次数'; eColor = '#4a90d9';
+      } else {
+        const eq = QUALITY[item.extraDrop.quality] || { color: '#9e9e9e' };
+        eIcon = item.extraDrop.item ? item.extraDrop.item.icon : '🎁';
+        eName = item.extraDrop.item ? item.extraDrop.item.name : '道具';
+        eColor = eq.color;
+      }
+      extraDropHtml = `
+        <div class="extra-drop-section">
+          <div class="extra-drop-tag">🎁 额外掉落 · 砍树10次奖励</div>
+          <div class="extra-drop-item">
+            <span class="extra-drop-icon">${eIcon}</span>
+            <span class="extra-drop-name" style="color:${eColor}">${eName}</span>
+            <span class="extra-drop-qty">×${item.extraDrop.quantity}</span>
+          </div>
+        </div>
+      `;
+    }
+
     UI.modal(`
       <div class="reward-modal">
         <div class="reward-icon">${icon}</div>
@@ -2228,6 +2293,7 @@ const PlayerView = {
         <div class="reward-quality">${label}</div>
         ${buffHtml}
         ${refundHtml}
+        ${extraDropHtml}
         <button class="btn btn-primary btn-block" onclick="this.closest('.modal-overlay').remove()">收下</button>
       </div>
     `, { title: '🎉 获得物品' });
@@ -3512,6 +3578,10 @@ const PlayerView = {
           const el = UI.playScatterAnimation(item, treeIcon, i);
           if (el) scatterEls.push(el);
         }
+        // 额外掉落（每10次砍树触发，从奖池1003抽取）也加入结果列表
+        if (item.extraDrop) {
+          results.push(item.extraDrop);
+        }
       }
 
       // 等待下一次砍树
@@ -3563,6 +3633,7 @@ const PlayerView = {
     // 显示结果弹窗
     const itemsHtml = results.map(r => {
       const bonusTag = r.isBonus ? '<div style="font-size:10px;color:var(--accent);font-weight:600">保底</div>' : '';
+      const extraTag = r.isExtra ? '<div style="font-size:10px;color:var(--warning);font-weight:600">额外掉落</div>' : '';
       const buffTag = r.buffText ? `<div style="font-size:10px;color:var(--quality-4)">${r.buffText}</div>` : '';
       let icon, name, color;
       if (r.kind === 'coin') { icon = '🪙'; name = '游戏币'; color = '#d4af37'; }
@@ -3578,6 +3649,7 @@ const PlayerView = {
         <div style="font-size:11px;font-weight:600;color:${color};margin-top:2px">${name}</div>
         <div style="font-size:10px;color:var(--text-light)">×${r.quantity}</div>
         ${bonusTag}
+        ${extraTag}
         ${buffTag}
       </div>`;
     }).join('');
