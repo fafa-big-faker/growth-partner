@@ -367,7 +367,7 @@ git commit -m "feat: add atomic resource database operations"
 - Produces: `Game._setInventoryQuantity(itemId, quantity) -> void`.
 - Consumes: `OperationGuard.run(key, task)` from Task 1.
 
-- [ ] **Step 1: Extend the failing tests for button state and local refresh**
+- [x] **Step 1: Extend the failing tests for button state and local refresh**
 
 Add assertions that the compose button passes itself to `_doCompose`, contains a stable `data-id`, and that `composeMulti` calls `DB.composeInventoryItem` without calling `Game.refresh()`.
 
@@ -382,7 +382,7 @@ test('compose uses one guarded RPC and updates inventory locally', () => {
 });
 ```
 
-- [ ] **Step 2: Add the DB wrapper**
+- [x] **Step 2: Add the DB wrapper**
 
 ```js
 async composeInventoryItem(sourceItemId, sourceQuantity, targetItemId, targetQuantity) {
@@ -400,19 +400,19 @@ async composeInventoryItem(sourceItemId, sourceQuantity, targetItemId, targetQua
 },
 ```
 
-- [ ] **Step 3: Add local inventory quantity replacement**
+- [x] **Step 3: Add local inventory quantity replacement**
 
 `Game._setInventoryQuantity` must remove an entry when the returned quantity is zero, replace the existing quantity when present, and append an entry when a positive quantity is returned for a missing item.
 
-- [ ] **Step 4: Replace `composeMulti` with one RPC**
+- [x] **Step 4: Replace `composeMulti` with one RPC**
 
 Validate `qty` as an integer in `1..99`, calculate `totalNeed`, call `DB.composeInventoryItem`, map `insufficient_materials` to the existing material warning, and only on `ok: true` apply both returned quantities locally and show the success toast. Do not call `refresh()` on the success path.
 
-- [ ] **Step 5: Guard the compose button**
+- [x] **Step 5: Guard the compose button**
 
 Change the inline handler to `PlayerView._doCompose('${itemId}', q, this)`. `_doCompose(itemId, qty, button)` must synchronously disable the button, display `合成中...`, run through `OperationGuard` using `compose:<itemId>`, close the modal only on success, and restore the original button state in `finally` when the modal remains open.
 
-- [ ] **Step 6: Run automated checks**
+- [x] **Step 6: Run automated checks**
 
 Run: `node --test tests/operation-guard.test.js tests/resource-operation-consistency.test.js tests/coin-icon-rendering.test.js`
 
@@ -422,7 +422,7 @@ Run: `node --check app.js`
 
 Expected: exit code 0.
 
-- [ ] **Step 7: Commit atomic compose**
+- [x] **Step 7: Commit atomic compose**
 
 ```bash
 git add app.js tests/resource-operation-consistency.test.js

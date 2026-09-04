@@ -541,6 +541,20 @@ const DB = {
     return true;
   },
 
+  async composeInventoryItem(sourceItemId, sourceQuantity, targetItemId, targetQuantity) {
+    const { data, error } = await dbClient.rpc('compose_inventory_item', {
+      p_source_item_id: String(sourceItemId),
+      p_source_quantity: sourceQuantity,
+      p_target_item_id: String(targetItemId),
+      p_target_quantity: targetQuantity,
+    });
+    if (error) {
+      console.error('DB composeInventoryItem error:', error);
+      return { ok: false, code: 'network_error' };
+    }
+    return data || { ok: false, code: 'empty_response' };
+  },
+
   // --- 任务 ---
   async getTasks(type = null) {
     let query = dbClient.from('xiu_tasks').select('*').eq('status', 'published');
@@ -883,6 +897,21 @@ const Game = {
     UI.updateHeader();
   },
 
+  _setInventoryQuantity(itemId, quantity) {
+    const id = String(itemId);
+    const qty = Math.max(0, parseInt(quantity) || 0);
+    const index = this.inventory.findIndex(item => item.itemId == id);
+    if (qty === 0) {
+      if (index >= 0) this.inventory.splice(index, 1);
+      return;
+    }
+    if (index >= 0) {
+      this.inventory[index].quantity = qty;
+    } else {
+      this.inventory.push({ itemId: id, quantity: qty });
+    }
+  },
+
   // 统一发放道具（特殊道具不进背包）：
   //   type 0 游戏币 → state.coin；type 6 砍树次数 → state.choppingCount；其余 → 背包
   // 本地状态同步更新，DB写入异步不阻塞（提升响应速度）
@@ -1167,22 +1196,7 @@ const Game = {
 
   // 合成道具
   async compose(itemId) {
-    const itemDef = ITEMS[itemId];
-    if (!itemDef || itemDef.type !== 1) return false;
-
-    const have = this._getItemQty(itemId);
-    if (have < itemDef.composeCount) {
-      UI.toast(`需要 ${itemDef.composeCount} 个才能合成`, 'warn');
-      return false;
-    }
-
-    await DB.removeItem(itemId, itemDef.composeCount);
-    await DB.addItem(itemDef.composeTo, 1);
-    await this.refresh();
-
-    const targetItem = ITEMS[itemDef.composeTo];
-    UI.toast(`合成成功！获得 ${targetItem.name}`, 'success');
-    return true;
+    return this.composeMulti(itemId, 1);
   },
 
   // 批量合成道具
@@ -1190,19 +1204,40 @@ const Game = {
     const itemDef = ITEMS[itemId];
     if (!itemDef || itemDef.type !== 1) return false;
 
-    const totalNeed = itemDef.composeCount * qty;
+    const composeQty = parseInt(qty);
+    if (!Number.isInteger(composeQty) || composeQty < 1 || composeQty > 99) {
+      UI.toast('合成数量无效', 'warn');
+      return false;
+    }
+
+    const totalNeed = itemDef.composeCount * composeQty;
     const have = this._getItemQty(itemId);
     if (have < totalNeed) {
       UI.toast(`材料不足，需要 ${totalNeed} 个`, 'warn');
       return false;
     }
 
-    await DB.removeItem(itemId, totalNeed);
-    await DB.addItem(itemDef.composeTo, qty);
-    await this.refresh();
+    const result = await DB.composeInventoryItem(
+      itemId,
+      totalNeed,
+      itemDef.composeTo,
+      composeQty,
+    );
+    if (!result.ok) {
+      if (result.code === 'insufficient_materials') {
+        this.inventory = await DB.getInventory();
+        UI.toast(`材料不足，需要 ${totalNeed} 个`, 'warn');
+      } else {
+        UI.toast('合成未完成，请重试', 'error');
+      }
+      return false;
+    }
+
+    this._setInventoryQuantity(itemId, result.sourceQuantity);
+    this._setInventoryQuantity(itemDef.composeTo, result.targetQuantity);
 
     const targetItem = ITEMS[itemDef.composeTo];
-    UI.toast(`合成成功！获得 ${targetItem.name} ×${qty}`, 'success');
+    UI.toast(`合成成功！获得 ${targetItem.name} ×${composeQty}`, 'success');
     return true;
   },
 
@@ -2211,16 +2246,38 @@ const PlayerView = {
       </div>
       <button class="btn btn-primary btn-block" onclick="
         const q=parseInt(this.parentNode.querySelector('.qty-input').value)||1;
-        PlayerView._doCompose('${itemId}',q);
+        PlayerView._doCompose('${itemId}',q,this);
       ">确认合成</button>
     `, { title: '合成' });
   },
 
-  async _doCompose(itemId, qty) {
-    const ok = await Game.composeMulti(itemId, qty);
-    if (ok) {
-      this.renderInventory(this.currentInvTab);
-      document.querySelector('.modal-overlay')?.remove();
+  async _doCompose(itemId, qty, button) {
+    const operationKey = `compose:${itemId}`;
+    if (OperationGuard.isActive(operationKey)) return;
+
+    const originalText = button?.textContent || '确认合成';
+    if (button) {
+      button.disabled = true;
+      button.textContent = '合成中...';
+    }
+
+    try {
+      const outcome = await OperationGuard.run(
+        operationKey,
+        () => Game.composeMulti(itemId, qty),
+      );
+      if (outcome.started && outcome.value) {
+        this.renderInventory(this.currentInvTab);
+        document.querySelector('.modal-overlay')?.remove();
+      }
+    } catch (error) {
+      console.error('compose action error:', error);
+      UI.toast('合成未完成，请重试', 'error');
+    } finally {
+      if (button?.isConnected) {
+        button.disabled = false;
+        button.textContent = originalText;
+      }
     }
   },
 
