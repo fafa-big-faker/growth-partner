@@ -337,6 +337,7 @@ const DB = {
       totalChops: parseInt(data.total_chops) || 0,
       totalCoinEarned: parseInt(data.total_coin_earned) || 0,
       achievementClaims: Array.isArray(data.achievement_claims) ? data.achievement_claims : [],
+      themeRewardClaims: Array.isArray(data.theme_reward_claims) ? data.theme_reward_claims : [],
     };
   },
 
@@ -365,6 +366,7 @@ const DB = {
     if (updates.totalChops !== undefined) dbUpdates.total_chops = updates.totalChops;
     if (updates.totalCoinEarned !== undefined) dbUpdates.total_coin_earned = updates.totalCoinEarned;
     if (updates.achievementClaims !== undefined) dbUpdates.achievement_claims = updates.achievementClaims;
+    if (updates.themeRewardClaims !== undefined) dbUpdates.theme_reward_claims = updates.themeRewardClaims;
     dbUpdates.updated_at = new Date().toISOString();
 
     const { error } = await dbClient
@@ -377,7 +379,7 @@ const DB = {
       if (msg.includes('does not exist') || msg.includes('Could not find')) {
         const safeUpdates = {};
         for (const k in dbUpdates) {
-          if (['coin', 'signin_month', 'signin_days', 'signin_claims', 'shop_purchases', 'total_chops', 'total_coin_earned', 'achievement_claims'].includes(k)) continue;
+          if (['coin', 'signin_month', 'signin_days', 'signin_claims', 'shop_purchases', 'total_chops', 'total_coin_earned', 'achievement_claims', 'theme_reward_claims'].includes(k)) continue;
           safeUpdates[k] = dbUpdates[k];
         }
         const { error: err2 } = await dbClient
@@ -419,6 +421,7 @@ const DB = {
       total_chops: 0,
       total_coin_earned: 0,
       achievement_claims: [],
+      theme_reward_claims: [],
     };
 
     const { error } = await dbClient
@@ -469,6 +472,7 @@ const DB = {
       totalChops: 0,
       totalCoinEarned: 0,
       achievementClaims: [],
+      themeRewardClaims: [],
     };
   },
 
@@ -550,6 +554,18 @@ const DB = {
     });
     if (error) {
       console.error('DB composeInventoryItem error:', error);
+      return { ok: false, code: 'network_error' };
+    }
+    return data || { ok: false, code: 'empty_response' };
+  },
+
+  async reservePlayerClaim(claimType, claimKey) {
+    const { data, error } = await dbClient.rpc('reserve_player_claim', {
+      p_claim_type: claimType,
+      p_claim_key: String(claimKey),
+    });
+    if (error) {
+      console.error('DB reservePlayerClaim error:', error);
       return { ok: false, code: 'network_error' };
     }
     return data || { ok: false, code: 'empty_response' };
@@ -714,6 +730,18 @@ const DB = {
     return true;
   },
 
+  async claimSubmission(id) {
+    const { data, error } = await dbClient
+      .from('task_submissions')
+      .update({ status: 'claimed', reviewed_at: new Date().toISOString() })
+      .eq('id', id)
+      .eq('status', 'approved')
+      .select('id')
+      .maybeSingle();
+    if (error) { console.error('DB claimSubmission error:', error); return false; }
+    return Boolean(data);
+  },
+
   // --- 邮件 ---
   async getMails() {
     // 先试带 is_deleted 过滤的查询
@@ -785,12 +813,15 @@ const DB = {
   },
 
   async claimMail(id) {
-    const { error } = await dbClient
+    const { data, error } = await dbClient
       .from('mails')
       .update({ is_claimed: true, is_read: true })
-      .eq('id', id);
+      .eq('id', id)
+      .eq('is_claimed', false)
+      .select('id')
+      .maybeSingle();
     if (error) { console.error('DB claimMail error:', error); return false; }
-    return true;
+    return Boolean(data);
   },
 
   async deleteMail(id) {
@@ -839,6 +870,18 @@ const DB = {
       .eq('id', id);
     if (error) { console.error('DB reviewWithdrawal error:', error); return false; }
     return true;
+  },
+
+  async reviewWithdrawalOnce(id, status) {
+    const { data, error } = await dbClient
+      .from('withdrawals')
+      .update({ status: status, reviewed_at: new Date().toISOString() })
+      .eq('id', id)
+      .eq('status', 'pending')
+      .select('id')
+      .maybeSingle();
+    if (error) { console.error('DB reviewWithdrawalOnce error:', error); return false; }
+    return Boolean(data);
   },
 };
 
@@ -914,7 +957,6 @@ const Game = {
 
   // 统一发放道具（特殊道具不进背包）：
   //   type 0 游戏币 → state.coin；type 6 砍树次数 → state.choppingCount；其余 → 背包
-  // 本地状态同步更新，DB写入异步不阻塞（提升响应速度）
   // 返回 { kind: 'coin'|'chopping'|'item', id, quantity, def }
   async grantItem(itemId, quantity = 1) {
     const id = String(itemId);
@@ -924,21 +966,36 @@ const Game = {
       this.state.coin = (this.state.coin || 0) + qty;
       // 成就统计：历史累计获得游戏币
       this.state.totalCoinEarned = (this.state.totalCoinEarned || 0) + qty;
-      DB.updatePlayerState({ coin: this.state.coin, totalCoinEarned: this.state.totalCoinEarned })
-        .catch(e => console.error('grantItem coin DB error:', e));
+      const saved = await DB.updatePlayerState({
+        coin: this.state.coin,
+        totalCoinEarned: this.state.totalCoinEarned,
+      });
+      if (!saved) {
+        this.state.coin -= qty;
+        this.state.totalCoinEarned -= qty;
+        return null;
+      }
       return { kind: 'coin', id, quantity: qty, def };
     }
     if (def && def.type === 6) {
       this.state.choppingCount += qty;
-      DB.updatePlayerState({ choppingCount: this.state.choppingCount })
-        .catch(e => console.error('grantItem chopping DB error:', e));
+      const saved = await DB.updatePlayerState({ choppingCount: this.state.choppingCount });
+      if (!saved) {
+        this.state.choppingCount -= qty;
+        return null;
+      }
       return { kind: 'chopping', id, quantity: qty, def };
     }
     // 普通道具 → 背包（本地 + DB）
     const idx = this.inventory.findIndex(i => i.itemId == id);
     if (idx >= 0) this.inventory[idx].quantity += qty;
     else this.inventory.push({ itemId: id, quantity: qty });
-    DB.addItem(id, qty).catch(e => console.error('grantItem addItem DB error:', e));
+    const saved = await DB.addItem(id, qty);
+    if (!saved) {
+      if (idx >= 0) this.inventory[idx].quantity -= qty;
+      else this.inventory = this.inventory.filter(item => item.itemId != id);
+      return null;
+    }
     return { kind: 'item', id, quantity: qty, def };
   },
 
@@ -949,7 +1006,12 @@ const Game = {
       return null;
     }
 
-    // === 本地状态变更（不等待DB）===
+    const previous = {
+      choppingCount: this.state.choppingCount,
+      totalChops: this.state.totalChops || 0,
+      level: this.state.level,
+      exp: this.state.exp,
+    };
 
     // 消耗砍树次数
     this.state.choppingCount -= 1;
@@ -976,30 +1038,38 @@ const Game = {
       UI.toast(`恭喜！升级到 Lv.${this.state.level}`, 'success');
     }
 
-    // 立即更新前端显示（不等DB写入，画面同步）
-    UI._updateCultivateStats();
-
-    // 发放掉落（本地状态同步更新，DB写入异步不阻塞）
-    const grant = await this.grantItem(item.itemId, item.quantity);
-    item.kind = grant.kind;
-
-    // 返还砍树次数buff（仅本地状态，不写DB）
+    // 返还砍树次数buff
     const refund = this._checkRefundBuff();
     if (refund > 0) {
       item.refundChopping = refund;
     }
 
-    UI.updateHeader();
-
-    // === 批量异步写入玩家状态（不阻塞返回）===
-    DB.updatePlayerState({
+    const stateSaved = await DB.updatePlayerState({
       choppingCount: this.state.choppingCount,
       level: this.state.level,
       exp: this.state.exp,
-      coin: this.state.coin,
       totalChops: this.state.totalChops,
-    }).catch(e => console.error('chop DB sync error:', e));
+    });
+    if (!stateSaved) {
+      Object.assign(this.state, previous);
+      UI._updateCultivateStats();
+      UI.toast('砍树未完成，请重试', 'error');
+      return null;
+    }
 
+    const grant = await this.grantItem(item.itemId, item.quantity);
+    if (!grant) {
+      Object.assign(this.state, previous);
+      const restored = await DB.updatePlayerState(previous);
+      if (!restored) console.error('chop compensation failed');
+      await this.refresh();
+      UI.toast('掉落发放失败，本次砍树已退回', 'error');
+      return null;
+    }
+    item.kind = grant.kind;
+
+    UI._updateCultivateStats();
+    UI.updateHeader();
     return item;
   },
 
@@ -1076,6 +1146,13 @@ const Game = {
       UI.toast('今日已签到', 'warn');
       return false;
     }
+    const previous = {
+      choppingCount: this.state.choppingCount,
+      lastDailyDate: this.state.lastDailyDate,
+      signInMonth: this.state.signInMonth,
+      signInDays: this.state.signInDays,
+      signInClaims: [...(this.state.signInClaims || [])],
+    };
     const month = today.slice(0, 7);
     // 跨月自动重置累签
     if (this.state.signInMonth !== month) {
@@ -1086,13 +1163,18 @@ const Game = {
     this.state.choppingCount += 1;
     this.state.lastDailyDate = today;
     this.state.signInDays = (this.state.signInDays || 0) + 1;
-    await DB.updatePlayerState({
+    const saved = await DB.updatePlayerState({
       choppingCount: this.state.choppingCount,
       lastDailyDate: today,
       signInMonth: this.state.signInMonth,
       signInDays: this.state.signInDays,
       signInClaims: this.state.signInClaims,
     });
+    if (!saved) {
+      Object.assign(this.state, previous);
+      UI.toast('签到未完成，请重试', 'error');
+      return false;
+    }
     UI.updateHeader();
     UI.toast(`签到成功！获得 1 次砍树机会（本月已签 ${this.state.signInDays} 天）`, 'success');
     return true;
@@ -1122,23 +1204,28 @@ const Game = {
       UI.toast(`需累计签到 ${reward.requiredDays} 天（本月已签 ${si.days} 天）`, 'warn');
       return false;
     }
-    // 发放奖励（含游戏币/砍树次数自动路由）
-    for (const it of reward.items) {
-      await this.grantItem(it.itemId, it.count);
+
+    const reserved = await DB.reservePlayerClaim('signin', reward.rewardId);
+    if (!reserved.ok) {
+      if (reserved.code === 'already_claimed') {
+        await this.refresh();
+        UI.toast('该奖励已领取', 'warn');
+      } else {
+        UI.toast('领取未完成，请重试', 'error');
+      }
+      return false;
     }
-    // 记录领取 + 确保月份字段已初始化
+
     const claims = [...si.claims, reward.rewardId];
     this.state.signInClaims = claims;
-    if (this.state.signInMonth !== si.month) {
-      this.state.signInMonth = si.month;
-      this.state.signInDays = si.days;
+    for (const it of reward.items) {
+      const granted = await this.grantItem(it.itemId, it.count);
+      if (!granted) {
+        console.error('claimSignInReward grant failed:', reward.rewardId, it);
+        UI.toast('奖励状态已同步，请联系天道检查', 'error');
+        return false;
+      }
     }
-    await DB.updatePlayerState({
-      signInClaims: claims,
-      signInMonth: this.state.signInMonth,
-      signInDays: this.state.signInDays,
-    });
-    await this.refresh();
     UI.toast(`累计签到 ${reward.requiredDays} 天奖励已领取！`, 'success');
     return true;
   },
@@ -1180,13 +1267,25 @@ const Game = {
     if (claims.includes(achievementId)) { UI.toast('该成就已领取', 'warn'); return false; }
     if (!ach.claimable) { UI.toast('尚未达成该成就', 'warn'); return false; }
 
-    // 发放奖励道具（grantItem同步更新本地状态，DB写入异步）
-    await this.grantItem(ach.rewardItemId, ach.rewardCount);
+    const reserved = await DB.reservePlayerClaim('achievement', achievementId);
+    if (!reserved.ok) {
+      if (reserved.code === 'already_claimed') {
+        await this.refresh();
+        UI.toast('该成就已领取', 'warn');
+      } else {
+        UI.toast('领取未完成，请重试', 'error');
+      }
+      return false;
+    }
 
     const newClaims = [...claims, achievementId];
     this.state.achievementClaims = newClaims;
-    DB.updatePlayerState({ achievementClaims: newClaims })
-      .catch(e => console.error('claimAchievement DB error:', e));
+    const granted = await this.grantItem(ach.rewardItemId, ach.rewardCount);
+    if (!granted) {
+      console.error('claimAchievement grant failed:', achievementId);
+      UI.toast('奖励状态已同步，请联系天道检查', 'error');
+      return false;
+    }
     UI.updateHeader();
     const def = ITEMS[String(ach.rewardItemId)];
     const rname = def ? def.name : '道具';
@@ -1344,14 +1443,27 @@ const Game = {
       UI.toast('提现需为100的整数倍', 'warn');
       return false;
     }
+    const previousBalance = this.state.balance;
     this.state.balance -= amount;
-    await DB.updatePlayerState({ balance: this.state.balance });
-    await DB.requestWithdrawal(amount);
-    await DB.sendMail(
+    const balanceSaved = await DB.updatePlayerState({ balance: this.state.balance });
+    if (!balanceSaved) {
+      this.state.balance = previousBalance;
+      return false;
+    }
+
+    const withdrawal = await DB.requestWithdrawal(amount);
+    if (!withdrawal) {
+      this.state.balance = previousBalance;
+      await DB.updatePlayerState({ balance: previousBalance });
+      return false;
+    }
+
+    const mailed = await DB.sendMail(
       '提现申请已提交',
       `你申请提现 ${amount} 元，天道审核通过后将发放。`,
       []
     );
+    if (!mailed) console.error('withdraw notification mail failed:', withdrawal.id);
     await this.refresh();
     UI.toast('提现申请已提交', 'success');
     return true;
@@ -1374,7 +1486,9 @@ const Game = {
     }
 
     // 限购类型2：月限购
-    const purchases = this.state.shopPurchases || {};
+    const previousCoin = this.state.coin || 0;
+    const previousPurchases = JSON.parse(JSON.stringify(this.state.shopPurchases || {}));
+    const purchases = JSON.parse(JSON.stringify(previousPurchases));
     const monthPurchases = purchases[month] || {};
     if (parseInt(shopItem.limitType) === SHOP_LIMIT_TYPE.MONTHLY) {
       const max = parseInt(shopItem.limitParam) || 0;
@@ -1400,13 +1514,27 @@ const Game = {
       this.state.shopPurchases = purchases;
     }
 
-    await DB.updatePlayerState({
+    const purchaseSaved = await DB.updatePlayerState({
       coin: this.state.coin,
       shopPurchases: this.state.shopPurchases,
     });
+    if (!purchaseSaved) {
+      this.state.coin = previousCoin;
+      this.state.shopPurchases = previousPurchases;
+      return false;
+    }
 
     // 发放道具（游戏币/砍树次数自动路由，普通道具进背包）
-    await this.grantItem(shopItem.itemId, shopItem.itemCount);
+    const granted = await this.grantItem(shopItem.itemId, shopItem.itemCount);
+    if (!granted) {
+      this.state.coin = previousCoin;
+      this.state.shopPurchases = previousPurchases;
+      await DB.updatePlayerState({
+        coin: previousCoin,
+        shopPurchases: previousPurchases,
+      });
+      return false;
+    }
 
     await this.refresh();
     UI.toast(`购买成功！获得 ${shopItem.name} ×${shopItem.itemCount}`, 'success');
@@ -1438,13 +1566,27 @@ const Game = {
         return false;
       }
     }
-    // 消耗道具
+    const removedItems = [];
     for (const req of nextRealm.reqItems) {
-      await DB.removeItem(req.itemId, req.count);
+      const removed = await DB.removeItem(req.itemId, req.count);
+      if (!removed) {
+        for (const item of removedItems) await DB.addItem(item.itemId, item.count);
+        await this.refresh();
+        UI.toast('突破材料扣除失败，请重试', 'error');
+        return false;
+      }
+      removedItems.push(req);
     }
-    // 升阶
+    const previousRealmLevel = this.state.realmLevel;
     this.state.realmLevel = nextRealm.level;
-    await DB.updatePlayerState({ realmLevel: this.state.realmLevel });
+    const saved = await DB.updatePlayerState({ realmLevel: this.state.realmLevel });
+    if (!saved) {
+      this.state.realmLevel = previousRealmLevel;
+      for (const item of removedItems) await DB.addItem(item.itemId, item.count);
+      await this.refresh();
+      UI.toast('突破未完成，材料已返还', 'error');
+      return false;
+    }
     await this.refresh();
     UI.toast(`恭喜突破到 ${nextRealm.name}！`, 'success');
     return true;
@@ -1466,14 +1608,33 @@ const Game = {
         return false;
       }
     }
-    // 消耗道具
+    const removedItems = [];
     for (const req of nextTreeRealm.reqItems) {
-      await DB.removeItem(req.itemId, req.count);
+      const removed = await DB.removeItem(req.itemId, req.count);
+      if (!removed) {
+        for (const item of removedItems) await DB.addItem(item.itemId, item.count);
+        await this.refresh();
+        UI.toast('升阶材料扣除失败，请重试', 'error');
+        return false;
+      }
+      removedItems.push(req);
     }
-    // 升阶
+    const previousTreeRealm = this.state.treeRealm;
+    const previousTreeLevel = this.state.treeLevel;
     this.state.treeRealm = nextTreeRealm.level;
     this.state.treeLevel = nextTreeRealm.treeLevel;
-    await DB.updatePlayerState({ treeRealm: this.state.treeRealm, treeLevel: this.state.treeLevel });
+    const saved = await DB.updatePlayerState({
+      treeRealm: this.state.treeRealm,
+      treeLevel: this.state.treeLevel,
+    });
+    if (!saved) {
+      this.state.treeRealm = previousTreeRealm;
+      this.state.treeLevel = previousTreeLevel;
+      for (const item of removedItems) await DB.addItem(item.itemId, item.count);
+      await this.refresh();
+      UI.toast('仙树升阶未完成，材料已返还', 'error');
+      return false;
+    }
     await this.refresh();
     UI.toast(`仙树升级为 ${nextTreeRealm.name}！`, 'success');
     return true;
@@ -1493,7 +1654,12 @@ const Game = {
       UI.toast(`${costItem?.name || '材料'}不足，需要 ${costCount} 个`, 'warn');
       return null;
     }
-    await DB.removeItem(costItemId, costCount);
+    const removed = await DB.removeItem(costItemId, costCount);
+    if (!removed) {
+      await this.refresh();
+      UI.toast('锻铁扣除失败，请重试', 'error');
+      return null;
+    }
 
     // 加权随机抽取品质，同品质内均分
     const totalWeight = FORGE_POOL.reduce((sum, p) => sum + p.weight, 0);
@@ -1505,7 +1671,14 @@ const Game = {
     }
     const itemId = selectedPool.items[Math.floor(Math.random() * selectedPool.items.length)];
     const axeDef = ITEMS[itemId];
-    await DB.addItem(itemId, 1);
+    const granted = await DB.addItem(itemId, 1);
+    if (!granted) {
+      const restored = await DB.addItem(costItemId, costCount);
+      if (!restored) console.error('forge compensation failed:', costItemId, costCount);
+      await this.refresh();
+      UI.toast('锻造未完成，锻铁已返还', 'error');
+      return null;
+    }
     await this.refresh();
     return { itemId, quality: selectedPool.quality, item: axeDef };
   },
@@ -1534,10 +1707,12 @@ const Game = {
       }
       const itemId = selectedPool.items[Math.floor(Math.random() * selectedPool.items.length)];
       const itemDef = ITEMS[itemId];
-      await DB.addItem(itemId, 1);
-      const idx = this.inventory.findIndex(i => i.itemId == itemId);
-      if (idx >= 0) this.inventory[idx].quantity += 1;
-      else this.inventory.push({ itemId, quantity: 1 });
+      const bonusGrant = await this.grantItem(itemId, 1);
+      if (!bonusGrant) {
+        UI.toast('十连额外奖励发放失败，请联系天道检查', 'error');
+        UI.updateHeader();
+        return results;
+      }
       results.push({
         itemId, quantity: 1, quality: selectedPool.quality,
         qualityName: QUALITY[selectedPool.quality].name,
@@ -1760,6 +1935,35 @@ const UI = {
       el.style.transform = 'translateY(20px)';
       setTimeout(() => el.remove(), 300);
     }, 2500);
+  },
+
+  async runLockedAction(key, control, busyText, action) {
+    if (OperationGuard.isActive(key)) return { started: false, value: false };
+
+    const originalHtml = control?.innerHTML;
+    const originalDisabled = control?.disabled;
+    const originalPointerEvents = control?.style?.pointerEvents;
+    if (control) {
+      control.disabled = true;
+      control.style.pointerEvents = 'none';
+      control.setAttribute('aria-busy', 'true');
+      if (busyText) control.textContent = busyText;
+    }
+
+    try {
+      return await OperationGuard.run(key, action);
+    } catch (error) {
+      console.error(`resource action failed [${key}]:`, error);
+      this.toast('操作未完成，请重试', 'error');
+      return { started: true, value: false, error };
+    } finally {
+      if (control?.isConnected) {
+        control.disabled = originalDisabled;
+        control.style.pointerEvents = originalPointerEvents;
+        control.removeAttribute('aria-busy');
+        if (busyText) control.innerHTML = originalHtml;
+      }
+    }
   },
 
   modal(contentHTML, options = {}) {
@@ -2349,22 +2553,46 @@ const PlayerView = {
       </div>
       <button class="btn btn-primary btn-block" onclick="
         const q=parseInt(this.parentNode.querySelector('.qty-input').value)||1;
-        PlayerView._doCash('${itemId}',q);
+        PlayerView._doCash('${itemId}',q,this);
       ">确认提现</button>
     `, { title: '提现' });
   },
 
-  async _doCash(itemId, qty) {
+  async _doCash(itemId, qty, button) {
     const def = ITEMS[itemId];
-    const ok = await DB.removeItem(itemId, qty);
-    if (!ok) { UI.toast('操作失败', 'error'); return; }
-    const total = def.value * qty;
-    Game.state.balance += total;
-    await DB.updatePlayerState({ balance: Game.state.balance });
-    await Game.refresh();
-    this.renderInventory(this.currentInvTab);
-    UI.toast(`到账 ¥${total.toFixed(2)}`, 'success');
-    document.querySelector('.modal-overlay')?.remove();
+    if (!def) return false;
+    const cashQty = Math.max(1, parseInt(qty) || 1);
+    const outcome = await UI.runLockedAction(
+      `cash:${itemId}`,
+      button,
+      '处理中...',
+      async () => {
+        const removed = await DB.removeItem(itemId, cashQty);
+        if (!removed) {
+          Game.inventory = await DB.getInventory();
+          UI.toast('数量不足，背包已刷新', 'warn');
+          return false;
+        }
+
+        const previousBalance = Game.state.balance;
+        const total = def.value * cashQty;
+        Game.state.balance += total;
+        const saved = await DB.updatePlayerState({ balance: Game.state.balance });
+        if (!saved) {
+          Game.state.balance = previousBalance;
+          await DB.addItem(itemId, cashQty);
+          await Game.refresh();
+          return false;
+        }
+
+        Game._setInventoryQuantity(itemId, Game._getItemQty(itemId) - cashQty);
+        this.renderInventory(this.currentInvTab);
+        UI.toast(`到账 ¥${total.toFixed(2)}`, 'success');
+        document.querySelector('.modal-overlay')?.remove();
+        return true;
+      },
+    );
+    return outcome.started && outcome.value;
   },
 
   async equipItem(itemId, button) {
@@ -2462,16 +2690,13 @@ const PlayerView = {
 
     const treeIcon = document.getElementById('tree-icon');
     const chopBtn = document.getElementById('chop-btn');
-    if (chopBtn) chopBtn.disabled = true;
+    const outcome = await UI.runLockedAction('chop', chopBtn, '', async () => {
+      if (treeIcon) {
+        treeIcon.classList.add('shaking');
+        setTimeout(() => treeIcon.classList.remove('shaking'), 300);
+      }
 
-    // 摇晃动画
-    if (treeIcon) {
-      treeIcon.classList.add('shaking');
-      setTimeout(() => treeIcon.classList.remove('shaking'), 300);
-    }
-
-    // 掉落延迟
-    setTimeout(async () => {
+      await new Promise(resolve => setTimeout(resolve, 200));
       try {
         const item = await Game.chop();
         if (item) {
@@ -2482,14 +2707,15 @@ const PlayerView = {
           }, 800);
         }
 
-        // 刷新整个修仙界面（包含按钮状态、次数、背包）
         this.renderCultivate();
+        return Boolean(item);
       } catch (e) {
         console.error('doChop error:', e);
         UI.toast('砍树失败，请重试', 'error');
-        if (chopBtn) chopBtn.disabled = false;
+        return false;
       }
-    }, 200);
+    });
+    return outcome.started && outcome.value;
   },
 
   _showRewardModal(item) {
@@ -2754,6 +2980,7 @@ const PlayerView = {
           });
         }
         const allDone = completedCount >= totalCount && totalCount > 0;
+        const themeClaimed = (Game.state.themeRewardClaims || []).includes(themeName);
         html += `
           <div style="margin-top:16px;padding:12px;background:linear-gradient(135deg,#f3e5f5,#e1bee7);border-radius:12px">
             <div style="font-weight:600;font-size:14px;margin-bottom:8px;color:#6a1b9a">🎁 主题额外奖励</div>
@@ -2765,8 +2992,8 @@ const PlayerView = {
               </div>
               <span style="font-size:12px;color:#7b1fa2;font-weight:600">${completedCount}/${totalCount}</span>
             </div>
-            <button class="btn btn-primary btn-sm btn-block" style="margin-top:10px" ${allDone ? '' : 'disabled'} onclick="PlayerView.claimThemeExtraReward('${themeName}')">
-              ${allDone ? '🎁 领取额外奖励' : '完成全部任务后解锁'}
+            <button class="btn btn-primary btn-sm btn-block" style="margin-top:10px" ${(allDone && !themeClaimed) ? '' : 'disabled'} onclick="PlayerView.claimThemeExtraReward('${themeName}',this)">
+              ${themeClaimed ? '已领取' : (allDone ? '🎁 领取额外奖励' : '完成全部任务后解锁')}
             </button>
           </div>
         `;
@@ -2828,7 +3055,7 @@ const PlayerView = {
       if (this._dailyChecked) {
         actionBtn = `<button class="btn btn-outline btn-sm" disabled>已签到</button>`;
       } else {
-        actionBtn = `<button class="btn btn-primary btn-sm" onclick="PlayerView.doDailyCheckIn()">签到</button>`;
+        actionBtn = `<button class="btn btn-primary btn-sm" onclick="PlayerView.doDailyCheckIn(this)">签到</button>`;
       }
     } else {
       if (status === 'available') {
@@ -2836,7 +3063,7 @@ const PlayerView = {
       } else if (status === 'pending') {
         actionBtn = `<button class="btn btn-outline btn-sm" disabled>审核中</button>`;
       } else if (status === 'approved') {
-        actionBtn = `<button class="btn btn-accent btn-sm" onclick="PlayerView.claimTaskReward('${task.id}')">领取奖励</button>`;
+        actionBtn = `<button class="btn btn-accent btn-sm" onclick="PlayerView.claimTaskReward('${task.id}',this)">领取奖励</button>`;
       } else if (status === 'rejected') {
         actionBtn = `<button class="btn btn-primary btn-sm" onclick="PlayerView.submitTask('${task.id}')">重新提交</button>`;
       } else {
@@ -2868,7 +3095,7 @@ const PlayerView = {
     if (sub.status === 'pending') {
       actionBtn = `<button class="btn btn-outline btn-sm" disabled>审核中</button>`;
     } else if (sub.status === 'approved') {
-      actionBtn = `<button class="btn btn-accent btn-sm" onclick="PlayerView.claimSubmissionReward('${sub.id}')">领取奖励</button>`;
+      actionBtn = `<button class="btn btn-accent btn-sm" onclick="PlayerView.claimSubmissionReward('${sub.id}',this)">领取奖励</button>`;
     } else if (sub.status === 'rejected') {
       actionBtn = `<button class="btn btn-outline btn-sm" disabled>已驳回</button>`;
     }
@@ -2886,9 +3113,14 @@ const PlayerView = {
     `;
   },
 
-  async doDailyCheckIn() {
-    const ok = await Game.dailyCheckIn();
-    if (ok) {
+  async doDailyCheckIn(button) {
+    const outcome = await UI.runLockedAction(
+      'daily-check-in',
+      button,
+      '签到中...',
+      () => Game.dailyCheckIn(),
+    );
+    if (outcome.started && outcome.value) {
       this._dailyChecked = true;
       this._renderTaskList();
     }
@@ -2920,7 +3152,7 @@ const PlayerView = {
       const icon = def ? renderItemIcon(first.itemId, def.icon, 'item-icon-xs') : '🎁';
       const count = first ? first.count : '';
       const circleContent = claimed ? '✓' : icon;
-      const click = claimable ? `onclick="PlayerView.claimSignIn(${r.rewardId})"` : '';
+      const click = claimable ? `onclick="PlayerView.claimSignIn(${r.rewardId},this)"` : '';
       nodes += `
         <div class="signin-node ${state}" ${click}>
           <div class="node-reward">${icon}${count ? '×' + count : ''}</div>
@@ -2945,11 +3177,16 @@ const PlayerView = {
     `;
   },
 
-  async claimSignIn(rewardId) {
+  async claimSignIn(rewardId, control) {
     const reward = getSignInRewards().find(r => r.rewardId === parseInt(rewardId));
     if (!reward) return;
-    const ok = await Game.claimSignInReward(reward);
-    if (ok) this._renderTaskList();
+    const outcome = await UI.runLockedAction(
+      `signin:${rewardId}`,
+      control,
+      '',
+      () => Game.claimSignInReward(reward),
+    );
+    if (outcome.started && outcome.value) this._renderTaskList();
   },
 
   submitTask(taskId) {
@@ -2973,18 +3210,26 @@ const PlayerView = {
       const desc = document.getElementById('submit-desc').value.trim();
       if (!desc) { UI.toast('请填写完成描述', 'warn'); return; }
 
-      await DB.submitTask({
-        taskId: task.id,
-        taskType: task.taskType,
-        taskTitle: task.title,
-        description: desc,
-        rewardChopping: task.rewardChopping,
-        rewardItems: task.rewardItems,
-      });
+      const button = overlay.querySelector('#submit-ok');
+      const outcome = await UI.runLockedAction(
+        `task-submit:${task.id}`,
+        button,
+        '提交中...',
+        () => DB.submitTask({
+          taskId: task.id,
+          taskType: task.taskType,
+          taskTitle: task.title,
+          description: desc,
+          rewardChopping: task.rewardChopping,
+          rewardItems: task.rewardItems,
+        }),
+      );
 
-      UI.closeModal(overlay);
-      UI.toast('已提交审核', 'success');
-      this._renderTaskList();
+      if (outcome.started && outcome.value) {
+        UI.closeModal(overlay);
+        UI.toast('已提交审核', 'success');
+        this._renderTaskList();
+      }
     });
   },
 
@@ -3011,73 +3256,90 @@ const PlayerView = {
       const desc = document.getElementById('self-desc').value.trim();
       if (!title || !desc) { UI.toast('请填写完整', 'warn'); return; }
 
-      await DB.submitTask({
-        taskType: 'self',
-        taskTitle: title,
-        isSelfTask: true,
-        selfTitle: title,
-        selfDescription: desc,
-        description: desc,
-      });
+      const button = overlay.querySelector('#self-ok');
+      const outcome = await UI.runLockedAction(
+        'self-task-submit',
+        button,
+        '提交中...',
+        () => DB.submitTask({
+          taskType: 'self',
+          taskTitle: title,
+          isSelfTask: true,
+          selfTitle: title,
+          selfDescription: desc,
+          description: desc,
+        }),
+      );
 
-      UI.closeModal(overlay);
-      UI.toast('已提交审核', 'success');
-      this._renderTaskList();
+      if (outcome.started && outcome.value) {
+        UI.closeModal(overlay);
+        UI.toast('已提交审核', 'success');
+        this._renderTaskList();
+      }
     });
   },
 
-  async claimTaskReward(taskId) {
+  async claimTaskReward(taskId, button) {
     const task = [...this._dailyTasks, ...this._weeklyTasks, ...(this._themeTasks || [])].find(t => t.id == taskId);
     const sub = this._submissions.find(s => s.taskId == taskId);
     if (!task || !sub) return;
-
-    // 发砍树次数
-    if (sub.rewardChopping > 0) {
-      Game.state.choppingCount += sub.rewardChopping;
-      await DB.updatePlayerState({ choppingCount: Game.state.choppingCount });
-    }
-
-    // 发道具（游戏币/砍树次数自动路由到货币，其余进背包）
-    const items = sub.rewardItems || [];
-    for (const ri of items) {
-      await Game.grantItem(ri.item_id, ri.quantity);
-    }
-
-    // 更新状态为已完成
-    await DB.reviewSubmission(sub.id, 'claimed', '', sub.rewardChopping, sub.rewardItems);
-
-    await Game.refresh();
-    UI.toast('奖励已领取！', 'success');
-    this._renderTaskList();
+    return this._claimStoredSubmissionReward(
+      sub,
+      `task-reward:${taskId}`,
+      button,
+    );
   },
 
-  async claimSubmissionReward(subId) {
+  async claimSubmissionReward(subId, button) {
     const sub = this._submissions.find(s => s.id === subId);
     if (!sub) return;
-
-    if (sub.rewardChopping > 0) {
-      Game.state.choppingCount += sub.rewardChopping;
-      await DB.updatePlayerState({ choppingCount: Game.state.choppingCount });
-    }
-
-    const items = sub.rewardItems || [];
-    for (const ri of items) {
-      await Game.grantItem(ri.item_id, ri.quantity);
-    }
-
-    await DB.reviewSubmission(sub.id, 'claimed', '', sub.rewardChopping, sub.rewardItems);
-    await Game.refresh();
-    UI.toast('奖励已领取！', 'success');
-    this._renderTaskList();
+    return this._claimStoredSubmissionReward(
+      sub,
+      `submission-reward:${subId}`,
+      button,
+    );
   },
 
-  // 已领取的主题额外奖励（内存记录，样例实现）
-  _claimedThemeRewards: {},
+  async _claimStoredSubmissionReward(sub, operationKey, button) {
+    const outcome = await UI.runLockedAction(operationKey, button, '领取中...', async () => {
+      const reserved = await DB.claimSubmission(sub.id);
+      if (!reserved) {
+        await Game.refresh();
+        UI.toast('该奖励已领取', 'warn');
+        return false;
+      }
 
-  async claimThemeExtraReward(themeName) {
-    if (this._claimedThemeRewards[themeName]) {
+      if (sub.rewardChopping > 0) {
+        Game.state.choppingCount += sub.rewardChopping;
+        const saved = await DB.updatePlayerState({ choppingCount: Game.state.choppingCount });
+        if (!saved) {
+          console.error('submission chopping reward failed:', sub.id);
+          UI.toast('奖励状态已同步，请联系天道检查', 'error');
+          return false;
+        }
+      }
+
+      for (const ri of (sub.rewardItems || [])) {
+        const granted = await Game.grantItem(ri.item_id, ri.quantity);
+        if (!granted) {
+          console.error('submission item reward failed:', sub.id, ri);
+          UI.toast('奖励状态已同步，请联系天道检查', 'error');
+          return false;
+        }
+      }
+
+      await Game.refresh();
+      UI.toast('奖励已领取！', 'success');
+      this._renderTaskList();
+      return true;
+    });
+    return outcome.started && outcome.value;
+  },
+
+  async claimThemeExtraReward(themeName, button) {
+    if ((Game.state.themeRewardClaims || []).includes(themeName)) {
       UI.toast('已领取过主题额外奖励', 'warn');
-      return;
+      return false;
     }
 
     const allTasks = [...this._dailyTasks, ...this._weeklyTasks];
@@ -3094,35 +3356,66 @@ const PlayerView = {
 
     if (!allDone) {
       UI.toast('请先完成全部主题任务', 'warn');
-      return;
+      return false;
     }
 
-    // 发放额外奖励（从第一个主题任务的 themeExtraReward 中获取）
-    const extraReward = themeTasks[0]?.themeExtraReward || [];
-    let totalChopping = 0;
-    for (const ri of extraReward) {
-      if (ri.item_id === 'chopping') {
-        totalChopping += ri.quantity;
-      } else {
-        await Game.grantItem(ri.item_id, ri.quantity);
+    const outcome = await UI.runLockedAction(
+      `theme-reward:${themeName}`,
+      button,
+      '领取中...',
+      async () => {
+        const reserved = await DB.reservePlayerClaim('theme', themeName);
+        if (!reserved.ok) {
+          if (reserved.code === 'already_claimed') {
+            await Game.refresh();
+            UI.toast('已领取过主题额外奖励', 'warn');
+          } else {
+            UI.toast('领取未完成，请重试', 'error');
+          }
+          return false;
+        }
+
+        Game.state.themeRewardClaims = [
+          ...(Game.state.themeRewardClaims || []),
+          themeName,
+        ];
+        const extraReward = themeTasks[0]?.themeExtraReward || [];
+        let totalChopping = 0;
+        for (const ri of extraReward) {
+          if (ri.item_id === 'chopping') {
+            totalChopping += ri.quantity;
+          } else {
+            const granted = await Game.grantItem(ri.item_id, ri.quantity);
+            if (!granted) {
+              console.error('theme reward failed:', themeName, ri);
+              UI.toast('奖励状态已同步，请联系天道检查', 'error');
+              return false;
+            }
+          }
+        }
+        if (totalChopping > 0) {
+          Game.state.choppingCount += totalChopping;
+          const saved = await DB.updatePlayerState({ choppingCount: Game.state.choppingCount });
+          if (!saved) {
+            console.error('theme chopping reward failed:', themeName);
+            UI.toast('奖励状态已同步，请联系天道检查', 'error');
+            return false;
+          }
+        }
+
+        const mailed = await DB.sendMail(
+          `🎨 主题「${themeName}」完成奖励`,
+          `恭喜你完成了主题「${themeName}」的全部任务，额外奖励已发放！`,
+          extraReward,
+        );
+        if (!mailed) console.error('theme reward mail failed:', themeName);
+
+        UI.toast('🎉 主题额外奖励已领取！', 'success');
+        this._renderTaskList();
+        return true;
       }
-    }
-    if (totalChopping > 0) {
-      Game.state.choppingCount += totalChopping;
-      await DB.updatePlayerState({ choppingCount: Game.state.choppingCount });
-    }
-
-    // 发送邮件通知
-    await DB.sendMail(
-      `🎨 主题「${themeName}」完成奖励`,
-      `恭喜你完成了主题「${themeName}」的全部任务，额外奖励已发放！`,
-      extraReward
     );
-
-    this._claimedThemeRewards[themeName] = true;
-    await Game.refresh();
-    UI.toast('🎉 主题额外奖励已领取！', 'success');
-    this._renderTaskList();
+    return outcome.started && outcome.value;
   },
 
   // --- 天道酬勤 ---
@@ -3143,7 +3436,7 @@ const PlayerView = {
           <div class="withdraw-amount" id="withdraw-amount">100</div>
           <button class="withdraw-btn-round" onclick="PlayerView.adjustWithdraw(100)" id="withdraw-plus">+</button>
         </div>
-        <button class="btn btn-primary btn-block" onclick="PlayerView.doWithdraw()">申请提现</button>
+        <button class="btn btn-primary btn-block" onclick="PlayerView.doWithdraw(this)">申请提现</button>
         <button class="btn btn-outline btn-block" style="margin-top:8px" onclick="PlayerView.showWithdrawRecords()">📋 提现记录</button>
       </div>
 
@@ -3185,14 +3478,19 @@ const PlayerView = {
     document.getElementById('withdraw-amount').textContent = this._withdrawAmount;
   },
 
-  doWithdraw() {
+  doWithdraw(button) {
     if (this._withdrawAmount <= 0) {
       UI.toast('请选择提现金额', 'warn');
       return;
     }
     UI.confirm(`确定申请提现 ¥${this._withdrawAmount}？天道审核通过后将发放。`, async () => {
-      const ok = await Game.withdraw(this._withdrawAmount);
-      if (ok) {
+      const outcome = await UI.runLockedAction(
+        'withdraw',
+        button,
+        '处理中...',
+        () => Game.withdraw(this._withdrawAmount),
+      );
+      if (outcome.started && outcome.value) {
         Router.playerTab('reward'); // 刷新页面
       }
     });
@@ -3245,7 +3543,7 @@ const PlayerView = {
       const afford = coin >= item.price;
       const countText = item.itemCount > 1 ? ` ×${item.itemCount}` : '';
       html += `
-        <div class="shop-item ${disabled ? 'shop-disabled' : ''}" ${disabled ? '' : `onclick="PlayerView.buyShopItem(${item.shopId})"`}>
+        <div class="shop-item ${disabled ? 'shop-disabled' : ''}" ${disabled ? '' : `onclick="PlayerView.buyShopItem(${item.shopId},this)"`}>
           <div class="shop-badge-slot">${badge}</div>
           <div class="shop-icon" style="box-shadow:inset 0 0 0 2px ${qColor}66;border-radius:12px">${renderItemIcon(item.itemId, item.icon)}</div>
           <div class="shop-name">${item.name}${countText}</div>
@@ -3259,13 +3557,18 @@ const PlayerView = {
     if (bal) bal.textContent = coin;
   },
 
-  buyShopItem(shopId) {
+  buyShopItem(shopId, control) {
     const item = getShopItems().find(s => s.shopId === parseInt(shopId));
     if (!item) return;
     const countText = item.itemCount > 1 ? ` ×${item.itemCount}` : '';
     UI.confirm(`确定花费 🪙${item.price} 游戏币购买 ${item.name}${countText}？`, async () => {
-      const ok = await Game.shopBuy(item);
-      if (ok) this._renderShop();
+      const outcome = await UI.runLockedAction(
+        `shop:${shopId}`,
+        control,
+        '',
+        () => Game.shopBuy(item),
+      );
+      if (outcome.started && outcome.value) this._renderShop();
     });
   },
 
@@ -3401,7 +3704,7 @@ const PlayerView = {
       if (a.claimed) {
         action = '<button class="btn btn-outline btn-sm" disabled style="opacity:.55;cursor:default">已领取</button>';
       } else if (a.claimable) {
-        action = `<button class="btn btn-primary btn-sm" onclick="PlayerView.claimAchievement(${a.achievementId})">领取</button>`;
+        action = `<button class="btn btn-primary btn-sm" onclick="PlayerView.claimAchievement(${a.achievementId},this)">领取</button>`;
       } else {
         action = '<button class="btn btn-outline btn-sm" disabled style="opacity:.55;cursor:default">未达成</button>';
       }
@@ -3422,9 +3725,14 @@ const PlayerView = {
     }).join('');
   },
 
-  async claimAchievement(achievementId) {
-    const ok = await Game.claimAchievement(achievementId);
-    if (ok) {
+  async claimAchievement(achievementId, button) {
+    const outcome = await UI.runLockedAction(
+      `achievement:${achievementId}`,
+      button,
+      '领取中...',
+      () => Game.claimAchievement(achievementId),
+    );
+    if (outcome.started && outcome.value) {
       this._renderAchTabs();
       this._renderAchList();
       UI._updateAchBadge();
@@ -3517,7 +3825,7 @@ const PlayerView = {
       ? `<div class="modal-footer">
           <button class="btn btn-outline btn-sm" onclick="PlayerView.showMailModal()">关闭</button>
           <button class="btn btn-outline btn-sm btn-danger" onclick="PlayerView.deleteMail('${mailId}')">删除</button>
-          <button class="btn btn-accent btn-sm" onclick="PlayerView.claimMailReward('${mailId}')">领取奖励</button>
+          <button class="btn btn-accent btn-sm" onclick="PlayerView.claimMailReward('${mailId}',this)">领取奖励</button>
         </div>`
       : `<div class="modal-footer">
           <button class="btn btn-outline btn-sm btn-danger" onclick="PlayerView.deleteMail('${mailId}')">删除</button>
@@ -3531,22 +3839,39 @@ const PlayerView = {
     `, { title: mail.title, footer });
   },
 
-  async claimMailReward(mailId) {
-    const mails = await DB.getMails();
-    const mail = mails.find(m => m.id == mailId);
-    if (!mail || !mail.items || mail.items.length === 0) return;
+  async claimMailReward(mailId, button) {
+    const outcome = await UI.runLockedAction(
+      `mail-reward:${mailId}`,
+      button,
+      '领取中...',
+      async () => {
+        const mails = await DB.getMails();
+        const mail = mails.find(m => m.id == mailId);
+        if (!mail || !mail.items || mail.items.length === 0) return false;
 
-    for (const ri of mail.items) {
-      await Game.grantItem(ri.item_id, ri.quantity);
-    }
+        const reserved = await DB.claimMail(mailId);
+        if (!reserved) {
+          UI.toast('该奖励已领取', 'warn');
+          return false;
+        }
 
-    await DB.claimMail(mailId);
-    await Game.refresh();
+        for (const ri of mail.items) {
+          const granted = await Game.grantItem(ri.item_id, ri.quantity);
+          if (!granted) {
+            console.error('mail reward failed:', mailId, ri);
+            UI.toast('奖励状态已同步，请联系天道检查', 'error');
+            return false;
+          }
+        }
 
-    // 关闭所有弹窗
-    document.querySelectorAll('.modal-overlay').forEach(el => el.remove());
-    UI.toast('奖励已领取！', 'success');
-    this.showMailModal();
+        await Game.refresh();
+        document.querySelectorAll('.modal-overlay').forEach(el => el.remove());
+        UI.toast('奖励已领取！', 'success');
+        this.showMailModal();
+        return true;
+      },
+    );
+    return outcome.started && outcome.value;
   },
 
   // 仙阶突破弹窗
@@ -3614,13 +3939,15 @@ const PlayerView = {
 
     const btn = document.getElementById('breakthrough-ok');
     if (btn) btn.addEventListener('click', async () => {
-      btn.disabled = true;
-      const ok = await Game.breakThrough();
-      if (ok) {
+      const outcome = await UI.runLockedAction(
+        'breakthrough',
+        btn,
+        '突破中...',
+        () => Game.breakThrough(),
+      );
+      if (outcome.started && outcome.value) {
         document.querySelector('.modal-overlay')?.remove();
         PlayerView.renderCultivate();
-      } else {
-        btn.disabled = false;
       }
     });
   },
@@ -3669,13 +3996,15 @@ const PlayerView = {
 
     const btn = document.getElementById('tree-upgrade-ok');
     if (btn) btn.addEventListener('click', async () => {
-      btn.disabled = true;
-      const ok = await Game.upgradeTreeRealm();
-      if (ok) {
+      const outcome = await UI.runLockedAction(
+        'tree-upgrade',
+        btn,
+        '升阶中...',
+        () => Game.upgradeTreeRealm(),
+      );
+      if (outcome.started && outcome.value) {
         document.querySelector('.modal-overlay')?.remove();
         PlayerView.renderCultivate();
-      } else {
-        btn.disabled = false;
       }
     });
   },
@@ -3732,8 +4061,8 @@ const PlayerView = {
 
     const btn = document.getElementById('forge-ok');
     if (btn) btn.addEventListener('click', async () => {
-      btn.disabled = true;
-      const result = await Game.forge();
+      const outcome = await UI.runLockedAction('forge', btn, '锻造中...', () => Game.forge());
+      const result = outcome.started ? outcome.value : null;
       if (result) {
         // 显示锻造结果
         const q = QUALITY[result.quality] || QUALITY[1];
@@ -3768,8 +4097,6 @@ const PlayerView = {
         resultOverlay.addEventListener('click', (e) => {
           if (e.target === resultOverlay) { resultOverlay.remove(); PlayerView.showForge(); }
         });
-      } else {
-        btn.disabled = false;
       }
     });
   },
@@ -3785,7 +4112,7 @@ const PlayerView = {
 
     const chopBtn = document.getElementById('chop-btn');
     const treeIcon = document.getElementById('tree-icon');
-    if (chopBtn) chopBtn.disabled = true;
+    const outcome = await UI.runLockedAction('chop', chopBtn, '', async () => {
 
     const results = [];
     const scatterEls = [];
@@ -3817,18 +4144,22 @@ const PlayerView = {
     const extraDrop = Game._rollPoolDrop(1003);
     if (extraDrop) {
       const extraGrant = await Game.grantItem(extraDrop.itemId, extraDrop.quantity);
-      extraDrop.kind = extraGrant.kind;
-      extraDrop.isExtra = true;
-      results.push(extraDrop);
+      if (extraGrant) {
+        extraDrop.kind = extraGrant.kind;
+        extraDrop.isExtra = true;
+        results.push(extraDrop);
 
-      // 额外掉落也散落
-      if (treeIcon) {
-        if (treeIcon) treeIcon.classList.add('shaking');
-        const el = UI.playScatterAnimation(extraDrop, treeIcon, 10);
-        if (el) scatterEls.push(el);
-        setTimeout(() => treeIcon && treeIcon.classList.remove('shaking'), 250);
+        // 额外掉落也散落
+        if (treeIcon) {
+          treeIcon.classList.add('shaking');
+          const el = UI.playScatterAnimation(extraDrop, treeIcon, 10);
+          if (el) scatterEls.push(el);
+          setTimeout(() => treeIcon && treeIcon.classList.remove('shaking'), 250);
+        }
+        await new Promise(r => setTimeout(r, 400));
+      } else {
+        UI.toast('十连额外奖励发放失败，请联系天道检查', 'error');
       }
-      await new Promise(r => setTimeout(r, 400));
     }
 
     // 等待一会儿让玩家看清地上的物品
@@ -3875,6 +4206,9 @@ const PlayerView = {
     });
 
     PlayerView.renderCultivate();
+    return true;
+    });
+    return outcome.started && outcome.value;
   },
 
   // 删除邮件
@@ -4429,8 +4763,8 @@ const AdminView = {
           <div class="task-desc" style="font-size:12px">申请时间：${date}</div>
           ${w.status === 'pending' ? `
             <div class="task-actions" style="margin-top:10px">
-              <button class="btn btn-outline btn-sm" onclick="AdminView.rejectWithdraw('${w.id}')">驳回</button>
-              <button class="btn btn-accent btn-sm" onclick="AdminView.approveWithdraw('${w.id}')">通过</button>
+              <button class="btn btn-outline btn-sm" onclick="AdminView.rejectWithdraw('${w.id}',this)">驳回</button>
+              <button class="btn btn-accent btn-sm" onclick="AdminView.approveWithdraw('${w.id}',this)">通过</button>
             </div>
           ` : ''}
         </div>
@@ -4439,41 +4773,73 @@ const AdminView = {
     list.innerHTML = html;
   },
 
-  approveWithdraw(id) {
+  approveWithdraw(id, button) {
     UI.confirm('确定通过这笔提现申请？', async () => {
-      await DB.reviewWithdrawal(id, 'approved');
-      const w = this._withdrawals.find(x => x.id == id);
-      // 更新累计提现
-      const state = await DB.getPlayerState();
-      if (state) {
-        await DB.updatePlayerState({ totalWithdrawn: state.totalWithdrawn + w.amount });
-      }
-      await DB.sendMail(
-        '提现已到账',
-        `你的提现申请 ¥${w.amount.toFixed(2)} 已通过，款项已发放。`,
-        []
+      const outcome = await UI.runLockedAction(
+        `withdraw-review:${id}`,
+        button,
+        '处理中...',
+        async () => {
+          const reserved = await DB.reviewWithdrawalOnce(id, 'approved');
+          if (!reserved) {
+            UI.toast('该申请已审核，请刷新查看', 'warn');
+            return false;
+          }
+
+          const w = this._withdrawals.find(x => x.id == id);
+          const state = await DB.getPlayerState();
+          if (!state || !w) return false;
+          const saved = await DB.updatePlayerState({
+            totalWithdrawn: state.totalWithdrawn + w.amount,
+          });
+          if (!saved) return false;
+
+          const mailed = await DB.sendMail(
+            '提现已到账',
+            `你的提现申请 ¥${w.amount.toFixed(2)} 已通过，款项已发放。`,
+            [],
+          );
+          if (!mailed) console.error('withdraw approval mail failed:', id);
+          UI.toast('已通过', 'success');
+          await this.renderWithdrawReview();
+          return true;
+        },
       );
-      UI.toast('已通过', 'success');
-      this.renderWithdrawReview();
+      return outcome.started && outcome.value;
     });
   },
 
-  rejectWithdraw(id) {
+  rejectWithdraw(id, button) {
     UI.confirm('确定驳回这笔提现申请？', async () => {
-      // 把钱退回余额
-      const w = this._withdrawals.find(x => x.id == id);
-      const state = await DB.getPlayerState();
-      if (state && w) {
-        await DB.updatePlayerState({ balance: state.balance + w.amount });
-      }
-      await DB.reviewWithdrawal(id, 'rejected');
-      await DB.sendMail(
-        '提现申请被驳回',
-        `你的提现申请 ¥${w.amount.toFixed(2)} 被驳回，金额已退回余额。`,
-        []
+      const outcome = await UI.runLockedAction(
+        `withdraw-review:${id}`,
+        button,
+        '处理中...',
+        async () => {
+          const reserved = await DB.reviewWithdrawalOnce(id, 'rejected');
+          if (!reserved) {
+            UI.toast('该申请已审核，请刷新查看', 'warn');
+            return false;
+          }
+
+          const w = this._withdrawals.find(x => x.id == id);
+          const state = await DB.getPlayerState();
+          if (!state || !w) return false;
+          const saved = await DB.updatePlayerState({ balance: state.balance + w.amount });
+          if (!saved) return false;
+
+          const mailed = await DB.sendMail(
+            '提现申请被驳回',
+            `你的提现申请 ¥${w.amount.toFixed(2)} 被驳回，金额已退回余额。`,
+            [],
+          );
+          if (!mailed) console.error('withdraw rejection mail failed:', id);
+          UI.toast('已驳回', 'success');
+          await this.renderWithdrawReview();
+          return true;
+        },
       );
-      UI.toast('已驳回', 'success');
-      this.renderWithdrawReview();
+      return outcome.started && outcome.value;
     });
   },
 

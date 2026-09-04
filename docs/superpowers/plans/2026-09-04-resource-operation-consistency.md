@@ -509,7 +509,7 @@ git commit -m "fix: treat backpack axes as independent spares"
 - Produces: conditional `DB.claimMail(id)`, `DB.claimSubmission(id)`, and `DB.reviewWithdrawalOnce(id, status)` that return false when the prior status no longer permits the operation.
 - Consumes: `OperationGuard.run(key, task)`.
 
-- [ ] **Step 1: Add source regression coverage for every guarded entry point**
+- [x] **Step 1: Add source regression coverage for every guarded entry point**
 
 Create a table-driven assertion for these stable keys:
 
@@ -526,7 +526,7 @@ for (const key of guardedKeys) {
 
 Also assert that `claimMail` filters `is_claimed = false`, submission claiming filters `status = approved`, and withdrawal review filters `status = pending` before returning success.
 
-- [ ] **Step 2: Add claim reservation and conditional DB wrappers**
+- [x] **Step 2: Add claim reservation and conditional DB wrappers**
 
 ```js
 async reservePlayerClaim(claimType, claimKey) {
@@ -544,7 +544,7 @@ async reservePlayerClaim(claimType, claimKey) {
 
 Change mail, task submission, and withdrawal status methods to use conditional updates plus `.select('id').maybeSingle()`. Return true only when a row was actually changed.
 
-- [ ] **Step 3: Reserve player-state claims before granting**
+- [x] **Step 3: Reserve player-state claims before granting**
 
 In sign-in milestone, achievement, and theme-extra handlers:
 
@@ -555,23 +555,23 @@ In sign-in milestone, achievement, and theme-extra handlers:
 5. Grant the configured reward only after a successful reservation.
 6. Persist `themeRewardClaims` through `getPlayerState`, `updatePlayerState`, initial state, and refresh; remove `_claimedThemeRewards` memory-only tracking.
 
-- [ ] **Step 4: Claim stored-status rewards before granting**
+- [x] **Step 4: Claim stored-status rewards before granting**
 
 For task rewards, self-submission rewards, and mail rewards, conditionally change the source row from `approved -> claimed` or `is_claimed false -> true` before granting. If no row changes, refresh and show “已领取”. Check every `grantItem` result; on failure, log the business ID, refresh state, and show “奖励状态已同步，请联系天道检查”，without retrying automatically.
 
-- [ ] **Step 5: Guard resource conversion and purchase**
+- [x] **Step 5: Guard resource conversion and purchase**
 
 Pass the initiating button or shop card into `_doCash`, `buyShopItem`, and `doWithdraw`. Run them through keys `cash:<itemId>`, `shop:<shopId>`, and `withdraw`. Disable the control and show `处理中...` while pending. Ensure `DB.removeItem`, `DB.updatePlayerState`, `DB.requestWithdrawal`, and `Game.grantItem` return values are checked before a success toast.
 
-- [ ] **Step 6: Guard task actions and existing resource consumers**
+- [x] **Step 6: Guard task actions and existing resource consumers**
 
 Apply the same helper to daily check-in, normal task submission, self-task submission, forge, breakthrough, single chop, and ten-chop using stable keys. Preserve their existing animations and current button text. Existing local booleans may remain, but `OperationGuard` becomes the shared last line of page-level duplicate protection.
 
-- [ ] **Step 7: Make withdrawal review conditional and guarded**
+- [x] **Step 7: Make withdrawal review conditional and guarded**
 
 For both approval and rejection, first call `reviewWithdrawalOnce(id, targetStatus)` under key `withdraw-review:<id>`. Continue with cumulative total, refund, or mail only when the conditional `pending` update succeeds. This prevents repeated administrator actions from duplicating side effects.
 
-- [ ] **Step 8: Run all automated checks**
+- [x] **Step 8: Run all automated checks**
 
 Run: `node --test tests/operation-guard.test.js tests/resource-operation-consistency.test.js tests/coin-icon-rendering.test.js`
 
@@ -581,7 +581,7 @@ Run: `node --check app.js && node --check operation-guard.js`
 
 Expected: both checks exit 0.
 
-- [ ] **Step 9: Commit the remaining guards**
+- [x] **Step 9: Commit the remaining guards**
 
 ```bash
 git add app.js tests/resource-operation-consistency.test.js
