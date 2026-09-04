@@ -273,7 +273,7 @@ git add docs/superpowers/plans/2026-09-05-visual-overhaul.md
 git commit -m "docs-complete-visual-overhaul-plan"
 ```
 
-- [ ] **Step 6: Push and verify production**
+- [x] **Step 6: Push and verify production**
 
 Run: `git push origin main`
 Verify the GitHub Pages deployment serves the new scripts and representative v2 assets with HTTP 200, then inspect the production page at desktop and mobile sizes.
