@@ -544,13 +544,36 @@ body {
 .item-icon-lg { width: 56px; height: 56px; object-fit: contain; border-radius: 6px; image-rendering: pixelated; image-rendering: crisp-edges; }
 .shop-icon .item-icon-img { width: 44px; height: 44px; image-rendering: pixelated; image-rendering: crisp-edges; }
 
-/* 武器（仙斧）格子：竖长方形 2:3，斧头图标竖直撑满 */
-.item-slot.weapon-slot { aspect-ratio: 2/3; }
-.item-slot.weapon-slot .item-icon { height: 100%; width: 100%; padding: 8px 6px 12px; }
-.item-slot.weapon-slot .item-icon-img { width: 100%; height: 100%; }
-/* 弹窗/详情里的大斧头图标也保持竖长 */
-.item-icon-lg.item-icon-axe { width: 44px; height: 66px; }
-.item-icon-sm.item-icon-axe { width: 28px; height: 42px; }
+/* ===== 武器（仙斧）背包：竖格模式 ===== */
+/* 武器 tab 整个 grid 用 4 列竖格（斧头竖直），道具 tab 保持 5 列方格。
+   选择器带 .cult-inventory 前缀以覆盖 .cult-inventory .inventory-grid 的列数定义 */
+.cult-inventory .inventory-grid.weapons-grid {
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+/* 武器 tab 所有格子（含空槽位）统一竖长比例，保证行高一致 */
+.inventory-grid.weapons-grid .item-slot {
+  aspect-ratio: 3 / 4;
+}
+/* 图标容器铺满格子，斧头居中 */
+.inventory-grid.weapons-grid .item-slot .item-icon {
+  width: 100%;
+  height: 100%;
+  padding: 6px 4px 10px;
+}
+/* 斧头图片：按比例 contain 铺满，不变形 */
+.inventory-grid.weapons-grid .item-icon-img {
+  width: auto;
+  height: 100%;
+  max-width: 100%;
+  object-fit: contain;
+}
+
+/* 弹窗/详情/掉落里的大斧头图标保持竖长比例（64:94 ≈ 2:3） */
+.item-icon-lg.item-icon-axe { width: 40px; height: 60px; }
+.item-icon-sm.item-icon-axe { width: 26px; height: 40px; }
+/* 商店里的斧头图标也竖长 */
+.shop-icon .item-icon-img.item-icon-axe { width: auto; height: 44px; max-width: 100%; }
 .item-slot .item-count {
   position: absolute;
   bottom: 2px;
@@ -1780,6 +1803,8 @@ body {
   .chop-circle-btn { width: 76px; height: 76px; }
   .chop-axe-icon { font-size: 30px; }
   .cult-inventory .inventory-grid { grid-template-columns: repeat(4, 1fr); }
+  /* 武器竖格在窄屏改 3 列，避免格子过窄过高 */
+  .cult-inventory .inventory-grid.weapons-grid { grid-template-columns: repeat(3, 1fr); }
   .inv-tabs-v { width: 44px; }
   .forge-btn { padding: 5px 8px; }
   .forge-btn-icon { font-size: 16px; }

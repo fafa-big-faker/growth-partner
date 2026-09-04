@@ -2030,10 +2030,14 @@ const PlayerView = {
     const grid = document.getElementById('inventory-grid');
     if (!grid) return;
 
+    const isWeapons = tab === 'weapons';
+    // 武器 tab 整个 grid 进入竖格模式（含空槽位），道具 tab 保持方格
+    grid.classList.toggle('weapons-grid', isWeapons);
+
     const items = Game.inventory.filter(inv => {
       const def = ITEMS[inv.itemId];
       if (!def) return false;
-      if (tab === 'weapons') return def.type === 5;
+      if (isWeapons) return def.type === 5;
       return def.type >= 1 && def.type <= 4;
     });
 
@@ -2067,9 +2071,9 @@ const PlayerView = {
       }
     });
 
-    // 空槽位
+    // 空槽位（武器 tab 用竖格保持行高一致）
     for (let i = items.length; i < slots; i++) {
-      html += `<div class="item-slot empty"></div>`;
+      html += `<div class="item-slot empty${isWeapons ? ' weapon-slot' : ''}"></div>`;
     }
 
     grid.innerHTML = html;
@@ -2321,7 +2325,7 @@ const PlayerView = {
       icon = renderItemIcon('0', '🪙', 'item-icon-lg'); name = '游戏币'; color = '#d4af37';
       label = `货币 · 获得 ×${item.quantity}`;
     } else if (item.kind === 'chopping') {
-      icon = '🪓'; name = '砍树次数'; color = '#4a90d9';
+      icon = renderItemIcon('1', '🪓', 'item-icon-lg'); name = '砍树次数'; color = '#4a90d9';
       label = `体力 · 获得 ×${item.quantity}`;
     } else {
       const q = QUALITY[item.quality] || { name: '', color: '#9e9e9e' };
@@ -3662,7 +3666,7 @@ const PlayerView = {
       const buffTag = r.buffText ? `<div style="font-size:10px;color:var(--quality-4)">${r.buffText}</div>` : '';
       let icon, name, color;
       if (r.kind === 'coin') { icon = renderItemIcon('0', '🪙', 'item-icon-sm'); name = '游戏币'; color = '#d4af37'; }
-      else if (r.kind === 'chopping') { icon = '🪓'; name = '砍树次数'; color = '#4a90d9'; }
+      else if (r.kind === 'chopping') { icon = renderItemIcon('1', '🪓', 'item-icon-sm'); name = '砍树次数'; color = '#4a90d9'; }
       else {
         const q = QUALITY[r.quality] || QUALITY[1];
         icon = r.item ? renderItemIcon(r.itemId, r.item.icon, 'item-icon-sm') : '🎁';
