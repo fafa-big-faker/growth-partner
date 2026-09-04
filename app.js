@@ -131,21 +131,36 @@ const TREE_LEVELS = {};
 // limitType: 1=不限 2=月限购(limitParam=每月次数) 3=仙阶限购(limitParam=所需仙阶ID)
 const SHOP_LIMIT_TYPE = { UNLIMITED: 1, MONTHLY: 2, REALM: 3 };
 
-// AI生成道具图片映射（有图则用图，无图回退emoji）
+// 像素艺术道具图标映射（从精灵图切割生成，透明背景PNG）
 const ITEM_IMAGES = {
-  '0':     'assets/images/item-coin.jpg',        // 游戏币
-  '10301': 'assets/images/item-spirit-stone.jpg', // 原石
-  '10302': 'assets/images/item-spirit-stone.jpg', // 原玉
-  // 所有仙斧共用同一张图
-  '51001': 'assets/images/item-axe.jpg',
-  '51002': 'assets/images/item-axe.jpg',
-  '51003': 'assets/images/item-axe.jpg',
-  '51004': 'assets/images/item-axe.jpg',
-  '51005': 'assets/images/item-axe.jpg',
-  '51006': 'assets/images/item-axe.jpg',
-  '51007': 'assets/images/item-axe.jpg',
-  '51008': 'assets/images/item-axe.jpg',
-  '51009': 'assets/images/item-axe.jpg',
+  '0':     'assets/images/icons/0.png',      // 游戏币
+  '1':     'assets/images/icons/1.png',       // 砍树次数
+  '10001': 'assets/images/icons/10001.png',   // 碎铜
+  '10002': 'assets/images/icons/10002.png',   // 铜币
+  '10101': 'assets/images/icons/10101.png',   // 银粉
+  '10102': 'assets/images/icons/10102.png',   // 银叶
+  '10201': 'assets/images/icons/10201.png',   // 金粉
+  '10202': 'assets/images/icons/10202.png',   // 金液
+  '10301': 'assets/images/icons/10301.png',   // 原石
+  '10302': 'assets/images/icons/10302.png',   // 原玉
+  '20001': 'assets/images/icons/20001.png',   // 铜珠
+  '20101': 'assets/images/icons/20101.png',   // 银锭
+  '20201': 'assets/images/icons/20201.png',   // 金元宝
+  '20301': 'assets/images/icons/20301.png',   // 灵玉
+  '30001': 'assets/images/icons/30001.png',   // 期石
+  '30101': 'assets/images/icons/30101.png',   // 望石
+  '30201': 'assets/images/icons/30201.png',   // 待石
+  '40001': 'assets/images/icons/40001.png',   // 锻造石
+  '40002': 'assets/images/icons/40002.png',   // 菩提涎
+  '51001': 'assets/images/icons/51001.png',   // 拼夕夕9块9包邮斧
+  '51002': 'assets/images/icons/51002.png',   // 光头强淘汰斧
+  '52001': 'assets/images/icons/52001.png',   // 物理劝学斧
+  '52002': 'assets/images/icons/52002.png',   // 给大树修脚斧
+  '53001': 'assets/images/icons/53001.png',   // 河神拒收的金斧
+  '53002': 'assets/images/icons/53002.png',   // 二向箔贴纸斧
+  '54001': 'assets/images/icons/54001.png',   // 疯狂星期四V我50斧
+  '54002': 'assets/images/icons/54002.png',   // 电子木鱼连点斧
+  '55001': 'assets/images/icons/55001.png',   // 盘古开天劈歪斧
 };
 
 // 统一道具图标渲染：有AI图用<img>，否则用emoji

@@ -539,10 +539,10 @@ body {
 .item-slot.quality-5 { border-color: var(--quality-5); box-shadow: 0 0 12px rgba(240, 180, 41, 0.4); }
 
 .item-slot .item-icon { font-size: 28px; display:flex; align-items:center; justify-content:center; height:32px; }
-.item-icon-img { width: 28px; height: 28px; object-fit: contain; border-radius: 4px; }
-.item-icon-sm { width: 36px; height: 36px; object-fit: contain; border-radius: 4px; }
-.item-icon-lg { width: 56px; height: 56px; object-fit: contain; border-radius: 6px; }
-.shop-icon .item-icon-img { width: 44px; height: 44px; }
+.item-icon-img { width: 28px; height: 28px; object-fit: contain; border-radius: 4px; image-rendering: pixelated; image-rendering: crisp-edges; }
+.item-icon-sm { width: 36px; height: 36px; object-fit: contain; border-radius: 4px; image-rendering: pixelated; image-rendering: crisp-edges; }
+.item-icon-lg { width: 56px; height: 56px; object-fit: contain; border-radius: 6px; image-rendering: pixelated; image-rendering: crisp-edges; }
+.shop-icon .item-icon-img { width: 44px; height: 44px; image-rendering: pixelated; image-rendering: crisp-edges; }
 .item-slot .item-count {
   position: absolute;
   bottom: 2px;
