@@ -157,7 +157,7 @@ git commit -m "feat: add resource operation guard"
 - Produces column: `player_state.theme_reward_claims jsonb NOT NULL DEFAULT '[]'`.
 - Both RPCs operate only on `user_role = 'player'`, return `{ ok: boolean, code: text, ... }`, and serialize through a lock on the player row.
 
-- [ ] **Step 1: Write failing SQL contract tests**
+- [x] **Step 1: Write failing SQL contract tests**
 
 ```js
 const test = require('node:test');
@@ -178,13 +178,13 @@ test('v5 migration defines atomic compose and claim reservation', () => {
 });
 ```
 
-- [ ] **Step 2: Run the contract test and verify it fails**
+- [x] **Step 2: Run the contract test and verify it fails**
 
 Run: `node --test tests/resource-operation-consistency.test.js`
 
 Expected: FAIL because `upgrade_v5.sql` does not exist.
 
-- [ ] **Step 3: Create the idempotent v5 migration**
+- [x] **Step 3: Create the idempotent v5 migration**
 
 Write this complete migration:
 
@@ -338,13 +338,13 @@ grant execute on function compose_inventory_item(text, integer, text, integer) t
 grant execute on function reserve_player_claim(text, text) to anon, authenticated;
 ```
 
-- [ ] **Step 4: Check the migration contract**
+- [x] **Step 4: Check the migration contract**
 
 Run: `node --test tests/resource-operation-consistency.test.js`
 
 Expected: the SQL contract passes.
 
-- [ ] **Step 5: Commit the migration and contract test**
+- [x] **Step 5: Commit the migration and contract test**
 
 ```bash
 git add upgrade_v5.sql tests/resource-operation-consistency.test.js
