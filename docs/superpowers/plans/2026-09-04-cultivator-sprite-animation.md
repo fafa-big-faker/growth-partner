@@ -30,21 +30,21 @@
 - Consumes: `../修炼者待机序列帧.png` and `../修炼者砍树序列帧.png`.
 - Produces: twelve RGBA PNG frames, each `362x724`.
 
-- [ ] **Step 1: Add the deterministic splitter**
+- [x] **Step 1: Add the deterministic splitter**
 
 Create a Pillow script that verifies `width % 6 === 0`, crops six equal horizontal regions without trimming, converts them to RGBA, and writes stable filenames under the two output directories.
 
-- [ ] **Step 2: Run the splitter**
+- [x] **Step 2: Run the splitter**
 
 Run the bundled Python executable against `scripts/split_character_sheets.py`.
 
 Expected: twelve PNG files are created and the script reports `362x724` for every frame.
 
-- [ ] **Step 3: Verify dimensions and transparency**
+- [x] **Step 3: Verify dimensions and transparency**
 
 Run the script in verification mode and assert every output is RGBA, `362x724`, and has at least one alpha value below 255.
 
-- [ ] **Step 4: Commit the asset pipeline and frames**
+- [x] **Step 4: Commit the asset pipeline and frames**
 
 ```bash
 git add scripts/split_character_sheets.py assets/images/character
