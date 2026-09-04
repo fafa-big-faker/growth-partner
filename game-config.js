@@ -1,6 +1,6 @@
 // ===== 游戏配置文件（由 sync-config.py 从飞书表格自动生成）=====
 // 修改飞书表格后运行同步脚本即可更新，请勿手动编辑此文件
-// 最后同步: 2026-09-03 18:22:58
+// 最后同步: 2026-09-04 03:40:18
 
 const GAME_CONFIG = {
   // 角色等级经验表（共 150 条）
@@ -961,7 +961,8 @@ const GAME_CONFIG = {
     "interactionType": 0,
     "interactionParams": "",
     "description": "",
-    "icon": "🪙"
+    "icon": "🪙",
+    "iconImage": ""
   },
   {
     "id": 1,
@@ -972,7 +973,8 @@ const GAME_CONFIG = {
     "interactionType": 0,
     "interactionParams": "",
     "description": "",
-    "icon": "🪓"
+    "icon": "🪓",
+    "iconImage": ""
   },
   {
     "id": 10001,
@@ -983,7 +985,8 @@ const GAME_CONFIG = {
     "interactionType": 1,
     "interactionParams": "20001,10",
     "description": "懒得写描述，集齐它你就可以换点小钱",
-    "icon": "🟫"
+    "icon": "🟫",
+    "iconImage": ""
   },
   {
     "id": 10002,
@@ -994,7 +997,8 @@ const GAME_CONFIG = {
     "interactionType": 1,
     "interactionParams": "20001,3",
     "description": "懒得写描述，集齐它你就可以换点小钱",
-    "icon": "🪙"
+    "icon": "🪙",
+    "iconImage": ""
   },
   {
     "id": 10101,
@@ -1005,7 +1009,8 @@ const GAME_CONFIG = {
     "interactionType": 1,
     "interactionParams": "20101,10",
     "description": "懒得写描述，集齐它你就可以换点小钱",
-    "icon": "🌫️"
+    "icon": "🌫️",
+    "iconImage": ""
   },
   {
     "id": 10102,
@@ -1016,7 +1021,8 @@ const GAME_CONFIG = {
     "interactionType": 1,
     "interactionParams": "20101,3",
     "description": "懒得写描述，集齐它你就可以换点小钱",
-    "icon": "🍃"
+    "icon": "🍃",
+    "iconImage": ""
   },
   {
     "id": 10201,
@@ -1027,7 +1033,8 @@ const GAME_CONFIG = {
     "interactionType": 1,
     "interactionParams": "20201,10",
     "description": "懒得写描述，集齐它你就可以换点小钱",
-    "icon": "✨"
+    "icon": "✨",
+    "iconImage": ""
   },
   {
     "id": 10202,
@@ -1038,7 +1045,8 @@ const GAME_CONFIG = {
     "interactionType": 1,
     "interactionParams": "20201,3",
     "description": "懒得写描述，集齐它你就可以换点小钱",
-    "icon": "💧"
+    "icon": "💧",
+    "iconImage": ""
   },
   {
     "id": 10301,
@@ -1049,7 +1057,8 @@ const GAME_CONFIG = {
     "interactionType": 1,
     "interactionParams": "20301,10",
     "description": "懒得写描述，集齐它你就可以换点小钱，还会被叫原批",
-    "icon": "🪨"
+    "icon": "🪨",
+    "iconImage": ""
   },
   {
     "id": 10302,
@@ -1060,7 +1069,8 @@ const GAME_CONFIG = {
     "interactionType": 1,
     "interactionParams": "20301,3",
     "description": "懒得写描述，集齐它你就可以换点小钱",
-    "icon": "🟢"
+    "icon": "🟢",
+    "iconImage": ""
   },
   {
     "id": 20001,
@@ -1071,7 +1081,8 @@ const GAME_CONFIG = {
     "interactionType": 2,
     "interactionParams": "1",
     "description": "拿去换钱吧，哥不在乎这点小钱",
-    "icon": "🔴"
+    "icon": "🔴",
+    "iconImage": ""
   },
   {
     "id": 20101,
@@ -1082,7 +1093,8 @@ const GAME_CONFIG = {
     "interactionType": 2,
     "interactionParams": "2",
     "description": "拿去换钱吧，哥不在乎这点小钱，",
-    "icon": "🥈"
+    "icon": "🥈",
+    "iconImage": ""
   },
   {
     "id": 20201,
@@ -1093,7 +1105,8 @@ const GAME_CONFIG = {
     "interactionType": 2,
     "interactionParams": "5",
     "description": "拿去换钱吧，哥不在乎这点小钱，（咬牙版）",
-    "icon": "🥇"
+    "icon": "🥇",
+    "iconImage": ""
   },
   {
     "id": 20301,
@@ -1104,7 +1117,8 @@ const GAME_CONFIG = {
     "interactionType": 2,
     "interactionParams": "10",
     "description": "拿去换钱吧，哥不在乎这点小钱，（牙龈咬碎版）",
-    "icon": "🔮"
+    "icon": "🔮",
+    "iconImage": ""
   },
   {
     "id": 30001,
@@ -1115,7 +1129,8 @@ const GAME_CONFIG = {
     "interactionType": 0,
     "interactionParams": "",
     "description": "代表你爸的石",
-    "icon": "🟤"
+    "icon": "🟤",
+    "iconImage": ""
   },
   {
     "id": 30101,
@@ -1126,7 +1141,8 @@ const GAME_CONFIG = {
     "interactionType": 0,
     "interactionParams": "",
     "description": "代表你妈的石",
-    "icon": "👁️"
+    "icon": "👁️",
+    "iconImage": ""
   },
   {
     "id": 30201,
@@ -1137,7 +1153,8 @@ const GAME_CONFIG = {
     "interactionType": 0,
     "interactionParams": "",
     "description": "代表你哥的石",
-    "icon": "⏳"
+    "icon": "⏳",
+    "iconImage": ""
   },
   {
     "id": 40001,
@@ -1148,7 +1165,8 @@ const GAME_CONFIG = {
     "interactionType": 0,
     "interactionParams": "",
     "description": "拿去抽点好的武器吧，不要让隔壁老外看不起",
-    "icon": "🔩"
+    "icon": "🔩",
+    "iconImage": ""
   },
   {
     "id": 40002,
@@ -1159,7 +1177,8 @@ const GAME_CONFIG = {
     "interactionType": 0,
     "interactionParams": "",
     "description": "浇浇你的树吧，快被薅秃噜皮了",
-    "icon": "💧"
+    "icon": "💧",
+    "iconImage": ""
   },
   {
     "id": 51001,
@@ -1170,7 +1189,8 @@ const GAME_CONFIG = {
     "interactionType": 3,
     "interactionParams": "1",
     "description": "砍一下树，斧头飞了，柄还在手里。",
-    "icon": "🪓"
+    "icon": "🪓",
+    "iconImage": ""
   },
   {
     "id": 51002,
@@ -1181,7 +1201,8 @@ const GAME_CONFIG = {
     "interactionType": 3,
     "interactionParams": "1,1001",
     "description": "锯齿都崩光了，熊大看了都摇头。",
-    "icon": "🪚"
+    "icon": "🪚",
+    "iconImage": ""
   },
   {
     "id": 52001,
@@ -1192,7 +1213,8 @@ const GAME_CONFIG = {
     "interactionType": 3,
     "interactionParams": "5,2001",
     "description": "砍人不疼，但砍中能强制给对方脑内灌输高考真题。",
-    "icon": "📖"
+    "icon": "📖",
+    "iconImage": ""
   },
   {
     "id": 52002,
@@ -1203,7 +1225,8 @@ const GAME_CONFIG = {
     "interactionType": 3,
     "interactionParams": "5,1002",
     "description": "刃口极其微小，专门用来给千年树精去死皮。",
-    "icon": "🦶"
+    "icon": "🦶",
+    "iconImage": ""
   },
   {
     "id": 53001,
@@ -1214,7 +1237,8 @@ const GAME_CONFIG = {
     "interactionType": 3,
     "interactionParams": "2,2002",
     "description": "掉进水里，河神捞出来看了一眼直接骂骂咧咧地扔回给了你。",
-    "icon": "🪓"
+    "icon": "🪓",
+    "iconImage": ""
   },
   {
     "id": 53002,
@@ -1225,7 +1249,8 @@ const GAME_CONFIG = {
     "interactionType": 3,
     "interactionParams": "20,1003",
     "description": "砍中敌人后，直接把对方拍成一张A4纸大小的二维平面。",
-    "icon": "⚓"
+    "icon": "⚓",
+    "iconImage": ""
   },
   {
     "id": 54001,
@@ -1236,7 +1261,8 @@ const GAME_CONFIG = {
     "interactionType": 3,
     "interactionParams": "50,2004",
     "description": "攻击力取决于你今天有没有请人吃肯德基。",
-    "icon": "🍗"
+    "icon": "🍗",
+    "iconImage": ""
   },
   {
     "id": 54002,
@@ -1247,7 +1273,8 @@ const GAME_CONFIG = {
     "interactionType": 3,
     "interactionParams": "50,1005",
     "description": "每挥动一次，空中飘出一个“功德+1”，边砍边超度。",
-    "icon": "🪘"
+    "icon": "🪘",
+    "iconImage": ""
   },
   {
     "id": 55001,
@@ -1258,7 +1285,8 @@ const GAME_CONFIG = {
     "interactionType": 3,
     "interactionParams": "100,1010,2010",
     "description": "当年开天辟地时一斧头砍歪了，才留下了马里亚纳海沟。",
-    "icon": "🌩️"
+    "icon": "🌩️",
+    "iconImage": ""
   }
 ],
 

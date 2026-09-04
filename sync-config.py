@@ -78,6 +78,53 @@ def parse_req_items(s):
             result.append({"itemId": str(nums[0]), "count": 1})
     return result
 
+# ===== 道具图标（飞书单元格内嵌图片）=====
+ICONS_DIR_REL = "assets/images/icons"  # 相对 WORKSPACE 的图标目录
+
+def read_sheet_cells(token, sheet_name, range_str):
+    """读取工作表，返回原始 cell 对象二维数组（含 value / rich_text 等结构）"""
+    rng = f"{sheet_name}!{range_str}"
+    d = lark_cli("sheets", "+cells-get",
+                 "--spreadsheet-token", token,
+                 "--range", rng)
+    if not d.get("ok"):
+        print(f"  警告: 读取 {sheet_name}!{range_str} 失败: {d.get('error',{}).get('message','')}")
+        return []
+    return d["data"]["ranges"][0]["cells"]
+
+def cell_text(cell):
+    """取单元格文本值"""
+    return str(cell.get("value", "")).strip() if cell else ""
+
+def cell_image_token(cell):
+    """从单元格的 rich_text 中提取内嵌图片(embed-image)的 image_token，无则 None"""
+    if not cell:
+        return None
+    for rt in cell.get("rich_text") or []:
+        if isinstance(rt, dict) and rt.get("type") == "embed-image" and rt.get("image_token"):
+            return rt["image_token"]
+    return None
+
+def download_sheet_image(file_token, spreadsheet_token, rel_path):
+    """下载电子表格内嵌素材图片到 WORKSPACE/rel_path，成功返回 True"""
+    abs_path = os.path.join(WORKSPACE, rel_path)
+    os.makedirs(os.path.dirname(abs_path), exist_ok=True)
+    extra = json.dumps({"bizType": "sheet", "spreadsheetToken": spreadsheet_token})
+    params = json.dumps({"extra": extra})
+    cmd = ["lark-cli", "api", "GET",
+           f"/open-apis/drive/v1/medias/{file_token}/download",
+           "--params", params,
+           "-o", rel_path]
+    try:
+        r = subprocess.run(cmd, capture_output=True, text=True, timeout=60, cwd=WORKSPACE)
+        if r.returncode == 0 and os.path.exists(abs_path) and os.path.getsize(abs_path) > 0:
+            return True
+        print(f"    ! 图标下载失败 token={file_token}: {(r.stdout or r.stderr)[:200]}")
+        return False
+    except Exception as e:
+        print(f"    ! 图标下载异常 token={file_token}: {e}")
+        return False
+
 # ===== 读取各表数据 =====
 print("📖 读取飞书表格...")
 
@@ -116,25 +163,41 @@ for row in rows[2:]:
     })
 print(f"    {len(realm_table)} 条")
 
-# 3. 道具表
+# 3. 道具表（icon 列支持内嵌 PNG 图片，自动下载到 assets/images/icons/{id}.png）
 print("  → 道具表")
-rows = read_sheet(SHEETS["道具表"], "道具表", "A1:I100")
+cells = read_sheet_cells(SHEETS["道具表"], "道具表", "A1:I100")
 item_table = []
-for row in rows[2:]:
-    if not row[0]:
+icon_count = 0
+for row in cells[2:]:  # 跳过表头2行
+    if not row:
         continue
+    def cv(i):
+        return cell_text(row[i]) if i < len(row) else ""
+    if not cv(0):
+        continue
+    item_id = to_int(cv(0))
+    # icon 列（第 I 列，index 8）：优先取内嵌图片，下载到本地
+    icon_image = ""
+    icon_cell = row[8] if len(row) > 8 else None
+    img_token = cell_image_token(icon_cell)
+    if img_token:
+        rel_path = f"{ICONS_DIR_REL}/{item_id}.png"
+        if download_sheet_image(img_token, SHEETS["道具表"], rel_path):
+            icon_image = rel_path
+            icon_count += 1
     item_table.append({
-        "id": to_int(row[0]),
-        "name": to_str(row[1]),
-        "type": to_int(row[2]),
-        "quality": to_int(row[3]),
-        "stackLimit": to_int(row[4], 999),
-        "interactionType": to_int(row[5]),
-        "interactionParams": to_str(row[6]),
-        "description": to_str(row[7]),
-        "icon": to_str(row[8]) or "❓",
+        "id": item_id,
+        "name": to_str(cv(1)),
+        "type": to_int(cv(2)),
+        "quality": to_int(cv(3)),
+        "stackLimit": to_int(cv(4), 999),
+        "interactionType": to_int(cv(5)),
+        "interactionParams": to_str(cv(6)),
+        "description": to_str(cv(7)),
+        "icon": to_str(cv(8)) or "❓",
+        "iconImage": icon_image,
     })
-print(f"    {len(item_table)} 条")
+print(f"    {len(item_table)} 条（含图标 {icon_count} 个）")
 
 # 4. 品质表
 print("  → 品质表")

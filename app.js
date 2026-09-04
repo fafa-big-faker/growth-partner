@@ -15,6 +15,7 @@ const ITEMS = {};
     quality: item.quality,
     stackLimit: item.stackLimit || 999,
     icon: item.icon || '❓',
+    iconImage: item.iconImage || '',  // 飞书道具表 icon 列上传的 PNG（配置驱动，优先于内置映射）
     desc: item.description || '',
     interactionType: item.interactionType || 0,
     interactionParams: item.interactionParams || '',
@@ -163,11 +164,14 @@ const ITEM_IMAGES = {
   '55001': 'assets/images/icons/55001.png',   // 盘古开天劈歪斧
 };
 
-// 统一道具图标渲染：有像素图用<img>，否则回退emoji；斧头(type5)追加竖长class
+// 统一道具图标渲染：优先飞书配置的PNG(iconImage) → 本地内置映射(ITEM_IMAGES) → emoji
+// 斧头(type5)自动追加竖长 class item-icon-axe
 function renderItemIcon(itemId, fallbackEmoji, cls = 'item-icon-img') {
-  const img = ITEM_IMAGES[String(itemId)];
+  const id = String(itemId);
+  const def = (typeof ITEMS !== 'undefined') ? ITEMS[id] : null;
+  const img = (def && def.iconImage) || ITEM_IMAGES[id];
   if (img) {
-    const isAxe = (typeof ITEMS !== 'undefined' && ITEMS[itemId] && ITEMS[itemId].type === 5);
+    const isAxe = def && def.type === 5;
     const axeCls = isAxe ? ' item-icon-axe' : '';
     return `<img src="${img}" class="${cls}${axeCls}" alt="${fallbackEmoji}" />`;
   }
