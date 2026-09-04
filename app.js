@@ -2515,7 +2515,7 @@ const PlayerView = {
       );
       if (outcome.started && outcome.value) {
         this.renderInventory(this.currentInvTab);
-        document.querySelector('.modal-overlay')?.remove();
+        document.querySelectorAll('.modal-overlay').forEach(el => el.remove());
       }
     } catch (error) {
       console.error('compose action error:', error);

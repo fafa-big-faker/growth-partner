@@ -27,6 +27,9 @@ test('compose uses one guarded RPC and updates inventory locally', () => {
   assert.doesNotMatch(body, /DB\.removeItem/);
   assert.doesNotMatch(body, /DB\.addItem/);
   assert.doesNotMatch(body, /this\.refresh\(/);
+
+  const handler = app.match(/async _doCompose\([\s\S]*?\n  },/)?.[0] || '';
+  assert.match(handler, /querySelectorAll\('\.modal-overlay'\)/);
 });
 
 test('same-id backpack axes remain equipable and sellable', () => {
