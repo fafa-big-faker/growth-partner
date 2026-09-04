@@ -131,6 +131,30 @@ const TREE_LEVELS = {};
 // limitType: 1=不限 2=月限购(limitParam=每月次数) 3=仙阶限购(limitParam=所需仙阶ID)
 const SHOP_LIMIT_TYPE = { UNLIMITED: 1, MONTHLY: 2, REALM: 3 };
 
+// AI生成道具图片映射（有图则用图，无图回退emoji）
+const ITEM_IMAGES = {
+  '0':     'assets/images/item-coin.jpg',        // 游戏币
+  '10301': 'assets/images/item-spirit-stone.jpg', // 原石
+  '10302': 'assets/images/item-spirit-stone.jpg', // 原玉
+  // 所有仙斧共用同一张图
+  '51001': 'assets/images/item-axe.jpg',
+  '51002': 'assets/images/item-axe.jpg',
+  '51003': 'assets/images/item-axe.jpg',
+  '51004': 'assets/images/item-axe.jpg',
+  '51005': 'assets/images/item-axe.jpg',
+  '51006': 'assets/images/item-axe.jpg',
+  '51007': 'assets/images/item-axe.jpg',
+  '51008': 'assets/images/item-axe.jpg',
+  '51009': 'assets/images/item-axe.jpg',
+};
+
+// 统一道具图标渲染：有AI图用<img>，否则用emoji
+function renderItemIcon(itemId, fallbackEmoji, cls = 'item-icon-img') {
+  const img = ITEM_IMAGES[String(itemId)];
+  if (img) return `<img src="${img}" class="${cls}" alt="${fallbackEmoji}" />`;
+  return fallbackEmoji;
+}
+
 // 仙阶表 → 从飞书表格配置合并生成（game-config.js）
 // 飞书表提供: reqLevel, realmId, name, maxAxeQuality, characterImage, reqItems(数字ID), icon
 // 道具ID直接使用飞书道具表的5位数字ID，无需映射
@@ -1760,15 +1784,20 @@ const PlayerView = {
     const forgeStoneQty = Game.inventory.find(i => i.itemId == '40001')?.quantity || 0;
     const expMax = getExpForLevel(Game.state.level);
 
+    // 仙树插画映射（按树等级分3档）
+    const treeImg = Game.state.treeLevel >= 13 ? 'assets/images/tree-divine.jpg'
+      : Game.state.treeLevel >= 6 ? 'assets/images/tree-spirit.jpg'
+      : 'assets/images/tree-sprout.jpg';
+
     main.innerHTML = `
       <!-- ① 场景区：仙树 + 人物 -->
-      <div class="cult-scene" id="tree-area">
+      <div class="cult-scene" id="tree-area" style="background-image:url('assets/images/scene-bg.jpg')">
         <div class="cult-tree" id="tree-icon" onclick="PlayerView.showTreeDetail()">
-          <span class="tree-emoji">${treeConfig.icon}</span>
+          <img src="${treeImg}" class="tree-img" alt="${treeConfig.name}" />
           <div class="tree-label">${treeConfig.name}</div>
         </div>
         <div class="cult-char">
-          <span class="char-emoji">🧑‍🌾</span>
+          <img src="assets/images/character-paint.jpg" class="char-img" alt="修仙者" />
         </div>
       </div>
 
@@ -1993,7 +2022,7 @@ const PlayerView = {
         for (let i = 0; i < inv.quantity; i++) {
           html += `
             <div class="item-slot quality-${def.quality} ${axeLocked ? 'item-locked' : ''} ${isEquipped ? 'item-equipped' : ''}" onclick="PlayerView.showItemDetail('${inv.itemId}')">
-              <div class="item-icon">${def.icon}</div>
+              <div class="item-icon">${renderItemIcon(inv.itemId, def.icon)}</div>
               ${axeLocked ? '<div class="item-lock-badge">🔒</div>' : ''}
               ${isEquipped ? '<div class="item-equipped-badge">装备中</div>' : ''}
             </div>
@@ -2002,7 +2031,7 @@ const PlayerView = {
       } else {
         html += `
           <div class="item-slot quality-${def.quality}" onclick="PlayerView.showItemDetail('${inv.itemId}')">
-            <div class="item-icon">${def.icon}</div>
+            <div class="item-icon">${renderItemIcon(inv.itemId, def.icon)}</div>
             <div class="item-count">${inv.quantity}</div>
           </div>
         `;
@@ -2067,7 +2096,7 @@ const PlayerView = {
     UI.modal(`
       <div style="text-align:center;margin-bottom:16px">
         <div style="font-size:60px;margin-bottom:8px;position:relative;display:inline-block">
-          ${def.icon}
+          ${renderItemIcon(itemId, def.icon, 'item-icon-lg')}
           ${axeLocked ? '<span style="position:absolute;top:-4px;right:-16px;font-size:24px">🔒</span>' : ''}
         </div>
         <div style="font-size:18px;font-weight:700">${def.name}</div>
@@ -2260,14 +2289,14 @@ const PlayerView = {
     // 特殊道具（游戏币/砍树次数）单独展示
     let icon, name, color, label;
     if (item.kind === 'coin') {
-      icon = '🪙'; name = '游戏币'; color = '#d4af37';
+      icon = renderItemIcon('0', '🪙', 'item-icon-lg'); name = '游戏币'; color = '#d4af37';
       label = `货币 · 获得 ×${item.quantity}`;
     } else if (item.kind === 'chopping') {
       icon = '🪓'; name = '砍树次数'; color = '#4a90d9';
       label = `体力 · 获得 ×${item.quantity}`;
     } else {
       const q = QUALITY[item.quality] || { name: '', color: '#9e9e9e' };
-      icon = item.item ? item.item.icon : '🎁';
+      icon = item.item ? renderItemIcon(item.itemId, item.item.icon, 'item-icon-lg') : '🎁';
       name = item.item ? item.item.name : '道具';
       color = q.color;
       label = `${q.name} · 获得 ×${item.quantity}`;
@@ -3004,7 +3033,7 @@ const PlayerView = {
       html += `
         <div class="shop-item ${disabled ? 'shop-disabled' : ''}" ${disabled ? '' : `onclick="PlayerView.buyShopItem(${item.shopId})"`}>
           <div class="shop-badge-slot">${badge}</div>
-          <div class="shop-icon" style="box-shadow:inset 0 0 0 2px ${qColor}66;border-radius:12px">${item.icon}</div>
+          <div class="shop-icon" style="box-shadow:inset 0 0 0 2px ${qColor}66;border-radius:12px">${renderItemIcon(item.itemId, item.icon)}</div>
           <div class="shop-name">${item.name}${countText}</div>
           <div class="shop-cost ${afford ? '' : 'shop-cost-no'}">🪙 ${item.price}</div>
         </div>
@@ -3503,7 +3532,7 @@ const PlayerView = {
         `;
         const resultOverlay = UI.modal(`
           <div style="text-align:center;padding:16px 0">
-            <div style="font-size:80px;margin-bottom:12px;animation:tree-shake 0.5s ease-in-out">${result.item.icon}</div>
+            <div style="margin-bottom:12px;animation:tree-shake 0.5s ease-in-out;display:flex;align-items:center;justify-content:center;height:80px">${renderItemIcon(result.itemId || result.item.id, result.item.icon, 'item-icon-lg')}</div>
             <div style="font-size:20px;font-weight:700;color:${q.color}">${result.item.name}</div>
             <div style="margin-top:4px">${UI.qualityTag(result.quality)}</div>
             <div style="font-size:12px;color:var(--text-secondary);margin-top:8px">${result.item.desc}</div>
@@ -3603,16 +3632,16 @@ const PlayerView = {
       const extraTag = r.isExtra ? '<div style="font-size:10px;color:var(--warning);font-weight:600">额外掉落</div>' : '';
       const buffTag = r.buffText ? `<div style="font-size:10px;color:var(--quality-4)">${r.buffText}</div>` : '';
       let icon, name, color;
-      if (r.kind === 'coin') { icon = '🪙'; name = '游戏币'; color = '#d4af37'; }
+      if (r.kind === 'coin') { icon = renderItemIcon('0', '🪙', 'item-icon-sm'); name = '游戏币'; color = '#d4af37'; }
       else if (r.kind === 'chopping') { icon = '🪓'; name = '砍树次数'; color = '#4a90d9'; }
       else {
         const q = QUALITY[r.quality] || QUALITY[1];
-        icon = r.item ? r.item.icon : '🎁';
+        icon = r.item ? renderItemIcon(r.itemId, r.item.icon, 'item-icon-sm') : '🎁';
         name = r.item ? r.item.name : '道具';
         color = q.color;
       }
       return `<div style="text-align:center;padding:8px;border:1px solid ${color}40;border-radius:8px;background:${color}10">
-        <div style="font-size:32px">${icon}</div>
+        <div style="display:flex;align-items:center;justify-content:center;height:40px">${icon}</div>
         <div style="font-size:11px;font-weight:600;color:${color};margin-top:2px">${name}</div>
         <div style="font-size:10px;color:var(--text-light)">×${r.quantity}</div>
         ${extraTag}

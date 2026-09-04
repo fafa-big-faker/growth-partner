@@ -49,7 +49,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(180deg, #e8dcc4 0%, #f5f0e6 50%, #d4c5a3 100%);
+  background: url('assets/images/login-bg.jpg') center / cover no-repeat;
   padding: 20px;
   position: relative;
   overflow: hidden;
@@ -58,10 +58,30 @@ body {
 .login-bg {
   position: absolute;
   inset: 0;
-  background-image:
-    radial-gradient(ellipse 300px 200px at 20% 20%, rgba(201, 169, 110, 0.15), transparent),
-    radial-gradient(ellipse 250px 180px at 80% 80%, rgba(107, 142, 107, 0.1), transparent);
+  background: linear-gradient(180deg, rgba(245,240,230,0.3) 0%, rgba(245,240,230,0.1) 50%, rgba(212,197,163,0.4) 100%);
   pointer-events: none;
+}
+
+/* 角色立绘 */
+.login-art {
+  position: absolute;
+  left: 5%;
+  bottom: 0;
+  height: 90%;
+  max-height: 720px;
+  z-index: 1;
+  pointer-events: none;
+  display: none;
+}
+.login-art img {
+  height: 100%;
+  width: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 20px rgba(0,0,0,0.15));
+}
+@media (min-width: 768px) {
+  .login-art { display: block; }
+  .login-card { margin-left: 35%; }
 }
 
 .login-card {
@@ -518,7 +538,11 @@ body {
 .item-slot.quality-4 { border-color: var(--quality-4); box-shadow: 0 0 8px rgba(232, 90, 138, 0.3); }
 .item-slot.quality-5 { border-color: var(--quality-5); box-shadow: 0 0 12px rgba(240, 180, 41, 0.4); }
 
-.item-slot .item-icon { font-size: 28px; }
+.item-slot .item-icon { font-size: 28px; display:flex; align-items:center; justify-content:center; height:32px; }
+.item-icon-img { width: 28px; height: 28px; object-fit: contain; border-radius: 4px; }
+.item-icon-sm { width: 36px; height: 36px; object-fit: contain; border-radius: 4px; }
+.item-icon-lg { width: 56px; height: 56px; object-fit: contain; border-radius: 6px; }
+.shop-icon .item-icon-img { width: 44px; height: 44px; }
 .item-slot .item-count {
   position: absolute;
   bottom: 2px;
@@ -1293,10 +1317,10 @@ body {
   justify-content: center;
   gap: 30px;
   padding: 20px 16px 12px;
-  background: linear-gradient(180deg, #e8dcc4 0%, var(--card-solid) 100%);
+  background: linear-gradient(180deg, rgba(232,220,196,0.85) 0%, rgba(250,246,236,0.9) 100%), url('assets/images/scene-bg.jpg') center / cover;
   border-radius: var(--radius);
   margin-bottom: 12px;
-  min-height: 180px;
+  min-height: 200px;
   position: relative;
   overflow: hidden;
 }
@@ -1326,10 +1350,11 @@ body {
 .cult-tree:hover { transform: scale(1.05); }
 .cult-tree:active { transform: scale(0.97); }
 
-.cult-tree .tree-emoji {
-  font-size: 64px;
-  line-height: 1.2;
-  filter: drop-shadow(0 4px 8px rgba(0,0,0,0.1));
+.cult-tree .tree-img {
+  width: 100px;
+  height: 100px;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 8px rgba(0,0,0,0.12));
   animation: tree-sway 4s ease-in-out infinite;
 }
 
@@ -1361,11 +1386,13 @@ body {
   z-index: 1;
 }
 
-.cult-char .char-emoji {
-  font-size: 48px;
-  line-height: 1.2;
-  filter: drop-shadow(0 4px 6px rgba(0,0,0,0.08));
+.cult-char .char-img {
+  height: 140px;
+  width: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));
   animation: char-bob 3s ease-in-out infinite;
+  border-radius: 8px;
 }
 
 @keyframes char-bob {
@@ -1712,9 +1739,9 @@ body {
 
 /* 响应式微调 */
 @media (max-width: 380px) {
-  .cult-scene { gap: 16px; min-height: 150px; }
-  .cult-tree .tree-emoji { font-size: 52px; }
-  .cult-char .char-emoji { font-size: 40px; }
+  .cult-scene { gap: 16px; min-height: 160px; }
+  .cult-tree .tree-img { width: 80px; height: 80px; }
+  .cult-char .char-img { height: 110px; }
   .chop-circle-btn { width: 76px; height: 76px; }
   .chop-axe-icon { font-size: 30px; }
   .cult-inventory .inventory-grid { grid-template-columns: repeat(4, 1fr); }
