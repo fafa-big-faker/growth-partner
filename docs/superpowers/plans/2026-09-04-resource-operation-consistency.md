@@ -443,7 +443,7 @@ git commit -m "fix: make item composition atomic"
 - Consumes: aggregate inventory convention where equipped axe is absent from `Game.inventory`.
 - Produces: same-ID spare axes with normal equip and sell actions.
 
-- [ ] **Step 1: Write failing source regression tests**
+- [x] **Step 1: Write failing source regression tests**
 
 ```js
 test('same-id backpack axes remain equipable and sellable', () => {
@@ -458,23 +458,23 @@ test('same-id backpack axes remain equipable and sellable', () => {
 });
 ```
 
-- [ ] **Step 2: Update weapon detail semantics**
+- [x] **Step 2: Update weapon detail semantics**
 
 Remove the `isEquipped` branch from `showItemDetail`. For every type-5 item in the backpack, render sell; render equip unless the realm requirement blocks it. Calculate `axeLocked` from realm eligibility only, not current equipped ID.
 
-- [ ] **Step 3: Allow selling a same-ID spare safely**
+- [x] **Step 3: Allow selling a same-ID spare safely**
 
 Remove the current-axe-ID rejection from `sellAxe`. Store `const removed = await DB.removeItem(itemId, 1)` and stop with an inventory resync and error toast when it is false. Only then add coins. If the player-state write fails, attempt to restore the removed axe and restore the previous local coin totals before returning false.
 
-- [ ] **Step 4: Allow equipping a same-ID spare**
+- [x] **Step 4: Allow equipping a same-ID spare**
 
 For `state.axeId === itemId`, first confirm `_getItemQty(itemId) >= 1`, then treat the swap as a successful no-op because both aggregate items are identical: keep inventory quantity and equipped ID unchanged, show `装备了 <name>`, and return true. For different IDs, check every add/remove/update result and compensate the earlier inventory change if a later step fails.
 
-- [ ] **Step 5: Guard equip and sell UI entry points**
+- [x] **Step 5: Guard equip and sell UI entry points**
 
 Run `equipItem`, `_equipFromForge`, and the confirmed `sellItem` callback through `OperationGuard` with keys `equip-axe` and `sell-axe:<itemId>`. Disable the initiating button where it remains mounted and prevent duplicate success toasts.
 
-- [ ] **Step 6: Run tests and commit**
+- [x] **Step 6: Run tests and commit**
 
 Run: `node --test tests/resource-operation-consistency.test.js tests/coin-icon-rendering.test.js`
 

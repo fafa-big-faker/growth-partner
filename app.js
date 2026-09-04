@@ -1245,16 +1245,29 @@ const Game = {
   async sellAxe(itemId) {
     const itemDef = ITEMS[itemId];
     if (!itemDef || itemDef.type !== 5) return false;
-    if (this.state.axeId === itemId) {
-      UI.toast('装备中的斧头无法出售', 'warn');
+    const removed = await DB.removeItem(itemId, 1);
+    if (!removed) return false;
+
+    const previousCoin = this.state.coin || 0;
+    const previousTotal = this.state.totalCoinEarned || 0;
+    this.state.coin = previousCoin + itemDef.sellPrice;
+    // 成就统计：出售仙斧获得的游戏币计入累计
+    this.state.totalCoinEarned = previousTotal + itemDef.sellPrice;
+    const updated = await DB.updatePlayerState({
+      coin: this.state.coin,
+      totalCoinEarned: this.state.totalCoinEarned,
+    });
+    if (!updated) {
+      this.state.coin = previousCoin;
+      this.state.totalCoinEarned = previousTotal;
+      const restored = await DB.addItem(itemId, 1);
+      if (!restored) console.error('sellAxe rollback failed:', itemId);
+      await this.refresh();
       return false;
     }
-    await DB.removeItem(itemId, 1);
-    this.state.coin = (this.state.coin || 0) + itemDef.sellPrice;
-    // 成就统计：出售仙斧获得的游戏币计入累计
-    this.state.totalCoinEarned = (this.state.totalCoinEarned || 0) + itemDef.sellPrice;
-    await DB.updatePlayerState({ coin: this.state.coin, totalCoinEarned: this.state.totalCoinEarned });
-    await this.refresh();
+
+    this._setInventoryQuantity(itemId, this._getItemQty(itemId) - 1);
+    UI.updateHeader();
     UI.toast(`出售成功！获得 ${itemDef.sellPrice} 游戏币`, 'success');
     return true;
   },
@@ -1263,10 +1276,6 @@ const Game = {
   async equipAxe(itemId) {
     const itemDef = ITEMS[itemId];
     if (!itemDef || itemDef.type !== 5) return false;
-    if (this.state.axeId === itemId) {
-      UI.toast('已经装备了', 'warn');
-      return false;
-    }
     // 仙阶限制校验：仙斧品质不能超过当前仙阶允许的最高品质
     if (!canEquipAxeQuality(itemDef.quality, this.state.realmLevel)) {
       const minRealm = getMinRealmForAxeQuality(itemDef.quality);
@@ -1275,15 +1284,52 @@ const Game = {
       UI.toast(`仙阶不足！${qName}仙斧需达到【${minRealm?.name || '?'}】，当前为【${curRealm.name}】`, 'warn');
       return false;
     }
-    // 旧斧头放回背包
-    if (this.state.axeId && this.state.axeId !== '51001') {
-      await DB.addItem(this.state.axeId, 1);
+
+    if (this._getItemQty(itemId) < 1) {
+      UI.toast('背包中没有这把斧头', 'warn');
+      return false;
     }
-    // 从背包扣新斧头
-    await DB.removeItem(itemId, 1);
+
+    // 同 ID 武器属性完全一致，交换后聚合库存和装备 ID 都不变。
+    if (this.state.axeId === itemId) {
+      UI.toast(`装备了 ${itemDef.name}`, 'success');
+      return true;
+    }
+
+    const oldAxeId = this.state.axeId;
+    const removed = await DB.removeItem(itemId, 1);
+    if (!removed) {
+      this.inventory = await DB.getInventory();
+      UI.toast('装备失败，背包数量已刷新', 'error');
+      return false;
+    }
+
+    let oldAxeReturned = false;
+    if (oldAxeId && oldAxeId !== '51001') {
+      oldAxeReturned = await DB.addItem(oldAxeId, 1);
+      if (!oldAxeReturned) {
+        await DB.addItem(itemId, 1);
+        await this.refresh();
+        UI.toast('装备失败，请重试', 'error');
+        return false;
+      }
+    }
+
     this.state.axeId = itemId;
-    await DB.updatePlayerState({ axeId: itemId });
-    await this.refresh();
+    const updated = await DB.updatePlayerState({ axeId: itemId });
+    if (!updated) {
+      this.state.axeId = oldAxeId;
+      if (oldAxeReturned) await DB.removeItem(oldAxeId, 1);
+      await DB.addItem(itemId, 1);
+      await this.refresh();
+      UI.toast('装备失败，请重试', 'error');
+      return false;
+    }
+
+    this._setInventoryQuantity(itemId, this._getItemQty(itemId) - 1);
+    if (oldAxeReturned) {
+      this._setInventoryQuantity(oldAxeId, this._getItemQty(oldAxeId) + 1);
+    }
     UI.toast(`装备了 ${itemDef.name}`, 'success');
     return true;
   },
@@ -2158,7 +2204,7 @@ const PlayerView = {
     if (def.type === 5) {
       const minRealm = getMinRealmForAxeQuality(def.quality);
       const canEquip = canEquipAxeQuality(def.quality, Game.state.realmLevel);
-      axeLocked = !canEquip && Game.state.axeId !== itemId;
+      axeLocked = !canEquip;
       const curRealm = REALMS.find(r => r.level == Game.state.realmLevel) || REALMS[0];
       axeRealmHtml = `
         <div style="background:${canEquip ? 'var(--success)' : 'var(--error)'}15;border:1px solid ${canEquip ? 'var(--success)' : 'var(--error)'}40;border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:13px;display:flex;align-items:center;gap:8px;justify-content:center">
@@ -2177,18 +2223,15 @@ const PlayerView = {
     } else if (def.type === 2) {
       actionBtn = `<button class="btn btn-primary btn-sm" onclick="PlayerView.cashItem('${itemId}')">提现 ¥${def.value}</button>`;
     } else if (def.type === 5) {
-      const isEquipped = Game.state.axeId === itemId;
-      if (isEquipped) {
-        actionBtn = `<button class="btn btn-outline btn-sm" disabled>已装备</button>`;
-      } else if (axeLocked) {
+      if (axeLocked) {
         actionBtn = `
           <button class="btn btn-outline btn-sm" disabled style="opacity:0.5">🔒 仙阶不足</button>
-          <button class="btn btn-outline btn-sm" onclick="PlayerView.sellItem('${itemId}')">出售 +${renderItemIcon('0', '🪙', 'item-icon-xs')} ${def.sellPrice}</button>
+          <button class="btn btn-outline btn-sm" onclick="PlayerView.sellItem('${itemId}',this)">出售 +${renderItemIcon('0', '🪙', 'item-icon-xs')} ${def.sellPrice}</button>
         `;
       } else {
         actionBtn = `
-          <button class="btn btn-primary btn-sm" onclick="PlayerView.equipItem('${itemId}')">装备</button>
-          <button class="btn btn-outline btn-sm" onclick="PlayerView.sellItem('${itemId}')">出售 +${renderItemIcon('0', '🪙', 'item-icon-xs')} ${def.sellPrice}</button>
+          <button class="btn btn-primary btn-sm" onclick="PlayerView.equipItem('${itemId}',this)">装备</button>
+          <button class="btn btn-outline btn-sm" onclick="PlayerView.sellItem('${itemId}',this)">出售 +${renderItemIcon('0', '🪙', 'item-icon-xs')} ${def.sellPrice}</button>
         `;
       }
     }
@@ -2324,34 +2367,83 @@ const PlayerView = {
     document.querySelector('.modal-overlay')?.remove();
   },
 
-  equipItem(itemId) {
-    Game.equipAxe(itemId).then(ok => {
-      if (ok) {
+  async equipItem(itemId, button) {
+    const operationKey = 'equip-axe';
+    if (OperationGuard.isActive(operationKey)) return;
+    const originalHtml = button?.innerHTML;
+    if (button) {
+      button.disabled = true;
+      button.textContent = '装备中...';
+    }
+    try {
+      const outcome = await OperationGuard.run(operationKey, () => Game.equipAxe(itemId));
+      if (outcome.started && outcome.value) {
         this.renderInventory(this.currentInvTab);
         document.querySelector('.modal-overlay')?.remove();
         this.renderCultivate();
       }
-    });
-  },
-
-  // 锻造结果页直接装备
-  async _equipFromForge(itemId) {
-    const ok = await Game.equipAxe(itemId);
-    if (ok) {
-      document.querySelectorAll('.modal-overlay').forEach(el => el.remove());
-      this.renderInventory('weapons');
-      this.renderCultivate();
+    } catch (error) {
+      console.error('equipItem action error:', error);
+      UI.toast('装备失败，请重试', 'error');
+    } finally {
+      if (button?.isConnected) {
+        button.disabled = false;
+        button.innerHTML = originalHtml;
+      }
     }
   },
 
-  sellItem(itemId) {
+  // 锻造结果页直接装备
+  async _equipFromForge(itemId, button) {
+    const operationKey = 'equip-axe';
+    if (OperationGuard.isActive(operationKey)) return;
+    const originalText = button?.textContent || '立即装备';
+    if (button) {
+      button.disabled = true;
+      button.textContent = '装备中...';
+    }
+    try {
+      const outcome = await OperationGuard.run(operationKey, () => Game.equipAxe(itemId));
+      if (outcome.started && outcome.value) {
+        document.querySelectorAll('.modal-overlay').forEach(el => el.remove());
+        this.renderInventory('weapons');
+        this.renderCultivate();
+      }
+    } finally {
+      if (button?.isConnected) {
+        button.disabled = false;
+        button.textContent = originalText;
+      }
+    }
+  },
+
+  sellItem(itemId, button) {
     const def = ITEMS[itemId];
     UI.confirm(`确定出售 ${def.name}，获得 ${def.sellPrice} 游戏币？`, async () => {
-      const ok = await Game.sellAxe(itemId);
-      if (ok) {
-        this.renderInventory(this.currentInvTab);
-        document.querySelector('.modal-overlay')?.remove();
-        this.renderCultivate();
+      const operationKey = `sell-axe:${itemId}`;
+      if (OperationGuard.isActive(operationKey)) return;
+      const originalHtml = button?.innerHTML;
+      if (button?.isConnected) {
+        button.disabled = true;
+        button.textContent = '出售中...';
+      }
+      try {
+        const outcome = await OperationGuard.run(operationKey, () => Game.sellAxe(itemId));
+        if (outcome.started && outcome.value) {
+          this.renderInventory(this.currentInvTab);
+          document.querySelector('.modal-overlay')?.remove();
+          this.renderCultivate();
+        } else if (outcome.started) {
+          UI.toast('出售失败，背包数量已刷新', 'error');
+        }
+      } catch (error) {
+        console.error('sellItem action error:', error);
+        UI.toast('出售失败，请重试', 'error');
+      } finally {
+        if (button?.isConnected) {
+          button.disabled = false;
+          button.innerHTML = originalHtml;
+        }
       }
     });
   },
@@ -3665,7 +3757,7 @@ const PlayerView = {
           title: '🎉 锻造成功',
           footer: `<div class="modal-footer">
             <button class="btn btn-primary btn-sm" onclick="PlayerView.showForge()">继续锻造</button>
-            ${canEquip ? `<button class="btn btn-accent btn-sm" onclick="PlayerView._equipFromForge('${result.itemId}')">立即装备</button>` : ''}
+            ${canEquip ? `<button class="btn btn-accent btn-sm" onclick="PlayerView._equipFromForge('${result.itemId}',this)">立即装备</button>` : ''}
           </div>`
         });
         // X按钮和遮罩关闭后，回到锻造弹窗（刷新按钮状态和锻铁数量）

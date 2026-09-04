@@ -28,3 +28,14 @@ test('compose uses one guarded RPC and updates inventory locally', () => {
   assert.doesNotMatch(body, /DB\.addItem/);
   assert.doesNotMatch(body, /this\.refresh\(/);
 });
+
+test('same-id backpack axes remain equipable and sellable', () => {
+  const detail = app.match(/showItemDetail\(itemId\)[\s\S]*?\n  },/)?.[0] || '';
+  assert.doesNotMatch(detail, /const isEquipped = Game\.state\.axeId === itemId/);
+  assert.match(detail, /PlayerView\.equipItem/);
+  assert.match(detail, /PlayerView\.sellItem/);
+
+  const sell = app.match(/async sellAxe\(itemId\)[\s\S]*?\n  },/)?.[0] || '';
+  assert.doesNotMatch(sell, /装备中的斧头无法出售/);
+  assert.match(sell, /if \(!removed\) return false/);
+});
