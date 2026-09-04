@@ -2148,12 +2148,12 @@ const PlayerView = {
       } else if (axeLocked) {
         actionBtn = `
           <button class="btn btn-outline btn-sm" disabled style="opacity:0.5">🔒 仙阶不足</button>
-          <button class="btn btn-outline btn-sm" onclick="PlayerView.sellItem('${itemId}')">出售 +${def.sellPrice}🪙</button>
+          <button class="btn btn-outline btn-sm" onclick="PlayerView.sellItem('${itemId}')">出售 +${renderItemIcon('0', '🪙', 'item-icon-xs')} ${def.sellPrice}</button>
         `;
       } else {
         actionBtn = `
           <button class="btn btn-primary btn-sm" onclick="PlayerView.equipItem('${itemId}')">装备</button>
-          <button class="btn btn-outline btn-sm" onclick="PlayerView.sellItem('${itemId}')">出售 +${def.sellPrice}🪙</button>
+          <button class="btn btn-outline btn-sm" onclick="PlayerView.sellItem('${itemId}')">出售 +${renderItemIcon('0', '🪙', 'item-icon-xs')} ${def.sellPrice}</button>
         `;
       }
     }
@@ -3003,7 +3003,7 @@ const PlayerView = {
         <div class="section-header" style="align-items:center">
           <div class="section-title">🛒 天道酬勤商店</div>
           <div class="res-pill res-coin" title="游戏币余额">
-            <span class="res-icon">🪙</span><span class="res-val" id="shop-coin-balance">${Game.state.coin || 0}</span>
+            <span class="res-icon">${renderItemIcon('0', '🪙', 'res-coin-img')}</span><span class="res-val" id="shop-coin-balance">${Game.state.coin || 0}</span>
           </div>
         </div>
         <div class="shop-tip">砍树掉落、出售仙斧可获得游戏币，用于在此兑换道具</div>
