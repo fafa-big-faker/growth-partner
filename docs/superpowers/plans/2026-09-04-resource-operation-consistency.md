@@ -46,7 +46,7 @@
 - Produces: browser global `OperationGuard`.
 - `OperationGuard.run(key, task)` returns `{ started: false, value: false }` for a duplicate call, otherwise `{ started: true, value }`; task errors are rethrown after the key is released.
 
-- [ ] **Step 1: Write failing operation guard tests**
+- [x] **Step 1: Write failing operation guard tests**
 
 ```js
 const test = require('node:test');
@@ -81,13 +81,13 @@ test('a failed task releases its key', async () => {
 });
 ```
 
-- [ ] **Step 2: Run the test and verify the module is missing**
+- [x] **Step 2: Run the test and verify the module is missing**
 
 Run: `node --test tests/operation-guard.test.js`
 
 Expected: FAIL with `Cannot find module '../operation-guard'`.
 
-- [ ] **Step 3: Implement `operation-guard.js`**
+- [x] **Step 3: Implement `operation-guard.js`**
 
 ```js
 (function initOperationGuard(root) {
@@ -117,7 +117,7 @@ Expected: FAIL with `Cannot find module '../operation-guard'`.
 })(typeof globalThis !== 'undefined' ? globalThis : window);
 ```
 
-- [ ] **Step 4: Load the guard before the application**
+- [x] **Step 4: Load the guard before the application**
 
 Keep `game-config.js` first, then add:
 
@@ -126,7 +126,7 @@ Keep `game-config.js` first, then add:
 <script src="app.js"></script>
 ```
 
-- [ ] **Step 5: Run tests and syntax checks**
+- [x] **Step 5: Run tests and syntax checks**
 
 Run: `node --test tests/operation-guard.test.js`
 
@@ -136,7 +136,7 @@ Run: `node --check operation-guard.js`
 
 Expected: exit code 0.
 
-- [ ] **Step 6: Commit the guard**
+- [x] **Step 6: Commit the guard**
 
 ```bash
 git add operation-guard.js index.html tests/operation-guard.test.js
