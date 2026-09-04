@@ -1790,8 +1790,25 @@ const PlayerView = {
       : 'assets/images/tree-sprout.jpg';
 
     main.innerHTML = `
+      <!-- ⓪ 顶栏：邮件 / 成就 / 金币 -->
+      <div class="cult-topbar">
+        <div class="topbar-left">
+          <div class="status-mail" onclick="PlayerView.showMailModal()">
+            <span>📮</span>
+            <span class="mail-badge" id="mail-badge" style="display:none">0</span>
+          </div>
+          <div class="status-mail" onclick="PlayerView.showAchievements()" title="成就">
+            <span>🏆</span>
+            <span class="ach-dot" id="ach-dot" style="display:none"></span>
+          </div>
+        </div>
+        <div class="res-pill res-coin" id="coin-pill" title="游戏币 · 可在「天道酬勤」商店购买道具，砍树/出售仙斧可获得">
+          <span class="res-icon">🪙</span><span class="res-val" id="coin-count">${Game.state.coin || 0}</span>
+        </div>
+      </div>
+
       <!-- ① 场景区：仙树 + 人物 -->
-      <div class="cult-scene" id="tree-area" style="background-image:url('assets/images/scene-bg.jpg')">
+      <div class="cult-scene" id="tree-area">
         <div class="cult-tree" id="tree-icon" onclick="PlayerView.showTreeDetail()">
           <img src="${treeImg}" class="tree-img" alt="${treeConfig.name}" />
           <div class="tree-label">${treeConfig.name}</div>
@@ -1801,19 +1818,8 @@ const PlayerView = {
         </div>
       </div>
 
-      <!-- ② 状态栏：邮件 / 等级·仙阶 + 经验条 / 突破 -->
+      <!-- ② 状态栏：等级·仙阶 + 经验条 / 突破 -->
       <div class="cult-status">
-        <div class="status-mail" onclick="PlayerView.showMailModal()">
-          <span>📮</span>
-          <span class="mail-badge" id="mail-badge" style="display:none">0</span>
-        </div>
-        <div class="status-mail" onclick="PlayerView.showAchievements()" title="成就">
-          <span>🏆</span>
-          <span class="ach-dot" id="ach-dot" style="display:none"></span>
-        </div>
-        <div class="res-pill res-coin" id="coin-pill" title="游戏币 · 可在「天道酬勤」商店购买道具，砍树/出售仙斧可获得">
-          <span class="res-icon">🪙</span><span class="res-val" id="coin-count">${Game.state.coin || 0}</span>
-        </div>
         <div class="status-center">
           <div class="status-realm">${realm.icon} ${Game.state.level}级 · ${realm.name}</div>
           <div class="status-exp-row">

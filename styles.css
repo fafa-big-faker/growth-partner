@@ -1401,6 +1401,33 @@ body {
 }
 
 /* ② 状态栏：邮件 / 等级·仙阶 + 经验条 / 突破 */
+/* ⓪ 顶栏：邮件 / 成就 / 金币 */
+.cult-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 4px;
+  margin-bottom: 8px;
+}
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.cult-topbar .status-mail {
+  width: 32px;
+  height: 32px;
+  font-size: 18px;
+  background: var(--card);
+  box-shadow: var(--shadow);
+}
+.cult-topbar .res-pill {
+  height: 32px;
+  font-size: 13px;
+  box-shadow: var(--shadow);
+}
+
 .cult-status {
   display: flex;
   align-items: center;
