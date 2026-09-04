@@ -599,15 +599,15 @@ git commit -m "fix: prevent duplicate resource actions"
 - Consumes: `upgrade_v5.sql`, the new browser guard, and all updated app handlers.
 - Produces: verified Supabase functions and published GitHub Pages build.
 
-- [ ] **Step 1: Install the v5 migration in Supabase**
+- [x] **Step 1: Install the v5 migration in Supabase**
 
 Open the connected Supabase project SQL editor, execute the complete `upgrade_v5.sql`, and confirm both RPCs and `theme_reward_claims` exist. Execute the script a second time to verify it is idempotent.
 
-- [ ] **Step 2: Verify atomic compose directly**
+- [x] **Step 2: Verify atomic compose directly**
 
 Record a disposable test material and target quantity, call `compose_inventory_item` twice concurrently with stock sufficient for only one call, and verify exactly one result has `ok: true`, the other has `code: insufficient_materials`, source quantity never goes negative, and the target increases once. Restore the disposable test quantities afterward using explicit values recorded before the test.
 
-- [ ] **Step 3: Run the full local automated suite**
+- [x] **Step 3: Run the full local automated suite**
 
 Run: `node --test tests/operation-guard.test.js tests/resource-operation-consistency.test.js tests/coin-icon-rendering.test.js`
 
@@ -617,7 +617,7 @@ Run: `node --check app.js && node --check operation-guard.js`
 
 Expected: exit code 0.
 
-- [ ] **Step 4: Verify in a local browser**
+- [x] **Step 4: Verify in a local browser**
 
 Start a local static server and test desktop plus mobile widths. Verify:
 
@@ -631,13 +631,13 @@ Start a local static server and test desktop plus mobile widths. Verify:
 
 Capture screenshots of the same-ID axe detail and the compose pending/success state.
 
-- [ ] **Step 5: Commit completed plan tracking**
+- [x] **Step 5: Commit completed plan tracking**
 
 ```bash
 git add docs/superpowers/plans/2026-09-04-resource-operation-consistency.md
 git commit -m "docs: complete resource consistency plan"
 ```
 
-- [ ] **Step 6: Push and verify production**
+- [x] **Step 6: Push and verify production**
 
 Push `main` to `origin`, wait for GitHub Pages to publish, then repeat the core compose and same-ID axe checks on the public site. Confirm the deployed commit matches local HEAD and report the production URL and test result.
