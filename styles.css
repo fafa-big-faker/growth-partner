@@ -1026,31 +1026,6 @@ body {
   margin-bottom: 16px;
 }
 
-/* 额外掉落（每10次砍树触发） */
-.extra-drop-section {
-  margin-bottom: 16px;
-  padding: 12px 14px;
-  border-radius: 10px;
-  background: linear-gradient(135deg, #fff8e1, #ffecb3);
-  border: 1px dashed var(--warning);
-}
-.extra-drop-tag {
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--warning);
-  margin-bottom: 8px;
-  text-align: center;
-}
-.extra-drop-item {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-}
-.extra-drop-icon { font-size: 28px; }
-.extra-drop-name { font-size: 14px; font-weight: 600; }
-.extra-drop-qty { font-size: 13px; color: var(--text-secondary); }
-
 /* ===== Toast ===== */
 .toast-container {
   position: fixed;
