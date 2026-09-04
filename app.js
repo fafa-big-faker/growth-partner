@@ -4,6 +4,18 @@
 
 // ===== 配置数据（后续迁到飞书表格） =====
 
+// emoji 兜底表（飞书 icon 列改为图片后无文本值，纯文本场景如 toast/标题 用此兜底）
+const ITEM_EMOJI = {
+  '0': '🪙', '1': '🪓',
+  '10001': '🟫', '10002': '🪙', '10101': '🌫️', '10102': '🍃',
+  '10201': '✨', '10202': '💧', '10301': '🪨', '10302': '🟢',
+  '20001': '🔴', '20101': '🥈', '20201': '🥇', '20301': '🔮',
+  '30001': '🟤', '30101': '👁️', '30201': '⏳',
+  '40001': '🔩', '40002': '💧',
+  '51001': '🪓', '51002': '🪚', '52001': '📖', '52002': '🦶',
+  '53001': '🪓', '53002': '⚓', '54001': '🍗', '54002': '🪘', '55001': '🌩️',
+};
+
 // 道具配置 → 从飞书表格配置动态构建（game-config.js → itemTable）
 const ITEMS = {};
 (GAME_CONFIG?.itemTable || []).forEach(item => {
@@ -14,7 +26,7 @@ const ITEMS = {};
     type: item.type,
     quality: item.quality,
     stackLimit: item.stackLimit || 999,
-    icon: item.icon || '❓',
+    icon: (item.icon && item.icon !== '❓') ? item.icon : (ITEM_EMOJI[id] || '❓'),
     iconImage: item.iconImage || '',  // 飞书道具表 icon 列上传的 PNG（配置驱动，优先于内置映射）
     desc: item.description || '',
     interactionType: item.interactionType || 0,
@@ -164,18 +176,27 @@ const ITEM_IMAGES = {
   '55001': 'assets/images/icons/55001.png',   // 盘古开天劈歪斧
 };
 
+// 纯文本场景取 emoji（toast、标题、option 文本等，不能放 <img>）
+function itemEmoji(itemId) {
+  const id = String(itemId);
+  const def = (typeof ITEMS !== 'undefined') ? ITEMS[id] : null;
+  if (def && def.icon && def.icon !== '❓') return def.icon;
+  return ITEM_EMOJI[id] || '❓';
+}
+
 // 统一道具图标渲染：优先飞书配置的PNG(iconImage) → 本地内置映射(ITEM_IMAGES) → emoji
 // 斧头(type5)自动追加竖长 class item-icon-axe
 function renderItemIcon(itemId, fallbackEmoji, cls = 'item-icon-img') {
   const id = String(itemId);
   const def = (typeof ITEMS !== 'undefined') ? ITEMS[id] : null;
   const img = (def && def.iconImage) || ITEM_IMAGES[id];
+  const fb = (fallbackEmoji && fallbackEmoji !== '❓') ? fallbackEmoji : (ITEM_EMOJI[id] || '❓');
   if (img) {
     const isAxe = def && def.type === 5;
     const axeCls = isAxe ? ' item-icon-axe' : '';
-    return `<img src="${img}" class="${cls}${axeCls}" alt="${fallbackEmoji}" />`;
+    return `<img src="${img}" class="${cls}${axeCls}" alt="${fb}" />`;
   }
-  return fallbackEmoji;
+  return fb;
 }
 
 // 仙阶表 → 从飞书表格配置合并生成（game-config.js）
@@ -1737,12 +1758,19 @@ const UI = {
     return `<span class="tag ${s[1]}">${s[0]}</span>`;
   },
 
+  // 掉落物图标 HTML（兼容游戏币/砍树次数/普通道具）
+  _dropIconHtml(item) {
+    if (item.kind === 'coin') return renderItemIcon('0', '🪙');
+    if (item.kind === 'chopping') return renderItemIcon('1', '🪓');
+    return renderItemIcon(item.itemId, item.item?.icon || '🎁');
+  },
+
   // 播放掉落动画
   playDropAnimation(item, treeElement) {
     const container = document.getElementById('floating-items-container');
     const el = document.createElement('div');
     el.className = 'falling-item';
-    el.textContent = item.item.icon;
+    el.innerHTML = this._dropIconHtml(item);
 
     const treeRect = treeElement.getBoundingClientRect();
     const startX = treeRect.left + treeRect.width / 2 - 18;
@@ -1760,7 +1788,7 @@ const UI = {
     const container = document.getElementById('floating-items-container');
     const el = document.createElement('div');
     el.className = 'scatter-item';
-    el.textContent = item.item.icon;
+    el.innerHTML = this._dropIconHtml(item);
 
     const treeRect = treeElement.getBoundingClientRect();
     const startX = treeRect.left + treeRect.width / 2 - 16;
@@ -1826,7 +1854,7 @@ const PlayerView = {
           </div>
         </div>
         <div class="res-pill res-coin" id="coin-pill" title="游戏币 · 可在「天道酬勤」商店购买道具，砍树/出售仙斧可获得">
-          <span class="res-icon">🪙</span><span class="res-val" id="coin-count">${Game.state.coin || 0}</span>
+          <span class="res-icon">${renderItemIcon('0', '🪙', 'res-coin-img')}</span><span class="res-val" id="coin-count">${Game.state.coin || 0}</span>
         </div>
       </div>
 
@@ -1868,7 +1896,7 @@ const PlayerView = {
       <div class="cult-action">
         <div class="action-chop-area">
           <button class="chop-circle-btn" id="chop-btn" onclick="PlayerView.doChop()" ${Game.state.choppingCount <= 0 ? 'disabled' : ''}>
-            <span class="chop-axe-icon">${axeDef.icon}</span>
+            <span class="chop-axe-icon">${renderItemIcon(Game.state.axeId, axeDef.icon, 'chop-axe-img')}</span>
           </button>
           <span class="chop-count-badge">${Game.state.choppingCount}</span>
           <label class="ten-toggle ${Game.state.choppingCount < 10 ? 'unavailable' : ''}">
@@ -1880,7 +1908,7 @@ const PlayerView = {
 
       <!-- 装备信息 + 锻造按钮 -->
       <div class="equip-info-bar">
-        <span class="equip-icon">${axeDef.icon}</span>
+        <span class="equip-icon">${renderItemIcon(Game.state.axeId, axeDef.icon, 'equip-axe-img')}</span>
         <div class="equip-detail">
           <div class="equip-name-row">
             <span class="equip-name">${axeDef.name}</span>
@@ -1966,7 +1994,7 @@ const PlayerView = {
         const have = Game.inventory.find(i => i.itemId == req.itemId)?.quantity || 0;
         const ok = have >= req.count;
         return `<div style="display:flex;align-items:center;gap:8px;justify-content:center;padding:4px 0">
-          <span style="font-size:20px">${def?.icon || '❓'}</span>
+          <span style="display:inline-flex;align-items:center">${renderItemIcon(req.itemId, def?.icon, 'item-icon-xs')}</span>
           <span>${def?.name || req.itemId}</span>
           <span style="color:${ok ? 'var(--success)' : 'var(--error)'};font-weight:600">${have}/${req.count}</span>
         </div>`;
@@ -2041,8 +2069,12 @@ const PlayerView = {
       return def.type >= 1 && def.type <= 4;
     });
 
-    // 填充空槽位
-    const slots = Math.max(20, items.length);
+    // 已占用格子数：道具每种占1格（数量显示角标），武器每把占1格
+    const filledSlots = isWeapons
+      ? items.reduce((sum, inv) => sum + inv.quantity, 0)
+      : items.length;
+    // 填充空槽位（至少 20 格）
+    const slots = Math.max(20, filledSlots);
     let html = '';
 
     items.forEach(inv => {
@@ -2050,14 +2082,14 @@ const PlayerView = {
       if (!def) return;
       if (def.type === 5) {
         // 武器：每把占一个格子，不显示数量
-        const axeLocked = !canEquipAxeQuality(def.quality, Game.state.realmLevel) && Game.state.axeId !== inv.itemId;
-        const isEquipped = Game.state.axeId === inv.itemId;
+        // 注：装备中的斧子已从背包扣除（手持状态，显示在砍树按钮/装备栏），
+        // 背包里的都是备用斧子，因此不标记“装备中”，避免同种斧子全部误亮
+        const axeLocked = !canEquipAxeQuality(def.quality, Game.state.realmLevel);
         for (let i = 0; i < inv.quantity; i++) {
           html += `
-            <div class="item-slot weapon-slot quality-${def.quality} ${axeLocked ? 'item-locked' : ''} ${isEquipped ? 'item-equipped' : ''}" onclick="PlayerView.showItemDetail('${inv.itemId}')">
+            <div class="item-slot weapon-slot quality-${def.quality} ${axeLocked ? 'item-locked' : ''}" onclick="PlayerView.showItemDetail('${inv.itemId}')">
               <div class="item-icon">${renderItemIcon(inv.itemId, def.icon)}</div>
               ${axeLocked ? '<div class="item-lock-badge">🔒</div>' : ''}
-              ${isEquipped ? '<div class="item-equipped-badge">装备中</div>' : ''}
             </div>
           `;
         }
@@ -2072,7 +2104,7 @@ const PlayerView = {
     });
 
     // 空槽位（武器 tab 用竖格保持行高一致）
-    for (let i = items.length; i < slots; i++) {
+    for (let i = filledSlots; i < slots; i++) {
       html += `<div class="item-slot empty${isWeapons ? ' weapon-slot' : ''}"></div>`;
     }
 
@@ -2159,10 +2191,10 @@ const PlayerView = {
 
     UI.modal(`
       <div style="text-align:center;margin-bottom:16px">
-        <div style="font-size:48px;margin-bottom:4px">${def.icon}</div>
+        <div style="font-size:48px;margin-bottom:4px;display:flex;justify-content:center">${renderItemIcon(itemId, def.icon, 'item-icon-lg')}</div>
         <div style="font-size:14px;color:var(--text-secondary)">${def.name}</div>
         <div style="margin:4px 0;font-size:20px">⬇️</div>
-        <div style="font-size:48px;margin-bottom:4px">${targetDef?.icon || '❓'}</div>
+        <div style="font-size:48px;margin-bottom:4px;display:flex;justify-content:center">${renderItemIcon(def.composeTo, targetDef?.icon, 'item-icon-lg')}</div>
         <div style="font-size:16px;font-weight:700">${targetDef?.name || '?'}</div>
       </div>
       <div style="text-align:center;font-size:13px;color:var(--text-secondary);margin-bottom:16px">
@@ -2201,7 +2233,7 @@ const PlayerView = {
     let qty = 1;
     UI.modal(`
       <div style="text-align:center;margin-bottom:16px">
-        <div style="font-size:48px;margin-bottom:8px">${def.icon}</div>
+        <div style="font-size:48px;margin-bottom:8px;display:flex;justify-content:center">${renderItemIcon(itemId, def.icon, 'item-icon-lg')}</div>
         <div style="font-size:16px;font-weight:700">${def.name}</div>
         <div style="font-size:13px;color:var(--text-secondary);margin-top:4px">持有 ${have} 个 · 每个 ¥${def.value}</div>
       </div>
@@ -2569,7 +2601,7 @@ const PlayerView = {
         if (extraReward.length > 0) {
           extraReward.forEach(ri => {
             const def = ITEMS[ri.item_id];
-            if (def) extraRewardHtml += `<span style="font-size:20px;margin:0 4px">${def.icon}×${ri.quantity}</span>`;
+            if (def) extraRewardHtml += `<span style="display:inline-flex;align-items:center;gap:2px;margin:0 6px;font-size:14px">${renderItemIcon(ri.item_id, def.icon, 'item-icon-xs')}×${ri.quantity}</span>`;
           });
         }
         const allDone = completedCount >= totalCount && totalCount > 0;
@@ -2635,11 +2667,11 @@ const PlayerView = {
     const rewardItems = task.rewardItems || [];
     let rewardHtml = '';
     if (task.rewardChopping > 0) {
-      rewardHtml += `<span class="reward-chopping">🪓 ×${task.rewardChopping}</span>`;
+      rewardHtml += `<span class="reward-chopping" style="display:inline-flex;align-items:center;gap:3px">${renderItemIcon('1', '🪓', 'item-icon-xs')} ×${task.rewardChopping}</span>`;
     }
     rewardItems.forEach(ri => {
       const def = ITEMS[ri.item_id];
-      if (def) rewardHtml += `<span style="font-size:16px" title="${def.name}">${def.icon}×${ri.quantity}</span>`;
+      if (def) rewardHtml += `<span style="display:inline-flex;align-items:center;gap:2px;font-size:14px" title="${def.name}">${renderItemIcon(ri.item_id, def.icon, 'item-icon-xs')}×${ri.quantity}</span>`;
     });
 
     let actionBtn = '';
@@ -2736,7 +2768,7 @@ const PlayerView = {
       const state = claimed ? 'claimed' : (claimable ? 'claimable' : 'locked');
       const first = (r.items && r.items[0]) || null;
       const def = first ? ITEMS[String(first.itemId)] : null;
-      const icon = def ? (def.icon || '🎁') : '🎁';
+      const icon = def ? renderItemIcon(first.itemId, def.icon, 'item-icon-xs') : '🎁';
       const count = first ? first.count : '';
       const circleContent = claimed ? '✓' : icon;
       const click = claimable ? `onclick="PlayerView.claimSignIn(${r.rewardId})"` : '';
@@ -3068,7 +3100,7 @@ const PlayerView = {
           <div class="shop-badge-slot">${badge}</div>
           <div class="shop-icon" style="box-shadow:inset 0 0 0 2px ${qColor}66;border-radius:12px">${renderItemIcon(item.itemId, item.icon)}</div>
           <div class="shop-name">${item.name}${countText}</div>
-          <div class="shop-cost ${afford ? '' : 'shop-cost-no'}">🪙 ${item.price}</div>
+          <div class="shop-cost ${afford ? '' : 'shop-cost-no'}" style="display:inline-flex;align-items:center;gap:3px">${renderItemIcon('0', '🪙', 'item-icon-xs')} ${item.price}</div>
         </div>
       `;
     });
@@ -3131,7 +3163,7 @@ const PlayerView = {
           itemsHtml = '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">';
           mail.items.forEach(ri => {
             const def = ITEMS[ri.item_id];
-            if (def) itemsHtml += `<span style="font-size:13px;background:var(--bg-secondary);padding:2px 8px;border-radius:6px">${def.icon}×${ri.quantity}</span>`;
+            if (def) itemsHtml += `<span style="display:inline-flex;align-items:center;gap:3px;font-size:13px;background:var(--bg-secondary);padding:2px 8px;border-radius:6px">${renderItemIcon(ri.item_id, def.icon, 'item-icon-xs')}×${ri.quantity}</span>`;
           });
           itemsHtml += '</div>';
         }
@@ -3213,7 +3245,7 @@ const PlayerView = {
 
     list.innerHTML = rows.map(a => {
       const def = ITEMS[String(a.rewardItemId)];
-      const rewardIcon = def ? (def.icon || '🎁') : '🎁';
+      const rewardIcon = def ? renderItemIcon(a.rewardItemId, def.icon, 'item-icon-xs') : '🎁';
       const rewardName = def ? def.name : '道具';
       const pct = Math.round(a.progress * 100);
       let action;
@@ -3277,7 +3309,7 @@ const PlayerView = {
         itemsHtml = '<div class="mail-items">';
         mail.items.forEach(ri => {
           const def = ITEMS[ri.item_id];
-          if (def) itemsHtml += `<span class="mini-item">${def.icon}×${ri.quantity}</span>`;
+          if (def) itemsHtml += `<span class="mini-item" style="display:inline-flex;align-items:center;gap:3px">${renderItemIcon(ri.item_id, def.icon, 'item-icon-xs')}×${ri.quantity}</span>`;
         });
         itemsHtml += '</div>';
       }
@@ -3323,7 +3355,7 @@ const PlayerView = {
           const q = QUALITY[def.quality] || QUALITY[1];
           itemsHtml += `
             <div style="text-align:center">
-              <div style="font-size:40px">${def.icon}</div>
+              <div style="font-size:40px;display:flex;justify-content:center;align-items:center;height:56px">${renderItemIcon(ri.item_id, def.icon, 'item-icon-lg')}</div>
               <div style="font-size:12px;color:${q.color}">${def.name} ×${ri.quantity}</div>
             </div>
           `;
@@ -3381,10 +3413,10 @@ const PlayerView = {
       const def = ITEMS[req.itemId];
       const have = Game.inventory.find(i => i.itemId == req.itemId)?.quantity || 0;
       const ok = have >= req.count;
-      const icon = def?.icon || '❓';
+      const icon = renderItemIcon(req.itemId, def?.icon, 'item-icon-sm');
       const name = def?.name || `道具${req.itemId}`;
       return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0">
-        <span style="font-size:24px">${icon}</span>
+        <span style="display:inline-flex;align-items:center">${icon}</span>
         <span style="flex:1">${name}</span>
         <span style="color:${ok ? 'var(--success)' : 'var(--error)'}">${have}/${req.count}</span>
       </div>`;
@@ -3458,10 +3490,10 @@ const PlayerView = {
       const def = ITEMS[req.itemId];
       const have = Game.inventory.find(i => i.itemId == req.itemId)?.quantity || 0;
       const ok = have >= req.count;
-      const icon = def?.icon || '❓';
+      const icon = renderItemIcon(req.itemId, def?.icon, 'item-icon-sm');
       const name = def?.name || `道具${req.itemId}`;
       return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0">
-        <span style="font-size:24px">${icon}</span>
+        <span style="display:inline-flex;align-items:center">${icon}</span>
         <span style="flex:1">${name}</span>
         <span style="color:${ok ? 'var(--success)' : 'var(--error)'}">${have}/${req.count}</span>
       </div>`;
@@ -3794,10 +3826,10 @@ const AdminView = {
     tasks.forEach(task => {
       const rewardItems = task.rewardItems || [];
       let rewardHtml = '';
-      if (task.rewardChopping > 0) rewardHtml += `<span class="reward-chopping">🪓 ×${task.rewardChopping}</span>`;
+      if (task.rewardChopping > 0) rewardHtml += `<span class="reward-chopping" style="display:inline-flex;align-items:center;gap:3px">${renderItemIcon('1', '🪓', 'item-icon-xs')} ×${task.rewardChopping}</span>`;
       rewardItems.forEach(ri => {
         const def = ITEMS[ri.item_id];
-        if (def) rewardHtml += `<span style="font-size:16px">${def.icon}×${ri.quantity}</span>`;
+        if (def) rewardHtml += `<span style="display:inline-flex;align-items:center;gap:2px;font-size:14px">${renderItemIcon(ri.item_id, def.icon, 'item-icon-xs')}×${ri.quantity}</span>`;
       });
 
       const statusBadge = task.status === 'draft'
@@ -4340,7 +4372,7 @@ const AdminView = {
       <div class="card">
         <div class="card-title">🪓 装备：${axeDef.name}</div>
         <div style="display:flex;align-items:center;gap:12px">
-          <div style="font-size:48px">${axeDef.icon}</div>
+          <div style="display:flex;align-items:center;height:60px">${renderItemIcon(state.axeId, axeDef.icon, 'item-icon-lg')}</div>
           <div>
             <div style="font-weight:600">${axeDef.name}</div>
             <div style="font-size:12px;color:var(--text-secondary)">${axeDef.desc}</div>
@@ -4356,7 +4388,7 @@ const AdminView = {
             const def = ITEMS[inv.itemId];
             if (!def) return '';
             return `<div style="text-align:center;width:48px">
-              <div style="font-size:24px">${def.icon}</div>
+              <div style="display:flex;justify-content:center;align-items:center;height:36px">${renderItemIcon(inv.itemId, def.icon, 'item-icon-sm')}</div>
               <div style="font-size:10px;color:var(--text-light)">×${inv.quantity}</div>
             </div>`;
           }).join('')}
@@ -4394,7 +4426,7 @@ const AdminView = {
       itemOptions += `<optgroup label="${typeNames[t] || '类型' + t}">`;
       groupedItems[t].forEach(item => {
         const qName = QUALITY[item.quality]?.name || '';
-        itemOptions += `<option value="${item.id}">${item.icon} ${item.name} (${qName}) [${item.id}]</option>`;
+        itemOptions += `<option value="${item.id}">${itemEmoji(item.id)} ${item.name} (${qName}) [${item.id}]</option>`;
       });
       itemOptions += '</optgroup>';
     });
@@ -4486,7 +4518,7 @@ const AdminView = {
         <table class="data-table">
           ${inventory.map(inv => {
             const def = ITEMS[inv.itemId];
-            const name = def ? `${def.icon} ${def.name}` : inv.itemId;
+            const name = def ? `${itemEmoji(inv.itemId)} ${def.name}` : inv.itemId;
             return `<tr><td>${name}</td><td>×${inv.quantity}</td><td style="font-size:11px;color:var(--text-light)">${inv.itemId}</td></tr>`;
           }).join('')}
         </table>
@@ -4524,16 +4556,16 @@ const AdminView = {
       const state = await DB.getPlayerState();
       const newCoin = (state?.coin || 0) + qty;
       await DB.updatePlayerState({ coin: newCoin });
-      UI.toast(`发放 ${def.icon} ${def.name} ×${qty}（当前 ${newCoin}）`, 'success');
+      UI.toast(`发放 ${itemEmoji(itemId)} ${def.name} ×${qty}（当前 ${newCoin}）`, 'success');
     } else if (def && def.type === 6) {
       // 砍树次数 → 写入 player_state.choppingCount
       const state = await DB.getPlayerState();
       const newCount = (state?.choppingCount || 0) + qty;
       await DB.updatePlayerState({ choppingCount: newCount });
-      UI.toast(`发放 ${def.icon} ${def.name} ×${qty}（当前 ${newCount}）`, 'success');
+      UI.toast(`发放 ${itemEmoji(itemId)} ${def.name} ×${qty}（当前 ${newCount}）`, 'success');
     } else {
       await DB.addItem(itemId, qty);
-      UI.toast(`发放 ${def?.icon || ''} ${def?.name || itemId} ×${qty}`, 'success');
+      UI.toast(`发放 ${itemEmoji(itemId)} ${def?.name || itemId} ×${qty}`, 'success');
     }
     this.renderGM();
   },
