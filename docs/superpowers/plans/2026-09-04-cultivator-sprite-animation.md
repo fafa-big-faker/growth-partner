@@ -65,25 +65,25 @@ git commit -m "feat: add cultivator animation frames"
 - Produces methods: `attach(element)`, `playChop() -> Promise<boolean>`, `stop()`.
 - Produces browser global: `CharacterAnimator`.
 
-- [ ] **Step 1: Write failing animator tests**
+- [x] **Step 1: Write failing animator tests**
 
 Test that attaching renders the first idle frame, `playChop` visits all chop frames in order, resolves once, and resumes the idle sequence; test that reattaching cancels the old element's timers.
 
-- [ ] **Step 2: Run the focused test and confirm failure**
+- [x] **Step 2: Run the focused test and confirm failure**
 
 Run: `node --test tests/character-animator.test.js`
 
 Expected: FAIL because `character-animator.js` does not exist.
 
-- [ ] **Step 3: Implement the animator**
+- [x] **Step 3: Implement the animator**
 
 Use one owned timer and a monotonically increasing sequence token. `playChop()` cancels idle, advances six frames at `chopFrameMs`, resumes idle after the final frame, and resolves. `attach()` cancels the previous target before starting idle.
 
-- [ ] **Step 4: Load the animator before `app.js`**
+- [x] **Step 4: Load the animator before `app.js`**
 
 Add `<script src="character-animator.js"></script>` after `operation-guard.js` and before `app.js`.
 
-- [ ] **Step 5: Run tests and commit**
+- [x] **Step 5: Run tests and commit**
 
 Run: `node --test tests/character-animator.test.js`
 
