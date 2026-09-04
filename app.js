@@ -817,6 +817,7 @@ const Game = {
 
   // 统一发放道具（特殊道具不进背包）：
   //   type 0 游戏币 → state.coin；type 6 砍树次数 → state.choppingCount；其余 → 背包
+  // 本地状态同步更新，DB写入异步不阻塞（提升响应速度）
   // 返回 { kind: 'coin'|'chopping'|'item', id, quantity, def }
   async grantItem(itemId, quantity = 1) {
     const id = String(itemId);
@@ -826,19 +827,21 @@ const Game = {
       this.state.coin = (this.state.coin || 0) + qty;
       // 成就统计：历史累计获得游戏币
       this.state.totalCoinEarned = (this.state.totalCoinEarned || 0) + qty;
-      await DB.updatePlayerState({ coin: this.state.coin, totalCoinEarned: this.state.totalCoinEarned });
+      DB.updatePlayerState({ coin: this.state.coin, totalCoinEarned: this.state.totalCoinEarned })
+        .catch(e => console.error('grantItem coin DB error:', e));
       return { kind: 'coin', id, quantity: qty, def };
     }
     if (def && def.type === 6) {
       this.state.choppingCount += qty;
-      await DB.updatePlayerState({ choppingCount: this.state.choppingCount });
+      DB.updatePlayerState({ choppingCount: this.state.choppingCount })
+        .catch(e => console.error('grantItem chopping DB error:', e));
       return { kind: 'chopping', id, quantity: qty, def };
     }
     // 普通道具 → 背包（本地 + DB）
     const idx = this.inventory.findIndex(i => i.itemId == id);
     if (idx >= 0) this.inventory[idx].quantity += qty;
     else this.inventory.push({ itemId: id, quantity: qty });
-    await DB.addItem(id, qty);
+    DB.addItem(id, qty).catch(e => console.error('grantItem addItem DB error:', e));
     return { kind: 'item', id, quantity: qty, def };
   },
 
@@ -863,17 +866,7 @@ const Game = {
     // 应用仙斧buff
     item = this._applyAxeBuffs(item);
 
-    // 发放掉落（特殊道具路由：游戏币/砍树次数不进背包，直接加到货币/次数）
-    const grant = await this.grantItem(item.itemId, item.quantity);
-    item.kind = grant.kind;
-
-    // 返还砍树次数buff（仅本地状态，不写DB）
-    const refund = this._checkRefundBuff();
-    if (refund > 0) {
-      item.refundChopping = refund;
-    }
-
-    // 加经验（仅本地状态）
+    // 加经验（移到grantItem之前，确保前端立即同步更新）
     const expGain = 1;
     this.state.exp += expGain;
     let leveledUp = false;
@@ -886,10 +879,22 @@ const Game = {
       UI.toast(`恭喜！升级到 Lv.${this.state.level}`, 'success');
     }
 
+    // 立即更新前端显示（不等DB写入，画面同步）
+    UI._updateCultivateStats();
+
+    // 发放掉落（本地状态同步更新，DB写入异步不阻塞）
+    const grant = await this.grantItem(item.itemId, item.quantity);
+    item.kind = grant.kind;
+
+    // 返还砍树次数buff（仅本地状态，不写DB）
+    const refund = this._checkRefundBuff();
+    if (refund > 0) {
+      item.refundChopping = refund;
+    }
+
     UI.updateHeader();
 
     // === 批量异步写入玩家状态（不阻塞返回）===
-    // 道具/货币已由 grantItem 写入，这里只同步次数/等级/经验/金币兜底
     DB.updatePlayerState({
       choppingCount: this.state.choppingCount,
       level: this.state.level,
@@ -1078,13 +1083,14 @@ const Game = {
     if (claims.includes(achievementId)) { UI.toast('该成就已领取', 'warn'); return false; }
     if (!ach.claimable) { UI.toast('尚未达成该成就', 'warn'); return false; }
 
-    // 发放奖励道具（游戏币/砍树次数自动路由）
+    // 发放奖励道具（grantItem同步更新本地状态，DB写入异步）
     await this.grantItem(ach.rewardItemId, ach.rewardCount);
 
     const newClaims = [...claims, achievementId];
     this.state.achievementClaims = newClaims;
-    await DB.updatePlayerState({ achievementClaims: newClaims });
-    await this.refresh();
+    DB.updatePlayerState({ achievementClaims: newClaims })
+      .catch(e => console.error('claimAchievement DB error:', e));
+    UI.updateHeader();
     const def = ITEMS[String(ach.rewardItemId)];
     const rname = def ? def.name : '道具';
     UI.toast(`成就达成！获得 ${rname} ×${ach.rewardCount}`, 'success');
@@ -1555,6 +1561,25 @@ const UI = {
     if (coinEl) coinEl.textContent = Game.state.coin || 0;
   },
 
+  // 轻量更新修仙页面的经验/等级/次数/游戏币显示（不重渲染整个页面）
+  _updateCultivateStats() {
+    if (!Game.state) return;
+    const expMax = getExpForLevel(Game.state.level);
+    const realm = REALMS.find(r => r.level == Game.state.realmLevel) || REALMS[0];
+    const realmEl = document.querySelector('.status-realm');
+    if (realmEl) realmEl.textContent = `${realm.icon} ${Game.state.level}级 · ${realm.name}`;
+    const expFill = document.querySelector('.status-exp-fill');
+    if (expFill) expFill.style.width = `${Math.min(100, Game.state.exp / expMax * 100)}%`;
+    const expText = document.querySelector('.status-exp-text');
+    if (expText) expText.textContent = `${Game.state.exp}/${expMax}`;
+    const chopBadge = document.querySelector('.chop-count-badge');
+    if (chopBadge) chopBadge.textContent = Game.state.choppingCount;
+    const coinEl = document.getElementById('coin-count');
+    if (coinEl) coinEl.textContent = Game.state.coin || 0;
+    const chopBtn = document.getElementById('chop-btn');
+    if (chopBtn) chopBtn.disabled = Game.state.choppingCount <= 0;
+  },
+
   _updateAchBadge() {
     const dot = document.getElementById('ach-dot');
     if (!dot) return;
@@ -1741,7 +1766,6 @@ const PlayerView = {
         <div class="cult-tree" id="tree-icon" onclick="PlayerView.showTreeDetail()">
           <span class="tree-emoji">${treeConfig.icon}</span>
           <div class="tree-label">${treeConfig.name}</div>
-          <div class="tree-sub">灵阶 ${Game.state.treeRealm} · 树 Lv.${Game.state.treeLevel}</div>
         </div>
         <div class="cult-char">
           <span class="char-emoji">🧑‍🌾</span>
