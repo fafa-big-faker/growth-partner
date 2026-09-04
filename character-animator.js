@@ -51,8 +51,9 @@
         startIdle(sequence);
       },
 
-      playChop() {
+      playChop(options = {}) {
         if (!element || chopFrames.length === 0) return Promise.resolve(false);
+        const shouldResumeIdle = options.resumeIdle !== false;
         clearTimer();
         sequence += 1;
         const token = sequence;
@@ -78,13 +79,27 @@
                 resolve(false);
                 return;
               }
-              startIdle(token);
+              if (shouldResumeIdle) {
+                startIdle(token);
+              } else {
+                setFrame(chopFrames[chopFrames.length - 1], 'chop-hold');
+                timer = null;
+              }
               pendingChopResolve = null;
               resolve(true);
             }, chopFrameMs);
           };
           advance();
         });
+      },
+
+      resumeIdle() {
+        if (!element || idleFrames.length === 0) return false;
+        clearTimer();
+        cancelPendingChop();
+        sequence += 1;
+        startIdle(sequence);
+        return true;
       },
 
       stop() {

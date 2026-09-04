@@ -3,7 +3,7 @@ import argparse
 import json
 from pathlib import Path
 
-from PIL import Image, ImageDraw
+from PIL import Image
 
 
 SCENE_NAMES = ["login", "cultivate", "tasks", "reward"]
@@ -38,18 +38,19 @@ def crop_grid(image, rows, columns, names, inset=10):
     return crops
 
 
-def remove_edge_background(image, threshold=82):
+def remove_edge_background(image):
     rgba = image.convert("RGBA")
-    draw = ImageDraw.Draw(rgba)
-    transparent = (255, 0, 255, 0)
-    width, height = rgba.size
-    seeds = [
-        (0, 0), (width - 1, 0), (0, height - 1), (width - 1, height - 1),
-        (width // 2, 0), (width // 2, height - 1),
-        (0, height // 2), (width - 1, height // 2),
-    ]
-    for seed in seeds:
-        ImageDraw.floodfill(rgba, seed, transparent, thresh=threshold)
+    cleaned = []
+    for red, green, blue, alpha in rgba.get_flattened_data():
+        is_chroma = (
+            red >= 170
+            and blue >= 125
+            and green <= 105
+            and abs(red - blue) <= 115
+            and green * 2 < red + blue
+        )
+        cleaned.append((red, green, blue, 0 if is_chroma else alpha))
+    rgba.putdata(cleaned)
     return rgba
 
 

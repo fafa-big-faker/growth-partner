@@ -49,7 +49,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: url('assets/images/login-bg.jpg') center / cover no-repeat;
+  background: url('assets/images/v2/backgrounds/login.webp') center / cover no-repeat;
   padding: 20px;
   position: relative;
   overflow: hidden;
@@ -65,10 +65,10 @@ body {
 /* 角色立绘 */
 .login-art {
   position: absolute;
-  left: 5%;
+  left: 7%;
   bottom: 0;
-  height: 90%;
-  max-height: 720px;
+  height: 72%;
+  max-height: 620px;
   z-index: 1;
   pointer-events: none;
   display: none;
@@ -85,7 +85,8 @@ body {
 }
 
 .login-card {
-  background: var(--card);
+  background: rgba(255, 253, 247, 0.94);
+  backdrop-filter: blur(8px);
   border-radius: 20px;
   padding: 40px 32px;
   box-shadow: 0 8px 40px rgba(74, 63, 47, 0.15);
@@ -98,7 +99,10 @@ body {
 }
 
 .login-logo {
-  font-size: 56px;
+  width: 72px;
+  height: 72px;
+  margin-left: auto;
+  margin-right: auto;
   margin-bottom: 8px;
   animation: float 3s ease-in-out infinite;
 }
@@ -379,7 +383,20 @@ body {
 .bottom-nav .nav-item:hover { color: var(--primary); }
 .bottom-nav .nav-item.active { color: var(--primary-dark); }
 
-.nav-icon { font-size: 22px; }
+.nav-icon {
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+}
+.nav-icon-img {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
 .nav-text { font-size: 11px; font-weight: 500; }
 
 /* ===== 修仙主页 - 仙树 ===== */
@@ -1373,6 +1390,48 @@ body {
   pointer-events: none;
 }
 
+.login-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
+.cult-effect {
+  position: absolute;
+  z-index: 4;
+  display: block;
+  pointer-events: none;
+  background: center / contain no-repeat;
+  image-rendering: pixelated;
+  animation-delay: var(--effect-delay);
+  will-change: transform, opacity;
+}
+
+.cult-effect-leaf {
+  width: 22px;
+  height: 22px;
+  animation: leaf-burst 950ms ease-out forwards;
+}
+
+.cult-effect-spark {
+  width: 38px;
+  height: 38px;
+  animation: hit-flash 620ms ease-out forwards;
+}
+
+@keyframes leaf-burst {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.4) rotate(0deg); }
+  14% { opacity: 1; }
+  100% { opacity: 0; transform: translate(calc(-50% + var(--effect-x)), calc(-50% + var(--effect-y))) scale(var(--effect-scale)) rotate(var(--effect-rotate)); }
+}
+
+@keyframes hit-flash {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.35); }
+  18% { opacity: 1; transform: translate(-50%, -50%) scale(var(--effect-scale)); }
+  100% { opacity: 0; transform: translate(calc(-50% + var(--effect-x)), calc(-50% + var(--effect-y))) scale(1.45); }
+}
+
 .cult-tree {
   display: flex;
   flex-direction: column;
@@ -1415,6 +1474,9 @@ body {
 }
 
 .cult-char {
+  width: 120px;
+  height: 176px;
+  flex: 0 0 120px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1424,17 +1486,11 @@ body {
 }
 
 .cult-char .char-img {
-  height: 140px;
-  width: auto;
+  width: 100%;
+  height: 100%;
   object-fit: contain;
+  object-position: center bottom;
   filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));
-  animation: char-bob 3s ease-in-out infinite;
-  border-radius: 8px;
-}
-
-@keyframes char-bob {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-4px); }
 }
 
 /* ② 状态栏：邮件 / 等级·仙阶 + 经验条 / 突破 */
@@ -1593,6 +1649,20 @@ body {
   align-content: start;
   padding-right: 4px;
   scrollbar-width: thin;
+}
+
+.cult-inventory .inventory-grid:not(.weapons-grid) .item-slot:not(.empty) .item-icon {
+  width: 100%;
+  height: 100%;
+  padding: 6px;
+}
+
+.cult-inventory .inventory-grid:not(.weapons-grid) .item-slot:not(.empty) .item-icon-img {
+  width: 70%;
+  height: 70%;
+  max-width: 56px;
+  max-height: 56px;
+  object-fit: contain;
 }
 /* 武器 tab 约 2 行（竖格更高） */
 .cult-inventory .inventory-grid.weapons-grid {
@@ -1848,7 +1918,7 @@ body {
 @media (max-width: 380px) {
   .cult-scene { gap: 16px; min-height: 160px; }
   .cult-tree .tree-img { width: 80px; height: 80px; }
-  .cult-char .char-img { height: 110px; }
+  .cult-char { width: 96px; height: 144px; flex-basis: 96px; }
   .chop-circle-btn { width: 76px; height: 76px; }
   .chop-axe-icon { font-size: 30px; }
   .cult-inventory .inventory-grid { grid-template-columns: repeat(4, 1fr); }
@@ -2013,4 +2083,132 @@ body {
 .theme-soon .soon-emoji { font-size: 42px; display: block; margin-bottom: 8px; }
 .theme-soon .soon-title { font-size: 15px; font-weight: 700; color: #6c3483; margin-bottom: 4px; }
 .theme-soon .soon-sub { font-size: 12px; }
+
+/* ===== V2 玩家端美术系统 ===== */
+#player-dashboard {
+  --player-scene: url('assets/images/v2/backgrounds/cultivate.webp');
+  padding-bottom: 84px;
+  background-image:
+    linear-gradient(180deg, rgba(238, 246, 240, 0.72), rgba(246, 239, 221, 0.9)),
+    var(--player-scene);
+  background-position: center;
+  background-size: cover;
+  background-attachment: fixed;
+}
+
+#player-dashboard[data-player-scene="cultivate"] { --player-scene: url('assets/images/v2/backgrounds/cultivate.webp'); }
+#player-dashboard[data-player-scene="tasks"] { --player-scene: url('assets/images/v2/backgrounds/tasks.webp'); }
+#player-dashboard[data-player-scene="reward"] { --player-scene: url('assets/images/v2/backgrounds/reward.webp'); }
+
+#player-dashboard .app-main { position: relative; z-index: 1; }
+
+#player-dashboard .bottom-nav {
+  background: rgba(250, 246, 236, 0.94);
+  border-top: 2px solid #b88b3f;
+  box-shadow: 0 -5px 20px rgba(43, 54, 48, 0.14);
+  backdrop-filter: blur(10px);
+}
+
+#player-dashboard .nav-item .nav-icon-img {
+  opacity: 0.72;
+  filter: saturate(0.7);
+  transition: transform 180ms ease, filter 180ms ease, opacity 180ms ease;
+}
+
+#player-dashboard .nav-item.active .nav-icon-img {
+  opacity: 1;
+  filter: saturate(1.15) drop-shadow(0 2px 3px rgba(73, 55, 25, 0.24));
+  transform: translateY(-2px) scale(1.08);
+}
+
+.cult-topbar,
+.cult-status,
+.cult-inventory,
+.equip-info-bar {
+  background-color: rgba(255, 253, 247, 0.91);
+  border-color: rgba(163, 124, 55, 0.58);
+  backdrop-filter: blur(8px);
+}
+
+.cult-scene {
+  min-height: 238px;
+  background-image:
+    linear-gradient(180deg, rgba(225, 244, 241, 0.16), rgba(232, 220, 183, 0.34)),
+    url('assets/images/v2/backgrounds/cultivate.webp');
+  border: 2px solid rgba(174, 133, 58, 0.72);
+  box-shadow: 0 7px 20px rgba(44, 64, 57, 0.18);
+}
+
+.cult-tree .tree-img {
+  width: 148px;
+  height: 174px;
+  image-rendering: auto;
+  filter: drop-shadow(0 7px 8px rgba(28, 50, 39, 0.28));
+}
+
+.topbar-feature-icon,
+.button-feature-icon,
+.forge-feature-icon,
+.page-title-icon {
+  display: block;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
+.topbar-feature-icon { width: 31px; height: 31px; }
+.button-feature-icon { width: 23px; height: 23px; }
+.forge-feature-icon { width: 27px; height: 27px; }
+.page-title-icon { width: 42px; height: 42px; }
+
+.page-title-art {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #3d3020;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.tree-detail-img {
+  display: block;
+  width: 170px;
+  height: 180px;
+  margin: 0 auto 8px;
+  object-fit: contain;
+  filter: drop-shadow(0 5px 7px rgba(46, 58, 44, 0.2));
+}
+
+#player-dashboard .item-slot {
+  --slot-frame: url('assets/images/v2/ui/slot-neutral.png');
+  background: transparent var(--slot-frame) center / 100% 100% no-repeat;
+  border: 0;
+  isolation: isolate;
+}
+
+#player-dashboard .item-slot.quality-1 { --slot-frame: url('assets/images/v2/ui/slot-neutral.png'); }
+#player-dashboard .item-slot.quality-2 { --slot-frame: url('assets/images/v2/ui/slot-blue.png'); }
+#player-dashboard .item-slot.quality-3 { --slot-frame: url('assets/images/v2/ui/slot-purple.png'); }
+#player-dashboard .item-slot.quality-4 { --slot-frame: url('assets/images/v2/ui/slot-rose.png'); }
+#player-dashboard .item-slot.quality-5 { --slot-frame: url('assets/images/v2/ui/slot-gold.png'); }
+#player-dashboard .item-slot.empty { opacity: 0.5; }
+#player-dashboard .item-slot .item-icon,
+#player-dashboard .item-slot .item-count,
+#player-dashboard .item-slot .item-lock-badge { z-index: 1; }
+
+#player-dashboard .inv-tab-v {
+  background: transparent url('assets/images/v2/ui/tab-inactive.png') center / 100% 100% no-repeat;
+  border: 0;
+  color: #d8e8e2;
+  text-shadow: 0 1px 2px #142c31;
+}
+
+#player-dashboard .inv-tab-v.active {
+  background-image: url('assets/images/v2/ui/tab-active.png');
+  color: #fff8d2;
+}
+
+@media (max-width: 380px) {
+  .cult-scene { min-height: 196px; gap: 10px; padding-inline: 8px; }
+  .cult-tree .tree-img { width: 118px; height: 138px; }
+  .page-title-icon { width: 36px; height: 36px; }
+}
 

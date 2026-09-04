@@ -1,0 +1,51 @@
+{
+  "backgrounds": {
+    "login": "assets/images/v2/backgrounds/login.webp",
+    "cultivate": "assets/images/v2/backgrounds/cultivate.webp",
+    "tasks": "assets/images/v2/backgrounds/tasks.webp",
+    "reward": "assets/images/v2/backgrounds/reward.webp"
+  },
+  "trees": {
+    "sprout": "assets/images/v2/trees/sprout.png",
+    "spirit": "assets/images/v2/trees/spirit.png",
+    "divine": "assets/images/v2/trees/divine.png"
+  },
+  "ui": {
+    "slot-neutral": "assets/images/v2/ui/slot-neutral.png",
+    "slot-blue": "assets/images/v2/ui/slot-blue.png",
+    "slot-purple": "assets/images/v2/ui/slot-purple.png",
+    "slot-rose": "assets/images/v2/ui/slot-rose.png",
+    "slot-gold": "assets/images/v2/ui/slot-gold.png",
+    "panel-corner": "assets/images/v2/ui/panel-corner.png",
+    "panel-divider": "assets/images/v2/ui/panel-divider.png",
+    "button-primary": "assets/images/v2/ui/button-primary.png",
+    "button-secondary": "assets/images/v2/ui/button-secondary.png",
+    "tab-active": "assets/images/v2/ui/tab-active.png",
+    "tab-inactive": "assets/images/v2/ui/tab-inactive.png",
+    "status-pill": "assets/images/v2/ui/status-pill.png",
+    "modal-crest": "assets/images/v2/ui/modal-crest.png",
+    "checkbox-on": "assets/images/v2/ui/checkbox-on.png",
+    "checkbox-off": "assets/images/v2/ui/checkbox-off.png",
+    "scroll-thumb": "assets/images/v2/ui/scroll-thumb.png"
+  },
+  "icons": {
+    "icon-cultivate": "assets/images/v2/icons/icon-cultivate.png",
+    "icon-tasks": "assets/images/v2/icons/icon-tasks.png",
+    "icon-reward": "assets/images/v2/icons/icon-reward.png",
+    "icon-mail": "assets/images/v2/icons/icon-mail.png",
+    "icon-achievement": "assets/images/v2/icons/icon-achievement.png",
+    "icon-forge": "assets/images/v2/icons/icon-forge.png",
+    "icon-breakthrough": "assets/images/v2/icons/icon-breakthrough.png",
+    "icon-tree-info": "assets/images/v2/icons/icon-tree-info.png",
+    "icon-shop": "assets/images/v2/icons/icon-shop.png",
+    "icon-wallet": "assets/images/v2/icons/icon-wallet.png",
+    "icon-lock": "assets/images/v2/icons/icon-lock.png",
+    "icon-close": "assets/images/v2/icons/icon-close.png"
+  },
+  "effects": {
+    "effect-leaf-green": "assets/images/v2/effects/effect-leaf-green.png",
+    "effect-leaf-gold": "assets/images/v2/effects/effect-leaf-gold.png",
+    "effect-hit-spark": "assets/images/v2/effects/effect-hit-spark.png",
+    "effect-drop-glow": "assets/images/v2/effects/effect-drop-glow.png"
+  }
+}

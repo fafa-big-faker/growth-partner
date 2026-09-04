@@ -199,6 +199,40 @@ function renderItemIcon(itemId, fallbackEmoji, cls = 'item-icon-img') {
   return fb;
 }
 
+const V2_IMAGE_ROOT = 'assets/images/v2';
+
+function renderFeatureIcon(name, alt = '', cls = 'feature-icon') {
+  return `<img src="${V2_IMAGE_ROOT}/icons/${name}.png" class="${cls}" alt="${alt}" />`;
+}
+
+function getTreeImage(treeLevel) {
+  if (treeLevel >= 13) return 'assets/images/v2/trees/divine.png';
+  if (treeLevel >= 6) return 'assets/images/v2/trees/spirit.png';
+  return 'assets/images/v2/trees/sprout.png';
+}
+
+const CULTIVATOR_IDLE_FRAMES = Array.from(
+  { length: 6 },
+  (_, index) => `assets/images/character/idle/frame-${String(index + 1).padStart(2, '0')}.png`,
+);
+const CULTIVATOR_CHOP_FRAMES = Array.from(
+  { length: 6 },
+  (_, index) => `assets/images/character/chop/frame-${String(index + 1).padStart(2, '0')}.png`,
+);
+const CultivatorAnimator = CharacterAnimator.createFrameAnimator({
+  idleFrames: CULTIVATOR_IDLE_FRAMES,
+  chopFrames: CULTIVATOR_CHOP_FRAMES,
+  idleFrameMs: 200,
+  chopFrameMs: 90,
+});
+
+if (typeof Image !== 'undefined') {
+  [...CULTIVATOR_IDLE_FRAMES, ...CULTIVATOR_CHOP_FRAMES].forEach(src => {
+    const image = new Image();
+    image.src = src;
+  });
+}
+
 // 仙阶表 → 从飞书表格配置合并生成（game-config.js）
 // 飞书表提供: reqLevel, realmId, name, maxAxeQuality, characterImage, reqItems(数字ID), icon
 // 道具ID直接使用飞书道具表的5位数字ID，无需映射
@@ -1842,6 +1876,8 @@ const Router = {
 
   playerTab(tab) {
     this.currentPlayerTab = tab;
+    const dashboard = document.getElementById('player-dashboard');
+    if (dashboard) dashboard.dataset.playerScene = tab === 'mail' ? 'tasks' : tab;
     document.querySelectorAll('#player-dashboard .bottom-nav .nav-item').forEach(el => {
       el.classList.toggle('active', el.dataset.tab === tab);
     });
@@ -2121,20 +2157,18 @@ const PlayerView = {
     const expMax = getExpForLevel(Game.state.level);
 
     // 仙树插画映射（按树等级分3档）
-    const treeImg = Game.state.treeLevel >= 13 ? 'assets/images/tree-divine.jpg'
-      : Game.state.treeLevel >= 6 ? 'assets/images/tree-spirit.jpg'
-      : 'assets/images/tree-sprout.jpg';
+    const treeImg = getTreeImage(Game.state.treeLevel);
 
     main.innerHTML = `
       <!-- ⓪ 顶栏：邮件 / 成就 / 金币 -->
       <div class="cult-topbar">
         <div class="topbar-left">
           <div class="status-mail" onclick="PlayerView.showMailModal()">
-            <span>📮</span>
+            ${renderFeatureIcon('icon-mail', '邮件', 'topbar-feature-icon')}
             <span class="mail-badge" id="mail-badge" style="display:none">0</span>
           </div>
           <div class="status-mail" onclick="PlayerView.showAchievements()" title="成就">
-            <span>🏆</span>
+            ${renderFeatureIcon('icon-achievement', '成就', 'topbar-feature-icon')}
             <span class="ach-dot" id="ach-dot" style="display:none"></span>
           </div>
         </div>
@@ -2143,14 +2177,14 @@ const PlayerView = {
         </div>
       </div>
 
-      <!-- ① 场景区：仙树 + 人物 -->
+      <!-- ① 场景区：人物 + 仙树 -->
       <div class="cult-scene" id="tree-area">
+        <div class="cult-char">
+          <img id="cultivator-sprite" src="assets/images/character/idle/frame-01.png" class="char-img" alt="修炼者" />
+        </div>
         <div class="cult-tree" id="tree-icon" onclick="PlayerView.showTreeDetail()">
           <img src="${treeImg}" class="tree-img" alt="${treeConfig.name}" />
           <div class="tree-label">${treeConfig.name}</div>
-        </div>
-        <div class="cult-char">
-          <img src="assets/images/character-paint.jpg" class="char-img" alt="修仙者" />
         </div>
       </div>
 
@@ -2164,7 +2198,7 @@ const PlayerView = {
           </div>
         </div>
         ${nextRealm ? `
-          <button class="btn btn-accent btn-sm" onclick="PlayerView.showBreakThrough()">突破</button>
+          <button class="btn btn-accent btn-sm" onclick="PlayerView.showBreakThrough()">${renderFeatureIcon('icon-breakthrough', '', 'button-feature-icon')}突破</button>
         ` : '<span class="tag" style="background:var(--quality-5)20;color:var(--quality-5)">已满阶</span>'}
       </div>
 
@@ -2202,12 +2236,13 @@ const PlayerView = {
           ${axeDef.skillDesc ? `<div class="equip-skill">🌟 ${axeDef.skillDesc}</div>` : ''}
         </div>
         <button class="forge-btn" onclick="PlayerView.showForge()">
-          <span class="forge-btn-icon">🔨</span>
+          <span class="forge-btn-icon">${renderFeatureIcon('icon-forge', '锻造', 'forge-feature-icon')}</span>
           <span class="forge-btn-stone">🔩${forgeStoneQty}</span>
         </button>
       </div>
     `;
 
+    CultivatorAnimator.attach(document.getElementById('cultivator-sprite'));
     this.renderInventory('items');
     UI._updateMailBadge();
   },
@@ -2225,6 +2260,7 @@ const PlayerView = {
 
   showTreeDetail() {
     const treeConfig = TREE_LEVELS[Game.state.treeLevel] || TREE_LEVELS[1];
+    const treeImg = getTreeImage(Game.state.treeLevel);
     const treeRealm = TREE_REALMS.find(r => r.level == Game.state.treeRealm) || TREE_REALMS[0];
     const nextTreeRealm = TREE_REALMS.find(r => r.level == Game.state.treeRealm + 1);
     const nextTreeConfig = nextTreeRealm ? (TREE_LEVELS[nextTreeRealm.treeLevel] || null) : null;
@@ -2288,7 +2324,7 @@ const PlayerView = {
 
     UI.modal(`
       <div style="text-align:center;margin-bottom:20px">
-        <div style="font-size:72px;margin-bottom:8px">${treeConfig.icon}</div>
+        <img src="${treeImg}" class="tree-detail-img" alt="${treeConfig.name}" />
         <div style="font-size:20px;font-weight:700">${treeConfig.name}</div>
       </div>
       <div style="display:flex;margin-bottom:8px">
@@ -2679,8 +2715,7 @@ const PlayerView = {
   async doChop() {
     // 十连砍模式
     if (this._tenChopMode) {
-      this.doChopTen();
-      return;
+      return this.doChopTen();
     }
 
     if (Game.state.choppingCount <= 0) {
@@ -2689,16 +2724,19 @@ const PlayerView = {
     }
 
     const treeIcon = document.getElementById('tree-icon');
+    const scene = document.getElementById('tree-area');
     const chopBtn = document.getElementById('chop-btn');
     const outcome = await UI.runLockedAction('chop', chopBtn, '', async () => {
+      const characterAnimation = CultivatorAnimator.playChop();
+      CultivationEffects.playHit({ scene, tree: treeIcon, intensity: 1 });
       if (treeIcon) {
         treeIcon.classList.add('shaking');
         setTimeout(() => treeIcon.classList.remove('shaking'), 300);
       }
 
-      await new Promise(resolve => setTimeout(resolve, 200));
       try {
         const item = await Game.chop();
+        await characterAnimation;
         if (item) {
           if (treeIcon) UI.playDropAnimation(item, treeIcon);
 
@@ -2776,7 +2814,7 @@ const PlayerView = {
     this._dailyChecked = dailyChecked;
 
     main.innerHTML = `
-      <div class="page-title">📜 任务</div>
+      <div class="page-title page-title-art">${renderFeatureIcon('icon-tasks', '', 'page-title-icon')}<span>任务</span></div>
       <div class="page-subtitle">完成任务获得砍树次数，砍树掉落奖励</div>
 
       <div id="theme-section">${this._themeSectionHtml()}</div>
@@ -3424,7 +3462,7 @@ const PlayerView = {
     const withdrawals = await DB.getWithdrawals();
 
     main.innerHTML = `
-      <div class="page-title">🎁 天道酬勤</div>
+      <div class="page-title page-title-art">${renderFeatureIcon('icon-reward', '', 'page-title-icon')}<span>天道酬勤</span></div>
       <div class="page-subtitle">努力修仙，天道自会酬勤</div>
 
       <div class="balance-card">
@@ -4112,32 +4150,34 @@ const PlayerView = {
 
     const chopBtn = document.getElementById('chop-btn');
     const treeIcon = document.getElementById('tree-icon');
+    const scene = document.getElementById('tree-area');
     const outcome = await UI.runLockedAction('chop', chopBtn, '', async () => {
 
     const results = [];
     const scatterEls = [];
 
-    // 10次连续砍树 + 散落动画
-    for (let i = 0; i < 10; i++) {
-      // 摇晃树
-      if (treeIcon) {
-        treeIcon.classList.add('shaking');
-        setTimeout(() => treeIcon && treeIcon.classList.remove('shaking'), 250);
-      }
-
-      // 砍树
-      const item = await Game.chop();
-      if (item) {
-        results.push(item);
-        // 散落动画
+    // 连砍期间保留砍树末帧，避免网络等待时插入待机动作。
+    try {
+      for (let i = 0; i < 10; i++) {
+        const characterAnimation = CultivatorAnimator.playChop({ resumeIdle: false });
+        CultivationEffects.playHit({ scene, tree: treeIcon, intensity: 1 });
         if (treeIcon) {
-          const el = UI.playScatterAnimation(item, treeIcon, i);
-          if (el) scatterEls.push(el);
+          treeIcon.classList.add('shaking');
+          setTimeout(() => treeIcon && treeIcon.classList.remove('shaking'), 250);
+        }
+
+        const item = await Game.chop();
+        await characterAnimation;
+        if (item) {
+          results.push(item);
+          if (treeIcon) {
+            const el = UI.playScatterAnimation(item, treeIcon, i);
+            if (el) scatterEls.push(el);
+          }
         }
       }
-
-      // 等待下一次砍树
-      await new Promise(r => setTimeout(r, 320));
+    } finally {
+      CultivatorAnimator.resumeIdle();
     }
 
     // 十连额外掉落：从奖池1003抽取1件奖励

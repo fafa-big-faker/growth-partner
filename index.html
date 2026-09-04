@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>寻道大千 · 社交修仙</title>
+  <link rel="icon" href="assets/images/v2/icons/icon-cultivate.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700;900&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -18,10 +19,10 @@
   <div id="login-screen">
     <div class="login-bg"></div>
     <div class="login-art">
-      <img src="assets/images/character-paint.jpg" alt="修仙者" />
+      <img src="assets/images/character/idle/frame-01.png" alt="修炼者" />
     </div>
     <div class="login-card">
-      <div class="login-logo">🎋</div>
+      <div class="login-logo"><img src="assets/images/v2/icons/icon-cultivate.png" alt="" /></div>
       <div class="login-title">寻道大千</div>
       <div class="login-subtitle">社交修仙 · 砍树证道 · 天道酬勤</div>
       <div class="role-select">
@@ -51,15 +52,15 @@
 
     <nav class="bottom-nav">
       <div class="nav-item active" data-tab="cultivate" onclick="Router.playerTab('cultivate')">
-        <div class="nav-icon">🎋</div>
+        <div class="nav-icon"><img class="nav-icon-img" src="assets/images/v2/icons/icon-cultivate.png" alt="" /></div>
         <div class="nav-text">修仙</div>
       </div>
       <div class="nav-item" data-tab="tasks" onclick="Router.playerTab('tasks')">
-        <div class="nav-icon">📜</div>
+        <div class="nav-icon"><img class="nav-icon-img" src="assets/images/v2/icons/icon-tasks.png" alt="" /></div>
         <div class="nav-text">任务</div>
       </div>
       <div class="nav-item" data-tab="reward" onclick="Router.playerTab('reward')">
-        <div class="nav-icon">🎁</div>
+        <div class="nav-icon"><img class="nav-icon-img" src="assets/images/v2/icons/icon-reward.png" alt="" /></div>
         <div class="nav-text">天道酬勤</div>
       </div>
       <div class="nav-item admin-only" data-tab="admin" onclick="Router.playerTab('admin')" style="display:none">
@@ -118,6 +119,7 @@
   <script src="game-config.js"></script>
   <script src="operation-guard.js"></script>
   <script src="character-animator.js"></script>
+  <script src="cultivation-effects.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

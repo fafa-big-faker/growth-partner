@@ -63,3 +63,26 @@ test('reattaching cancels work on the old image', async () => {
   assert.ok(newImage.history.length > 1);
   animator.stop();
 });
+
+
+test('chop can hold its final frame until idle is explicitly resumed', async () => {
+  const animator = createFrameAnimator({
+    idleFrames: ['idle-1', 'idle-2'],
+    chopFrames: ['chop-1', 'chop-2', 'chop-3'],
+    idleFrameMs: 20,
+    chopFrameMs: 2,
+  });
+  const image = trackedImage();
+
+  animator.attach(image);
+  const completed = await animator.playChop({ resumeIdle: false });
+
+  assert.equal(completed, true);
+  assert.equal(image.src, 'chop-3');
+  assert.equal(image.dataset.animationState, 'chop-hold');
+
+  assert.equal(animator.resumeIdle(), true);
+  assert.equal(image.src, 'idle-1');
+  assert.equal(image.dataset.animationState, 'idle');
+  animator.stop();
+});
