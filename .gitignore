@@ -19,3 +19,7 @@ config-backup/
 .uploads/
 .screenshots/
 .trae-html-share-packages/
+
+# AI 美术生成中间文件（最终素材会复制到 assets/images/v2）
+tmp/imagegen/
+output/imagegen/
