@@ -3,11 +3,12 @@
 飞书表格 → game-config.js 同步脚本
 读取所有游戏配置表，生成 game-config.js
 """
-import subprocess, json, sys, os
+import subprocess, json, sys, os, shutil
 from datetime import datetime
 
-WORKSPACE = "/workspace"
+WORKSPACE = os.path.dirname(os.path.abspath(__file__))
 OUTPUT = os.path.join(WORKSPACE, "game-config.js")
+LARK_CLI = os.environ.get("LARK_CLI") or shutil.which("lark-cli") or "lark-cli"
 
 # 电子表格 token
 SHEETS = {
@@ -24,19 +25,50 @@ SHEETS = {
 
 def lark_cli(*args):
     """执行 lark-cli 命令并返回 JSON"""
-    cmd = ["lark-cli"] + list(args)
-    result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
-    output = result.stdout
+    cmd = [LARK_CLI] + list(args)
+    result = subprocess.run(
+        cmd,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        timeout=30,
+    )
+    output = result.stdout or result.stderr
     # 跳过 deprecation 警告行
     lines = [l for l in output.split('\n') if not l.startswith('Flag')]
+    if not any(line.strip() for line in lines):
+        raise RuntimeError(f"lark-cli returned no output (exit {result.returncode})")
     return json.loads('\n'.join(lines))
+
+_SHEET_ID_CACHE = {}
+
+def get_sheet_id(token, sheet_name):
+    """Resolve a sub-sheet name to its stable ID; the CLI is unreliable with Chinese names."""
+    cache_key = (token, sheet_name)
+    if cache_key in _SHEET_ID_CACHE:
+        return _SHEET_ID_CACHE[cache_key]
+    data = lark_cli(
+        "sheets", "+workbook-info",
+        "--spreadsheet-token", token,
+    )
+    if not data.get("ok"):
+        raise RuntimeError(f"读取工作簿结构失败: {data.get('error', {}).get('message', '')}")
+    sheets = data.get("data", {}).get("sheets", [])
+    match = next((sheet for sheet in sheets if sheet.get("sheet_name") == sheet_name), None)
+    if not match:
+        available = ", ".join(sheet.get("sheet_name", "") for sheet in sheets)
+        raise RuntimeError(f"未找到工作表 {sheet_name}；可用工作表: {available}")
+    sheet_id = match["sheet_id"]
+    _SHEET_ID_CACHE[cache_key] = sheet_id
+    return sheet_id
 
 def read_sheet(token, sheet_name, range_str):
     """读取工作表数据，返回二维数组（每行是值列表）"""
-    rng = f"{sheet_name}!{range_str}"
     d = lark_cli("sheets", "+cells-get",
                  "--spreadsheet-token", token,
-                 "--range", rng)
+                 "--sheet-id", get_sheet_id(token, sheet_name),
+                 "--range", range_str)
     if not d.get("ok"):
         print(f"  警告: 读取 {sheet_name}!{range_str} 失败: {d.get('error',{}).get('message','')}")
         return []
@@ -62,6 +94,18 @@ def parse_items(s):
         return []
     return [to_int(x) for x in str(s).split(",") if x.strip()]
 
+def parse_parallel_rewards(item_ids, item_counts, count_key="quantity"):
+    """Parse parallel comma-separated item and count cells with a safe count default."""
+    ids = parse_items(item_ids)
+    raw_counts = [part.strip() for part in str(item_counts or "").replace("，", ",").split(",")]
+    rewards = []
+    for index, item_id in enumerate(ids):
+        count = to_int(raw_counts[index], 1) if index < len(raw_counts) else 1
+        if count <= 0:
+            count = 1
+        rewards.append({"itemId": str(item_id), count_key: count})
+    return rewards
+
 def parse_req_items(s):
     """解析 "itemId,count;itemId,count" 或 "itemId,count" 格式"""
     if not s:
@@ -83,10 +127,10 @@ ICONS_DIR_REL = "assets/images/icons"  # 相对 WORKSPACE 的图标目录
 
 def read_sheet_cells(token, sheet_name, range_str):
     """读取工作表，返回原始 cell 对象二维数组（含 value / rich_text 等结构）"""
-    rng = f"{sheet_name}!{range_str}"
     d = lark_cli("sheets", "+cells-get",
                  "--spreadsheet-token", token,
-                 "--range", rng)
+                 "--sheet-id", get_sheet_id(token, sheet_name),
+                 "--range", range_str)
     if not d.get("ok"):
         print(f"  警告: 读取 {sheet_name}!{range_str} 失败: {d.get('error',{}).get('message','')}")
         return []
@@ -111,12 +155,20 @@ def download_sheet_image(file_token, spreadsheet_token, rel_path):
     os.makedirs(os.path.dirname(abs_path), exist_ok=True)
     extra = json.dumps({"bizType": "sheet", "spreadsheetToken": spreadsheet_token})
     params = json.dumps({"extra": extra})
-    cmd = ["lark-cli", "api", "GET",
+    cmd = [LARK_CLI, "api", "GET",
            f"/open-apis/drive/v1/medias/{file_token}/download",
            "--params", params,
            "-o", rel_path]
     try:
-        r = subprocess.run(cmd, capture_output=True, text=True, timeout=60, cwd=WORKSPACE)
+        r = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=60,
+            cwd=WORKSPACE,
+        )
         if r.returncode == 0 and os.path.exists(abs_path) and os.path.getsize(abs_path) > 0:
             return True
         print(f"    ! 图标下载失败 token={file_token}: {(r.stdout or r.stderr)[:200]}")
@@ -289,16 +341,22 @@ print(f"    {len(pool_weight_table)} 条")
 
 # 10. 奖励包表（奖励包→道具列表）
 print("  → 奖励包表")
-rows = read_sheet(SHEETS["奖池表"], "奖励包ID", "A1:D30")
+rows = read_sheet(SHEETS["奖池表"], "奖励包ID", "A1:E30")
 pack_table = []
 for row in rows[2:]:
     if not row[0]:
         continue
+    rewards = parse_parallel_rewards(
+        row[1] if len(row) > 1 else "",
+        row[2] if len(row) > 2 else "",
+    )
     pack_table.append({
         "packId": to_int(row[0]),
-        "items": parse_items(row[1]),
-        "qualityId": to_int(row[2]),
-        "qualityNote": to_str(row[3]) if len(row) > 3 else "",
+        "items": [to_int(reward["itemId"]) for reward in rewards],
+        "quantities": [reward["quantity"] for reward in rewards],
+        "rewards": rewards,
+        "qualityId": to_int(row[3]) if len(row) > 3 else 0,
+        "qualityNote": to_str(row[4]) if len(row) > 4 else "",
     })
 print(f"    {len(pack_table)} 条")
 
@@ -359,6 +417,19 @@ for row in rows[2:]:
     })
 signin_table.sort(key=lambda r: r["requiredDays"])
 print(f"    {len(signin_table)} 条")
+
+print("  → 每日签到奖励")
+rows = read_sheet(SHEETS["累签表"], "每日签到奖励", "A1:B10")
+daily_signin_rewards = []
+for row in rows[2:]:
+    if not row or not row[0]:
+        continue
+    daily_signin_rewards.extend(parse_parallel_rewards(
+        row[0],
+        row[1] if len(row) > 1 else "",
+        "count",
+    ))
+print(f"    {len(daily_signin_rewards)} 条")
 
 # 14. 成就奖励表（含 页签表 / 成就类型表 / 成就奖励表 三个工作表）
 print("  → 成就奖励表")
@@ -447,6 +518,9 @@ const GAME_CONFIG = {{
   // 累签奖励配置表（共 {len(signin_table)} 条）
   signInTable: {json.dumps(signin_table, ensure_ascii=False, indent=2)},
 
+  // 每日签到奖励（共 {len(daily_signin_rewards)} 条）
+  dailySignInRewards: {json.dumps(daily_signin_rewards, ensure_ascii=False, indent=2)},
+
   // 成就页签表（共 {len(ach_tabs)} 条）
   achievementTabTable: {json.dumps(ach_tabs, ensure_ascii=False, indent=2)},
 
@@ -483,7 +557,7 @@ function getSkillById(skillId) {{
 }}
 
 // 根据奖池ID获取奖池配置（含奖励包权重和道具列表）
-// 返回: {{ poolId, packs: [{{ packId, qualityId, weight, items }}] }}
+// 返回: {{ poolId, packs: [{{ packId, qualityId, weight, items, quantities, rewards }}] }}
 function getPoolById(poolId) {{
   const weights = GAME_CONFIG.poolWeightTable.filter(w => w.poolId === poolId);
   const packs = weights.map(w => {{
@@ -493,6 +567,11 @@ function getPoolById(poolId) {{
       qualityId: pack ? pack.qualityId : 0,
       weight: w.weight,
       items: pack ? pack.items.map(String) : [],
+      quantities: pack ? (pack.quantities || []).map(q => Math.max(1, Number(q) || 1)) : [],
+      rewards: pack ? (pack.rewards || pack.items.map((itemId, index) => ({{
+        itemId: String(itemId),
+        quantity: Math.max(1, Number(pack.quantities?.[index]) || 1),
+      }}))) : [],
     }};
   }}).filter(p => p.items.length > 0 && p.weight > 0);
   return {{ poolId, packs }};
@@ -501,6 +580,14 @@ function getPoolById(poolId) {{
 // 获取本月累签奖励配置（按需要天数升序）
 function getSignInRewards() {{
   return (GAME_CONFIG.signInTable || []).slice().sort((a, b) => a.requiredDays - b.requiredDays);
+}}
+
+// 获取每日签到奖励配置
+function getDailySignInRewards() {{
+  return (GAME_CONFIG.dailySignInRewards || []).map(reward => ({{
+    itemId: String(reward.itemId),
+    count: Math.max(1, Number(reward.count) || 1),
+  }}));
 }}
 
 // 获取天道酬勤商店商品配置（合并道具表信息）

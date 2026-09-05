@@ -45,7 +45,7 @@ const ITEMS = {};
     entry.composeCount = parseInt(params[1]?.trim()) || 0;
   } else if (item.interactionType === 2) {
     // 兑现: "奖金数值"
-    entry.value = parseInt(params[0]?.trim()) || 0;
+    entry.value = parseFloat(params[0]?.trim()) || 0;
   } else if (item.interactionType === 3) {
     // 装备出售: "售价,技能ID[,技能ID2...]"
     entry.sellPrice = parseInt(params[0]?.trim()) || 0;
@@ -122,6 +122,8 @@ const TREE_LEVELS = {};
     quality: p.qualityId,
     weight: p.weight,
     items: p.items,
+    quantities: p.quantities,
+    rewards: p.rewards,
   }));
   // 构建5品质权重数组（用于UI展示概率）
   const qualityWeights = [0, 0, 0, 0, 0];
@@ -645,8 +647,10 @@ const DB = {
     return data || { ok: false, code: 'empty_response' };
   },
 
-  async dailyCheckIn() {
-    const { data, error } = await dbClient.rpc('daily_check_in');
+  async dailyCheckIn(rewards) {
+    const { data, error } = await dbClient.rpc('daily_check_in', {
+      p_rewards: rewards,
+    });
     if (error) {
       console.error('DB dailyCheckIn error:', error);
       return { ok: false, code: 'network_error' };
@@ -1151,9 +1155,9 @@ const Game = {
     }
     item.kind = grant.kind;
 
-    // 每累计砍树 10 次，从奖励包 1003 均匀抽取一件额外奖励。
+    // 每累计砍树 10 次，从奖励包 1001 均匀抽取一件额外奖励。
     if (GameplayRules.isBonusChop(this.state.totalChops)) {
-      const extraDrop = this._rollPackDrop(1003);
+      const extraDrop = this._rollPackDrop(1001);
       if (extraDrop) {
         const extraGrant = await this.grantItem(extraDrop.itemId, extraDrop.quantity);
         if (extraGrant) {
@@ -1182,14 +1186,20 @@ const Game = {
     }
     if (!selectedPool) selectedPool = treeConfig.pools[0];
 
-    const itemId = selectedPool.items[Math.floor(Math.random() * selectedPool.items.length)];
-    const itemDef = ITEMS[itemId];
+    const rolled = GameplayRules.rollPackItem({
+      items: selectedPool.items,
+      quantities: selectedPool.quantities,
+      rewards: selectedPool.rewards,
+      qualityId: selectedPool.quality,
+    });
+    if (!rolled) return null;
+    const itemDef = ITEMS[rolled.itemId];
 
     return {
-      itemId: itemId,
-      quantity: 1,
-      quality: selectedPool.quality,
-      qualityName: QUALITY[selectedPool.quality].name,
+      itemId: rolled.itemId,
+      quantity: rolled.quantity,
+      quality: rolled.quality,
+      qualityName: QUALITY[rolled.quality].name,
       item: itemDef,
     };
   },
@@ -1209,15 +1219,16 @@ const Game = {
     }
     if (!selectedPack) selectedPack = poolData.packs[0];
 
-    const itemId = selectedPack.items[Math.floor(Math.random() * selectedPack.items.length)];
-    const itemDef = ITEMS[itemId];
+    const rolled = GameplayRules.rollPackItem(selectedPack);
+    if (!rolled) return null;
+    const itemDef = ITEMS[rolled.itemId];
     if (!itemDef) return null;
 
     return {
-      itemId: itemId,
-      quantity: 1,
-      quality: selectedPack.qualityId,
-      qualityName: QUALITY[selectedPack.qualityId] ? QUALITY[selectedPack.qualityId].name : '',
+      itemId: rolled.itemId,
+      quantity: rolled.quantity,
+      quality: rolled.quality,
+      qualityName: QUALITY[rolled.quality] ? QUALITY[rolled.quality].name : '',
       item: itemDef,
     };
   },
@@ -1244,13 +1255,16 @@ const Game = {
       UI.toast('今日已签到', 'warn');
       return false;
     }
-    const result = await DB.dailyCheckIn();
+    const rewards = getDailySignInRewards();
+    const result = await DB.dailyCheckIn(rewards);
     if (!result.ok && result.code !== 'already_checked') {
       UI.toast('签到未完成，请重试', 'error');
       return false;
     }
 
-    this.state.choppingCount = Number(result.choppingCount) || this.state.choppingCount;
+    this.state.choppingCount = Number.isFinite(Number(result.choppingCount))
+      ? Number(result.choppingCount)
+      : this.state.choppingCount;
     this.state.lastDailyDate = result.date || today;
     this.state.signInMonth = result.month || today.slice(0, 7);
     this.state.signInDays = Number(result.days) || 0;
@@ -1260,7 +1274,12 @@ const Game = {
       UI.toast('今日已签到', 'warn');
       return false;
     }
-    UI.toast(`签到成功！获得 1 次砍树机会（本月已签 ${this.state.signInDays} 天）`, 'success');
+    await this.refresh();
+    const rewardText = rewards.map(reward => {
+      const def = ITEMS[String(reward.itemId)];
+      return `${def?.name || `道具${reward.itemId}`} ×${reward.count}`;
+    }).join('、');
+    UI.toast(`签到成功！获得 ${rewardText}（本月已签 ${this.state.signInDays} 天）`, 'success');
     return true;
   },
 
@@ -1390,7 +1409,7 @@ const Game = {
     if (!itemDef) return null;
     return {
       itemId: rolled.itemId,
-      quantity: 1,
+      quantity: rolled.quantity,
       quality: rolled.quality,
       qualityName: QUALITY[rolled.quality]?.name || '',
       item: itemDef,

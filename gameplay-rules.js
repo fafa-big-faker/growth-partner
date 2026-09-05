@@ -8,11 +8,23 @@
   }
 
   function rollPackItem(pack, random = Math.random()) {
-    if (!pack || !Array.isArray(pack.items) || pack.items.length === 0) return null;
+    if (!pack) return null;
+    const rewards = Array.isArray(pack.rewards) && pack.rewards.length > 0
+      ? pack.rewards
+      : (Array.isArray(pack.items) ? pack.items.map((itemId, index) => ({
+        itemId,
+        quantity: Array.isArray(pack.quantities) ? pack.quantities[index] : 1,
+      })) : []);
+    if (rewards.length === 0) return null;
     const normalized = Math.min(Math.max(Number(random) || 0, 0), 0.999999999);
-    const index = Math.floor(normalized * pack.items.length);
+    const index = Math.floor(normalized * rewards.length);
+    const selected = rewards[index];
+    const configuredQuantity = Number(selected?.quantity);
     return {
-      itemId: String(pack.items[index]),
+      itemId: String(selected.itemId),
+      quantity: Number.isInteger(configuredQuantity) && configuredQuantity > 0
+        ? configuredQuantity
+        : 1,
       quality: Number(pack.qualityId) || 1,
     };
   }

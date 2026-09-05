@@ -1,6 +1,6 @@
 // ===== 游戏配置文件（由 sync-config.py 从飞书表格自动生成）=====
 // 修改飞书表格后运行同步脚本即可更新，请勿手动编辑此文件
-// 最后同步: 2026-09-04 04:00:17
+// 最后同步: 2026-09-06 03:20:00
 
 const GAME_CONFIG = {
   // 角色等级经验表（共 150 条）
@@ -11,599 +11,599 @@ const GAME_CONFIG = {
   },
   {
     "level": 2,
-    "exp": 13
+    "exp": 12
   },
   {
     "level": 3,
-    "exp": 16
+    "exp": 13
   },
   {
     "level": 4,
-    "exp": 19
+    "exp": 14
   },
   {
     "level": 5,
-    "exp": 23
+    "exp": 15
   },
   {
     "level": 6,
-    "exp": 27
+    "exp": 16
   },
   {
     "level": 7,
-    "exp": 31
+    "exp": 17
   },
   {
     "level": 8,
-    "exp": 35
+    "exp": 18
   },
   {
     "level": 9,
-    "exp": 39
+    "exp": 20
   },
   {
     "level": 10,
-    "exp": 44
+    "exp": 21
   },
   {
     "level": 11,
-    "exp": 49
+    "exp": 22
   },
   {
     "level": 12,
-    "exp": 54
+    "exp": 23
   },
   {
     "level": 13,
-    "exp": 59
+    "exp": 24
   },
   {
     "level": 14,
-    "exp": 64
+    "exp": 25
   },
   {
     "level": 15,
-    "exp": 70
+    "exp": 27
   },
   {
     "level": 16,
-    "exp": 76
+    "exp": 28
   },
   {
     "level": 17,
-    "exp": 82
+    "exp": 29
   },
   {
     "level": 18,
-    "exp": 88
+    "exp": 30
   },
   {
     "level": 19,
-    "exp": 94
+    "exp": 32
   },
   {
     "level": 20,
-    "exp": 101
+    "exp": 33
   },
   {
     "level": 21,
-    "exp": 108
+    "exp": 34
   },
   {
     "level": 22,
-    "exp": 115
+    "exp": 36
   },
   {
     "level": 23,
-    "exp": 122
+    "exp": 37
   },
   {
     "level": 24,
-    "exp": 129
+    "exp": 39
   },
   {
     "level": 25,
-    "exp": 137
+    "exp": 40
   },
   {
     "level": 26,
-    "exp": 145
+    "exp": 41
   },
   {
     "level": 27,
-    "exp": 153
+    "exp": 43
   },
   {
     "level": 28,
-    "exp": 161
+    "exp": 44
   },
   {
     "level": 29,
-    "exp": 169
+    "exp": 46
   },
   {
     "level": 30,
-    "exp": 178
+    "exp": 48
   },
   {
     "level": 31,
-    "exp": 187
+    "exp": 49
   },
   {
     "level": 32,
-    "exp": 196
+    "exp": 51
   },
   {
     "level": 33,
-    "exp": 205
+    "exp": 52
   },
   {
     "level": 34,
-    "exp": 214
+    "exp": 54
   },
   {
     "level": 35,
-    "exp": 224
+    "exp": 56
   },
   {
     "level": 36,
-    "exp": 234
+    "exp": 58
   },
   {
     "level": 37,
-    "exp": 244
+    "exp": 59
   },
   {
     "level": 38,
-    "exp": 254
+    "exp": 61
   },
   {
     "level": 39,
-    "exp": 264
+    "exp": 63
   },
   {
     "level": 40,
-    "exp": 275
+    "exp": 65
   },
   {
     "level": 41,
-    "exp": 286
+    "exp": 67
   },
   {
     "level": 42,
-    "exp": 297
+    "exp": 69
   },
   {
     "level": 43,
-    "exp": 308
+    "exp": 71
   },
   {
     "level": 44,
-    "exp": 319
+    "exp": 73
   },
   {
     "level": 45,
-    "exp": 331
+    "exp": 75
   },
   {
     "level": 46,
-    "exp": 343
+    "exp": 77
   },
   {
     "level": 47,
-    "exp": 355
+    "exp": 79
   },
   {
     "level": 48,
-    "exp": 367
+    "exp": 81
   },
   {
     "level": 49,
-    "exp": 379
+    "exp": 83
   },
   {
     "level": 50,
-    "exp": 392
+    "exp": 86
   },
   {
     "level": 51,
-    "exp": 405
+    "exp": 88
   },
   {
     "level": 52,
-    "exp": 418
+    "exp": 90
   },
   {
     "level": 53,
-    "exp": 431
+    "exp": 92
   },
   {
     "level": 54,
-    "exp": 444
+    "exp": 95
   },
   {
     "level": 55,
-    "exp": 458
+    "exp": 97
   },
   {
     "level": 56,
-    "exp": 472
+    "exp": 100
   },
   {
     "level": 57,
-    "exp": 486
+    "exp": 102
   },
   {
     "level": 58,
-    "exp": 500
+    "exp": 105
   },
   {
     "level": 59,
-    "exp": 514
+    "exp": 108
   },
   {
     "level": 60,
-    "exp": 529
+    "exp": 110
   },
   {
     "level": 61,
-    "exp": 544
+    "exp": 113
   },
   {
     "level": 62,
-    "exp": 559
+    "exp": 116
   },
   {
     "level": 63,
-    "exp": 574
+    "exp": 118
   },
   {
     "level": 64,
-    "exp": 589
+    "exp": 121
   },
   {
     "level": 65,
-    "exp": 605
+    "exp": 124
   },
   {
     "level": 66,
-    "exp": 621
+    "exp": 127
   },
   {
     "level": 67,
-    "exp": 637
+    "exp": 130
   },
   {
     "level": 68,
-    "exp": 653
+    "exp": 133
   },
   {
     "level": 69,
-    "exp": 669
+    "exp": 136
   },
   {
     "level": 70,
-    "exp": 686
+    "exp": 140
   },
   {
     "level": 71,
-    "exp": 703
+    "exp": 143
   },
   {
     "level": 72,
-    "exp": 720
+    "exp": 146
   },
   {
     "level": 73,
-    "exp": 737
+    "exp": 149
   },
   {
     "level": 74,
-    "exp": 754
+    "exp": 153
   },
   {
     "level": 75,
-    "exp": 772
+    "exp": 156
   },
   {
     "level": 76,
-    "exp": 790
+    "exp": 160
   },
   {
     "level": 77,
-    "exp": 808
+    "exp": 163
   },
   {
     "level": 78,
-    "exp": 826
+    "exp": 167
   },
   {
     "level": 79,
-    "exp": 844
+    "exp": 170
   },
   {
     "level": 80,
-    "exp": 863
+    "exp": 174
   },
   {
     "level": 81,
-    "exp": 882
+    "exp": 178
   },
   {
     "level": 82,
-    "exp": 901
+    "exp": 182
   },
   {
     "level": 83,
-    "exp": 920
+    "exp": 185
   },
   {
     "level": 84,
-    "exp": 939
+    "exp": 189
   },
   {
     "level": 85,
-    "exp": 959
+    "exp": 193
   },
   {
     "level": 86,
-    "exp": 979
+    "exp": 197
   },
   {
     "level": 87,
-    "exp": 999
+    "exp": 202
   },
   {
     "level": 88,
-    "exp": 1019
+    "exp": 206
   },
   {
     "level": 89,
-    "exp": 1039
+    "exp": 210
   },
   {
     "level": 90,
-    "exp": 1060
+    "exp": 214
   },
   {
     "level": 91,
-    "exp": 1081
+    "exp": 219
   },
   {
     "level": 92,
-    "exp": 1102
+    "exp": 223
   },
   {
     "level": 93,
-    "exp": 1123
+    "exp": 228
   },
   {
     "level": 94,
-    "exp": 1144
+    "exp": 232
   },
   {
     "level": 95,
-    "exp": 1166
+    "exp": 237
   },
   {
     "level": 96,
-    "exp": 1188
+    "exp": 242
   },
   {
     "level": 97,
-    "exp": 1210
+    "exp": 246
   },
   {
     "level": 98,
-    "exp": 1232
+    "exp": 251
   },
   {
     "level": 99,
-    "exp": 1254
+    "exp": 256
   },
   {
     "level": 100,
-    "exp": 1277
+    "exp": 261
   },
   {
     "level": 101,
-    "exp": 1300
+    "exp": 266
   },
   {
     "level": 102,
-    "exp": 1323
+    "exp": 271
   },
   {
     "level": 103,
-    "exp": 1346
+    "exp": 276
   },
   {
     "level": 104,
-    "exp": 1369
+    "exp": 282
   },
   {
     "level": 105,
-    "exp": 1393
+    "exp": 287
   },
   {
     "level": 106,
-    "exp": 1417
+    "exp": 292
   },
   {
     "level": 107,
-    "exp": 1441
+    "exp": 298
   },
   {
     "level": 108,
-    "exp": 1465
+    "exp": 303
   },
   {
     "level": 109,
-    "exp": 1489
+    "exp": 309
   },
   {
     "level": 110,
-    "exp": 1514
+    "exp": 315
   },
   {
     "level": 111,
-    "exp": 1539
+    "exp": 320
   },
   {
     "level": 112,
-    "exp": 1564
+    "exp": 326
   },
   {
     "level": 113,
-    "exp": 1589
+    "exp": 332
   },
   {
     "level": 114,
-    "exp": 1614
+    "exp": 338
   },
   {
     "level": 115,
-    "exp": 1640
+    "exp": 344
   },
   {
     "level": 116,
-    "exp": 1666
+    "exp": 351
   },
   {
     "level": 117,
-    "exp": 1692
+    "exp": 357
   },
   {
     "level": 118,
-    "exp": 1718
+    "exp": 363
   },
   {
     "level": 119,
-    "exp": 1744
+    "exp": 370
   },
   {
     "level": 120,
-    "exp": 1771
+    "exp": 376
   },
   {
     "level": 121,
-    "exp": 1798
+    "exp": 383
   },
   {
     "level": 122,
-    "exp": 1825
+    "exp": 389
   },
   {
     "level": 123,
-    "exp": 1852
+    "exp": 396
   },
   {
     "level": 124,
-    "exp": 1879
+    "exp": 403
   },
   {
     "level": 125,
-    "exp": 1907
+    "exp": 410
   },
   {
     "level": 126,
-    "exp": 1935
+    "exp": 417
   },
   {
     "level": 127,
-    "exp": 1963
+    "exp": 424
   },
   {
     "level": 128,
-    "exp": 1991
+    "exp": 431
   },
   {
     "level": 129,
-    "exp": 2019
+    "exp": 438
   },
   {
     "level": 130,
-    "exp": 2048
+    "exp": 446
   },
   {
     "level": 131,
-    "exp": 2077
+    "exp": 453
   },
   {
     "level": 132,
-    "exp": 2106
+    "exp": 460
   },
   {
     "level": 133,
-    "exp": 2135
+    "exp": 468
   },
   {
     "level": 134,
-    "exp": 2164
+    "exp": 476
   },
   {
     "level": 135,
-    "exp": 2194
+    "exp": 484
   },
   {
     "level": 136,
-    "exp": 2224
+    "exp": 491
   },
   {
     "level": 137,
-    "exp": 2254
+    "exp": 499
   },
   {
     "level": 138,
-    "exp": 2284
+    "exp": 507
   },
   {
     "level": 139,
-    "exp": 2314
+    "exp": 516
   },
   {
     "level": 140,
-    "exp": 2345
+    "exp": 524
   },
   {
     "level": 141,
-    "exp": 2376
+    "exp": 532
   },
   {
     "level": 142,
-    "exp": 2407
+    "exp": 541
   },
   {
     "level": 143,
-    "exp": 2438
+    "exp": 549
   },
   {
     "level": 144,
-    "exp": 2469
+    "exp": 558
   },
   {
     "level": 145,
-    "exp": 2501
+    "exp": 566
   },
   {
     "level": 146,
-    "exp": 2533
+    "exp": 575
   },
   {
     "level": 147,
-    "exp": 2565
+    "exp": 584
   },
   {
     "level": 148,
-    "exp": 2597
+    "exp": 593
   },
   {
     "level": 149,
-    "exp": 2629
+    "exp": 602
   },
   {
     "level": 150,
-    "exp": 2662
+    "exp": 612
   }
 ],
 
@@ -956,7 +956,7 @@ const GAME_CONFIG = {
     "id": 0,
     "name": "游戏币",
     "type": 0,
-    "quality": 2,
+    "quality": 1,
     "stackLimit": 999,
     "interactionType": 0,
     "interactionParams": "",
@@ -983,7 +983,7 @@ const GAME_CONFIG = {
     "quality": 1,
     "stackLimit": 999,
     "interactionType": 1,
-    "interactionParams": "20001,10",
+    "interactionParams": "20001,50",
     "description": "懒得写描述，集齐它你就可以换点小钱",
     "icon": "❓",
     "iconImage": "assets/images/icons/10001.png"
@@ -995,7 +995,7 @@ const GAME_CONFIG = {
     "quality": 1,
     "stackLimit": 999,
     "interactionType": 1,
-    "interactionParams": "20001,3",
+    "interactionParams": "20001,10",
     "description": "懒得写描述，集齐它你就可以换点小钱",
     "icon": "❓",
     "iconImage": "assets/images/icons/10002.png"
@@ -1016,10 +1016,10 @@ const GAME_CONFIG = {
     "id": 10102,
     "name": "银叶",
     "type": 1,
-    "quality": 1,
+    "quality": 2,
     "stackLimit": 999,
     "interactionType": 1,
-    "interactionParams": "20101,3",
+    "interactionParams": "20101,5",
     "description": "懒得写描述，集齐它你就可以换点小钱",
     "icon": "❓",
     "iconImage": "assets/images/icons/10102.png"
@@ -1043,7 +1043,7 @@ const GAME_CONFIG = {
     "quality": 3,
     "stackLimit": 999,
     "interactionType": 1,
-    "interactionParams": "20201,3",
+    "interactionParams": "20201,5",
     "description": "懒得写描述，集齐它你就可以换点小钱",
     "icon": "❓",
     "iconImage": "assets/images/icons/10202.png"
@@ -1052,7 +1052,7 @@ const GAME_CONFIG = {
     "id": 10301,
     "name": "原石",
     "type": 1,
-    "quality": 3,
+    "quality": 2,
     "stackLimit": 999,
     "interactionType": 1,
     "interactionParams": "20301,10",
@@ -1064,10 +1064,10 @@ const GAME_CONFIG = {
     "id": 10302,
     "name": "原玉",
     "type": 1,
-    "quality": 4,
+    "quality": 3,
     "stackLimit": 999,
     "interactionType": 1,
-    "interactionParams": "20301,3",
+    "interactionParams": "20301,5",
     "description": "懒得写描述，集齐它你就可以换点小钱",
     "icon": "❓",
     "iconImage": "assets/images/icons/10302.png"
@@ -1079,7 +1079,7 @@ const GAME_CONFIG = {
     "quality": 2,
     "stackLimit": 999,
     "interactionType": 2,
-    "interactionParams": "1",
+    "interactionParams": "0.5",
     "description": "拿去换钱吧，哥不在乎这点小钱",
     "icon": "❓",
     "iconImage": "assets/images/icons/20001.png"
@@ -1091,7 +1091,7 @@ const GAME_CONFIG = {
     "quality": 3,
     "stackLimit": 999,
     "interactionType": 2,
-    "interactionParams": "2",
+    "interactionParams": "1",
     "description": "拿去换钱吧，哥不在乎这点小钱，",
     "icon": "❓",
     "iconImage": "assets/images/icons/20101.png"
@@ -1187,7 +1187,7 @@ const GAME_CONFIG = {
     "quality": 1,
     "stackLimit": 1,
     "interactionType": 3,
-    "interactionParams": "1",
+    "interactionParams": "10",
     "description": "砍一下树，斧头飞了，柄还在手里。",
     "icon": "❓",
     "iconImage": "assets/images/icons/51001.png"
@@ -1199,7 +1199,7 @@ const GAME_CONFIG = {
     "quality": 1,
     "stackLimit": 1,
     "interactionType": 3,
-    "interactionParams": "1,1001",
+    "interactionParams": "10,1001",
     "description": "锯齿都崩光了，熊大看了都摇头。",
     "icon": "❓",
     "iconImage": "assets/images/icons/51002.png"
@@ -1211,7 +1211,7 @@ const GAME_CONFIG = {
     "quality": 2,
     "stackLimit": 1,
     "interactionType": 3,
-    "interactionParams": "5,2001",
+    "interactionParams": "50,2001",
     "description": "砍人不疼，但砍中能强制给对方脑内灌输高考真题。",
     "icon": "❓",
     "iconImage": "assets/images/icons/52001.png"
@@ -1223,7 +1223,7 @@ const GAME_CONFIG = {
     "quality": 2,
     "stackLimit": 1,
     "interactionType": 3,
-    "interactionParams": "5,1002",
+    "interactionParams": "50,1002",
     "description": "刃口极其微小，专门用来给千年树精去死皮。",
     "icon": "❓",
     "iconImage": "assets/images/icons/52002.png"
@@ -1235,7 +1235,7 @@ const GAME_CONFIG = {
     "quality": 3,
     "stackLimit": 1,
     "interactionType": 3,
-    "interactionParams": "2,2002",
+    "interactionParams": "100,2002",
     "description": "掉进水里，河神捞出来看了一眼直接骂骂咧咧地扔回给了你。",
     "icon": "❓",
     "iconImage": "assets/images/icons/53001.png"
@@ -1247,7 +1247,7 @@ const GAME_CONFIG = {
     "quality": 3,
     "stackLimit": 1,
     "interactionType": 3,
-    "interactionParams": "20,1003",
+    "interactionParams": "100,1003",
     "description": "砍中敌人后，直接把对方拍成一张A4纸大小的二维平面。",
     "icon": "❓",
     "iconImage": "assets/images/icons/53002.png"
@@ -1259,7 +1259,7 @@ const GAME_CONFIG = {
     "quality": 4,
     "stackLimit": 1,
     "interactionType": 3,
-    "interactionParams": "50,2004",
+    "interactionParams": "200,2004",
     "description": "攻击力取决于你今天有没有请人吃肯德基。",
     "icon": "❓",
     "iconImage": "assets/images/icons/54001.png"
@@ -1271,7 +1271,7 @@ const GAME_CONFIG = {
     "quality": 4,
     "stackLimit": 1,
     "interactionType": 3,
-    "interactionParams": "50,1005",
+    "interactionParams": "200,1005",
     "description": "每挥动一次，空中飘出一个“功德+1”，边砍边超度。",
     "icon": "❓",
     "iconImage": "assets/images/icons/54002.png"
@@ -1283,7 +1283,7 @@ const GAME_CONFIG = {
     "quality": 5,
     "stackLimit": 1,
     "interactionType": 3,
-    "interactionParams": "100,1010,2010",
+    "interactionParams": "1000,1010,2010",
     "description": "当年开天辟地时一斧头砍歪了，才留下了马里亚纳海沟。",
     "icon": "❓",
     "iconImage": "assets/images/icons/55001.png"
@@ -1480,7 +1480,7 @@ const GAME_CONFIG = {
     "reqItems": [
       {
         "itemId": "40002",
-        "count": 1
+        "count": 3
       }
     ],
     "note": "第一个参数是道具ID，第二个参数是道具数量"
@@ -1493,7 +1493,7 @@ const GAME_CONFIG = {
     "reqItems": [
       {
         "itemId": "40002",
-        "count": 2
+        "count": 7
       }
     ],
     "note": ""
@@ -1506,7 +1506,7 @@ const GAME_CONFIG = {
     "reqItems": [
       {
         "itemId": "40002",
-        "count": 3
+        "count": 12
       }
     ],
     "note": ""
@@ -1519,7 +1519,7 @@ const GAME_CONFIG = {
     "reqItems": [
       {
         "itemId": "40002",
-        "count": 4
+        "count": 16
       }
     ],
     "note": ""
@@ -1532,7 +1532,7 @@ const GAME_CONFIG = {
     "reqItems": [
       {
         "itemId": "40002",
-        "count": 5
+        "count": 21
       }
     ],
     "note": ""
@@ -1545,7 +1545,7 @@ const GAME_CONFIG = {
     "reqItems": [
       {
         "itemId": "40002",
-        "count": 6
+        "count": 27
       }
     ],
     "note": ""
@@ -1558,7 +1558,7 @@ const GAME_CONFIG = {
     "reqItems": [
       {
         "itemId": "40002",
-        "count": 7
+        "count": 32
       }
     ],
     "note": ""
@@ -1571,7 +1571,7 @@ const GAME_CONFIG = {
     "reqItems": [
       {
         "itemId": "40002",
-        "count": 8
+        "count": 38
       }
     ],
     "note": ""
@@ -1584,7 +1584,7 @@ const GAME_CONFIG = {
     "reqItems": [
       {
         "itemId": "40002",
-        "count": 9
+        "count": 44
       }
     ],
     "note": ""
@@ -1597,7 +1597,7 @@ const GAME_CONFIG = {
     "reqItems": [
       {
         "itemId": "40002",
-        "count": 10
+        "count": 50
       }
     ],
     "note": ""
@@ -1610,7 +1610,7 @@ const GAME_CONFIG = {
     "reqItems": [
       {
         "itemId": "40002",
-        "count": 11
+        "count": 56
       }
     ],
     "note": ""
@@ -1623,7 +1623,7 @@ const GAME_CONFIG = {
     "reqItems": [
       {
         "itemId": "40002",
-        "count": 12
+        "count": 63
       }
     ],
     "note": ""
@@ -1636,7 +1636,7 @@ const GAME_CONFIG = {
     "reqItems": [
       {
         "itemId": "40002",
-        "count": 13
+        "count": 70
       }
     ],
     "note": ""
@@ -1649,7 +1649,7 @@ const GAME_CONFIG = {
     "reqItems": [
       {
         "itemId": "40002",
-        "count": 14
+        "count": 77
       }
     ],
     "note": ""
@@ -1662,7 +1662,7 @@ const GAME_CONFIG = {
     "reqItems": [
       {
         "itemId": "40002",
-        "count": 15
+        "count": 84
       }
     ],
     "note": ""
@@ -1674,17 +1674,17 @@ const GAME_CONFIG = {
   {
     "poolId": 1000,
     "packId": 1001,
-    "weight": 900
+    "weight": 950
   },
   {
     "poolId": 1000,
     "packId": 1002,
-    "weight": 80
+    "weight": 50
   },
   {
     "poolId": 1000,
     "packId": 1003,
-    "weight": 20
+    "weight": 0
   },
   {
     "poolId": 1000,
@@ -1698,378 +1698,378 @@ const GAME_CONFIG = {
   },
   {
     "poolId": 1001,
+    "packId": 1001,
+    "weight": 920
+  },
+  {
+    "poolId": 1001,
+    "packId": 1002,
+    "weight": 80
+  },
+  {
+    "poolId": 1001,
+    "packId": 1003,
+    "weight": 0
+  },
+  {
+    "poolId": 1001,
+    "packId": 1004,
+    "weight": 0
+  },
+  {
+    "poolId": 1001,
+    "packId": 1005,
+    "weight": 0
+  },
+  {
+    "poolId": 1002,
+    "packId": 1001,
+    "weight": 890
+  },
+  {
+    "poolId": 1002,
+    "packId": 1002,
+    "weight": 110
+  },
+  {
+    "poolId": 1002,
+    "packId": 1003,
+    "weight": 0
+  },
+  {
+    "poolId": 1002,
+    "packId": 1004,
+    "weight": 0
+  },
+  {
+    "poolId": 1002,
+    "packId": 1005,
+    "weight": 0
+  },
+  {
+    "poolId": 1003,
+    "packId": 1001,
+    "weight": 860
+  },
+  {
+    "poolId": 1003,
+    "packId": 1002,
+    "weight": 130
+  },
+  {
+    "poolId": 1003,
+    "packId": 1003,
+    "weight": 10
+  },
+  {
+    "poolId": 1003,
+    "packId": 1004,
+    "weight": 0
+  },
+  {
+    "poolId": 1003,
+    "packId": 1005,
+    "weight": 0
+  },
+  {
+    "poolId": 1004,
+    "packId": 1001,
+    "weight": 830
+  },
+  {
+    "poolId": 1004,
+    "packId": 1002,
+    "weight": 160
+  },
+  {
+    "poolId": 1004,
+    "packId": 1003,
+    "weight": 10
+  },
+  {
+    "poolId": 1004,
+    "packId": 1004,
+    "weight": 0
+  },
+  {
+    "poolId": 1004,
+    "packId": 1005,
+    "weight": 0
+  },
+  {
+    "poolId": 1005,
     "packId": 1001,
     "weight": 800
   },
   {
-    "poolId": 1001,
+    "poolId": 1005,
     "packId": 1002,
-    "weight": 150
+    "weight": 180
   },
   {
-    "poolId": 1001,
+    "poolId": 1005,
     "packId": 1003,
-    "weight": 50
+    "weight": 20
   },
   {
-    "poolId": 1001,
+    "poolId": 1005,
     "packId": 1004,
     "weight": 0
   },
   {
-    "poolId": 1001,
+    "poolId": 1005,
     "packId": 1005,
     "weight": 0
   },
   {
-    "poolId": 1002,
+    "poolId": 1006,
     "packId": 1001,
     "weight": 770
   },
   {
-    "poolId": 1002,
-    "packId": 1002,
-    "weight": 170
-  },
-  {
-    "poolId": 1002,
-    "packId": 1003,
-    "weight": 60
-  },
-  {
-    "poolId": 1002,
-    "packId": 1004,
-    "weight": 0
-  },
-  {
-    "poolId": 1002,
-    "packId": 1005,
-    "weight": 0
-  },
-  {
-    "poolId": 1003,
-    "packId": 1001,
-    "weight": 740
-  },
-  {
-    "poolId": 1003,
-    "packId": 1002,
-    "weight": 190
-  },
-  {
-    "poolId": 1003,
-    "packId": 1003,
-    "weight": 70
-  },
-  {
-    "poolId": 1003,
-    "packId": 1004,
-    "weight": 0
-  },
-  {
-    "poolId": 1003,
-    "packId": 1005,
-    "weight": 0
-  },
-  {
-    "poolId": 1004,
-    "packId": 1001,
-    "weight": 710
-  },
-  {
-    "poolId": 1004,
+    "poolId": 1006,
     "packId": 1002,
     "weight": 210
   },
   {
-    "poolId": 1004,
+    "poolId": 1006,
     "packId": 1003,
-    "weight": 80
+    "weight": 20
   },
   {
-    "poolId": 1004,
+    "poolId": 1006,
     "packId": 1004,
     "weight": 0
   },
   {
-    "poolId": 1004,
+    "poolId": 1006,
     "packId": 1005,
     "weight": 0
   },
   {
-    "poolId": 1005,
+    "poolId": 1007,
     "packId": 1001,
-    "weight": 680
+    "weight": 740
   },
   {
-    "poolId": 1005,
+    "poolId": 1007,
     "packId": 1002,
     "weight": 230
   },
   {
-    "poolId": 1005,
+    "poolId": 1007,
     "packId": 1003,
-    "weight": 90
+    "weight": 25
   },
   {
-    "poolId": 1005,
-    "packId": 1004,
-    "weight": 0
-  },
-  {
-    "poolId": 1005,
-    "packId": 1005,
-    "weight": 0
-  },
-  {
-    "poolId": 1006,
-    "packId": 1001,
-    "weight": 640
-  },
-  {
-    "poolId": 1006,
-    "packId": 1002,
-    "weight": 255
-  },
-  {
-    "poolId": 1006,
-    "packId": 1003,
-    "weight": 100
-  },
-  {
-    "poolId": 1006,
+    "poolId": 1007,
     "packId": 1004,
     "weight": 5
   },
   {
-    "poolId": 1006,
+    "poolId": 1007,
     "packId": 1005,
     "weight": 0
   },
   {
-    "poolId": 1007,
+    "poolId": 1008,
+    "packId": 1001,
+    "weight": 710
+  },
+  {
+    "poolId": 1008,
+    "packId": 1002,
+    "weight": 260
+  },
+  {
+    "poolId": 1008,
+    "packId": 1003,
+    "weight": 25
+  },
+  {
+    "poolId": 1008,
+    "packId": 1004,
+    "weight": 5
+  },
+  {
+    "poolId": 1008,
+    "packId": 1005,
+    "weight": 0
+  },
+  {
+    "poolId": 1009,
+    "packId": 1001,
+    "weight": 680
+  },
+  {
+    "poolId": 1009,
+    "packId": 1002,
+    "weight": 280
+  },
+  {
+    "poolId": 1009,
+    "packId": 1003,
+    "weight": 35
+  },
+  {
+    "poolId": 1009,
+    "packId": 1004,
+    "weight": 5
+  },
+  {
+    "poolId": 1009,
+    "packId": 1005,
+    "weight": 0
+  },
+  {
+    "poolId": 1010,
+    "packId": 1001,
+    "weight": 650
+  },
+  {
+    "poolId": 1010,
+    "packId": 1002,
+    "weight": 310
+  },
+  {
+    "poolId": 1010,
+    "packId": 1003,
+    "weight": 35
+  },
+  {
+    "poolId": 1010,
+    "packId": 1004,
+    "weight": 5
+  },
+  {
+    "poolId": 1010,
+    "packId": 1005,
+    "weight": 0
+  },
+  {
+    "poolId": 1011,
     "packId": 1001,
     "weight": 600
   },
   {
-    "poolId": 1007,
+    "poolId": 1011,
     "packId": 1002,
-    "weight": 280
+    "weight": 360
   },
   {
-    "poolId": 1007,
+    "poolId": 1011,
     "packId": 1003,
-    "weight": 110
+    "weight": 35
   },
   {
-    "poolId": 1007,
+    "poolId": 1011,
     "packId": 1004,
-    "weight": 10
+    "weight": 5
   },
   {
-    "poolId": 1007,
+    "poolId": 1011,
     "packId": 1005,
     "weight": 0
   },
   {
-    "poolId": 1008,
+    "poolId": 1012,
     "packId": 1001,
-    "weight": 560
+    "weight": 600
   },
   {
-    "poolId": 1008,
-    "packId": 1002,
-    "weight": 305
-  },
-  {
-    "poolId": 1008,
-    "packId": 1003,
-    "weight": 120
-  },
-  {
-    "poolId": 1008,
-    "packId": 1004,
-    "weight": 15
-  },
-  {
-    "poolId": 1008,
-    "packId": 1005,
-    "weight": 0
-  },
-  {
-    "poolId": 1009,
-    "packId": 1001,
-    "weight": 520
-  },
-  {
-    "poolId": 1009,
-    "packId": 1002,
-    "weight": 330
-  },
-  {
-    "poolId": 1009,
-    "packId": 1003,
-    "weight": 130
-  },
-  {
-    "poolId": 1009,
-    "packId": 1004,
-    "weight": 20
-  },
-  {
-    "poolId": 1009,
-    "packId": 1005,
-    "weight": 0
-  },
-  {
-    "poolId": 1010,
-    "packId": 1001,
-    "weight": 480
-  },
-  {
-    "poolId": 1010,
+    "poolId": 1012,
     "packId": 1002,
     "weight": 355
   },
   {
-    "poolId": 1010,
+    "poolId": 1012,
     "packId": 1003,
-    "weight": 140
+    "weight": 35
   },
   {
-    "poolId": 1010,
+    "poolId": 1012,
     "packId": 1004,
-    "weight": 25
-  },
-  {
-    "poolId": 1010,
-    "packId": 1005,
-    "weight": 0
-  },
-  {
-    "poolId": 1011,
-    "packId": 1001,
-    "weight": 440
-  },
-  {
-    "poolId": 1011,
-    "packId": 1002,
-    "weight": 335
-  },
-  {
-    "poolId": 1011,
-    "packId": 1003,
-    "weight": 160
-  },
-  {
-    "poolId": 1011,
-    "packId": 1004,
-    "weight": 40
-  },
-  {
-    "poolId": 1011,
-    "packId": 1005,
     "weight": 5
   },
   {
     "poolId": 1012,
-    "packId": 1001,
-    "weight": 400
-  },
-  {
-    "poolId": 1012,
-    "packId": 1002,
-    "weight": 315
-  },
-  {
-    "poolId": 1012,
-    "packId": 1003,
-    "weight": 180
-  },
-  {
-    "poolId": 1012,
-    "packId": 1004,
-    "weight": 55
-  },
-  {
-    "poolId": 1012,
     "packId": 1005,
+    "weight": 5
+  },
+  {
+    "poolId": 1013,
+    "packId": 1001,
+    "weight": 600
+  },
+  {
+    "poolId": 1013,
+    "packId": 1002,
+    "weight": 350
+  },
+  {
+    "poolId": 1013,
+    "packId": 1003,
+    "weight": 35
+  },
+  {
+    "poolId": 1013,
+    "packId": 1004,
     "weight": 10
   },
   {
     "poolId": 1013,
-    "packId": 1001,
-    "weight": 360
-  },
-  {
-    "poolId": 1013,
-    "packId": 1002,
-    "weight": 295
-  },
-  {
-    "poolId": 1013,
-    "packId": 1003,
-    "weight": 200
-  },
-  {
-    "poolId": 1013,
-    "packId": 1004,
-    "weight": 70
-  },
-  {
-    "poolId": 1013,
     "packId": 1005,
-    "weight": 15
+    "weight": 5
   },
   {
     "poolId": 1014,
     "packId": 1001,
-    "weight": 320
+    "weight": 600
   },
   {
     "poolId": 1014,
     "packId": 1002,
-    "weight": 275
+    "weight": 340
   },
   {
     "poolId": 1014,
     "packId": 1003,
-    "weight": 220
+    "weight": 35
   },
   {
     "poolId": 1014,
     "packId": 1004,
-    "weight": 85
-  },
-  {
-    "poolId": 1014,
-    "packId": 1005,
     "weight": 20
   },
   {
+    "poolId": 1014,
+    "packId": 1005,
+    "weight": 5
+  },
+  {
     "poolId": 1015,
     "packId": 1001,
-    "weight": 280
+    "weight": 600
   },
   {
     "poolId": 1015,
     "packId": 1002,
-    "weight": 255
+    "weight": 200
   },
   {
     "poolId": 1015,
     "packId": 1003,
-    "weight": 240
+    "weight": 90
   },
   {
     "poolId": 1015,
     "packId": 1004,
-    "weight": 100
+    "weight": 60
   },
   {
     "poolId": 1015,
     "packId": 1005,
-    "weight": 25
+    "weight": 50
   },
   {
     "poolId": 2001,
@@ -2104,9 +2104,33 @@ const GAME_CONFIG = {
     "packId": 1001,
     "items": [
       10001,
-      10002,
       10101,
-      10102
+      0,
+      10002
+    ],
+    "quantities": [
+      1,
+      1,
+      1,
+      1
+    ],
+    "rewards": [
+      {
+        "itemId": "10001",
+        "quantity": 1
+      },
+      {
+        "itemId": "10101",
+        "quantity": 1
+      },
+      {
+        "itemId": "0",
+        "quantity": 1
+      },
+      {
+        "itemId": "10002",
+        "quantity": 1
+      }
     ],
     "qualityId": 1,
     "qualityNote": "每个奖励包只会装对应品质的奖励，且概率均分"
@@ -2114,9 +2138,40 @@ const GAME_CONFIG = {
   {
     "packId": 1002,
     "items": [
+      10102,
       10201,
-      20001,
-      0
+      0,
+      10301,
+      20001
+    ],
+    "quantities": [
+      1,
+      1,
+      3,
+      1,
+      1
+    ],
+    "rewards": [
+      {
+        "itemId": "10102",
+        "quantity": 1
+      },
+      {
+        "itemId": "10201",
+        "quantity": 1
+      },
+      {
+        "itemId": "0",
+        "quantity": 3
+      },
+      {
+        "itemId": "10301",
+        "quantity": 1
+      },
+      {
+        "itemId": "20001",
+        "quantity": 1
+      }
     ],
     "qualityId": 2,
     "qualityNote": ""
@@ -2125,8 +2180,33 @@ const GAME_CONFIG = {
     "packId": 1003,
     "items": [
       10202,
-      10301,
+      10302,
+      0,
       20101
+    ],
+    "quantities": [
+      1,
+      1,
+      5,
+      1
+    ],
+    "rewards": [
+      {
+        "itemId": "10202",
+        "quantity": 1
+      },
+      {
+        "itemId": "10302",
+        "quantity": 1
+      },
+      {
+        "itemId": "0",
+        "quantity": 5
+      },
+      {
+        "itemId": "20101",
+        "quantity": 1
+      }
     ],
     "qualityId": 3,
     "qualityNote": ""
@@ -2134,8 +2214,22 @@ const GAME_CONFIG = {
   {
     "packId": 1004,
     "items": [
-      10302,
-      20201
+      20201,
+      0
+    ],
+    "quantities": [
+      1,
+      10
+    ],
+    "rewards": [
+      {
+        "itemId": "20201",
+        "quantity": 1
+      },
+      {
+        "itemId": "0",
+        "quantity": 10
+      }
     ],
     "qualityId": 4,
     "qualityNote": ""
@@ -2143,7 +2237,22 @@ const GAME_CONFIG = {
   {
     "packId": 1005,
     "items": [
-      20301
+      20301,
+      0
+    ],
+    "quantities": [
+      1,
+      50
+    ],
+    "rewards": [
+      {
+        "itemId": "20301",
+        "quantity": 1
+      },
+      {
+        "itemId": "0",
+        "quantity": 50
+      }
     ],
     "qualityId": 5,
     "qualityNote": ""
@@ -2154,6 +2263,20 @@ const GAME_CONFIG = {
       51001,
       51002
     ],
+    "quantities": [
+      1,
+      1
+    ],
+    "rewards": [
+      {
+        "itemId": "51001",
+        "quantity": 1
+      },
+      {
+        "itemId": "51002",
+        "quantity": 1
+      }
+    ],
     "qualityId": 1,
     "qualityNote": ""
   },
@@ -2162,6 +2285,20 @@ const GAME_CONFIG = {
     "items": [
       52001,
       52002
+    ],
+    "quantities": [
+      1,
+      1
+    ],
+    "rewards": [
+      {
+        "itemId": "52001",
+        "quantity": 1
+      },
+      {
+        "itemId": "52002",
+        "quantity": 1
+      }
     ],
     "qualityId": 2,
     "qualityNote": ""
@@ -2172,6 +2309,20 @@ const GAME_CONFIG = {
       53001,
       53002
     ],
+    "quantities": [
+      1,
+      1
+    ],
+    "rewards": [
+      {
+        "itemId": "53001",
+        "quantity": 1
+      },
+      {
+        "itemId": "53002",
+        "quantity": 1
+      }
+    ],
     "qualityId": 3,
     "qualityNote": ""
   },
@@ -2181,6 +2332,20 @@ const GAME_CONFIG = {
       54001,
       54002
     ],
+    "quantities": [
+      1,
+      1
+    ],
+    "rewards": [
+      {
+        "itemId": "54001",
+        "quantity": 1
+      },
+      {
+        "itemId": "54002",
+        "quantity": 1
+      }
+    ],
     "qualityId": 4,
     "qualityNote": ""
   },
@@ -2188,6 +2353,15 @@ const GAME_CONFIG = {
     "packId": 2005,
     "items": [
       55001
+    ],
+    "quantities": [
+      1
+    ],
+    "rewards": [
+      {
+        "itemId": "55001",
+        "quantity": 1
+      }
     ],
     "qualityId": 5,
     "qualityNote": ""
@@ -2204,78 +2378,24 @@ const GAME_CONFIG = {
   }
 ],
 
-  // 天道酬勤商店表（共 8 条）
+  // 天道酬勤商店表（共 2 条）
   shopTable: [
   {
     "shopId": 1,
-    "itemId": "10001",
-    "itemCount": 1,
-    "limitType": 1,
-    "limitParam": "",
-    "price": 20,
-    "note": "购买消耗道具固定为游戏币"
-  },
-  {
-    "shopId": 2,
-    "itemId": "10101",
-    "itemCount": 1,
-    "limitType": 1,
-    "limitParam": "",
-    "price": 40,
-    "note": ""
-  },
-  {
-    "shopId": 3,
-    "itemId": "10201",
-    "itemCount": 1,
-    "limitType": 1,
-    "limitParam": "",
-    "price": 80,
-    "note": ""
-  },
-  {
-    "shopId": 4,
-    "itemId": "10301",
-    "itemCount": 1,
-    "limitType": 1,
-    "limitParam": "",
-    "price": 188,
-    "note": ""
-  },
-  {
-    "shopId": 5,
-    "itemId": "20001",
+    "itemId": "40001",
     "itemCount": 1,
     "limitType": 1,
     "limitParam": "",
     "price": 50,
-    "note": ""
+    "note": "购买消耗道具固定为游戏币"
   },
   {
-    "shopId": 6,
-    "itemId": "40001",
+    "shopId": 2,
+    "itemId": "20301",
     "itemCount": 1,
     "limitType": 2,
     "limitParam": "10",
-    "price": 100,
-    "note": ""
-  },
-  {
-    "shopId": 7,
-    "itemId": "40002",
-    "itemCount": 1,
-    "limitType": 3,
-    "limitParam": "3",
-    "price": 100,
-    "note": ""
-  },
-  {
-    "shopId": 8,
-    "itemId": "20301",
-    "itemCount": 1,
-    "limitType": 1,
-    "limitParam": "",
-    "price": 1888,
+    "price": 188,
     "note": ""
   }
 ],
@@ -2320,11 +2440,23 @@ const GAME_CONFIG = {
     "items": [
       {
         "itemId": "40001",
-        "count": 10
+        "count": 15
       }
     ],
     "note": "",
     "requiredDays": 28
+  }
+],
+
+  // 每日签到奖励（共 2 条）
+  dailySignInRewards: [
+  {
+    "itemId": "1",
+    "count": 10
+  },
+  {
+    "itemId": "40002",
+    "count": 1
   }
 ],
 
@@ -2396,7 +2528,7 @@ const GAME_CONFIG = {
     "achievementId": 1,
     "typeId": 1,
     "typeParam": 5,
-    "rewardItemId": "1",
+    "rewardItemId": "40001",
     "rewardCount": 3,
     "note": "成就ID意味着排序顺序，越小排越前"
   },
@@ -2404,7 +2536,7 @@ const GAME_CONFIG = {
     "achievementId": 2,
     "typeId": 1,
     "typeParam": 10,
-    "rewardItemId": "1",
+    "rewardItemId": "40001",
     "rewardCount": 6,
     "note": ""
   },
@@ -2412,7 +2544,7 @@ const GAME_CONFIG = {
     "achievementId": 3,
     "typeId": 1,
     "typeParam": 15,
-    "rewardItemId": "1",
+    "rewardItemId": "40001",
     "rewardCount": 9,
     "note": ""
   },
@@ -2420,7 +2552,7 @@ const GAME_CONFIG = {
     "achievementId": 4,
     "typeId": 1,
     "typeParam": 20,
-    "rewardItemId": "1",
+    "rewardItemId": "40001",
     "rewardCount": 12,
     "note": ""
   },
@@ -2428,7 +2560,7 @@ const GAME_CONFIG = {
     "achievementId": 5,
     "typeId": 1,
     "typeParam": 25,
-    "rewardItemId": "1",
+    "rewardItemId": "40001",
     "rewardCount": 15,
     "note": ""
   },
@@ -2436,7 +2568,7 @@ const GAME_CONFIG = {
     "achievementId": 6,
     "typeId": 1,
     "typeParam": 30,
-    "rewardItemId": "1",
+    "rewardItemId": "40001",
     "rewardCount": 18,
     "note": ""
   },
@@ -2444,7 +2576,7 @@ const GAME_CONFIG = {
     "achievementId": 7,
     "typeId": 1,
     "typeParam": 35,
-    "rewardItemId": "1",
+    "rewardItemId": "40001",
     "rewardCount": 21,
     "note": ""
   },
@@ -2452,7 +2584,7 @@ const GAME_CONFIG = {
     "achievementId": 8,
     "typeId": 1,
     "typeParam": 40,
-    "rewardItemId": "1",
+    "rewardItemId": "40001",
     "rewardCount": 24,
     "note": ""
   },
@@ -2460,7 +2592,7 @@ const GAME_CONFIG = {
     "achievementId": 9,
     "typeId": 1,
     "typeParam": 45,
-    "rewardItemId": "1",
+    "rewardItemId": "40001",
     "rewardCount": 27,
     "note": ""
   },
@@ -2468,7 +2600,7 @@ const GAME_CONFIG = {
     "achievementId": 10,
     "typeId": 1,
     "typeParam": 50,
-    "rewardItemId": "1",
+    "rewardItemId": "40001",
     "rewardCount": 30,
     "note": ""
   },
@@ -2476,7 +2608,7 @@ const GAME_CONFIG = {
     "achievementId": 11,
     "typeId": 1,
     "typeParam": 55,
-    "rewardItemId": "1",
+    "rewardItemId": "40001",
     "rewardCount": 33,
     "note": ""
   },
@@ -2484,7 +2616,7 @@ const GAME_CONFIG = {
     "achievementId": 12,
     "typeId": 1,
     "typeParam": 60,
-    "rewardItemId": "1",
+    "rewardItemId": "40001",
     "rewardCount": 36,
     "note": ""
   },
@@ -2492,7 +2624,7 @@ const GAME_CONFIG = {
     "achievementId": 13,
     "typeId": 1,
     "typeParam": 65,
-    "rewardItemId": "1",
+    "rewardItemId": "40001",
     "rewardCount": 39,
     "note": ""
   },
@@ -2500,7 +2632,7 @@ const GAME_CONFIG = {
     "achievementId": 14,
     "typeId": 1,
     "typeParam": 70,
-    "rewardItemId": "1",
+    "rewardItemId": "40001",
     "rewardCount": 42,
     "note": ""
   },
@@ -2508,7 +2640,7 @@ const GAME_CONFIG = {
     "achievementId": 15,
     "typeId": 1,
     "typeParam": 75,
-    "rewardItemId": "1",
+    "rewardItemId": "40001",
     "rewardCount": 45,
     "note": ""
   },
@@ -2516,7 +2648,7 @@ const GAME_CONFIG = {
     "achievementId": 16,
     "typeId": 1,
     "typeParam": 80,
-    "rewardItemId": "1",
+    "rewardItemId": "40001",
     "rewardCount": 48,
     "note": ""
   },
@@ -2524,7 +2656,7 @@ const GAME_CONFIG = {
     "achievementId": 17,
     "typeId": 1,
     "typeParam": 85,
-    "rewardItemId": "1",
+    "rewardItemId": "40001",
     "rewardCount": 51,
     "note": ""
   },
@@ -2532,7 +2664,7 @@ const GAME_CONFIG = {
     "achievementId": 18,
     "typeId": 1,
     "typeParam": 90,
-    "rewardItemId": "1",
+    "rewardItemId": "40001",
     "rewardCount": 54,
     "note": ""
   },
@@ -2540,7 +2672,7 @@ const GAME_CONFIG = {
     "achievementId": 19,
     "typeId": 1,
     "typeParam": 95,
-    "rewardItemId": "1",
+    "rewardItemId": "40001",
     "rewardCount": 57,
     "note": ""
   },
@@ -2548,7 +2680,7 @@ const GAME_CONFIG = {
     "achievementId": 20,
     "typeId": 1,
     "typeParam": 100,
-    "rewardItemId": "1",
+    "rewardItemId": "40001",
     "rewardCount": 60,
     "note": ""
   },
@@ -2556,7 +2688,7 @@ const GAME_CONFIG = {
     "achievementId": 21,
     "typeId": 1,
     "typeParam": 105,
-    "rewardItemId": "1",
+    "rewardItemId": "40001",
     "rewardCount": 63,
     "note": ""
   },
@@ -2564,7 +2696,7 @@ const GAME_CONFIG = {
     "achievementId": 22,
     "typeId": 1,
     "typeParam": 110,
-    "rewardItemId": "1",
+    "rewardItemId": "40001",
     "rewardCount": 66,
     "note": ""
   },
@@ -2572,7 +2704,7 @@ const GAME_CONFIG = {
     "achievementId": 23,
     "typeId": 1,
     "typeParam": 115,
-    "rewardItemId": "1",
+    "rewardItemId": "40001",
     "rewardCount": 69,
     "note": ""
   },
@@ -2580,7 +2712,7 @@ const GAME_CONFIG = {
     "achievementId": 24,
     "typeId": 1,
     "typeParam": 120,
-    "rewardItemId": "1",
+    "rewardItemId": "40001",
     "rewardCount": 72,
     "note": ""
   },
@@ -2588,7 +2720,7 @@ const GAME_CONFIG = {
     "achievementId": 25,
     "typeId": 1,
     "typeParam": 125,
-    "rewardItemId": "1",
+    "rewardItemId": "40001",
     "rewardCount": 75,
     "note": ""
   },
@@ -2596,7 +2728,7 @@ const GAME_CONFIG = {
     "achievementId": 26,
     "typeId": 1,
     "typeParam": 130,
-    "rewardItemId": "1",
+    "rewardItemId": "40001",
     "rewardCount": 78,
     "note": ""
   },
@@ -2604,7 +2736,7 @@ const GAME_CONFIG = {
     "achievementId": 27,
     "typeId": 1,
     "typeParam": 135,
-    "rewardItemId": "1",
+    "rewardItemId": "40001",
     "rewardCount": 81,
     "note": ""
   },
@@ -2612,7 +2744,7 @@ const GAME_CONFIG = {
     "achievementId": 28,
     "typeId": 1,
     "typeParam": 140,
-    "rewardItemId": "1",
+    "rewardItemId": "40001",
     "rewardCount": 84,
     "note": ""
   },
@@ -2620,7 +2752,7 @@ const GAME_CONFIG = {
     "achievementId": 29,
     "typeId": 1,
     "typeParam": 145,
-    "rewardItemId": "1",
+    "rewardItemId": "40001",
     "rewardCount": 87,
     "note": ""
   },
@@ -2628,7 +2760,7 @@ const GAME_CONFIG = {
     "achievementId": 30,
     "typeId": 1,
     "typeParam": 150,
-    "rewardItemId": "1",
+    "rewardItemId": "40001",
     "rewardCount": 90,
     "note": ""
   },
@@ -2748,7 +2880,7 @@ const GAME_CONFIG = {
     "achievementId": 45,
     "typeId": 3,
     "typeParam": 1,
-    "rewardItemId": "1",
+    "rewardItemId": "40001",
     "rewardCount": 2,
     "note": ""
   },
@@ -2756,7 +2888,7 @@ const GAME_CONFIG = {
     "achievementId": 46,
     "typeId": 3,
     "typeParam": 2,
-    "rewardItemId": "1",
+    "rewardItemId": "40001",
     "rewardCount": 4,
     "note": ""
   },
@@ -2764,7 +2896,7 @@ const GAME_CONFIG = {
     "achievementId": 47,
     "typeId": 3,
     "typeParam": 3,
-    "rewardItemId": "1",
+    "rewardItemId": "40001",
     "rewardCount": 6,
     "note": ""
   },
@@ -2772,7 +2904,7 @@ const GAME_CONFIG = {
     "achievementId": 48,
     "typeId": 3,
     "typeParam": 4,
-    "rewardItemId": "1",
+    "rewardItemId": "40001",
     "rewardCount": 8,
     "note": ""
   },
@@ -2780,7 +2912,7 @@ const GAME_CONFIG = {
     "achievementId": 49,
     "typeId": 3,
     "typeParam": 5,
-    "rewardItemId": "1",
+    "rewardItemId": "40001",
     "rewardCount": 10,
     "note": ""
   },
@@ -2788,7 +2920,7 @@ const GAME_CONFIG = {
     "achievementId": 50,
     "typeId": 3,
     "typeParam": 6,
-    "rewardItemId": "1",
+    "rewardItemId": "40001",
     "rewardCount": 12,
     "note": ""
   },
@@ -2796,7 +2928,7 @@ const GAME_CONFIG = {
     "achievementId": 51,
     "typeId": 3,
     "typeParam": 7,
-    "rewardItemId": "1",
+    "rewardItemId": "40001",
     "rewardCount": 14,
     "note": ""
   },
@@ -2804,7 +2936,7 @@ const GAME_CONFIG = {
     "achievementId": 52,
     "typeId": 3,
     "typeParam": 8,
-    "rewardItemId": "1",
+    "rewardItemId": "40001",
     "rewardCount": 16,
     "note": ""
   },
@@ -2812,7 +2944,7 @@ const GAME_CONFIG = {
     "achievementId": 53,
     "typeId": 3,
     "typeParam": 9,
-    "rewardItemId": "1",
+    "rewardItemId": "40001",
     "rewardCount": 18,
     "note": ""
   },
@@ -2820,7 +2952,7 @@ const GAME_CONFIG = {
     "achievementId": 54,
     "typeId": 3,
     "typeParam": 10,
-    "rewardItemId": "1",
+    "rewardItemId": "40001",
     "rewardCount": 20,
     "note": ""
   },
@@ -2828,7 +2960,7 @@ const GAME_CONFIG = {
     "achievementId": 55,
     "typeId": 3,
     "typeParam": 11,
-    "rewardItemId": "1",
+    "rewardItemId": "40001",
     "rewardCount": 22,
     "note": ""
   },
@@ -2836,7 +2968,7 @@ const GAME_CONFIG = {
     "achievementId": 56,
     "typeId": 3,
     "typeParam": 12,
-    "rewardItemId": "1",
+    "rewardItemId": "40001",
     "rewardCount": 24,
     "note": ""
   },
@@ -2844,7 +2976,7 @@ const GAME_CONFIG = {
     "achievementId": 57,
     "typeId": 3,
     "typeParam": 13,
-    "rewardItemId": "1",
+    "rewardItemId": "40001",
     "rewardCount": 26,
     "note": ""
   },
@@ -2852,7 +2984,7 @@ const GAME_CONFIG = {
     "achievementId": 58,
     "typeId": 3,
     "typeParam": 14,
-    "rewardItemId": "1",
+    "rewardItemId": "40001",
     "rewardCount": 28,
     "note": ""
   },
@@ -2860,7 +2992,7 @@ const GAME_CONFIG = {
     "achievementId": 59,
     "typeId": 3,
     "typeParam": 15,
-    "rewardItemId": "1",
+    "rewardItemId": "40001",
     "rewardCount": 30,
     "note": ""
   },
@@ -2868,7 +3000,7 @@ const GAME_CONFIG = {
     "achievementId": 60,
     "typeId": 4,
     "typeParam": 99,
-    "rewardItemId": "1",
+    "rewardItemId": "40001",
     "rewardCount": 10,
     "note": ""
   },
@@ -2876,7 +3008,7 @@ const GAME_CONFIG = {
     "achievementId": 61,
     "typeId": 4,
     "typeParam": 233,
-    "rewardItemId": "1",
+    "rewardItemId": "40001",
     "rewardCount": 15,
     "note": ""
   },
@@ -2884,7 +3016,7 @@ const GAME_CONFIG = {
     "achievementId": 62,
     "typeId": 4,
     "typeParam": 666,
-    "rewardItemId": "1",
+    "rewardItemId": "40001",
     "rewardCount": 20,
     "note": ""
   },
@@ -2892,7 +3024,7 @@ const GAME_CONFIG = {
     "achievementId": 63,
     "typeId": 4,
     "typeParam": 888,
-    "rewardItemId": "1",
+    "rewardItemId": "40001",
     "rewardCount": 25,
     "note": ""
   },
@@ -2900,7 +3032,7 @@ const GAME_CONFIG = {
     "achievementId": 64,
     "typeId": 4,
     "typeParam": 2888,
-    "rewardItemId": "1",
+    "rewardItemId": "40001",
     "rewardCount": 30,
     "note": ""
   },
@@ -2908,7 +3040,7 @@ const GAME_CONFIG = {
     "achievementId": 65,
     "typeId": 4,
     "typeParam": 4888,
-    "rewardItemId": "1",
+    "rewardItemId": "40001",
     "rewardCount": 35,
     "note": ""
   },
@@ -2916,7 +3048,7 @@ const GAME_CONFIG = {
     "achievementId": 66,
     "typeId": 4,
     "typeParam": 6888,
-    "rewardItemId": "1",
+    "rewardItemId": "40001",
     "rewardCount": 40,
     "note": ""
   },
@@ -2924,7 +3056,7 @@ const GAME_CONFIG = {
     "achievementId": 67,
     "typeId": 5,
     "typeParam": 99,
-    "rewardItemId": "1",
+    "rewardItemId": "40001",
     "rewardCount": 10,
     "note": ""
   },
@@ -2932,7 +3064,7 @@ const GAME_CONFIG = {
     "achievementId": 68,
     "typeId": 5,
     "typeParam": 233,
-    "rewardItemId": "1",
+    "rewardItemId": "40001",
     "rewardCount": 15,
     "note": ""
   },
@@ -2940,7 +3072,7 @@ const GAME_CONFIG = {
     "achievementId": 69,
     "typeId": 5,
     "typeParam": 666,
-    "rewardItemId": "1",
+    "rewardItemId": "40001",
     "rewardCount": 20,
     "note": ""
   },
@@ -2948,7 +3080,7 @@ const GAME_CONFIG = {
     "achievementId": 70,
     "typeId": 5,
     "typeParam": 888,
-    "rewardItemId": "1",
+    "rewardItemId": "40001",
     "rewardCount": 25,
     "note": ""
   },
@@ -2956,7 +3088,7 @@ const GAME_CONFIG = {
     "achievementId": 71,
     "typeId": 5,
     "typeParam": 2888,
-    "rewardItemId": "1",
+    "rewardItemId": "40001",
     "rewardCount": 30,
     "note": ""
   },
@@ -2964,7 +3096,7 @@ const GAME_CONFIG = {
     "achievementId": 72,
     "typeId": 5,
     "typeParam": 4888,
-    "rewardItemId": "1",
+    "rewardItemId": "40001",
     "rewardCount": 35,
     "note": ""
   },
@@ -2972,7 +3104,7 @@ const GAME_CONFIG = {
     "achievementId": 73,
     "typeId": 5,
     "typeParam": 6888,
-    "rewardItemId": "1",
+    "rewardItemId": "40001",
     "rewardCount": 40,
     "note": ""
   },
@@ -3045,7 +3177,7 @@ function getSkillById(skillId) {
 }
 
 // 根据奖池ID获取奖池配置（含奖励包权重和道具列表）
-// 返回: { poolId, packs: [{ packId, qualityId, weight, items }] }
+// 返回: { poolId, packs: [{ packId, qualityId, weight, items, quantities, rewards }] }
 function getPoolById(poolId) {
   const weights = GAME_CONFIG.poolWeightTable.filter(w => w.poolId === poolId);
   const packs = weights.map(w => {
@@ -3055,6 +3187,11 @@ function getPoolById(poolId) {
       qualityId: pack ? pack.qualityId : 0,
       weight: w.weight,
       items: pack ? pack.items.map(String) : [],
+      quantities: pack ? (pack.quantities || []).map(q => Math.max(1, Number(q) || 1)) : [],
+      rewards: pack ? (pack.rewards || pack.items.map((itemId, index) => ({
+        itemId: String(itemId),
+        quantity: Math.max(1, Number(pack.quantities?.[index]) || 1),
+      }))) : [],
     };
   }).filter(p => p.items.length > 0 && p.weight > 0);
   return { poolId, packs };
@@ -3063,6 +3200,14 @@ function getPoolById(poolId) {
 // 获取本月累签奖励配置（按需要天数升序）
 function getSignInRewards() {
   return (GAME_CONFIG.signInTable || []).slice().sort((a, b) => a.requiredDays - b.requiredDays);
+}
+
+// 获取每日签到奖励配置
+function getDailySignInRewards() {
+  return (GAME_CONFIG.dailySignInRewards || []).map(reward => ({
+    itemId: String(reward.itemId),
+    count: Math.max(1, Number(reward.count) || 1),
+  }));
 }
 
 // 获取天道酬勤商店商品配置（合并道具表信息）
