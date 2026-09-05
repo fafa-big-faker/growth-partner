@@ -605,6 +605,15 @@ const DB = {
     return data || { ok: false, code: 'empty_response' };
   },
 
+  async dailyCheckIn() {
+    const { data, error } = await dbClient.rpc('daily_check_in');
+    if (error) {
+      console.error('DB dailyCheckIn error:', error);
+      return { ok: false, code: 'network_error' };
+    }
+    return data || { ok: false, code: 'empty_response' };
+  },
+
   // --- 任务 ---
   async getTasks(type = null) {
     let query = dbClient.from('xiu_tasks').select('*').eq('status', 'published');
@@ -1195,36 +1204,22 @@ const Game = {
       UI.toast('今日已签到', 'warn');
       return false;
     }
-    const previous = {
-      choppingCount: this.state.choppingCount,
-      lastDailyDate: this.state.lastDailyDate,
-      signInMonth: this.state.signInMonth,
-      signInDays: this.state.signInDays,
-      signInClaims: [...(this.state.signInClaims || [])],
-    };
-    const month = today.slice(0, 7);
-    // 跨月自动重置累签
-    if (this.state.signInMonth !== month) {
-      this.state.signInMonth = month;
-      this.state.signInDays = 0;
-      this.state.signInClaims = [];
-    }
-    this.state.choppingCount += 1;
-    this.state.lastDailyDate = today;
-    this.state.signInDays = (this.state.signInDays || 0) + 1;
-    const saved = await DB.updatePlayerState({
-      choppingCount: this.state.choppingCount,
-      lastDailyDate: today,
-      signInMonth: this.state.signInMonth,
-      signInDays: this.state.signInDays,
-      signInClaims: this.state.signInClaims,
-    });
-    if (!saved) {
-      Object.assign(this.state, previous);
+    const result = await DB.dailyCheckIn();
+    if (!result.ok && result.code !== 'already_checked') {
       UI.toast('签到未完成，请重试', 'error');
       return false;
     }
+
+    this.state.choppingCount = Number(result.choppingCount) || this.state.choppingCount;
+    this.state.lastDailyDate = result.date || today;
+    this.state.signInMonth = result.month || today.slice(0, 7);
+    this.state.signInDays = Number(result.days) || 0;
+    this.state.signInClaims = Array.isArray(result.claims) ? result.claims : [];
     UI.updateHeader();
+    if (result.code === 'already_checked') {
+      UI.toast('今日已签到', 'warn');
+      return false;
+    }
     UI.toast(`签到成功！获得 1 次砍树机会（本月已签 ${this.state.signInDays} 天）`, 'success');
     return true;
   },
