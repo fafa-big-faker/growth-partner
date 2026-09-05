@@ -86,3 +86,24 @@ test('chop can hold its final frame until idle is explicitly resumed', async () 
   assert.equal(image.dataset.animationState, 'idle');
   animator.stop();
 });
+
+
+test('idle motion pauses on its neutral frame and reports every frame', async () => {
+  const reports = [];
+  const animator = createFrameAnimator({
+    idleFrames: ['idle-1', 'idle-2'],
+    chopFrames: ['chop-1'],
+    idleFrameMs: 2,
+    idlePauseMs: 12,
+    onFrame: report => reports.push(`${report.state}:${report.index}`),
+  });
+  const image = trackedImage();
+
+  animator.attach(image);
+  await new Promise(resolve => setTimeout(resolve, 5));
+  assert.deepEqual(reports, ['idle:0']);
+
+  await new Promise(resolve => setTimeout(resolve, 12));
+  assert.ok(reports.includes('idle:1'));
+  animator.stop();
+});

@@ -27,12 +27,12 @@
       <div class="login-subtitle">社交修仙 · 砍树证道 · 天道酬勤</div>
       <div class="role-select">
         <div class="role-card active" data-role="player" onclick="Auth.selectRole('player')">
-          <div class="emoji">🧑‍🌾</div>
+          <img class="role-art role-art-player" src="assets/images/character/idle/frame-01.png" alt="" />
           <div class="name">修炼者</div>
           <div class="desc">砍树证道</div>
         </div>
         <div class="role-card" data-role="admin" onclick="Auth.selectRole('admin')">
-          <div class="emoji">⚡</div>
+          <img class="role-art" src="assets/images/v2/icons/icon-breakthrough.png" alt="" />
           <div class="name">天道</div>
           <div class="desc">执掌天规</div>
         </div>
@@ -64,7 +64,7 @@
         <div class="nav-text">天道酬勤</div>
       </div>
       <div class="nav-item admin-only" data-tab="admin" onclick="Router.playerTab('admin')" style="display:none">
-        <div class="nav-icon">⚡</div>
+        <div class="nav-icon"><img class="nav-icon-img" src="assets/images/v2/icons/icon-breakthrough.png" alt="" /></div>
         <div class="nav-text">天道</div>
       </div>
     </nav>
@@ -74,7 +74,7 @@
   <div id="admin-dashboard" class="app" style="display:none">
     <header class="app-header">
       <div class="header-left">
-        <span class="player-avatar">⚡</span>
+        <span class="player-avatar"><img class="admin-avatar-icon" src="assets/images/v2/icons/icon-breakthrough.png" alt="" /></span>
         <div class="player-info">
           <div class="player-name">天道</div>
           <div class="player-level">
@@ -89,23 +89,23 @@
     <main class="app-main" id="admin-main"></main>
     <nav class="bottom-nav">
       <div class="nav-item active" data-tab="task-manage" onclick="Router.adminTab('task-manage')">
-        <div class="nav-icon">📜</div>
+        <div class="nav-icon"><img class="nav-icon-img" src="assets/images/v2/icons/icon-tasks.png" alt="" /></div>
         <div class="nav-text">任务管理</div>
       </div>
       <div class="nav-item" data-tab="review" onclick="Router.adminTab('review')">
-        <div class="nav-icon">✅</div>
+        <div class="nav-icon"><img class="nav-icon-img" src="assets/images/v2/icons/icon-achievement.png" alt="" /></div>
         <div class="nav-text">审核</div>
       </div>
       <div class="nav-item" data-tab="withdraw" onclick="Router.adminTab('withdraw')">
-        <div class="nav-icon">💰</div>
+        <div class="nav-icon"><img class="nav-icon-img" src="assets/images/v2/icons/icon-wallet.png" alt="" /></div>
         <div class="nav-text">提现审批</div>
       </div>
       <div class="nav-item" data-tab="player-view" onclick="Router.adminTab('player-view')">
-        <div class="nav-icon">👁️</div>
+        <div class="nav-icon"><img class="nav-icon-img" src="assets/images/v2/icons/icon-cultivate.png" alt="" /></div>
         <div class="nav-text">查看玩家</div>
       </div>
       <div class="nav-item" data-tab="gm" onclick="Router.adminTab('gm')">
-        <div class="nav-icon">🛠️</div>
+        <div class="nav-icon"><img class="nav-icon-img" src="assets/images/v2/icons/icon-forge.png" alt="" /></div>
         <div class="nav-text">GM工具</div>
       </div>
     </nav>

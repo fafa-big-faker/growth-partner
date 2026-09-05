@@ -1,3 +1,4 @@
+import argparse
 from pathlib import Path
 
 from PIL import Image
@@ -14,6 +15,16 @@ SHEETS = {
 }
 
 
+def remove_magenta_background(image: Image.Image) -> Image.Image:
+    rgba = image.convert("RGBA")
+    cleaned = []
+    for red, green, blue, alpha in rgba.get_flattened_data():
+        is_magenta = red >= 170 and blue >= 125 and green <= 105 and green * 2 < red + blue
+        cleaned.append((red, green, blue, 0 if is_magenta else alpha))
+    rgba.putdata(cleaned)
+    return rgba
+
+
 def split_sheet(name: str, source_path: Path) -> list[Path]:
     with Image.open(source_path) as source:
         if source.width % FRAME_COUNT != 0:
@@ -25,7 +36,7 @@ def split_sheet(name: str, source_path: Path) -> list[Path]:
                 f"{source_path.name}: expected frames {EXPECTED_SIZE}, got {frame_size}"
             )
 
-        rgba = source.convert("RGBA")
+        rgba = remove_magenta_background(source)
         output_dir = REPO_ROOT / "assets" / "images" / "character" / name
         output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -52,8 +63,16 @@ def verify_frame(path: Path) -> None:
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description="Split six-frame character atlases")
+    parser.add_argument("--only", choices=["idle", "chop", "all"], default="all")
+    parser.add_argument("--idle-source", type=Path, default=SHEETS["idle"])
+    parser.add_argument("--chop-source", type=Path, default=SHEETS["chop"])
+    args = parser.parse_args()
+
+    sources = {"idle": args.idle_source, "chop": args.chop_source}
+    selected = sources.items() if args.only == "all" else [(args.only, sources[args.only])]
     outputs = []
-    for name, source_path in SHEETS.items():
+    for name, source_path in selected:
         if not source_path.exists():
             raise FileNotFoundError(source_path)
         outputs.extend(split_sheet(name, source_path))

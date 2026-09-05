@@ -4,6 +4,8 @@
     const chopFrames = [...(options.chopFrames || [])];
     const idleFrameMs = options.idleFrameMs || 200;
     const chopFrameMs = options.chopFrameMs || 90;
+    const idlePauseMs = Math.max(0, options.idlePauseMs || 0);
+    const onFrame = typeof options.onFrame === 'function' ? options.onFrame : null;
     let element = null;
     let timer = null;
     let sequence = 0;
@@ -22,24 +24,31 @@
       resolve(false);
     }
 
-    function setFrame(frame, mode) {
+    function setFrame(frame, mode, index) {
       if (!element || !frame) return;
       element.src = frame;
       if (element.dataset) element.dataset.animationState = mode;
+      if (onFrame) onFrame({ frame, state: mode, index, element });
     }
 
     function startIdle(token) {
       if (!element || idleFrames.length === 0 || token !== sequence) return;
       idleIndex = 0;
-      setFrame(idleFrames[idleIndex], 'idle');
+      setFrame(idleFrames[idleIndex], 'idle', idleIndex);
 
       const advance = () => {
         if (!element || token !== sequence) return;
-        idleIndex = (idleIndex + 1) % idleFrames.length;
-        setFrame(idleFrames[idleIndex], 'idle');
+        if (idleIndex >= idleFrames.length - 1) {
+          idleIndex = 0;
+          setFrame(idleFrames[idleIndex], 'idle', idleIndex);
+          timer = setTimeout(advance, idlePauseMs || idleFrameMs);
+          return;
+        }
+        idleIndex += 1;
+        setFrame(idleFrames[idleIndex], 'idle', idleIndex);
         timer = setTimeout(advance, idleFrameMs);
       };
-      timer = setTimeout(advance, idleFrameMs);
+      timer = setTimeout(advance, idlePauseMs || idleFrameMs);
     }
 
     return {
@@ -67,7 +76,7 @@
               resolve(false);
               return;
             }
-            setFrame(chopFrames[index], 'chop');
+            setFrame(chopFrames[index], 'chop', index);
             index += 1;
             if (index < chopFrames.length) {
               timer = setTimeout(advance, chopFrameMs);
@@ -82,7 +91,7 @@
               if (shouldResumeIdle) {
                 startIdle(token);
               } else {
-                setFrame(chopFrames[chopFrames.length - 1], 'chop-hold');
+                setFrame(chopFrames[chopFrames.length - 1], 'chop-hold', chopFrames.length - 1);
                 timer = null;
               }
               pendingChopResolve = null;

@@ -205,6 +205,10 @@ function renderFeatureIcon(name, alt = '', cls = 'feature-icon') {
   return `<img src="${V2_IMAGE_ROOT}/icons/${name}.png" class="${cls}" alt="${alt}" />`;
 }
 
+function renderEmptyState(iconName, text) {
+  return `<div class="empty-state" style="padding:24px"><img src="${V2_IMAGE_ROOT}/icons/${iconName}.png" class="empty-state-art" alt="" /><p>${text}</p></div>`;
+}
+
 function getTreeImage(treeLevel) {
   if (treeLevel >= 13) return 'assets/images/v2/trees/divine.png';
   if (treeLevel >= 6) return 'assets/images/v2/trees/spirit.png';
@@ -219,11 +223,47 @@ const CULTIVATOR_CHOP_FRAMES = Array.from(
   { length: 6 },
   (_, index) => `assets/images/character/chop/frame-${String(index + 1).padStart(2, '0')}.png`,
 );
+
+const CULTIVATOR_WEAPON_POSES = {
+  idle: [
+    { x: 69, y: 62, rotate: -24, scale: 0.88 },
+    { x: 69, y: 62, rotate: -23, scale: 0.88 },
+    { x: 70, y: 61, rotate: -22, scale: 0.88 },
+    { x: 70, y: 61, rotate: -21, scale: 0.88 },
+    { x: 69, y: 62, rotate: -23, scale: 0.88 },
+    { x: 69, y: 62, rotate: -24, scale: 0.88 },
+  ],
+  chop: [
+    { x: 70, y: 62, rotate: -24, scale: 0.9 },
+    { x: 61, y: 50, rotate: -58, scale: 0.94 },
+    { x: 58, y: 56, rotate: -74, scale: 0.96 },
+    { x: 64, y: 43, rotate: 18, scale: 0.98 },
+    { x: 72, y: 34, rotate: 52, scale: 1 },
+    { x: 79, y: 61, rotate: 104, scale: 1.02 },
+  ],
+};
+
+function updateCultivatorWeapon({ state, index }) {
+  const weapon = document.getElementById('cultivator-weapon');
+  if (!weapon) return;
+  const mode = state.startsWith('chop') ? 'chop' : 'idle';
+  const poses = CULTIVATOR_WEAPON_POSES[mode];
+  const pose = poses[Math.min(index ?? 0, poses.length - 1)] || poses[0];
+  weapon.dataset.animationState = state;
+  weapon.dataset.animationFrame = String(index ?? 0);
+  weapon.style.setProperty('--weapon-x', `${pose.x}%`);
+  weapon.style.setProperty('--weapon-y', `${pose.y}%`);
+  weapon.style.setProperty('--weapon-rotate', `${pose.rotate}deg`);
+  weapon.style.setProperty('--weapon-scale', pose.scale);
+}
+
 const CultivatorAnimator = CharacterAnimator.createFrameAnimator({
   idleFrames: CULTIVATOR_IDLE_FRAMES,
   chopFrames: CULTIVATOR_CHOP_FRAMES,
-  idleFrameMs: 200,
+  idleFrameMs: 190,
+  idlePauseMs: 4800,
   chopFrameMs: 90,
+  onFrame: updateCultivatorWeapon,
 });
 
 if (typeof Image !== 'undefined') {
@@ -935,12 +975,12 @@ const DB = {
 // 成就类型 → 玩家状态字段 / 图标 / 文案（页签与类型定义来自飞书成就表）
 // typeId 对应「成就类型表」：1角色等级 2仙阶 3仙树灵阶 4消耗砍树次数 5历史获得游戏币 6提现总额
 const ACH_TYPE_META = {
-  1: { stat: 'level',          icon: '📈', tab: 1 },
-  2: { stat: 'realmLevel',     icon: '⭐', tab: 1, isRealm: true },
-  3: { stat: 'treeLevel',      icon: '🌳', tab: 2 },
-  4: { stat: 'totalChops',     icon: '🪓', tab: 2 },
-  5: { stat: 'totalCoinEarned', icon: '🪙', tab: 3 },
-  6: { stat: 'totalWithdrawn', icon: '💰', tab: 3 },
+  1: { stat: 'level',           iconName: 'icon-breakthrough', tab: 1 },
+  2: { stat: 'realmLevel',      iconName: 'icon-achievement', tab: 1, isRealm: true },
+  3: { stat: 'treeLevel',       iconName: 'icon-tree-info', tab: 2 },
+  4: { stat: 'totalChops',      iconName: 'icon-cultivate', tab: 2 },
+  5: { stat: 'totalCoinEarned', iconName: 'icon-shop', tab: 3 },
+  6: { stat: 'totalWithdrawn',  iconName: 'icon-wallet', tab: 3 },
 };
 
 // 成就目标文案：优先用配置里的展示文案（{value} 占位），否则按类型生成
@@ -1279,14 +1319,14 @@ const Game = {
   getAchievementProgress() {
     const claims = Array.isArray(this.state.achievementClaims) ? this.state.achievementClaims : [];
     return getAchievements().map(a => {
-      const meta = ACH_TYPE_META[a.typeId] || { stat: 'level', icon: '🏅', tab: 1 };
+      const meta = ACH_TYPE_META[a.typeId] || { stat: 'level', iconName: 'icon-achievement', tab: 1 };
       const current = parseInt(this.state[meta.stat]) || 0;
       const target = a.typeParam || 1;
       const claimed = claims.includes(a.achievementId);
       const done = current >= target;
       return {
         ...a,
-        icon: meta.icon,
+        iconName: meta.iconName,
         tabId: meta.tab,
         current,
         target,
@@ -1929,8 +1969,8 @@ const UI = {
     if (!Game.state) return;
     const expMax = getExpForLevel(Game.state.level);
     const realm = REALMS.find(r => r.level == Game.state.realmLevel) || REALMS[0];
-    const realmEl = document.querySelector('.status-realm');
-    if (realmEl) realmEl.textContent = `${realm.icon} ${Game.state.level}级 · ${realm.name}`;
+    const realmEl = document.querySelector('.status-realm-text');
+    if (realmEl) realmEl.textContent = `${Game.state.level}级 · ${realm.name}`;
     const expFill = document.querySelector('.status-exp-fill');
     if (expFill) expFill.style.width = `${Math.min(100, Game.state.exp / expMax * 100)}%`;
     const expText = document.querySelector('.status-exp-text');
@@ -2013,7 +2053,7 @@ const UI = {
       <div class="modal">
         <div class="modal-header">
           <div class="modal-title">${options.title || ''}</div>
-          <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">×</button>
+          <button class="modal-close" aria-label="关闭" title="关闭" onclick="this.closest('.modal-overlay').remove()">${renderFeatureIcon('icon-close', '关闭', 'modal-close-icon')}</button>
         </div>
         <div class="modal-body">${contentHTML}</div>
         ${options.footer || ''}
@@ -2184,6 +2224,7 @@ const PlayerView = {
       <div class="cult-scene" id="tree-area">
         <div class="cult-char">
           <img id="cultivator-sprite" src="assets/images/character/idle/frame-01.png" class="char-img" alt="修炼者" />
+          <img id="cultivator-weapon" src="${ITEM_IMAGES[String(Game.state.axeId)] || ITEM_IMAGES['51001']}" class="cultivator-weapon" alt="${axeDef.name}" />
         </div>
         <div class="cult-tree" id="tree-icon" onclick="PlayerView.showTreeDetail()">
           <img src="${treeImg}" class="tree-img" alt="${treeConfig.name}" />
@@ -2194,7 +2235,7 @@ const PlayerView = {
       <!-- ② 状态栏：等级·仙阶 + 经验条 / 突破 -->
       <div class="cult-status">
         <div class="status-center">
-          <div class="status-realm">${realm.icon} ${Game.state.level}级 · ${realm.name}</div>
+          <div class="status-realm">${renderFeatureIcon('icon-cultivate', '', 'status-realm-icon')}<span class="status-realm-text">${Game.state.level}级 · ${realm.name}</span></div>
           <div class="status-exp-row">
             <div class="status-exp-bar"><div class="status-exp-fill" style="width:${Math.min(100, Game.state.exp / expMax * 100)}%"></div></div>
             <span class="status-exp-text">${Game.state.exp}/${expMax}</span>
@@ -2236,11 +2277,11 @@ const PlayerView = {
             <span class="equip-name">${axeDef.name}</span>
             ${UI.qualityTag(axeDef.quality)}
           </div>
-          ${axeDef.skillDesc ? `<div class="equip-skill">🌟 ${axeDef.skillDesc}</div>` : ''}
+          ${axeDef.skillDesc ? `<div class="equip-skill">斧技 · ${axeDef.skillDesc}</div>` : ''}
         </div>
         <button class="forge-btn" onclick="PlayerView.showForge()">
           <span class="forge-btn-icon">${renderFeatureIcon('icon-forge', '锻造', 'forge-feature-icon')}</span>
-          <span class="forge-btn-stone">🔩${forgeStoneQty}</span>
+          <span class="forge-btn-stone">${renderItemIcon('40001', '', 'forge-stone-img')}<span>${forgeStoneQty}</span></span>
         </button>
       </div>
     `;
@@ -2298,7 +2339,7 @@ const PlayerView = {
             <span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:12px;background:${qInfo.color}20;color:${qInfo.color}">${qInfo.name}</span>
           </div>
           <div style="flex:1;text-align:center;font-weight:600;font-size:16px">${curPct.toFixed(1)}%</div>
-          <div style="width:40px;text-align:center;font-size:20px">${nextWeights ? '➡' : ''}</div>
+          <div style="width:40px;text-align:center;font-size:20px">${nextWeights ? '→' : ''}</div>
           <div style="flex:1;text-align:center;font-weight:600;font-size:16px;display:flex;align-items:center;justify-content:center;gap:4px">
             ${nextWeights ? `${nextPct.toFixed(1)}% ${arrow}` : '—'}
           </div>
@@ -2344,7 +2385,7 @@ const PlayerView = {
         </div>
       ` : '<div style="text-align:center;color:var(--text-secondary);padding:12px">已达到最高灵阶</div>'}
     `, {
-      title: '🌳 仙树详情',
+      title: `${renderFeatureIcon('icon-tree-info', '', 'section-title-icon')} 仙树详情`,
       footer: nextTreeRealm ? `<div class="modal-footer">
         <button class="btn btn-outline btn-sm" onclick="this.closest('.modal-overlay').remove()">关闭</button>
         <button class="btn btn-primary btn-sm" id="tree-upgrade-btn" ${canUpgrade ? '' : 'disabled'}>升阶</button>
@@ -2413,7 +2454,7 @@ const PlayerView = {
           html += `
             <div class="item-slot weapon-slot quality-${def.quality} ${axeLocked ? 'item-locked' : ''}" onclick="PlayerView.showItemDetail('${inv.itemId}')">
               <div class="item-icon">${renderItemIcon(inv.itemId, def.icon)}</div>
-              ${axeLocked ? '<div class="item-lock-badge">🔒</div>' : ''}
+              ${axeLocked ? `<div class="item-lock-badge">${renderFeatureIcon('icon-lock', '仙阶未解锁', 'lock-badge-icon')}</div>` : ''}
             </div>
           `;
         }
@@ -2421,7 +2462,7 @@ const PlayerView = {
         html += `
           <div class="item-slot quality-${def.quality}" onclick="PlayerView.showItemDetail('${inv.itemId}')">
             <div class="item-icon">${renderItemIcon(inv.itemId, def.icon)}</div>
-            <div class="item-count">${inv.quantity}</div>
+            <div class="item-count">×${inv.quantity > 999 ? '999+' : inv.quantity}</div>
           </div>
         `;
       }
@@ -2451,7 +2492,7 @@ const PlayerView = {
       const curRealm = REALMS.find(r => r.level == Game.state.realmLevel) || REALMS[0];
       axeRealmHtml = `
         <div style="background:${canEquip ? 'var(--success)' : 'var(--error)'}15;border:1px solid ${canEquip ? 'var(--success)' : 'var(--error)'}40;border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:13px;display:flex;align-items:center;gap:8px;justify-content:center">
-          <span>${canEquip ? '✅' : '🔒'}</span>
+          <span>${canEquip ? '✓' : renderFeatureIcon('icon-lock', '仙阶未解锁', 'lock-inline-icon')}</span>
           <span style="color:${canEquip ? 'var(--success)' : 'var(--error)'}">
             适配仙阶：<b>${minRealm?.name || '?'}</b>及以上
             ${canEquip ? '' : `（当前：${curRealm.name}）`}
@@ -2468,7 +2509,7 @@ const PlayerView = {
     } else if (def.type === 5) {
       if (axeLocked) {
         actionBtn = `
-          <button class="btn btn-outline btn-sm" disabled style="opacity:0.5">🔒 仙阶不足</button>
+          <button class="btn btn-outline btn-sm" disabled style="opacity:0.5">${renderFeatureIcon('icon-lock', '', 'button-feature-icon')}仙阶不足</button>
           <button class="btn btn-outline btn-sm" onclick="PlayerView.sellItem('${itemId}',this)">出售 +${renderItemIcon('0', '🪙', 'item-icon-xs')} ${def.sellPrice}</button>
         `;
       } else {
@@ -2483,7 +2524,7 @@ const PlayerView = {
       <div style="text-align:center;margin-bottom:16px">
         <div style="font-size:60px;margin-bottom:8px;position:relative;display:inline-block">
           ${renderItemIcon(itemId, def.icon, 'item-icon-lg')}
-          ${axeLocked ? '<span style="position:absolute;top:-4px;right:-16px;font-size:24px">🔒</span>' : ''}
+          ${axeLocked ? `<span class="detail-lock-art">${renderFeatureIcon('icon-lock', '仙阶未解锁', 'lock-detail-icon')}</span>` : ''}
         </div>
         <div style="font-size:18px;font-weight:700">${def.name}</div>
         <div style="margin-top:4px"><span class="tag" style="background:${q.color}20;color:${q.color}">${q.name}</span></div>
@@ -2491,7 +2532,7 @@ const PlayerView = {
       </div>
       ${axeRealmHtml}
       <p style="font-size:13px;color:var(--text-secondary);text-align:center;margin-bottom:16px">${def.desc || ''}</p>
-      ${def.skillDesc ? `<p style="font-size:12px;color:var(--accent);text-align:center;margin-bottom:16px">🌟 ${def.skillDesc}</p>` : ''}
+      ${def.skillDesc ? `<p style="font-size:12px;color:var(--accent);text-align:center;margin-bottom:16px">斧技 · ${def.skillDesc}</p>` : ''}
       <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
         ${actionBtn}
       </div>
@@ -2514,7 +2555,7 @@ const PlayerView = {
       <div style="text-align:center;margin-bottom:16px">
         <div style="font-size:48px;margin-bottom:4px;display:flex;justify-content:center">${renderItemIcon(itemId, def.icon, 'item-icon-lg')}</div>
         <div style="font-size:14px;color:var(--text-secondary)">${def.name}</div>
-        <div style="margin:4px 0;font-size:20px">⬇️</div>
+        <div style="margin:4px 0;font-size:20px">↓</div>
         <div style="font-size:48px;margin-bottom:4px;display:flex;justify-content:center">${renderItemIcon(def.composeTo, targetDef?.icon, 'item-icon-lg')}</div>
         <div style="font-size:16px;font-weight:700">${targetDef?.name || '?'}</div>
       </div>
@@ -2765,10 +2806,10 @@ const PlayerView = {
 
   _showRewardModal(item) {
     const buffHtml = item.buffText
-      ? `<div style="color:var(--quality-4);font-size:14px;font-weight:600;margin-bottom:8px">🌟 ${item.buffText}</div>`
+      ? `<div style="color:var(--quality-4);font-size:14px;font-weight:600;margin-bottom:8px">斧技触发 · ${item.buffText}</div>`
       : '';
     const refundHtml = item.refundChopping
-      ? `<div style="color:var(--accent);font-size:13px;margin-bottom:8px">🪓 返还 ${item.refundChopping} 次砍树</div>`
+      ? `<div style="color:var(--accent);font-size:13px;margin-bottom:8px">返还 ${item.refundChopping} 次砍树</div>`
       : '';
     const extraHtml = item.extraDrop ? `
       <div class="bonus-drop-row">
@@ -2803,7 +2844,7 @@ const PlayerView = {
         ${extraHtml}
         <button class="btn btn-primary btn-block" onclick="this.closest('.modal-overlay').remove()">收下</button>
       </div>
-    `, { title: '🎉 获得物品' });
+    `, { title: `${renderFeatureIcon('icon-reward', '', 'section-title-icon')} 获得物品` });
   },
 
   // --- 任务页 ---
@@ -2843,7 +2884,7 @@ const PlayerView = {
       <div id="task-list"></div>
 
       <button class="btn btn-outline btn-block" style="margin-top:16px" onclick="PlayerView.showSelfSubmit()">
-        ✍️ 自主申报任务
+        ${renderFeatureIcon('icon-tasks', '', 'button-feature-icon')}自主申报任务
       </button>
     `;
 
@@ -2894,7 +2935,7 @@ const PlayerView = {
       return `
         <div class="theme-card">
           <div class="theme-soon">
-            <span class="soon-emoji">🎨</span>
+            ${renderFeatureIcon('icon-tasks', '', 'empty-state-art')}
             <div class="soon-title">主题活动 · 尽情期待</div>
             <div class="soon-sub">下一期主题活动正在筹备中，敬请期待～</div>
           </div>
@@ -2930,7 +2971,7 @@ const PlayerView = {
       <div class="theme-card">
         <div class="theme-head">
           <span class="theme-badge">主题活动</span>
-          <span class="theme-name">🎨 ${theme.name}</span>
+          <span class="theme-name">${theme.name}</span>
           <span class="theme-countdown">${countdown}</span>
         </div>
         <div class="theme-meta">${rangeText} · 共 ${total} 个系列任务 · 已完成 ${doneCount}/${total}</div>
@@ -3000,9 +3041,9 @@ const PlayerView = {
     if (filter.startsWith('theme:')) {
       const themeName = filter.substring(6);
       const themeTasks = [...this._dailyTasks, ...this._weeklyTasks].filter(t => t.themeName === themeName);
-      html += `<div style="font-size:13px;font-weight:600;color:var(--text-secondary);margin:12px 4px 8px">🎨 ${themeName} · 主题任务</div>`;
+      html += `<div class="task-section-label">${renderFeatureIcon('icon-tasks', '', 'section-label-icon')}<span>${themeName} · 主题任务</span></div>`;
       if (themeTasks.length === 0) {
-        html += `<div class="empty-state" style="padding:24px"><div class="emoji">🎨</div><p>该主题暂无任务</p></div>`;
+        html += renderEmptyState('icon-tasks', '该主题暂无任务');
       } else {
         themeTasks.forEach(task => {
           const type = task.taskType;
@@ -3035,7 +3076,7 @@ const PlayerView = {
         const themeClaimed = (Game.state.themeRewardClaims || []).includes(themeName);
         html += `
           <div style="margin-top:16px;padding:12px;background:linear-gradient(135deg,#f3e5f5,#e1bee7);border-radius:12px">
-            <div style="font-weight:600;font-size:14px;margin-bottom:8px;color:#6a1b9a">🎁 主题额外奖励</div>
+            <div class="theme-reward-title">${renderFeatureIcon('icon-reward', '', 'section-label-icon')}<span>主题额外奖励</span></div>
             <div style="font-size:12px;color:#7b1fa2;margin-bottom:8px">完成全部 ${totalCount} 个主题任务即可领取</div>
             <div style="margin-bottom:8px">${extraRewardHtml || '<span style="color:#9e9e9e">暂无额外奖励</span>'}</div>
             <div style="display:flex;align-items:center;gap:8px">
@@ -3045,7 +3086,7 @@ const PlayerView = {
               <span style="font-size:12px;color:#7b1fa2;font-weight:600">${completedCount}/${totalCount}</span>
             </div>
             <button class="btn btn-primary btn-sm btn-block" style="margin-top:10px" ${(allDone && !themeClaimed) ? '' : 'disabled'} onclick="PlayerView.claimThemeExtraReward('${themeName}',this)">
-              ${themeClaimed ? '已领取' : (allDone ? '🎁 领取额外奖励' : '完成全部任务后解锁')}
+              ${themeClaimed ? '已领取' : (allDone ? '领取额外奖励' : '完成全部任务后解锁')}
             </button>
           </div>
         `;
@@ -3056,7 +3097,7 @@ const PlayerView = {
 
     // 每日任务
     if (filter === 'all' || filter === 'daily') {
-      html += `<div style="font-size:13px;font-weight:600;color:var(--text-secondary);margin:12px 4px 8px">☀️ 每日任务</div>`;
+      html += `<div class="task-section-label">${renderFeatureIcon('icon-tasks', '', 'section-label-icon')}<span>每日任务</span></div>`;
       this._dailyTasks.forEach(task => {
         const checked = this._dailyChecked;
         html += this._renderTaskCard(task, checked ? 'done' : 'available', 'daily');
@@ -3067,7 +3108,7 @@ const PlayerView = {
 
     // 每周任务
     if (filter === 'all' || filter === 'weekly') {
-      html += `<div style="font-size:13px;font-weight:600;color:var(--text-secondary);margin:16px 4px 8px">📅 每周任务</div>`;
+      html += `<div class="task-section-label">${renderFeatureIcon('icon-tasks', '', 'section-label-icon')}<span>每周任务</span></div>`;
       this._weeklyTasks.forEach(task => {
         const sub = submissions.find(s => s.taskId === task.id);
         const status = sub ? sub.status : 'available';
@@ -3077,10 +3118,10 @@ const PlayerView = {
 
     // 自主申报
     if (filter === 'all' || filter === 'self') {
-      html += `<div style="font-size:13px;font-weight:600;color:var(--text-secondary);margin:16px 4px 8px">✍️ 自主申报</div>`;
+      html += `<div class="task-section-label">${renderFeatureIcon('icon-tasks', '', 'section-label-icon')}<span>自主申报</span></div>`;
       const selfSubs = submissions.filter(s => s.isSelfTask);
       if (selfSubs.length === 0) {
-        html += `<div class="empty-state" style="padding:24px"><div class="emoji">📝</div><p>还没有自主申报的任务</p></div>`;
+        html += renderEmptyState('icon-tasks', '还没有自主申报的任务');
       } else {
         selfSubs.forEach(sub => {
           html += this._renderSelfSubCard(sub);
@@ -3128,7 +3169,7 @@ const PlayerView = {
         <div class="task-card-header">
           <div class="task-title">${task.title}</div>
           <div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end">
-            ${task.themeName ? `<span class="tag" style="background:#e8daef;color:#6c3483;font-size:10px">🎨 ${task.themeName}</span>` : ''}
+            ${task.themeName ? `<span class="tag theme-task-tag">${task.themeName}</span>` : ''}
             ${task.difficulty ? UI.difficultyTag(task.difficulty) : ''}
           </div>
         </div>
@@ -3159,7 +3200,7 @@ const PlayerView = {
           ${UI.statusTag(sub.status)}
         </div>
         <div class="task-desc">${sub.selfDescription || sub.description || ''}</div>
-        ${sub.reviewNote ? `<div class="task-desc" style="color:var(--accent)">💬 ${sub.reviewNote}</div>` : ''}
+        ${sub.reviewNote ? `<div class="task-desc" style="color:var(--accent)">审核备注：${sub.reviewNote}</div>` : ''}
         <div class="task-actions">${actionBtn}</div>
       </div>
     `;
@@ -3217,7 +3258,7 @@ const PlayerView = {
     return `
       <div class="signin-card">
         <div class="signin-head">
-          <span class="signin-title">🎯 本月累签奖励</span>
+          <span class="signin-title">${renderFeatureIcon('icon-achievement', '', 'signin-title-icon')}本月累签奖励</span>
           <span class="signin-days">本月已签 <b>${days}</b> 天</span>
         </div>
         <div class="signin-track-wrap">
@@ -3456,13 +3497,13 @@ const PlayerView = {
         }
 
         const mailed = await DB.sendMail(
-          `🎨 主题「${themeName}」完成奖励`,
+          `主题「${themeName}」完成奖励`,
           `恭喜你完成了主题「${themeName}」的全部任务，额外奖励已发放！`,
           extraReward,
         );
         if (!mailed) console.error('theme reward mail failed:', themeName);
 
-        UI.toast('🎉 主题额外奖励已领取！', 'success');
+        UI.toast('主题额外奖励已领取！', 'success');
         this._renderTaskList();
         return true;
       }
@@ -3489,13 +3530,13 @@ const PlayerView = {
           <button class="withdraw-btn-round" onclick="PlayerView.adjustWithdraw(100)" id="withdraw-plus">+</button>
         </div>
         <button class="btn btn-primary btn-block" onclick="PlayerView.doWithdraw(this)">申请提现</button>
-        <button class="btn btn-outline btn-block" style="margin-top:8px" onclick="PlayerView.showWithdrawRecords()">📋 提现记录</button>
+        <button class="btn btn-outline btn-block" style="margin-top:8px" onclick="PlayerView.showWithdrawRecords()">${renderFeatureIcon('icon-wallet', '', 'button-feature-icon')}提现记录</button>
       </div>
 
       <!-- 天道酬勤商店（游戏币购买） -->
       <div class="shop-section">
         <div class="section-header" style="align-items:center">
-          <div class="section-title">🛒 天道酬勤商店</div>
+          <div class="section-title section-title-art">${renderFeatureIcon('icon-shop', '', 'section-title-icon')}<span>天道酬勤商店</span></div>
           <div class="res-pill res-coin" title="游戏币余额">
             <span class="res-icon">${renderItemIcon('0', '🪙', 'res-coin-img')}</span><span class="res-val" id="shop-coin-balance">${Game.state.coin || 0}</span>
           </div>
@@ -3507,7 +3548,7 @@ const PlayerView = {
       <!-- 提现记录 -->
       <div style="margin-top:20px">
         <div class="section-header">
-          <div class="section-title">📋 提现记录</div>
+          <div class="section-title section-title-art">${renderFeatureIcon('icon-wallet', '', 'section-title-icon')}<span>提现记录</span></div>
         </div>
         <div id="withdraw-list"></div>
       </div>
@@ -3557,7 +3598,7 @@ const PlayerView = {
     const monthPurchases = (Game.state.shopPurchases || {})[month] || {};
 
     if (items.length === 0) {
-      grid.innerHTML = '<div class="empty-state" style="padding:24px;grid-column:1/-1"><div class="emoji">🛒</div><p>商店暂未上架商品</p></div>';
+      grid.innerHTML = `<div style="grid-column:1/-1">${renderEmptyState('icon-shop', '商店暂未上架商品')}</div>`;
       return;
     }
 
@@ -3575,7 +3616,7 @@ const PlayerView = {
         const realmName = realm ? realm.name : `仙阶${needRealm}`;
         if ((Game.state.realmLevel || 1) < needRealm) {
           disabled = true;
-          badge = `<div class="shop-tag shop-lock">🔒 ${realmName}</div>`;
+          badge = `<div class="shop-tag shop-lock">${renderFeatureIcon('icon-lock', '', 'shop-lock-icon')}${realmName}</div>`;
         } else {
           badge = `<div class="shop-tag">${realmName}可购</div>`;
         }
@@ -3613,7 +3654,7 @@ const PlayerView = {
     const item = getShopItems().find(s => s.shopId === parseInt(shopId));
     if (!item) return;
     const countText = item.itemCount > 1 ? ` ×${item.itemCount}` : '';
-    UI.confirm(`确定花费 🪙${item.price} 游戏币购买 ${item.name}${countText}？`, async () => {
+    UI.confirm(`确定花费 ${item.price} 游戏币购买 ${item.name}${countText}？`, async () => {
       const outcome = await UI.runLockedAction(
         `shop:${shopId}`,
         control,
@@ -3628,7 +3669,7 @@ const PlayerView = {
     const el = document.getElementById('withdraw-list');
     if (!el) return;
     if (list.length === 0) {
-      el.innerHTML = `<div class="empty-state" style="padding:24px"><div class="emoji">💸</div><p>暂无提现记录</p></div>`;
+      el.innerHTML = renderEmptyState('icon-wallet', '暂无提现记录');
       return;
     }
     let html = '';
@@ -3656,7 +3697,7 @@ const PlayerView = {
     const mails = await DB.getMails();
     let listHtml = '';
     if (mails.length === 0) {
-      listHtml = '<div style="text-align:center;padding:32px;color:var(--text-secondary)"><div style="font-size:48px">📭</div><p>暂无邮件</p></div>';
+      listHtml = renderEmptyState('icon-mail', '暂无邮件');
     } else {
       mails.forEach(mail => {
         const hasItems = mail.items && mail.items.length > 0;
@@ -3675,7 +3716,7 @@ const PlayerView = {
         listHtml += `
           <div onclick="PlayerView.openMail('${mail.id}')" style="padding:12px;border-radius:10px;background:${unread ? 'var(--bg-secondary)' : 'var(--card-solid)'};border:1px solid var(--border);margin-bottom:8px;cursor:pointer;transition:var(--transition)" onmouseover="this.style.borderColor='var(--primary-light)'" onmouseout="this.style.borderColor='var(--border)'">
             <div style="display:flex;justify-content:space-between;align-items:center">
-              <span style="font-weight:${unread ? '700' : '500'};font-size:14px">${unread ? '🔵 ' : ''}${mail.title}</span>
+              <span style="font-weight:${unread ? '700' : '500'};font-size:14px">${unread ? '<i class="unread-dot"></i>' : ''}${mail.title}</span>
               <span style="font-size:11px;color:var(--text-light)">${date}</span>
             </div>
             <div style="font-size:12px;color:var(--text-secondary);margin-top:4px">${mail.content || ''}</div>
@@ -3687,7 +3728,7 @@ const PlayerView = {
       });
     }
 
-    UI.modal(listHtml, { title: '📮 邮件' });
+    UI.modal(listHtml, { title: `${renderFeatureIcon('icon-mail', '', 'section-title-icon')} 邮件` });
     UI._updateMailBadge();
   },
 
@@ -3703,7 +3744,7 @@ const PlayerView = {
       <div class="ach-tabs" id="ach-tabs"></div>
       <div class="ach-summary" id="ach-summary"></div>
       <div class="ach-list" id="ach-list"></div>
-    `, { title: '🏆 成就' });
+    `, { title: `${renderFeatureIcon('icon-achievement', '', 'section-title-icon')} 成就` });
 
     this._achOverlay = overlay;
     this._renderAchTabs();
@@ -3743,7 +3784,7 @@ const PlayerView = {
 
     const list = this._achOverlay.querySelector('#ach-list');
     if (rows.length === 0) {
-      list.innerHTML = '<div class="empty-state"><div class="emoji">🏅</div><p>暂无成就</p></div>';
+      list.innerHTML = renderEmptyState('icon-achievement', '暂无成就');
       return;
     }
 
@@ -3762,7 +3803,7 @@ const PlayerView = {
       }
       return `
         <div class="ach-row ${a.claimed ? 'claimed' : (a.claimable ? 'claimable' : '')}">
-          <div class="ach-icon">${a.icon}</div>
+          <div class="ach-icon">${renderFeatureIcon(a.iconName, '', 'achievement-type-icon')}</div>
           <div class="ach-info">
             <div class="ach-name">${achievementGoalText(a.typeId, a.target)}</div>
             <div class="ach-prog">
@@ -3796,14 +3837,14 @@ const PlayerView = {
     const mails = await DB.getMails();
 
     main.innerHTML = `
-      <div class="page-title">📮 邮件</div>
+      <div class="page-title page-title-art">${renderFeatureIcon('icon-mail', '', 'page-title-icon')}<span>邮件</span></div>
       <div class="page-subtitle">天道消息和奖励都在这里</div>
       <div id="mail-list"></div>
     `;
 
     const list = document.getElementById('mail-list');
     if (mails.length === 0) {
-      list.innerHTML = `<div class="empty-state"><div class="emoji">📭</div><p>暂无邮件</p></div>`;
+      list.innerHTML = renderEmptyState('icon-mail', '暂无邮件');
       return;
     }
 
@@ -3963,7 +4004,7 @@ const PlayerView = {
       if (newQualities.length > 0) {
         unlockHtml = `
           <div style="background:var(--accent)12;border:1px solid var(--accent)30;border-radius:8px;padding:10px 12px;margin:12px 0">
-            <div style="font-size:13px;font-weight:600;color:var(--accent);margin-bottom:6px">🎁 突破解锁</div>
+            <div class="theme-reward-title">${renderFeatureIcon('icon-breakthrough', '', 'section-label-icon')}<span>突破解锁</span></div>
             <div style="font-size:12px;color:var(--text-secondary);margin-bottom:6px">可装备更高品质仙斧：</div>
             <div>${newQualities.join('')}</div>
           </div>
@@ -3979,7 +4020,7 @@ const PlayerView = {
       </div>
       ${unlockHtml}
       <div style="margin-bottom:12px;font-weight:600">突破条件</div>
-      <div style="font-size:13px;margin-bottom:8px">等级要求：${Game.state.level}/${nextRealm.reqLevel} ${Game.state.level >= nextRealm.reqLevel ? '✅' : '❌'}</div>
+      <div style="font-size:13px;margin-bottom:8px">等级要求：${Game.state.level}/${nextRealm.reqLevel} · ${Game.state.level >= nextRealm.reqLevel ? '已满足' : '未满足'}</div>
       ${reqItemsHtml}
     `, {
       title: '仙阶突破',
@@ -4092,7 +4133,7 @@ const PlayerView = {
 
     UI.modal(`
       <div style="text-align:center;margin-bottom:16px">
-        <div style="font-size:64px;margin-bottom:8px">🔨</div>
+        <div style="margin:0 auto 8px;display:flex;justify-content:center">${renderFeatureIcon('icon-forge', '锻造', 'forge-modal-icon')}</div>
         <div style="font-size:18px;font-weight:700">锻造仙斧</div>
         <div style="font-size:12px;color:var(--text-secondary);margin-top:4px">消耗锻铁，随机获得一把仙斧</div>
       </div>
@@ -4101,7 +4142,7 @@ const PlayerView = {
         ${poolHtml}
       </div>
       <div style="text-align:center;font-size:13px;color:var(--text-secondary)">
-        当前锻铁：🔩 ${forgeQty} 个
+        当前锻铁：<span class="forge-current-stone">${renderItemIcon('40001', '', 'item-icon-xs')}<b>${forgeQty}</b> 个</span>
       </div>
     `, {
       title: '锻造',
@@ -4122,7 +4163,7 @@ const PlayerView = {
         const minRealm = getMinRealmForAxeQuality(result.quality);
         const lockHint = canEquip ? '' : `
           <div style="margin-top:10px;font-size:12px;color:var(--error);background:var(--error)12;border-radius:8px;padding:6px 10px;display:inline-block">
-            🔒 需达到【${minRealm?.name || '?'}】才能装备，已放入背包
+            仙阶限制：需达到【${minRealm?.name || '?'}】才能装备，已放入背包
           </div>
         `;
         const resultOverlay = UI.modal(`
@@ -4131,11 +4172,11 @@ const PlayerView = {
             <div style="font-size:20px;font-weight:700;color:${q.color}">${result.item.name}</div>
             <div style="margin-top:4px">${UI.qualityTag(result.quality)}</div>
             <div style="font-size:12px;color:var(--text-secondary);margin-top:8px">${result.item.desc}</div>
-            ${result.item.skillDesc ? `<div style="font-size:12px;color:var(--accent);margin-top:8px">🌟 ${result.item.skillDesc}</div>` : ''}
+            ${result.item.skillDesc ? `<div style="font-size:12px;color:var(--accent);margin-top:8px">斧技 · ${result.item.skillDesc}</div>` : ''}
             ${lockHint}
           </div>
         `, {
-          title: '🎉 锻造成功',
+          title: `${renderFeatureIcon('icon-forge', '', 'section-title-icon')} 锻造成功`,
           footer: `<div class="modal-footer">
             <button class="btn btn-primary btn-sm" onclick="PlayerView.showForge()">继续锻造</button>
             ${canEquip ? `<button class="btn btn-accent btn-sm" onclick="PlayerView._equipFromForge('${result.itemId}',this)">立即装备</button>` : ''}
@@ -4238,7 +4279,7 @@ const PlayerView = {
         ${itemsHtml}
       </div>
     `, {
-      title: `🎉 十连砍结果（共 ${results.length} 件）`,
+      title: `${renderFeatureIcon('icon-reward', '', 'section-title-icon')} 十连砍结果（共 ${results.length} 件）`,
       footer: `<div class="modal-footer">
         <button class="btn btn-primary btn-sm" onclick="this.closest('.modal-overlay').remove();PlayerView.renderCultivate()">确定</button>
       </div>`
@@ -4292,18 +4333,18 @@ const AdminView = {
     const tasks = await DB.getAllTasks();
 
     main.innerHTML = `
-      <div class="page-title">📜 任务管理</div>
+      <div class="page-title page-title-art">${renderFeatureIcon('icon-tasks', '', 'page-title-icon')}<span>任务管理</span></div>
       <div class="page-subtitle">发布和管理修仙任务</div>
 
       <button class="btn btn-primary btn-block" style="margin-bottom:16px" onclick="AdminView.showCreateTask()">
-        ➕ 新建任务
+        ${renderFeatureIcon('icon-tasks', '', 'button-feature-icon')}新建任务
       </button>
 
       <div class="filter-bar">
         <div class="filter-chip active" data-filter="all" onclick="AdminView.filterAdminTasks('all')">全部</div>
         <div class="filter-chip" data-filter="published" onclick="AdminView.filterAdminTasks('published')">已发布</div>
         <div class="filter-chip" data-filter="draft" onclick="AdminView.filterAdminTasks('draft')">发布池</div>
-        <div class="filter-chip" data-filter="theme" onclick="AdminView.filterAdminTasks('theme')">🎨 主题</div>
+        <div class="filter-chip" data-filter="theme" onclick="AdminView.filterAdminTasks('theme')">主题</div>
         <div class="filter-chip" data-filter="weekly" onclick="AdminView.filterAdminTasks('weekly')">每周</div>
         <div class="filter-chip" data-filter="daily" onclick="AdminView.filterAdminTasks('daily')">每日</div>
       </div>
@@ -4340,7 +4381,7 @@ const AdminView = {
     }
 
     if (tasks.length === 0) {
-      list.innerHTML = `<div class="empty-state"><div class="emoji">📭</div><p>暂无任务</p></div>`;
+      list.innerHTML = renderEmptyState('icon-tasks', '暂无任务');
       return;
     }
 
@@ -4359,7 +4400,7 @@ const AdminView = {
         : '<span class="tag" style="background:#d4edda;color:#155724;font-size:11px">已发布</span>';
 
       const themeBadge = task.themeName
-        ? `<span class="tag" style="background:#e8daef;color:#6c3483;font-size:11px">🎨 ${task.themeName}${task.themeStart && task.themeEnd ? ` · ${task.themeStart}~${task.themeEnd}` : ''}</span>`
+        ? `<span class="tag theme-task-tag">${task.themeName}${task.themeStart && task.themeEnd ? ` · ${task.themeStart}~${task.themeEnd}` : ''}</span>`
         : '';
 
       const statusBtn = task.status === 'draft'
@@ -4398,7 +4439,7 @@ const AdminView = {
         <select id="new-task-type" onchange="PlayerView._onCreateTaskTypeChange(this.closest('.modal-overlay'))">
           <option value="weekly">每周任务</option>
           <option value="daily">每日任务</option>
-          <option value="theme">🎨 主题任务（周期活动）</option>
+          <option value="theme">主题任务（周期活动）</option>
         </select>
       </div>
       <div class="form-group">
@@ -4430,7 +4471,7 @@ const AdminView = {
         </div>
       </div>
       <div style="border-top:1px solid var(--border);margin:12px 0;padding-top:12px" id="new-task-theme-box">
-        <div style="font-weight:600;margin-bottom:8px;font-size:13px">🎨 主题设置<span id="theme-required-hint" style="color:var(--danger);display:none">（主题任务必填）</span></div>
+        <div style="font-weight:600;margin-bottom:8px;font-size:13px">主题设置<span id="theme-required-hint" style="color:var(--danger);display:none">（主题任务必填）</span></div>
         <div class="form-group">
           <label>主题名称（如：开学季）</label>
           <input type="text" id="new-task-theme" placeholder="比如：开学季 · 收心行动">
@@ -4561,7 +4602,7 @@ const AdminView = {
     const submissions = await DB.getSubmissions();
 
     main.innerHTML = `
-      <div class="page-title">✅ 任务审核</div>
+      <div class="page-title page-title-art">${renderFeatureIcon('icon-achievement', '', 'page-title-icon')}<span>任务审核</span></div>
       <div class="page-subtitle">审批修炼者提交的任务</div>
 
       <div class="filter-bar">
@@ -4600,7 +4641,7 @@ const AdminView = {
     }
 
     if (subs.length === 0) {
-      list.innerHTML = `<div class="empty-state"><div class="emoji">🎉</div><p>暂无${this._reviewFilter === 'pending' ? '待审核' : ''}任务</p></div>`;
+      list.innerHTML = renderEmptyState('icon-achievement', `暂无${this._reviewFilter === 'pending' ? '待审核' : ''}任务`);
       return;
     }
 
@@ -4620,8 +4661,8 @@ const AdminView = {
             ${isSelf ? '<span class="tag tag-type-self">自主申报</span>' : ''}
             <span style="font-size:12px;color:var(--text-light)">${date}</span>
           </div>
-          <div class="task-desc">📝 ${sub.description || ''}</div>
-          ${sub.reviewNote ? `<div class="task-desc" style="color:var(--accent)">💬 ${sub.reviewNote}</div>` : ''}
+          <div class="task-desc">完成描述：${sub.description || ''}</div>
+          ${sub.reviewNote ? `<div class="task-desc" style="color:var(--accent)">审核备注：${sub.reviewNote}</div>` : ''}
           ${sub.status === 'pending' ? `
             <div class="task-actions" style="margin-top:10px">
               <button class="btn btn-outline btn-sm" onclick="AdminView.rejectSub('${sub.id}')">驳回</button>
@@ -4747,7 +4788,7 @@ const AdminView = {
     const withdrawals = await DB.getWithdrawals();
 
     main.innerHTML = `
-      <div class="page-title">💰 提现审批</div>
+      <div class="page-title page-title-art">${renderFeatureIcon('icon-wallet', '', 'page-title-icon')}<span>提现审批</span></div>
       <div class="page-subtitle">审批修炼者的提现申请</div>
 
       <div class="filter-bar">
@@ -4786,7 +4827,7 @@ const AdminView = {
     }
 
     if (ws.length === 0) {
-      list.innerHTML = `<div class="empty-state"><div class="emoji">💸</div><p>暂无提现申请</p></div>`;
+      list.innerHTML = renderEmptyState('icon-wallet', '暂无提现申请');
       return;
     }
 
@@ -4891,10 +4932,10 @@ const AdminView = {
 
     if (!state) {
       main.innerHTML = `
-        <div class="page-title">👁️ 查看玩家</div>
+        <div class="page-title page-title-art">${renderFeatureIcon('icon-cultivate', '', 'page-title-icon')}<span>查看玩家</span></div>
         <div class="page-subtitle">了解修炼者的修行进度</div>
         <div class="empty-state" style="padding:48px 24px">
-          <div class="emoji">😶</div>
+          ${renderFeatureIcon('icon-cultivate', '', 'empty-state-art')}
           <p>修炼者尚未开始修仙</p>
           <p style="font-size:12px;color:var(--text-light)">等待修炼者首次登录后即可查看数据</p>
         </div>
@@ -4905,7 +4946,7 @@ const AdminView = {
     const axeDef = ITEMS[state.axeId] || ITEMS['51001'];
 
     main.innerHTML = `
-      <div class="page-title">👁️ 查看玩家</div>
+      <div class="page-title page-title-art">${renderFeatureIcon('icon-cultivate', '', 'page-title-icon')}<span>查看玩家</span></div>
       <div class="page-subtitle">了解修炼者的修行进度</div>
 
       <div class="stats-row">
@@ -4915,7 +4956,7 @@ const AdminView = {
         </div>
         <div class="stat-card">
           <div class="stat-num">${state.choppingCount}</div>
-          <div class="stat-label">🪓 砍树次数</div>
+          <div class="stat-label">砍树次数</div>
         </div>
         <div class="stat-card">
           <div class="stat-num" style="font-size:18px">¥${state.balance.toFixed(2)}</div>
@@ -4924,19 +4965,19 @@ const AdminView = {
       </div>
 
       <div class="card">
-        <div class="card-title">🪓 装备：${axeDef.name}</div>
+        <div class="card-title">装备：${axeDef.name}</div>
         <div style="display:flex;align-items:center;gap:12px">
           <div style="display:flex;align-items:center;height:60px">${renderItemIcon(state.axeId, axeDef.icon, 'item-icon-lg')}</div>
           <div>
             <div style="font-weight:600">${axeDef.name}</div>
             <div style="font-size:12px;color:var(--text-secondary)">${axeDef.desc}</div>
-            ${axeDef.skillDesc ? `<div style="font-size:12px;color:var(--accent);margin-top:4px">🌟 ${axeDef.skillDesc}</div>` : ''}
+            ${axeDef.skillDesc ? `<div style="font-size:12px;color:var(--accent);margin-top:4px">斧技 · ${axeDef.skillDesc}</div>` : ''}
           </div>
         </div>
       </div>
 
       <div class="card">
-        <div class="card-title">🎒 背包（${inventory.length} 种道具）</div>
+        <div class="card-title">背包（${inventory.length} 种道具）</div>
         <div style="display:flex;flex-wrap:wrap;gap:8px">
           ${inventory.slice(0, 20).map(inv => {
             const def = ITEMS[inv.itemId];
@@ -4950,7 +4991,7 @@ const AdminView = {
       </div>
 
       <div class="card">
-        <div class="card-title">📊 数据</div>
+        <div class="card-title">数据</div>
         <table class="data-table">
           <tr><td>仙树等级</td><td>Lv.${state.treeLevel} (${TREE_LEVELS[state.treeLevel]?.name || ''})</td></tr>
           <tr><td>经验值</td><td>${state.exp} / ${getExpForLevel(state.level)}</td></tr>
@@ -4986,14 +5027,14 @@ const AdminView = {
     });
 
     main.innerHTML = `
-      <div class="page-title">🛠️ GM工具</div>
+      <div class="page-title page-title-art">${renderFeatureIcon('icon-forge', '', 'page-title-icon')}<span>GM工具</span></div>
       <div class="page-subtitle">测试用·发放资源与道具</div>
 
       ${state ? `
       <div class="stats-row">
         <div class="stat-card">
           <div class="stat-num">${state.choppingCount}</div>
-          <div class="stat-label">🪓 砍树次数</div>
+          <div class="stat-label">砍树次数</div>
         </div>
         <div class="stat-card">
           <div class="stat-num">${state.level}</div>
@@ -5001,14 +5042,14 @@ const AdminView = {
         </div>
         <div class="stat-card">
           <div class="stat-num" style="font-size:16px">${ITEMS[state.axeId]?.name || '未知'}</div>
-          <div class="stat-label">🪓 装备</div>
+          <div class="stat-label">装备</div>
         </div>
       </div>
       ` : '<div class="empty-state" style="padding:24px"><p>玩家尚未初始化，先去玩家端登录一次</p></div>'}
 
       <!-- 发放砍树次数 -->
       <div class="card">
-        <div class="card-title">🪓 发放砍树次数</div>
+        <div class="card-title">发放砍树次数</div>
         <div style="display:flex;gap:8px;align-items:flex-end">
           <div class="form-group" style="flex:1;margin-bottom:0">
             <label>数量</label>
@@ -5026,7 +5067,7 @@ const AdminView = {
 
       <!-- 发放道具 -->
       <div class="card">
-        <div class="card-title">🎒 发放道具</div>
+        <div class="card-title">发放道具</div>
         <div class="form-group">
           <label>选择道具</label>
           <select id="gm-item-id" style="width:100%">
@@ -5047,7 +5088,7 @@ const AdminView = {
 
       <!-- 等级/仙阶控制 -->
       <div class="card">
-        <div class="card-title">⭐ 等级/仙阶控制</div>
+        <div class="card-title">等级/仙阶控制</div>
         <div class="form-group">
           <label>设置等级</label>
           <input type="number" id="gm-level" value="${state?.level || 1}" min="1" max="150" style="width:100%">
@@ -5060,7 +5101,7 @@ const AdminView = {
 
       <!-- 重置数据 -->
       <div class="card" style="border:2px solid var(--danger,#e85a5a)">
-        <div class="card-title" style="color:var(--danger,#e85a5a)">⚠️ 危险操作</div>
+        <div class="card-title" style="color:var(--danger,#e85a5a)">危险操作</div>
         <button class="btn btn-outline btn-block" style="border-color:var(--danger,#e85a5a);color:var(--danger,#e85a5a)" onclick="AdminView.gmClearInventory()">清空背包</button>
         <button class="btn btn-outline btn-block" style="border-color:var(--danger,#e85a5a);color:var(--danger,#e85a5a);margin-top:8px" onclick="AdminView.gmResetAll()">重置全部数据</button>
       </div>
@@ -5068,7 +5109,7 @@ const AdminView = {
       <!-- 当前背包 -->
       ${inventory.length > 0 ? `
       <div class="card">
-        <div class="card-title">📋 当前背包（${inventory.length} 种）</div>
+        <div class="card-title">当前背包（${inventory.length} 种）</div>
         <table class="data-table">
           ${inventory.map(inv => {
             const def = ITEMS[inv.itemId];

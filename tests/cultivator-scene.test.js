@@ -14,6 +14,9 @@ test('cultivation scene places the animated cultivator before the tree', () => {
 
   assert.ok(characterIndex >= 0, 'missing cultivator sprite image');
   assert.ok(treeIndex > characterIndex, 'tree must render to the character\'s right');
+  assert.match(render, /id="cultivator-weapon"/);
+  assert.match(app, /CULTIVATOR_WEAPON_POSES/);
+  assert.match(app, /onFrame:\s*updateCultivatorWeapon/);
   assert.match(render, /CultivatorAnimator\.attach/);
   assert.doesNotMatch(render, /character-paint\.jpg/);
 });
@@ -31,11 +34,12 @@ test('single and ten chop paths play the cultivator action', () => {
 });
 
 
-test('backpack artwork grows inside unchanged slots', () => {
+test('backpack artwork grows inside unchanged slots and keeps a readable count badge', () => {
   assert.match(
     css,
-    /\.cult-inventory \.inventory-grid:not\(\.weapons-grid\)[\s\S]*?\.item-icon-img[\s\S]*?width:\s*70%[\s\S]*?height:\s*70%/,
+    /\.cult-inventory \.inventory-grid:not\(\.weapons-grid\)[\s\S]*?\.item-icon-img[\s\S]*?width:\s*78%[\s\S]*?height:\s*78%/,
   );
+  assert.match(css, /\.item-slot \.item-count[\s\S]*?background:\s*rgba\(18,\s*45,\s*43/);
   const slotRule = css.match(/\.item-slot\s*\{[\s\S]*?\}/)?.[0] || '';
   assert.match(slotRule, /aspect-ratio:\s*1/);
 });
