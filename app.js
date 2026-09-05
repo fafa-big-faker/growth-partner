@@ -1102,6 +1102,21 @@ const Game = {
     }
     item.kind = grant.kind;
 
+    // 每累计砍树 10 次，从奖励包 1003 均匀抽取一件额外奖励。
+    if (GameplayRules.isBonusChop(this.state.totalChops)) {
+      const extraDrop = this._rollPackDrop(1003);
+      if (extraDrop) {
+        const extraGrant = await this.grantItem(extraDrop.itemId, extraDrop.quantity);
+        if (extraGrant) {
+          extraDrop.kind = extraGrant.kind;
+          extraDrop.isExtra = true;
+          item.extraDrop = extraDrop;
+        } else {
+          UI.toast('第十砍额外奖励发放失败，请联系天道检查', 'error');
+        }
+      }
+    }
+
     UI._updateCultivateStats();
     UI.updateHeader();
     return item;
@@ -1330,6 +1345,21 @@ const Game = {
   // 合成道具
   async compose(itemId) {
     return this.composeMulti(itemId, 1);
+  },
+
+  _rollPackDrop(packId) {
+    const pack = GAME_CONFIG.packTable.find(entry => entry.packId === packId);
+    const rolled = GameplayRules.rollPackItem(pack);
+    if (!rolled) return null;
+    const itemDef = ITEMS[rolled.itemId];
+    if (!itemDef) return null;
+    return {
+      itemId: rolled.itemId,
+      quantity: 1,
+      quality: rolled.quality,
+      qualityName: QUALITY[rolled.quality]?.name || '',
+      item: itemDef,
+    };
   },
 
   // 批量合成道具
@@ -1717,7 +1747,7 @@ const Game = {
     return { itemId, quality: selectedPool.quality, item: axeDef };
   },
 
-  // 十连砍
+  // 十连砍：额外奖励由每一次 chop 的累计次数统一判定。
   async chopTen() {
     if (this.state.choppingCount < 10) {
       UI.toast('砍树次数不足10次', 'warn');
@@ -1726,32 +1756,10 @@ const Game = {
     const results = [];
     for (let i = 0; i < 10; i++) {
       const item = await this.chop();
-      if (item) results.push(item);
-    }
-    // 十连保底：额外送1件珍品及以上
-    const treeConfig = TREE_LEVELS[this.state.treeLevel] || TREE_LEVELS[1];
-    const rarePools = treeConfig.pools.filter(p => p.quality >= 3);
-    if (rarePools.length > 0) {
-      const totalWeight = rarePools.reduce((sum, p) => sum + p.weight, 0);
-      let roll = Math.random() * totalWeight;
-      let selectedPool = rarePools[0];
-      for (const pool of rarePools) {
-        roll -= pool.weight;
-        if (roll <= 0) { selectedPool = pool; break; }
+      if (item) {
+        results.push(item);
+        if (item.extraDrop) results.push(item.extraDrop);
       }
-      const itemId = selectedPool.items[Math.floor(Math.random() * selectedPool.items.length)];
-      const itemDef = ITEMS[itemId];
-      const bonusGrant = await this.grantItem(itemId, 1);
-      if (!bonusGrant) {
-        UI.toast('十连额外奖励发放失败，请联系天道检查', 'error');
-        UI.updateHeader();
-        return results;
-      }
-      results.push({
-        itemId, quantity: 1, quality: selectedPool.quality,
-        qualityName: QUALITY[selectedPool.quality].name,
-        item: itemDef, isBonus: true,
-      });
     }
     UI.updateHeader();
     return results;
@@ -2740,6 +2748,10 @@ const PlayerView = {
         if (item) {
           if (treeIcon) UI.playDropAnimation(item, treeIcon);
 
+          if (item.extraDrop && treeIcon) {
+            setTimeout(() => UI.playDropAnimation(item.extraDrop, treeIcon), 180);
+          }
+
           setTimeout(() => {
             this._showRewardModal(item);
           }, 800);
@@ -2763,6 +2775,12 @@ const PlayerView = {
     const refundHtml = item.refundChopping
       ? `<div style="color:var(--accent);font-size:13px;margin-bottom:8px">🪓 返还 ${item.refundChopping} 次砍树</div>`
       : '';
+    const extraHtml = item.extraDrop ? `
+      <div class="bonus-drop-row">
+        <span class="bonus-drop-label">第十砍额外奖励</span>
+        ${renderItemIcon(item.extraDrop.itemId, item.extraDrop.item?.icon, 'item-icon-sm')}
+        <span>${item.extraDrop.item?.name || '道具'} ×${item.extraDrop.quantity}</span>
+      </div>` : '';
 
     // 特殊道具（游戏币/砍树次数）单独展示
     let icon, name, color, label;
@@ -2787,6 +2805,7 @@ const PlayerView = {
         <div class="reward-quality">${label}</div>
         ${buffHtml}
         ${refundHtml}
+        ${extraHtml}
         <button class="btn btn-primary btn-block" onclick="this.closest('.modal-overlay').remove()">收下</button>
       </div>
     `, { title: '🎉 获得物品' });
@@ -4174,32 +4193,17 @@ const PlayerView = {
             const el = UI.playScatterAnimation(item, treeIcon, i);
             if (el) scatterEls.push(el);
           }
+          if (item.extraDrop) {
+            results.push(item.extraDrop);
+            if (treeIcon) {
+              const extraEl = UI.playScatterAnimation(item.extraDrop, treeIcon, i + 0.5);
+              if (extraEl) scatterEls.push(extraEl);
+            }
+          }
         }
       }
     } finally {
       CultivatorAnimator.resumeIdle();
-    }
-
-    // 十连额外掉落：从奖池1003抽取1件奖励
-    const extraDrop = Game._rollPoolDrop(1003);
-    if (extraDrop) {
-      const extraGrant = await Game.grantItem(extraDrop.itemId, extraDrop.quantity);
-      if (extraGrant) {
-        extraDrop.kind = extraGrant.kind;
-        extraDrop.isExtra = true;
-        results.push(extraDrop);
-
-        // 额外掉落也散落
-        if (treeIcon) {
-          treeIcon.classList.add('shaking');
-          const el = UI.playScatterAnimation(extraDrop, treeIcon, 10);
-          if (el) scatterEls.push(el);
-          setTimeout(() => treeIcon && treeIcon.classList.remove('shaking'), 250);
-        }
-        await new Promise(r => setTimeout(r, 400));
-      } else {
-        UI.toast('十连额外奖励发放失败，请联系天道检查', 'error');
-      }
     }
 
     // 等待一会儿让玩家看清地上的物品
