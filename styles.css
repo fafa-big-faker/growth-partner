@@ -2773,12 +2773,7 @@ body {
 }
 
 .forge-reveal-stage[hidden],
-.forge-result-actions[hidden],
 .forge-result-detail[hidden] {
-  display: none;
-}
-
-#forge-ok[hidden] {
   display: none;
 }
 
@@ -2915,12 +2910,6 @@ body {
   font-size: 12px;
 }
 
-.forge-result-actions {
-  display: flex;
-  justify-content: center;
-  gap: 8px;
-}
-
 .forge-lower-panel {
   padding-top: 10px;
   border-top: 1px solid rgba(75, 116, 102, 0.28);
@@ -2996,19 +2985,29 @@ body {
   text-align: right;
 }
 
-.forge-current-stone {
+.forge-material-cost {
   min-height: 26px;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 5px;
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: 13px;
 }
 
-.forge-current-stone b {
+.forge-material-cost .item-icon-xs {
+  width: 22px;
+  height: 22px;
+}
+
+.forge-material-cost b {
   color: var(--text);
-  font-size: 14px;
+  font-size: 15px;
+}
+
+.forge-material-cost span {
+  color: var(--text-light);
+  font-weight: 650;
 }
 
 .forge-primary-actions {
@@ -3022,6 +3021,19 @@ body {
 .forge-primary-actions #forge-ok {
   min-width: 164px;
   justify-content: center;
+}
+
+.forge-result-equip {
+  margin-top: 10px;
+  display: flex;
+  justify-content: center;
+}
+
+.forge-result-equip .btn {
+  min-width: 104px;
+  justify-content: center;
+  border-color: rgba(77, 128, 111, 0.72);
+  color: var(--primary-dark);
 }
 
 @keyframes forge-item-shake {

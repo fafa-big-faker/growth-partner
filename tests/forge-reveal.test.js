@@ -30,8 +30,12 @@ test('forge modal runs one guarded operation and reveals the result in place', (
   assert.match(showForge, /class="forge-primary-actions"/);
   assert.match(showForge, /UI\.runLockedAction\('forge'/);
   assert.match(showForge, /ForgeReveal\.run\([\s\S]*?Game\.forge\(\)/);
-  assert.match(showForge, /forge-result-actions/);
-  assert.match(showForge, />返回<\/button>/);
+  assert.match(showForge, /class="forge-material-cost"/);
+  assert.match(showForge, /<b[^>]*>\$\{forgeQty\}<\/b><span[^>]*>\/\$\{forgeCost\}<\/span>/);
+  assert.match(showForge, /id="forge-ok"[^\n]*>锻造<\/button>/);
+  assert.match(showForge, /btn\.textContent = '再锻造一次'/);
+  assert.match(showForge, />立即装备<\/button>/);
+  assert.doesNotMatch(showForge, />返回<\/button>/);
   assert.doesNotMatch(showForge, /继续锻造/);
   assert.doesNotMatch(showForge, /class="btn btn-outline btn-sm forge-close"/);
   assert.doesNotMatch(showForge, /footer:/);
@@ -43,8 +47,15 @@ test('forge reveal styling is restrained and has reduced-motion support', () => 
   assert.match(styles, /\.forge-reveal-flash\.is-active/);
   assert.match(styles, /\.forge-reveal-progress-fill/);
   assert.match(styles, /\.forge-reveal-icon[\s\S]*?forge-candidate-in/);
-  assert.match(styles, /#forge-ok\[hidden\]/);
   assert.match(styles, /\.forge-primary-actions[\s\S]*?justify-content:\s*center/);
   assert.match(styles, /\.forge-probability-details/);
+  assert.match(styles, /\.forge-material-cost/);
+  assert.match(styles, /\.forge-result-equip/);
   assert.match(styles, /@media \(prefers-reduced-motion:\s*reduce\)[\s\S]*?\.forge-reveal-art/);
+});
+
+test('equipping a forge result keeps the draw loop open', () => {
+  const equip = app.match(/\r?\n  async _equipFromForge\([\s\S]*?\r?\n  },\r?\n\r?\n  sellItem/)?.[0] || '';
+  assert.match(equip, /button\.textContent = '已装备'/);
+  assert.doesNotMatch(equip, /modal-overlay'[\s\S]*?remove/);
 });

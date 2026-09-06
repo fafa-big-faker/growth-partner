@@ -2973,6 +2973,7 @@ const PlayerView = {
     const operationKey = 'equip-axe';
     if (OperationGuard.isActive(operationKey)) return;
     const originalText = button?.textContent || '立即装备';
+    let equipped = false;
     if (button) {
       button.disabled = true;
       button.textContent = '装备中...';
@@ -2981,12 +2982,15 @@ const PlayerView = {
       const outcome = await OperationGuard.run(operationKey, () => Game.equipAxe(itemId));
       if (outcome.started && outcome.value) {
         await preloadAxeAnimation(itemId);
-        document.querySelectorAll('.modal-overlay').forEach(el => el.remove());
-        this.renderInventory('weapons');
+        equipped = true;
+        if (button?.isConnected) {
+          button.disabled = true;
+          button.textContent = '已装备';
+        }
         await this.renderCultivate();
       }
     } finally {
-      if (button?.isConnected) {
+      if (button?.isConnected && !equipped) {
         button.disabled = false;
         button.textContent = originalText;
       }
@@ -4386,7 +4390,11 @@ const PlayerView = {
   showForge() {
     // 清除可能残留的弹窗（避免锻造结果弹窗叠加导致按钮状态异常）
     document.querySelectorAll('.modal-overlay').forEach(el => el.remove());
-    const forgeQty = Game.inventory.find(i => i.itemId == '40001')?.quantity || 0;
+    const forgeConfig = (GAME_CONFIG?.forgeTable || [])[0];
+    const forgeCostItemId = String(forgeConfig?.costItemId || '40001');
+    const forgeCost = Math.max(1, parseInt(forgeConfig?.costCount) || 1);
+    const forgeCostItem = ITEMS[forgeCostItemId];
+    const forgeQty = Game.inventory.find(i => i.itemId == forgeCostItemId)?.quantity || 0;
 
     // 计算锻造奖池各品质概率（总权重1000）
     const forgeTotalWeight = FORGE_POOL.reduce((sum, p) => sum + p.weight, 0);
@@ -4432,12 +4440,11 @@ const PlayerView = {
           <summary>查看概率详情</summary>
           <div class="forge-probability-list">${poolHtml}</div>
         </details>
-        <div class="forge-current-stone">
-          <span>当前锻铁</span>${renderItemIcon('40001', '', 'item-icon-xs')}<b>${forgeQty}</b><span>个</span>
+        <div class="forge-material-cost" title="每次消耗 ${forgeCost} 个${forgeCostItem?.name || '锻造材料'}">
+          ${renderItemIcon(forgeCostItemId, forgeCostItem?.icon || '', 'item-icon-xs')}<b>${forgeQty}</b><span>/${forgeCost}</span>
         </div>
         <div class="forge-primary-actions">
-        <button class="btn btn-primary btn-sm" id="forge-ok" ${forgeQty > 0 ? '' : 'disabled'}>锻造（消耗1个锻铁）</button>
-        <div id="forge-result-actions" class="forge-result-actions" hidden></div>
+          <button class="btn btn-primary btn-sm" id="forge-ok" ${forgeQty >= forgeCost ? '' : 'disabled'}>锻造</button>
         </div>
       </div>
     `, { title: '锻造' });
@@ -4447,8 +4454,8 @@ const PlayerView = {
     if (btn) btn.addEventListener('click', async () => {
       const stage = overlay.querySelector('#forge-reveal-stage');
       const closeControls = overlay.querySelectorAll('.modal-close');
-      const resultActions = overlay.querySelector('#forge-result-actions');
       const probabilityDetails = overlay.querySelector('.forge-probability-details');
+      const detail = overlay.querySelector('#forge-result-detail');
       const elements = {
         art: overlay.querySelector('#forge-reveal-art'),
         name: overlay.querySelector('#forge-reveal-name'),
@@ -4462,10 +4469,17 @@ const PlayerView = {
       closeControls.forEach(control => { control.disabled = true; });
       if (probabilityDetails) probabilityDetails.open = false;
       if (stage) stage.dataset.state = 'running';
+      if (detail) {
+        detail.hidden = true;
+        detail.innerHTML = '';
+      }
+      elements.art?.classList.remove('is-revealed');
+      if (elements.progressFill) elements.progressFill.style.transition = 'none';
+      ForgeReveal.setProgress(elements, 0);
 
       const outcome = await UI.runLockedAction('forge',
         btn,
-        '',
+        '锻造中...',
         () => ForgeReveal.run(elements, Game.forge()),
       );
       const result = outcome.started ? outcome.value : null;
@@ -4474,29 +4488,24 @@ const PlayerView = {
         const q = QUALITY[result.quality] || QUALITY[1];
         const canEquip = canEquipAxeQuality(result.quality, Game.state.realmLevel);
         const minRealm = getMinRealmForAxeQuality(result.quality);
-        const lockHint = canEquip ? '' : `
+        const resultAction = canEquip ? `
+          <div class="forge-result-equip">
+            <button class="btn btn-outline btn-sm" onclick="PlayerView._equipFromForge('${result.itemId}',this)">立即装备</button>
+          </div>
+        ` : `
           <div class="forge-result-lock">
             仙阶限制：需达到【${minRealm?.name || '?'}】才能装备，已放入背包
           </div>
         `;
-        const detail = overlay.querySelector('#forge-result-detail');
         if (detail) {
           detail.hidden = false;
           detail.innerHTML = `
             <div class="forge-result-quality" style="color:${q.color}">${q.name}</div>
             ${result.item.skillDesc ? `<div class="forge-result-skill">斧技 · ${result.item.skillDesc}</div>` : ''}
             <div class="forge-result-copy">${result.item.desc || ''}</div>
-            ${lockHint}
+            ${resultAction}
           `;
         }
-        if (resultActions) {
-          resultActions.hidden = false;
-          resultActions.innerHTML = `
-            <button class="btn btn-outline btn-sm" onclick="this.closest('.modal-overlay').remove();PlayerView.showForge()">返回</button>
-            ${canEquip ? `<button class="btn btn-accent btn-sm" onclick="PlayerView._equipFromForge('${result.itemId}',this)">立即装备</button>` : ''}
-          `;
-        }
-        btn.hidden = true;
       } else if (outcome.started) {
         if (stage) stage.dataset.state = 'idle';
         if (elements.art) elements.art.innerHTML = '<span class="forge-reveal-placeholder">?</span>';
@@ -4509,9 +4518,13 @@ const PlayerView = {
         ForgeReveal.setProgress(elements, 0);
       }
 
-      const stoneCount = Game.inventory.find(item => item.itemId == '40001')?.quantity || 0;
-      const stoneValue = overlay.querySelector('.forge-current-stone b');
+      const stoneCount = Game.inventory.find(item => item.itemId == forgeCostItemId)?.quantity || 0;
+      const stoneValue = overlay.querySelector('.forge-material-cost b');
       if (stoneValue) stoneValue.textContent = stoneCount;
+      if (result) btn.textContent = '再锻造一次';
+      else btn.textContent = '锻造';
+      btn.disabled = stoneCount < forgeCost;
+      if (btn.disabled) btn.textContent = '锻铁不足';
 
       overlay.classList.remove('modal-locked');
       closeControls.forEach(control => { control.disabled = false; });
