@@ -16,7 +16,7 @@ def remove_magenta_separators(image: Image.Image) -> tuple[Image.Image, list[int
     width, height = rgba.size
     column_scores = [0] * width
     pixels = []
-    for offset, (red, green, blue, alpha) in enumerate(rgba.getdata()):
+    for offset, (red, green, blue, alpha) in enumerate(rgba.get_flattened_data()):
         is_separator = red >= 215 and green <= 85 and blue >= 210 and red + blue >= 455
         if is_separator:
             column_scores[offset % width] += 1

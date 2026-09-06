@@ -32,6 +32,12 @@ test('compose uses one guarded RPC and updates inventory locally', () => {
   assert.match(handler, /querySelectorAll\('\.modal-overlay'\)/);
 });
 
+test('compose preserves the Supabase error code for diagnosis', () => {
+  const rpc = app.match(/async composeInventoryItem\([\s\S]*?\n  },/)?.[0] || '';
+  assert.match(rpc, /code:\s*error\.code\s*\|\|\s*'network_error'/);
+  assert.match(rpc, /message:\s*error\.message\s*\|\|\s*''/);
+});
+
 test('same-id backpack axes remain equipable and sellable', () => {
   const detail = app.match(/showItemDetail\(itemId\)[\s\S]*?\n  },/)?.[0] || '';
   assert.doesNotMatch(detail, /const isEquipped = Game\.state\.axeId === itemId/);

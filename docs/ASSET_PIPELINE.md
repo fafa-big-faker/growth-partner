@@ -83,10 +83,39 @@ assets/images/character/idle-axes/{itemId}/frame-01.png ... frame-04.png
 - 道具图标统一通过 `renderItemIcon()`，优先使用飞书同步得到的 `iconImage`。
 - 功能图标统一通过 `renderFeatureIcon()` 和现有资源清单。
 - 装备切换时同时调用 `getAxeIdleFrames(itemId)` 与 `getAxeChopFrames(itemId)`。
-- 新资源加入首屏或游戏主流程后，要加入 `getAllGameImageAssets()`，确保登录加载阶段预加载。
+- 新的通用首屏资源加入 `getInitialGameImageAssets()`；不要把所有武器序列帧加入首屏。
+- 登录阶段先并行加载通用资源与玩家数据，拿到当前装备 ID 后只加载该武器的 4 帧待机和 6 帧砍树动作。
+- 切换装备时先调用 `preloadAxeAnimation(itemId)`，加载完成后再刷新修炼场景。
 - 不改变背包格尺寸时，优先调整格内图片占比和安全边距，不破坏数量角标可读性。
 
-## 6. 验证清单
+## 6. 浏览器运行资源
+
+源 PNG/WebP 始终保留在 `assets/images/`，网页实际读取的压缩资源位于 `assets/runtime/`。
+
+执行：
+
+```bat
+python scripts\build_runtime_images.py
+```
+
+固定输出规则：
+
+- 角色帧：`256 x 512`、透明 WebP、quality 90。
+- 背景：最长边界不超过 `1600 x 1000`，WebP quality 84。
+- 仙树：不超过 `512 x 512`。
+- UI：不超过 `256 x 256`。
+- 图标和特效：不超过 `160 x 160`。
+- `assets/runtime/v2/manifest.json` 由脚本生成，不手动编辑。
+- 替换任何源美术后必须重新执行构建脚本，并运行图片规格测试。
+
+当前构建基线（2026-09-06）：
+
+- 纳入运行时构建的源资源：`19.54 MiB`。
+- 完整 WebP 运行资源：`3.27 MiB`，减少 `83.2%`。
+- 角色动作：`14.15 MiB` 降至 `2.21 MiB`。
+- 动作首登请求从 90 张降至当前武器的 10 张；其余武器在换装时加载。
+
+## 7. 验证清单
 
 - 文件数量正确：砍树 54 帧，待机 36 帧。
 - 每帧尺寸为 `362 x 724`。
@@ -96,5 +125,6 @@ assets/images/character/idle-axes/{itemId}/frame-01.png ... frame-04.png
 - 洋红分隔线没有残留。
 - 装备 9 把斧头时，待机和砍树都使用相同道具 ID 的资源。
 - 十连砍中间不插入待机帧，最后一次结束后才恢复待机。
+- 运行资源为 WebP，90 帧角色合计小于 4 MiB，全部运行图片合计小于 7 MiB。
 
 除非用户明确要求，不执行浏览器视觉验收；脚本和自动测试仍必须完成。

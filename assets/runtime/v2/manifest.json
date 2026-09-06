@@ -1,0 +1,52 @@
+{
+  "backgrounds": {
+    "cultivate": "assets/runtime/v2/backgrounds/cultivate.webp",
+    "login-main": "assets/runtime/v2/backgrounds/login-main.webp",
+    "login": "assets/runtime/v2/backgrounds/login.webp",
+    "reward": "assets/runtime/v2/backgrounds/reward.webp",
+    "tasks": "assets/runtime/v2/backgrounds/tasks.webp"
+  },
+  "trees": {
+    "divine": "assets/runtime/v2/trees/divine.webp",
+    "spirit": "assets/runtime/v2/trees/spirit.webp",
+    "sprout": "assets/runtime/v2/trees/sprout.webp"
+  },
+  "ui": {
+    "button-primary": "assets/runtime/v2/ui/button-primary.webp",
+    "button-secondary": "assets/runtime/v2/ui/button-secondary.webp",
+    "checkbox-off": "assets/runtime/v2/ui/checkbox-off.webp",
+    "checkbox-on": "assets/runtime/v2/ui/checkbox-on.webp",
+    "modal-crest": "assets/runtime/v2/ui/modal-crest.webp",
+    "panel-corner": "assets/runtime/v2/ui/panel-corner.webp",
+    "panel-divider": "assets/runtime/v2/ui/panel-divider.webp",
+    "scroll-thumb": "assets/runtime/v2/ui/scroll-thumb.webp",
+    "slot-blue": "assets/runtime/v2/ui/slot-blue.webp",
+    "slot-gold": "assets/runtime/v2/ui/slot-gold.webp",
+    "slot-neutral": "assets/runtime/v2/ui/slot-neutral.webp",
+    "slot-purple": "assets/runtime/v2/ui/slot-purple.webp",
+    "slot-rose": "assets/runtime/v2/ui/slot-rose.webp",
+    "status-pill": "assets/runtime/v2/ui/status-pill.webp",
+    "tab-active": "assets/runtime/v2/ui/tab-active.webp",
+    "tab-inactive": "assets/runtime/v2/ui/tab-inactive.webp"
+  },
+  "icons": {
+    "icon-achievement": "assets/runtime/v2/icons/icon-achievement.webp",
+    "icon-breakthrough": "assets/runtime/v2/icons/icon-breakthrough.webp",
+    "icon-close": "assets/runtime/v2/icons/icon-close.webp",
+    "icon-cultivate": "assets/runtime/v2/icons/icon-cultivate.webp",
+    "icon-forge": "assets/runtime/v2/icons/icon-forge.webp",
+    "icon-lock": "assets/runtime/v2/icons/icon-lock.webp",
+    "icon-mail": "assets/runtime/v2/icons/icon-mail.webp",
+    "icon-reward": "assets/runtime/v2/icons/icon-reward.webp",
+    "icon-shop": "assets/runtime/v2/icons/icon-shop.webp",
+    "icon-tasks": "assets/runtime/v2/icons/icon-tasks.webp",
+    "icon-tree-info": "assets/runtime/v2/icons/icon-tree-info.webp",
+    "icon-wallet": "assets/runtime/v2/icons/icon-wallet.webp"
+  },
+  "effects": {
+    "effect-drop-glow": "assets/runtime/v2/effects/effect-drop-glow.webp",
+    "effect-hit-spark": "assets/runtime/v2/effects/effect-hit-spark.webp",
+    "effect-leaf-gold": "assets/runtime/v2/effects/effect-leaf-gold.webp",
+    "effect-leaf-green": "assets/runtime/v2/effects/effect-leaf-green.webp"
+  }
+}

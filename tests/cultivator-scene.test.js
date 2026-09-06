@@ -18,8 +18,8 @@ test('cultivation scene places the animated cultivator before the tree', () => {
   assert.doesNotMatch(css, /\.cultivator-weapon\s*\{/);
   assert.match(app, /getAxeChopFrames\(Game\.state\.axeId\)/);
   assert.match(app, /getAxeIdleFrames\(Game\.state\.axeId\)/);
-  assert.match(app, /assets\/images\/character\/axes/);
-  assert.match(app, /assets\/images\/character\/idle-axes/);
+  assert.match(app, /assets\/runtime\/character\/axes/);
+  assert.match(app, /assets\/runtime\/character\/idle-axes/);
   assert.match(render, /idleFrames:\s*idleFrames/);
   assert.match(render, /chopFrames:\s*axeFrames/);
   assert.match(render, /CultivatorAnimator\.attach/);
@@ -38,6 +38,21 @@ test('every equipped axe has four idle frames and six V2 chop frames', () => {
       assert.ok(fs.existsSync(file), `missing chop frame ${axeId}/${frame}`);
     }
   }
+});
+
+test('cultivation scene keeps the character and tree within striking distance', () => {
+  assert.match(
+    css,
+    /#player-dashboard \.cult-scene \{[^}]*gap:\s*24px;/,
+    'desktop scene should keep the axe close to the tree',
+  );
+  assert.match(
+    css,
+    /@media \(max-width:\s*380px\)[\s\S]*?\.cult-scene \{[^}]*gap:\s*6px;/,
+    'narrow scene should use a compact gap',
+  );
+  assert.match(css, /\.cult-tree \{[\s\S]*?margin-left:\s*-104px;/);
+  assert.match(css, /\.cult-char \.char-img \{[\s\S]*?transform:\s*scale\(1\.2\)/);
 });
 
 

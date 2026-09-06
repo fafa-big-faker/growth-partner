@@ -49,7 +49,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #dbe8e5 url('assets/images/v2/backgrounds/login-main.png') center / cover no-repeat;
+  background: #dbe8e5 url('assets/runtime/v2/backgrounds/login-main.webp') center / cover no-repeat;
   padding: 20px;
   position: relative;
   overflow: hidden;
@@ -1776,6 +1776,8 @@ body {
   position: relative;
   z-index: 1;
   user-select: none;
+  margin-left: -104px;
+  top: 8px;
 }
 
 .cult-tree:hover { transform: scale(1.05); }
@@ -1828,6 +1830,8 @@ body {
   filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));
   position: relative;
   z-index: 1;
+  transform: scale(1.2);
+  transform-origin: center bottom;
 }
 
 /* ② 状态栏：邮件 / 等级·仙阶 + 经验条 / 突破 */
@@ -2428,7 +2432,7 @@ body {
 
 /* ===== V2 玩家端美术系统 ===== */
 #player-dashboard {
-  --player-scene: url('assets/images/v2/backgrounds/cultivate.webp');
+  --player-scene: url('assets/runtime/v2/backgrounds/cultivate.webp');
   padding-bottom: 84px;
   background-image:
     linear-gradient(180deg, rgba(239, 247, 242, 0.36), rgba(236, 244, 238, 0.54)),
@@ -2445,8 +2449,8 @@ body {
     radial-gradient(circle at 16% 12%, rgba(255, 249, 224, 0.72), transparent 34%),
     linear-gradient(155deg, #dcebe5, #eef2e3 48%, #d7e7e0);
 }
-#player-dashboard[data-player-scene="tasks"] { --player-scene: url('assets/images/v2/backgrounds/tasks.webp'); }
-#player-dashboard[data-player-scene="reward"] { --player-scene: url('assets/images/v2/backgrounds/reward.webp'); }
+#player-dashboard[data-player-scene="tasks"] { --player-scene: url('assets/runtime/v2/backgrounds/tasks.webp'); }
+#player-dashboard[data-player-scene="reward"] { --player-scene: url('assets/runtime/v2/backgrounds/reward.webp'); }
 
 #player-dashboard .app-main {
   position: relative;
@@ -2488,7 +2492,7 @@ body {
   min-height: 238px;
   background-image:
     linear-gradient(180deg, rgba(225, 244, 241, 0.03), rgba(210, 228, 204, 0.13)),
-    url('assets/images/v2/backgrounds/cultivate.webp');
+    url('assets/runtime/v2/backgrounds/cultivate.webp');
   border: 1px solid rgba(52, 96, 82, 0.58);
   border-radius: 8px;
   box-shadow: 0 7px 20px rgba(44, 64, 57, 0.18);
@@ -2533,24 +2537,24 @@ body {
 }
 
 #player-dashboard .item-slot {
-  --slot-frame: url('assets/images/v2/ui/slot-neutral.png');
+  --slot-frame: url('assets/runtime/v2/ui/slot-neutral.webp');
   background: transparent var(--slot-frame) center / 100% 100% no-repeat;
   border: 0;
   isolation: isolate;
 }
 
-#player-dashboard .item-slot.quality-1 { --slot-frame: url('assets/images/v2/ui/slot-neutral.png'); }
-#player-dashboard .item-slot.quality-2 { --slot-frame: url('assets/images/v2/ui/slot-blue.png'); }
-#player-dashboard .item-slot.quality-3 { --slot-frame: url('assets/images/v2/ui/slot-purple.png'); }
-#player-dashboard .item-slot.quality-4 { --slot-frame: url('assets/images/v2/ui/slot-rose.png'); }
-#player-dashboard .item-slot.quality-5 { --slot-frame: url('assets/images/v2/ui/slot-gold.png'); }
+#player-dashboard .item-slot.quality-1 { --slot-frame: url('assets/runtime/v2/ui/slot-neutral.webp'); }
+#player-dashboard .item-slot.quality-2 { --slot-frame: url('assets/runtime/v2/ui/slot-blue.webp'); }
+#player-dashboard .item-slot.quality-3 { --slot-frame: url('assets/runtime/v2/ui/slot-purple.webp'); }
+#player-dashboard .item-slot.quality-4 { --slot-frame: url('assets/runtime/v2/ui/slot-rose.webp'); }
+#player-dashboard .item-slot.quality-5 { --slot-frame: url('assets/runtime/v2/ui/slot-gold.webp'); }
 #player-dashboard .item-slot.empty { opacity: 0.5; }
 #player-dashboard .item-slot .item-icon,
 #player-dashboard .item-slot .item-count,
 #player-dashboard .item-slot .item-lock-badge { z-index: 1; }
 
 #player-dashboard .inv-tab-v {
-  background: transparent url('assets/images/v2/ui/tab-inactive.png') center / 100% 100% no-repeat;
+  background: transparent url('assets/runtime/v2/ui/tab-inactive.webp') center / 100% 100% no-repeat;
   border: 0;
   color: #d8e8e2;
   text-shadow: 0 1px 2px #142c31;
@@ -2558,7 +2562,7 @@ body {
 }
 
 #player-dashboard .inv-tab-v.active {
-  background-image: url('assets/images/v2/ui/tab-active.png');
+  background-image: url('assets/runtime/v2/ui/tab-active.webp');
   color: #fff8d2;
 }
 
@@ -2722,11 +2726,16 @@ body {
   #player-dashboard .cult-inventory .inventory-grid { grid-template-columns: repeat(6, 1fr); }
   #player-dashboard .cult-inventory .inventory-grid.weapons-grid { grid-template-columns: repeat(6, 1fr); }
   #player-dashboard .cult-char { width: 162px; height: 232px; flex-basis: 162px; }
-  #player-dashboard .cult-scene { min-height: 274px; gap: 64px; }
+  #player-dashboard .cult-scene { min-height: 274px; gap: 24px; }
   #player-dashboard .cult-tree .tree-img { width: 176px; height: 204px; }
 }
 
 @media (max-width: 519px) {
   #player-dashboard .app-main { padding: 12px 12px 24px; }
+}
+
+@media (max-width: 380px) {
+  #player-dashboard .cult-scene { gap: 6px; }
+  #player-dashboard .cult-tree { margin-left: -68px; top: 5px; }
 }
 

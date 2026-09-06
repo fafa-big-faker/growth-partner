@@ -201,20 +201,20 @@ function renderItemIcon(itemId, fallbackEmoji, cls = 'item-icon-img') {
   return fb;
 }
 
-const V2_IMAGE_ROOT = 'assets/images/v2';
+const V2_IMAGE_ROOT = 'assets/runtime/v2';
 
 function renderFeatureIcon(name, alt = '', cls = 'feature-icon') {
-  return `<img src="${V2_IMAGE_ROOT}/icons/${name}.png" class="${cls}" alt="${alt}" />`;
+  return `<img src="${V2_IMAGE_ROOT}/icons/${name}.webp" class="${cls}" alt="${alt}" />`;
 }
 
 function renderEmptyState(iconName, text) {
-  return `<div class="empty-state" style="padding:24px"><img src="${V2_IMAGE_ROOT}/icons/${iconName}.png" class="empty-state-art" alt="" /><p>${text}</p></div>`;
+  return `<div class="empty-state" style="padding:24px"><img src="${V2_IMAGE_ROOT}/icons/${iconName}.webp" class="empty-state-art" alt="" /><p>${text}</p></div>`;
 }
 
 function getTreeImage(treeLevel) {
-  if (treeLevel >= 13) return 'assets/images/v2/trees/divine.png';
-  if (treeLevel >= 6) return 'assets/images/v2/trees/spirit.png';
-  return 'assets/images/v2/trees/sprout.png';
+  if (treeLevel >= 13) return 'assets/runtime/v2/trees/divine.webp';
+  if (treeLevel >= 6) return 'assets/runtime/v2/trees/spirit.webp';
+  return 'assets/runtime/v2/trees/sprout.webp';
 }
 
 const AXE_ANIMATION_IDS = ['51001', '51002', '52001', '52002', '53001', '53002', '54001', '54002', '55001'];
@@ -223,7 +223,7 @@ function getAxeIdleFrames(itemId) {
   const safeId = AXE_ANIMATION_IDS.includes(String(itemId)) ? String(itemId) : '51001';
   return Array.from(
     { length: 4 },
-    (_, index) => `assets/images/character/idle-axes/${safeId}/frame-${String(index + 1).padStart(2, '0')}.png`,
+    (_, index) => `assets/runtime/character/idle-axes/${safeId}/frame-${String(index + 1).padStart(2, '0')}.webp`,
   );
 }
 
@@ -231,7 +231,7 @@ function getAxeChopFrames(itemId) {
   const safeId = AXE_ANIMATION_IDS.includes(String(itemId)) ? String(itemId) : '51001';
   return Array.from(
     { length: 6 },
-    (_, index) => `assets/images/character/axes/${safeId}/frame-${String(index + 1).padStart(2, '0')}.png`,
+    (_, index) => `assets/runtime/character/axes/${safeId}/frame-${String(index + 1).padStart(2, '0')}.webp`,
   );
 }
 
@@ -243,22 +243,30 @@ const CultivatorAnimator = CharacterAnimator.createFrameAnimator({
   chopFrameMs: 90,
 });
 
-function getAllGameImageAssets() {
+function getInitialGameImageAssets(axeId = null) {
   const v2Files = [
-    'backgrounds/login-main.png', 'backgrounds/cultivate.webp', 'backgrounds/tasks.webp',
-    'backgrounds/reward.webp', 'trees/sprout.png', 'trees/spirit.png', 'trees/divine.png',
-    'effects/effect-drop-glow.png', 'effects/effect-hit-spark.png',
-    'effects/effect-leaf-gold.png', 'effects/effect-leaf-green.png',
+    'backgrounds/login-main.webp', 'backgrounds/cultivate.webp', 'backgrounds/tasks.webp',
+    'backgrounds/reward.webp', 'trees/sprout.webp', 'trees/spirit.webp', 'trees/divine.webp',
+    'effects/effect-drop-glow.webp', 'effects/effect-hit-spark.webp',
+    'effects/effect-leaf-gold.webp', 'effects/effect-leaf-green.webp',
     ...['achievement', 'breakthrough', 'close', 'cultivate', 'forge', 'lock', 'mail', 'reward', 'shop', 'tasks', 'tree-info', 'wallet']
-      .map(name => `icons/icon-${name}.png`),
+      .map(name => `icons/icon-${name}.webp`),
     ...['button-primary', 'button-secondary', 'checkbox-off', 'checkbox-on', 'modal-crest', 'panel-corner',
       'panel-divider', 'scroll-thumb', 'slot-blue', 'slot-gold', 'slot-neutral', 'slot-purple', 'slot-rose',
-      'status-pill', 'tab-active', 'tab-inactive'].map(name => `ui/${name}.png`),
+      'status-pill', 'tab-active', 'tab-inactive'].map(name => `ui/${name}.webp`),
   ].map(path => `${V2_IMAGE_ROOT}/${path}`);
   const configuredImages = (GAME_CONFIG?.itemTable || []).map(item => item.iconImage).filter(Boolean);
-  const idleAxeFrames = AXE_ANIMATION_IDS.flatMap(getAxeIdleFrames);
-  const chopAxeFrames = AXE_ANIMATION_IDS.flatMap(getAxeChopFrames);
-  return AssetPreloader.collect([Object.values(ITEM_IMAGES), configuredImages, idleAxeFrames, chopAxeFrames, v2Files]);
+  const currentAxeFrames = axeId
+    ? [...getAxeIdleFrames(axeId), ...getAxeChopFrames(axeId)]
+    : [];
+  return AssetPreloader.collect([Object.values(ITEM_IMAGES), configuredImages, currentAxeFrames, v2Files]);
+}
+
+function preloadAxeAnimation(itemId, onProgress = () => {}) {
+  return AssetPreloader.preload(
+    [...getAxeIdleFrames(itemId), ...getAxeChopFrames(itemId)],
+    onProgress,
+  );
 }
 
 // 仙阶表 → 从飞书表格配置合并生成（game-config.js）
@@ -623,7 +631,7 @@ const DB = {
     });
     if (error) {
       console.error('DB composeInventoryItem error:', error);
-      return { ok: false, code: 'network_error' };
+      return { ok: false, code: error.code || 'network_error', message: error.message || '' };
     }
     return data || { ok: false, code: 'empty_response' };
   },
@@ -1984,11 +1992,18 @@ const Auth = {
     DB.setPlayerRole(account.playerRole);
     this._setLoading(true, 0);
     try {
-      const assets = getAllGameImageAssets();
-      const preloadPromise = AssetPreloader.preload(assets, progress => this._setLoading(true, progress.percent));
-      await Promise.all([preloadPromise, Game.init()]);
+      const staticAssets = getInitialGameImageAssets();
+      const staticPreload = AssetPreloader.preload(
+        staticAssets,
+        progress => this._setLoading(true, progress.percent * 0.85),
+      );
+      await Promise.all([staticPreload, Game.init()]);
 
       if (!Game.state) throw new Error('player initialization failed');
+      await preloadAxeAnimation(
+        Game.state.axeId,
+        progress => this._setLoading(true, 85 + progress.percent * 0.15),
+      );
       if (this.currentRole === 'admin') {
         document.getElementById('login-screen').style.display = 'none';
         document.getElementById('admin-dashboard').style.display = 'flex';
@@ -2851,9 +2866,10 @@ const PlayerView = {
     try {
       const outcome = await OperationGuard.run(operationKey, () => Game.equipAxe(itemId));
       if (outcome.started && outcome.value) {
+        await preloadAxeAnimation(itemId);
         this.renderInventory(this.currentInvTab);
         document.querySelector('.modal-overlay')?.remove();
-        this.renderCultivate();
+        await this.renderCultivate();
       }
     } catch (error) {
       console.error('equipItem action error:', error);
@@ -2878,9 +2894,10 @@ const PlayerView = {
     try {
       const outcome = await OperationGuard.run(operationKey, () => Game.equipAxe(itemId));
       if (outcome.started && outcome.value) {
+        await preloadAxeAnimation(itemId);
         document.querySelectorAll('.modal-overlay').forEach(el => el.remove());
         this.renderInventory('weapons');
-        this.renderCultivate();
+        await this.renderCultivate();
       }
     } finally {
       if (button?.isConnected) {
