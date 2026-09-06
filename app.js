@@ -2326,7 +2326,7 @@ const UI = {
 };
 
 const ForgeReveal = {
-  delays: [320, 300, 270, 240, 215, 190, 165, 145, 125, 110, 95, 82, 76],
+  delays: [160, 150, 135, 120, 108, 95, 83, 73, 63, 55, 48, 42, 38],
 
   getCandidateItems() {
     const ids = FORGE_POOL.flatMap(pool => pool.items.map(String));
@@ -2342,10 +2342,21 @@ const ForgeReveal = {
     if (elements.progressFill) elements.progressFill.style.width = `${progress}%`;
   },
 
-  showCandidate(elements, item, shaking = true) {
+  animateProgress(elements, value, duration) {
+    if (!elements.progressFill) return;
+    elements.progressFill.style.transition = 'none';
+    elements.progressFill.style.width = '0%';
+    requestAnimationFrame(() => {
+      elements.progressFill.style.transition = `width ${duration}ms linear`;
+      this.setProgress(elements, value);
+    });
+  },
+
+  showCandidate(elements, item, shaking = true, transitionMs = 70) {
     if (!item) return;
     const quality = QUALITY[item.quality] || QUALITY[1];
     if (elements.art) {
+      elements.art.style.setProperty('--forge-swap-ms', `${transitionMs}ms`);
       elements.art.innerHTML = renderItemIcon(item.id, item.icon, 'forge-reveal-icon');
       elements.art.classList.toggle('is-shaking', shaking);
     }
@@ -2358,18 +2369,24 @@ const ForgeReveal = {
   async run(elements, resultPromise) {
     const candidates = this.getCandidateItems();
     const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true;
-    const delays = reducedMotion ? [180, 150, 120] : this.delays;
+    const delays = reducedMotion ? [90, 75, 60] : this.delays;
+    const cycleDuration = delays.reduce((total, delay) => total + delay, 0);
     if (elements.status) elements.status.textContent = '灵火淬炼中';
     this.setProgress(elements, 0);
+    if (reducedMotion) this.setProgress(elements, 88);
+    else this.animateProgress(elements, 88, cycleDuration);
 
     for (let index = 0; index < delays.length; index += 1) {
       const item = candidates[index % candidates.length];
-      this.showCandidate(elements, item, !reducedMotion);
-      this.setProgress(elements, Math.round(((index + 1) / delays.length) * 88));
+      const transitionMs = reducedMotion ? 0 : Math.min(85, Math.max(28, delays[index] * 0.62));
+      this.showCandidate(elements, item, !reducedMotion, transitionMs);
       await new Promise(resolve => setTimeout(resolve, delays[index]));
     }
 
     elements.art?.classList.remove('is-shaking');
+    if (elements.progressFill) {
+      elements.progressFill.style.transition = reducedMotion ? 'none' : 'width 140ms ease-out';
+    }
     this.setProgress(elements, 94);
     if (elements.status) elements.status.textContent = '凝聚器灵';
     const result = await resultPromise;
@@ -4422,7 +4439,6 @@ const PlayerView = {
     `, {
       title: '锻造',
       footer: `<div class="modal-footer">
-        <button class="btn btn-outline btn-sm forge-close" onclick="this.closest('.modal-overlay').remove()">关闭</button>
         <button class="btn btn-primary btn-sm" id="forge-ok" ${forgeQty > 0 ? '' : 'disabled'}>锻造（消耗1个锻铁）</button>
         <div id="forge-result-actions" class="forge-result-actions" hidden></div>
       </div>`
@@ -4432,7 +4448,7 @@ const PlayerView = {
     if (btn) btn.addEventListener('click', async () => {
       const setup = overlay.querySelector('#forge-setup');
       const stage = overlay.querySelector('#forge-reveal-stage');
-      const closeControls = overlay.querySelectorAll('.modal-close, .forge-close');
+      const closeControls = overlay.querySelectorAll('.modal-close');
       const resultActions = overlay.querySelector('#forge-result-actions');
       const elements = {
         art: overlay.querySelector('#forge-reveal-art'),
@@ -4476,12 +4492,11 @@ const PlayerView = {
         if (resultActions) {
           resultActions.hidden = false;
           resultActions.innerHTML = `
-            <button class="btn btn-primary btn-sm" onclick="this.closest('.modal-overlay').remove();PlayerView.showForge()">继续锻造</button>
+            <button class="btn btn-outline btn-sm" onclick="this.closest('.modal-overlay').remove();PlayerView.showForge()">返回</button>
             ${canEquip ? `<button class="btn btn-accent btn-sm" onclick="PlayerView._equipFromForge('${result.itemId}',this)">立即装备</button>` : ''}
           `;
         }
         btn.hidden = true;
-        overlay.querySelector('.forge-close')?.setAttribute('hidden', '');
         const title = overlay.querySelector('.modal-title');
         if (title) title.innerHTML = `${renderFeatureIcon('icon-forge', '', 'section-title-icon')} 锻造成功`;
       } else if (outcome.started) {
