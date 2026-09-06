@@ -2,6 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const vm = require('node:vm');
 
 const app = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
 const sync = fs.readFileSync(path.join(__dirname, '..', 'sync-config.py'), 'utf8');
@@ -33,6 +34,36 @@ test('configuration sync reads parallel reward item counts', () => {
   assert.match(sync, /"rewards":\s*rewards/);
   assert.match(sync, /"quantities":/);
   assert.match(sync, /"奖励包ID",\s*"A1:E30"/);
+});
+
+test('skill and BUFF configuration use stable English headers and grouped lookup', () => {
+  assert.match(sync, /skill_headers\s*=\s*header_indexes/);
+  assert.match(sync, /\["skill_id",\s*"buff_id"\]/);
+  for (const field of [
+    'id', 'buff_id', 'buff_quality', 'buff_description', 'params_type_desc',
+    'effect_desc', 'value1_range', 'value2_range', 'value3_range', 'weight',
+  ]) {
+    assert.match(sync, new RegExp(`"${field}"`));
+  }
+  assert.match(sync, /"BUFF表",\s*"A1:J100"/);
+  assert.match(sync, /GAME_CONFIG\.buffTable\.filter\(b => b\.buffId === skill\.buffId\)/);
+  assert.match(gameConfig, /buffTable:\s*\[/);
+});
+
+test('every configured skill has a complete 1000-weight BUFF group', () => {
+  const sandbox = {};
+  vm.runInNewContext(`${gameConfig}\n;globalThis.__config = GAME_CONFIG;`, sandbox);
+  const config = sandbox.__config;
+  for (const skill of config.skillTable) {
+    const buffs = config.buffTable.filter(row => row.buffId === skill.buffId);
+    assert.equal(buffs.length, 5, `BUFF ${skill.buffId} should have five quality rows`);
+    assert.equal(buffs.reduce((sum, row) => sum + row.weight, 0), 1000);
+    assert.deepEqual(Array.from(buffs, row => row.buffQuality), [1, 2, 3, 4, 5]);
+    for (const row of buffs) {
+      assert.ok(row.value1Range, `BUFF row ${row.id} is missing value1_range`);
+      assert.ok(row.value2Range, `BUFF row ${row.id} is missing value2_range`);
+    }
+  }
 });
 
 test('shop configuration exposes its player-facing description separately from notes', () => {

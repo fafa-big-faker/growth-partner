@@ -39,14 +39,14 @@ test('compose preserves the Supabase error code for diagnosis', () => {
 });
 
 test('same-id backpack axes remain equipable and sellable', () => {
-  const detail = app.match(/showItemDetail\(itemId\)[\s\S]*?\n  },/)?.[0] || '';
-  assert.doesNotMatch(detail, /const isEquipped = Game\.state\.axeId === itemId/);
+  const detail = app.match(/showItemDetail\(itemId, instanceId = null\)[\s\S]*?\n  },/)?.[0] || '';
+  assert.match(app, /Game\.weapons\.filter\(weapon => weapon\.id !== Game\.state\.axeInstanceId\)/);
   assert.match(detail, /PlayerView\.equipItem/);
   assert.match(detail, /PlayerView\.sellItem/);
 
-  const sell = app.match(/async sellAxe\(itemId\)[\s\S]*?\n  },/)?.[0] || '';
-  assert.doesNotMatch(sell, /装备中的斧头无法出售/);
-  assert.match(sell, /if \(!removed\) return false/);
+  const sell = app.match(/async sellAxe\(instanceId\)[\s\S]*?\n  },/)?.[0] || '';
+  assert.match(sell, /DB\.sellWeaponInstance\(instanceId/);
+  assert.match(sell, /entry\.id !== instanceId/);
 });
 
 test('cultivate redraw preserves the selected inventory tab', () => {
@@ -94,8 +94,9 @@ test('resource consumers check database results before success', () => {
   assert.match(breakthrough, /const saved = await DB\.updatePlayerState/);
   assert.match(treeUpgrade, /const removed = await DB\.removeItem/);
   assert.match(treeUpgrade, /const saved = await DB\.updatePlayerState/);
-  assert.match(forge, /const removed = await DB\.removeItem/);
-  assert.match(forge, /const granted = await DB\.addItem/);
+  assert.match(forge, /WeaponAffixes\.rollSkills/);
+  assert.match(forge, /DB\.forgeWeaponInstance/);
+  assert.doesNotMatch(forge, /DB\.removeItem|DB\.addItem/);
 });
 
 test('stored rewards and withdrawal reviews reserve their state conditionally', () => {

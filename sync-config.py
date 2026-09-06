@@ -294,30 +294,44 @@ print(f"    {len(interaction_table)} 条")
 
 # 6. 技能表
 print("  → 技能表")
-rows = read_sheet(SHEETS["技能表"], "技能表", "A1:C100")
+rows = read_sheet(SHEETS["技能表"], "技能表", "A1:B100")
+skill_headers = header_indexes(rows, ["skill_id", "buff_id"], "技能表")
 skill_table = []
 for row in rows[2:]:
-    if not row[0]:
+    if not row_value(row, skill_headers, "skill_id"):
         continue
     skill_table.append({
-        "skillId": to_int(row[0]),
-        "buffId": to_int(row[1]),
-        "buffParams": to_str(row[2]),
+        "skillId": to_int(row_value(row, skill_headers, "skill_id")),
+        "buffId": to_int(row_value(row, skill_headers, "buff_id")),
     })
 print(f"    {len(skill_table)} 条")
 
 # 7. BUFF表
 print("  → BUFF表")
-rows = read_sheet(SHEETS["技能表"], "BUFF表", "A1:D20")
+rows = read_sheet(SHEETS["技能表"], "BUFF表", "A1:J100")
+buff_headers = header_indexes(
+    rows,
+    [
+        "id", "buff_id", "buff_quality", "buff_description", "params_type_desc",
+        "effect_desc", "value1_range", "value2_range", "value3_range", "weight",
+    ],
+    "BUFF表",
+)
 buff_table = []
 for row in rows[2:]:
-    if not row[0]:
+    if not row_value(row, buff_headers, "id"):
         continue
     buff_table.append({
-        "buffId": to_int(row[0]),
-        "description": to_str(row[1]),
-        "paramsTypeDesc": to_str(row[2]),
-        "effectDesc": to_str(row[3]),
+        "id": to_int(row_value(row, buff_headers, "id")),
+        "buffId": to_int(row_value(row, buff_headers, "buff_id")),
+        "buffQuality": to_int(row_value(row, buff_headers, "buff_quality")),
+        "description": to_str(row_value(row, buff_headers, "buff_description")),
+        "paramsTypeDesc": to_str(row_value(row, buff_headers, "params_type_desc")),
+        "effectDesc": to_str(row_value(row, buff_headers, "effect_desc")),
+        "value1Range": to_str(row_value(row, buff_headers, "value1_range")),
+        "value2Range": to_str(row_value(row, buff_headers, "value2_range")),
+        "value3Range": to_str(row_value(row, buff_headers, "value3_range")),
+        "weight": to_int(row_value(row, buff_headers, "weight")),
     })
 print(f"    {len(buff_table)} 条")
 
@@ -578,8 +592,8 @@ function getExpForLevel(level) {{
 function getSkillById(skillId) {{
   const skill = GAME_CONFIG.skillTable.find(s => s.skillId === skillId);
   if (!skill) return null;
-  const buff = GAME_CONFIG.buffTable.find(b => b.buffId === skill.buffId);
-  return {{ ...skill, buff: buff || null }};
+  const buffs = GAME_CONFIG.buffTable.filter(b => b.buffId === skill.buffId);
+  return {{ ...skill, buffs, buff: buffs[0] || null }};
 }}
 
 // 根据奖池ID获取奖池配置（含奖励包权重和道具列表）

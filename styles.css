@@ -597,6 +597,20 @@ body {
 .item-slot.quality-4 { border-color: var(--quality-4); box-shadow: 0 0 8px rgba(232, 90, 138, 0.3); }
 .item-slot.quality-5 { border-color: var(--quality-5); box-shadow: 0 0 12px rgba(240, 180, 41, 0.4); }
 
+.buff-value {
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+}
+
+.buff-quality-1 { color: var(--quality-1); }
+.buff-quality-2 { color: var(--quality-2); }
+.buff-quality-3 { color: var(--quality-3); }
+.buff-quality-4 { color: var(--quality-4); }
+.buff-quality-5 {
+  color: var(--quality-5);
+  text-shadow: 0 0 8px rgb(240 180 41 / 24%);
+}
+
 .item-slot .item-icon { font-size: 28px; display:flex; align-items:center; justify-content:center; height:32px; }
 .item-icon-img { width: 28px; height: 28px; object-fit: contain; border-radius: 4px; }
 .item-icon-xs { width: 22px; height: 22px; object-fit: contain; vertical-align: middle; }

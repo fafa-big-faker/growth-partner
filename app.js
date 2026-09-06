@@ -34,7 +34,7 @@ const ITEMS = {};
     // 解析交互参数 → 派生字段
     composeTo: null, composeCount: 0,
     value: 0,
-    skillIds: [], skillDesc: '',
+    skillIds: [],
     sellPrice: 0,
   };
   // 解析交互参数
@@ -50,28 +50,6 @@ const ITEMS = {};
     // 装备出售: "售价,技能ID[,技能ID2...]"
     entry.sellPrice = parseInt(params[0]?.trim()) || 0;
     entry.skillIds = params.slice(1).map(s => parseInt(s.trim())).filter(s => !isNaN(s));
-    if (entry.skillIds.length > 0) {
-      const descs = entry.skillIds.map(sid => {
-        const sk = getSkillById(sid);
-        if (!sk || !sk.buff) return `技能${sid}`;
-        // 解析buffParams并替换模板变量
-        let text = sk.buff.description || '';
-        const bp = sk.buffParams ? sk.buffParams.split(',').map(s => s.trim()) : [];
-        if (sk.buffId === 1) {
-          // "qualityId,probCenter,multiplier" → {vlaue1}=品质名, {value2}=概率%, {value3}=倍率
-          const qName = (GAME_CONFIG?.qualityTable || []).find(q => q.id === parseInt(bp[0]))?.name || `品质${bp[0]}`;
-          text = text.replace(/\{vlaue1\}/g, qName).replace(/\{value1\}/g, qName);
-          text = text.replace(/\{value2\}/g, `${bp[1]}%`);
-          text = text.replace(/\{value3\}/g, bp[2] || '');
-        } else if (sk.buffId === 2) {
-          // "probCenter,refundAmount" → {value1}=概率%, {value2}=返还次数
-          text = text.replace(/\{value1\}/g, `${bp[0]}%`);
-          text = text.replace(/\{value2\}/g, bp[1] || '');
-        }
-        return text;
-      });
-      entry.skillDesc = descs.join('; ');
-    }
   }
   ITEMS[id] = entry;
 });
@@ -199,6 +177,16 @@ function renderItemIcon(itemId, fallbackEmoji, cls = 'item-icon-img') {
     return `<img src="${img}" class="${cls}${axeCls}" alt="${fb}" />`;
   }
   return fb;
+}
+
+function getWeaponSkillLines(weapon) {
+  const rolls = Array.isArray(weapon?.skillRolls) ? weapon.skillRolls : [];
+  return rolls.map(roll => WeaponAffixes.formatSkill(roll, GAME_CONFIG?.qualityTable || []));
+}
+
+function renderWeaponSkills(weapon, emptyText = '此仙斧暂无特殊技能。') {
+  const lines = getWeaponSkillLines(weapon);
+  return lines.length > 0 ? lines.join('; ') : emptyText;
 }
 
 const V2_IMAGE_ROOT = 'assets/runtime/v2';
@@ -398,6 +386,7 @@ const DB = {
       treeRealm: data.tree_realm !== null && data.tree_realm !== undefined ? data.tree_realm : 0,
       realmLevel: data.realm_level || 1,
       axeId: data.axe_id,
+      axeInstanceId: data.axe_instance_id || null,
       balance: parseFloat(data.balance) || 0,
       totalWithdrawn: parseFloat(data.total_withdrawn) || 0,
       lastDailyDate: data.last_daily_date,
@@ -426,6 +415,7 @@ const DB = {
     if (updates.treeRealm !== undefined) dbUpdates.tree_realm = updates.treeRealm;
     if (updates.realmLevel !== undefined) dbUpdates.realm_level = updates.realmLevel;
     if (updates.axeId !== undefined) dbUpdates.axe_id = updates.axeId;
+    if (updates.axeInstanceId !== undefined) dbUpdates.axe_instance_id = updates.axeInstanceId;
     if (updates.balance !== undefined) dbUpdates.balance = updates.balance;
     if (updates.totalWithdrawn !== undefined) dbUpdates.total_withdrawn = updates.totalWithdrawn;
     // 日期字段：空字符串统一转 null，避免 Postgres "invalid input syntax for type date"
@@ -455,7 +445,7 @@ const DB = {
       if (msg.includes('does not exist') || msg.includes('Could not find')) {
         const safeUpdates = {};
         for (const k in dbUpdates) {
-          if (['coin', 'signin_month', 'signin_days', 'signin_claims', 'shop_purchases', 'total_chops', 'total_coin_earned', 'achievement_claims', 'theme_reward_claims'].includes(k)) continue;
+          if (['coin', 'signin_month', 'signin_days', 'signin_claims', 'shop_purchases', 'total_chops', 'total_coin_earned', 'achievement_claims', 'theme_reward_claims', 'axe_instance_id'].includes(k)) continue;
           safeUpdates[k] = dbUpdates[k];
         }
         const { error: err2 } = await dbClient
@@ -537,6 +527,7 @@ const DB = {
       treeRealm: 0,
       realmLevel: 1,
       axeId: '51001',
+      axeInstanceId: null,
       balance: 0,
       totalWithdrawn: 0,
       lastDailyDate: null,
@@ -565,6 +556,102 @@ const DB = {
       itemId: item.item_id,
       quantity: item.quantity,
     }));
+  },
+
+  async getWeaponInstances() {
+    const { data, error } = await dbClient
+      .from('weapon_instances')
+      .select('id,item_id,skill_rolls,created_at')
+      .eq('user_role', this.playerRole)
+      .order('created_at', { ascending: false });
+    if (error) {
+      console.error('DB getWeaponInstances error:', error);
+      return [];
+    }
+    return data.map(row => ({
+      id: row.id,
+      itemId: String(row.item_id),
+      skillRolls: Array.isArray(row.skill_rolls) ? row.skill_rolls : [],
+      createdAt: row.created_at,
+    }));
+  },
+
+  async initializeWeaponAffixes(instanceId, skillRolls) {
+    const { data, error } = await dbClient.rpc('initialize_weapon_affixes', {
+      p_user_role: this.playerRole,
+      p_instance_id: instanceId,
+      p_skill_rolls: skillRolls,
+    });
+    if (error) {
+      console.error('DB initializeWeaponAffixes error:', error);
+      return null;
+    }
+    return data?.ok ? data.skillRolls : null;
+  },
+
+  async initializeWeaponAffixesBatch(updates) {
+    const { data, error } = await dbClient.rpc('initialize_weapon_affixes_batch', {
+      p_user_role: this.playerRole,
+      p_updates: updates,
+    });
+    if (error) {
+      console.error('DB initializeWeaponAffixesBatch error:', error);
+      return null;
+    }
+    return data?.ok && Array.isArray(data.weapons) ? data.weapons : null;
+  },
+
+  async grantWeaponInstance(itemId, skillRolls) {
+    const { data, error } = await dbClient.rpc('grant_weapon_instance', {
+      p_user_role: this.playerRole,
+      p_item_id: String(itemId),
+      p_skill_rolls: skillRolls,
+    });
+    if (error) {
+      console.error('DB grantWeaponInstance error:', error);
+      return null;
+    }
+    return data?.ok ? data.weapon : null;
+  },
+
+  async forgeWeaponInstance(costItemId, costQuantity, itemId, skillRolls) {
+    const { data, error } = await dbClient.rpc('forge_weapon_instance', {
+      p_user_role: this.playerRole,
+      p_cost_item_id: String(costItemId),
+      p_cost_quantity: costQuantity,
+      p_item_id: String(itemId),
+      p_skill_rolls: skillRolls,
+    });
+    if (error) {
+      console.error('DB forgeWeaponInstance error:', error);
+      return { ok: false, code: error.code || 'network_error' };
+    }
+    return data || { ok: false, code: 'empty_response' };
+  },
+
+  async equipWeaponInstance(instanceId) {
+    const { data, error } = await dbClient.rpc('equip_weapon_instance', {
+      p_user_role: this.playerRole,
+      p_instance_id: instanceId,
+    });
+    if (error) {
+      console.error('DB equipWeaponInstance error:', error);
+      return { ok: false, code: error.code || 'network_error' };
+    }
+    return data || { ok: false, code: 'empty_response' };
+  },
+
+  async sellWeaponInstance(instanceId, price) {
+    const { data, error } = await dbClient.rpc('sell_weapon_instance', {
+      p_user_role: this.playerRole,
+      p_instance_id: instanceId,
+      p_price: price,
+    });
+    if (error) {
+      console.error('DB sellWeaponInstance error:', error);
+      return { ok: false, code: error.code || 'network_error' };
+    }
+    return data || { ok: false, code: 'empty_response' };
   },
 
   async addItem(itemId, quantity = 1) {
@@ -1015,10 +1102,13 @@ function achievementGoalText(typeId, value) {
 const Game = {
   state: null,
   inventory: [],
+  weapons: [],
+  equippedWeapon: null,
 
   async init() {
     this.state = await DB.initPlayerState();
     this.inventory = await DB.getInventory();
+    if (this.state) await this._loadWeapons();
     if (!this.state) {
       console.error('玩家状态初始化失败');
       UI.toast('初始化失败，请刷新重试', 'error');
@@ -1028,7 +1118,46 @@ const Game = {
   async refresh() {
     this.state = await DB.getPlayerState();
     this.inventory = await DB.getInventory();
+    if (this.state) await this._loadWeapons();
     UI.updateHeader();
+  },
+
+  async _loadWeapons() {
+    this.weapons = await DB.getWeaponInstances();
+
+    let equipped = this.weapons.find(weapon => weapon.id === this.state.axeInstanceId) || null;
+    if (!equipped) {
+      equipped = this.weapons.find(weapon => weapon.itemId === String(this.state.axeId || '51001')) || null;
+      if (!equipped) {
+        const itemId = String(this.state.axeId || '51001');
+        const skillRolls = WeaponAffixes.rollSkills(ITEMS[itemId]?.skillIds || []);
+        equipped = await DB.grantWeaponInstance(itemId, skillRolls);
+        if (equipped) this.weapons.unshift(equipped);
+      }
+      if (equipped) {
+        const result = await DB.equipWeaponInstance(equipped.id);
+        if (result.ok) {
+          this.state.axeInstanceId = equipped.id;
+          this.state.axeId = equipped.itemId;
+        }
+      }
+    }
+
+    const pendingAffixes = [];
+    for (const weapon of this.weapons) {
+      if (weapon.skillRolls.length > 0) continue;
+      const skillIds = ITEMS[weapon.itemId]?.skillIds || [];
+      if (skillIds.length === 0) continue;
+      pendingAffixes.push({ id: weapon.id, skillRolls: WeaponAffixes.rollSkills(skillIds) });
+    }
+    if (pendingAffixes.length > 0) {
+      const savedWeapons = await DB.initializeWeaponAffixesBatch(pendingAffixes);
+      for (const saved of savedWeapons || []) {
+        const weapon = this.weapons.find(entry => entry.id === saved.id);
+        if (weapon) weapon.skillRolls = saved.skillRolls;
+      }
+    }
+    this.equippedWeapon = this.weapons.find(weapon => weapon.id === this.state.axeInstanceId) || equipped;
   },
 
   _setInventoryQuantity(itemId, quantity) {
@@ -1076,6 +1205,17 @@ const Game = {
         return null;
       }
       return { kind: 'chopping', id, quantity: qty, def };
+    }
+    if (def && def.type === 5) {
+      const created = [];
+      for (let index = 0; index < qty; index++) {
+        const skillRolls = WeaponAffixes.rollSkills(def.skillIds || []);
+        const weapon = await DB.grantWeaponInstance(id, skillRolls);
+        if (!weapon) return null;
+        created.push(weapon);
+      }
+      this.weapons.unshift(...created);
+      return { kind: 'weapon', id, quantity: qty, def, weapons: created };
     }
     // 普通道具 → 背包（本地 + DB）
     const idx = this.inventory.findIndex(i => i.itemId == id);
@@ -1463,39 +1603,27 @@ const Game = {
   },
 
   // 出售仙斧（售价为游戏币）
-  async sellAxe(itemId) {
-    const itemDef = ITEMS[itemId];
+  async sellAxe(instanceId) {
+    const weapon = this.weapons.find(entry => entry.id === instanceId);
+    const itemDef = ITEMS[weapon?.itemId];
     if (!itemDef || itemDef.type !== 5) return false;
-    const removed = await DB.removeItem(itemId, 1);
-    if (!removed) return false;
-
-    const previousCoin = this.state.coin || 0;
-    const previousTotal = this.state.totalCoinEarned || 0;
-    this.state.coin = previousCoin + itemDef.sellPrice;
-    // 成就统计：出售仙斧获得的游戏币计入累计
-    this.state.totalCoinEarned = previousTotal + itemDef.sellPrice;
-    const updated = await DB.updatePlayerState({
-      coin: this.state.coin,
-      totalCoinEarned: this.state.totalCoinEarned,
-    });
-    if (!updated) {
-      this.state.coin = previousCoin;
-      this.state.totalCoinEarned = previousTotal;
-      const restored = await DB.addItem(itemId, 1);
-      if (!restored) console.error('sellAxe rollback failed:', itemId);
+    const result = await DB.sellWeaponInstance(instanceId, itemDef.sellPrice);
+    if (!result.ok) {
       await this.refresh();
       return false;
     }
-
-    this._setInventoryQuantity(itemId, this._getItemQty(itemId) - 1);
+    this.weapons = this.weapons.filter(entry => entry.id !== instanceId);
+    this.state.coin = Number(result.coin) || 0;
+    this.state.totalCoinEarned = (this.state.totalCoinEarned || 0) + itemDef.sellPrice;
     UI.updateHeader();
     UI.toast(`出售成功！获得 ${itemDef.sellPrice} 游戏币`, 'success');
     return true;
   },
 
   // 装备仙斧
-  async equipAxe(itemId) {
-    const itemDef = ITEMS[itemId];
+  async equipAxe(instanceId) {
+    const weapon = this.weapons.find(entry => entry.id === instanceId);
+    const itemDef = ITEMS[weapon?.itemId];
     if (!itemDef || itemDef.type !== 5) return false;
     // 仙阶限制校验：仙斧品质不能超过当前仙阶允许的最高品质
     if (!canEquipAxeQuality(itemDef.quality, this.state.realmLevel)) {
@@ -1506,51 +1634,23 @@ const Game = {
       return false;
     }
 
-    if (this._getItemQty(itemId) < 1) {
+    if (!weapon) {
       UI.toast('背包中没有这把斧头', 'warn');
       return false;
     }
-
-    // 同 ID 武器属性完全一致，交换后聚合库存和装备 ID 都不变。
-    if (this.state.axeId === itemId) {
+    if (this.state.axeInstanceId === instanceId) {
       UI.toast(`装备了 ${itemDef.name}`, 'success');
       return true;
     }
-
-    const oldAxeId = this.state.axeId;
-    const removed = await DB.removeItem(itemId, 1);
-    if (!removed) {
-      this.inventory = await DB.getInventory();
-      UI.toast('装备失败，背包数量已刷新', 'error');
-      return false;
-    }
-
-    let oldAxeReturned = false;
-    if (oldAxeId && oldAxeId !== '51001') {
-      oldAxeReturned = await DB.addItem(oldAxeId, 1);
-      if (!oldAxeReturned) {
-        await DB.addItem(itemId, 1);
-        await this.refresh();
-        UI.toast('装备失败，请重试', 'error');
-        return false;
-      }
-    }
-
-    this.state.axeId = itemId;
-    const updated = await DB.updatePlayerState({ axeId: itemId });
-    if (!updated) {
-      this.state.axeId = oldAxeId;
-      if (oldAxeReturned) await DB.removeItem(oldAxeId, 1);
-      await DB.addItem(itemId, 1);
+    const result = await DB.equipWeaponInstance(instanceId);
+    if (!result.ok) {
       await this.refresh();
       UI.toast('装备失败，请重试', 'error');
       return false;
     }
-
-    this._setInventoryQuantity(itemId, this._getItemQty(itemId) - 1);
-    if (oldAxeReturned) {
-      this._setInventoryQuantity(oldAxeId, this._getItemQty(oldAxeId) + 1);
-    }
+    this.state.axeId = weapon.itemId;
+    this.state.axeInstanceId = weapon.id;
+    this.equippedWeapon = weapon;
     UI.toast(`装备了 ${itemDef.name}`, 'success');
     return true;
   },
@@ -1776,13 +1876,6 @@ const Game = {
       UI.toast(`${costItem?.name || '材料'}不足，需要 ${costCount} 个`, 'warn');
       return null;
     }
-    const removed = await DB.removeItem(costItemId, costCount);
-    if (!removed) {
-      await this.refresh();
-      UI.toast('锻铁扣除失败，请重试', 'error');
-      return null;
-    }
-
     // 加权随机抽取品质，同品质内均分
     const totalWeight = FORGE_POOL.reduce((sum, p) => sum + p.weight, 0);
     let roll = Math.random() * totalWeight;
@@ -1793,16 +1886,17 @@ const Game = {
     }
     const itemId = selectedPool.items[Math.floor(Math.random() * selectedPool.items.length)];
     const axeDef = ITEMS[itemId];
-    const granted = await DB.addItem(itemId, 1);
-    if (!granted) {
-      const restored = await DB.addItem(costItemId, costCount);
-      if (!restored) console.error('forge compensation failed:', costItemId, costCount);
+    const skillRolls = WeaponAffixes.rollSkills(axeDef?.skillIds || []);
+    const result = await DB.forgeWeaponInstance(costItemId, costCount, itemId, skillRolls);
+    if (!result.ok) {
       await this.refresh();
-      UI.toast('锻造未完成，锻铁已返还', 'error');
+      UI.toast(result.code === 'insufficient_materials' ? '锻铁不足' : '锻造未完成，请重试', 'error');
       return null;
     }
-    await this.refresh();
-    return { itemId, quality: selectedPool.quality, item: axeDef };
+    this._setInventoryQuantity(costItemId, Number(result.remainingMaterial) || 0);
+    const weapon = result.weapon;
+    this.weapons.unshift(weapon);
+    return { itemId, quality: selectedPool.quality, item: axeDef, weapon };
   },
 
   // 十连砍：额外奖励由每一次 chop 的累计次数统一判定。
@@ -1905,62 +1999,24 @@ const Game = {
     return results;
   },
 
-  // 应用仙斧buff（返回修正后的掉落结果）→ 动态读取 skillTable/buffTable
+  // 应用锻造时已经固定的仙斧词条。
   _applyAxeBuffs(dropItem) {
-    const axeDef = ITEMS[this.state.axeId] || ITEMS['51001'];
-    if (!axeDef.skillIds || axeDef.skillIds.length === 0) return dropItem;
-
-    for (const skillId of axeDef.skillIds) {
-      const skill = getSkillById(skillId);
-      if (!skill || !skill.buff) continue;
-
-      if (skill.buffId === 1) {
-        // BUFF类型1: 品质掉落倍率
-        // buffParams: "qualityId,probabilityCenter,multiplier"
-        const parts = skill.buffParams.split(',').map(s => parseFloat(s.trim()));
-        const targetQuality = parts[0];
-        const probCenter = parts[1];
-        const multiplier = parts[2];
-        if (dropItem.quality === targetQuality) {
-          // 概率中值 ±10 范围随机
-          const prob = (probCenter + (Math.random() * 20 - 10)) / 100;
-          if (Math.random() < prob) {
-            dropItem.quantity *= multiplier;
-            const qName = QUALITY[targetQuality]?.name || `品质${targetQuality}`;
-            dropItem.buffText = `${qName}×${multiplier}倍！`;
-          }
-        }
-      }
+    const before = Number(dropItem?.quantity) || 0;
+    const result = WeaponAffixes.applyRewardMultipliers(
+      dropItem,
+      this.equippedWeapon?.skillRolls || [],
+      Math.random,
+    );
+    if (result && result.quantity > before) {
+      result.buffText = `掉落量×${result.quantity / before}倍！`;
     }
-    return dropItem;
+    return result;
   },
 
-  // 返还砍树次数buff（砍树后调用）→ 动态读取 skillTable/buffTable
+  // 返还砍树次数词条（数值在锻造时固定）。
   _checkRefundBuff() {
-    const axeDef = ITEMS[this.state.axeId] || ITEMS['51001'];
-    if (!axeDef.skillIds || axeDef.skillIds.length === 0) return 0;
-
-    let totalRefund = 0;
-    for (const skillId of axeDef.skillIds) {
-      const skill = getSkillById(skillId);
-      if (!skill || !skill.buff) continue;
-
-      if (skill.buffId === 2) {
-        // BUFF类型2: 返还砍树次数
-        // buffParams: "probabilityCenter,refundAmount"
-        const parts = skill.buffParams.split(',').map(s => parseFloat(s.trim()));
-        const probCenter = parts[0];
-        const refundAmount = parts[1];
-        // 概率中值 ±5 范围随机
-        const prob = (probCenter + (Math.random() * 10 - 5)) / 100;
-        if (Math.random() < prob) {
-          const refund = Math.round(refundAmount);
-          this.state.choppingCount += refund;
-          // DB写入由chop()批量处理，此处仅更新本地状态
-          totalRefund += refund;
-        }
-      }
-    }
+    const totalRefund = WeaponAffixes.rollRefund(this.equippedWeapon?.skillRolls || [], Math.random);
+    this.state.choppingCount += totalRefund;
     return totalRefund;
   },
 };
@@ -2433,6 +2489,7 @@ const PlayerView = {
     const nextRealm = REALMS.find(r => r.level == Game.state.realmLevel + 1);
     const nextTreeRealm = TREE_REALMS.find(r => r.level == Game.state.treeRealm + 1);
     const axeDef = ITEMS[Game.state.axeId] || ITEMS['51001'];
+    const equippedSkillHtml = renderWeaponSkills(Game.equippedWeapon, '');
     const forgeStoneQty = Game.inventory.find(i => i.itemId == '40001')?.quantity || 0;
     const expMax = getExpForLevel(Game.state.level);
 
@@ -2516,7 +2573,7 @@ const PlayerView = {
             <span class="equip-name">${axeDef.name}</span>
             ${UI.qualityTag(axeDef.quality)}
           </div>
-          ${axeDef.skillDesc ? `<div class="equip-skill">斧技 · ${axeDef.skillDesc}</div>` : ''}
+          ${equippedSkillHtml ? `<div class="equip-skill">斧技 · ${equippedSkillHtml}</div>` : ''}
         </div>
         <button class="forge-btn" onclick="PlayerView.showForge()">
           <span class="forge-btn-icon">${renderFeatureIcon('icon-forge', '锻造', 'forge-feature-icon')}</span>
@@ -2670,17 +2727,15 @@ const PlayerView = {
     // 武器 tab 整个 grid 进入竖格模式（含空槽位），道具 tab 保持方格
     grid.classList.toggle('weapons-grid', isWeapons);
 
-    const items = Game.inventory.filter(inv => {
-      const def = ITEMS[inv.itemId];
-      if (!def) return false;
-      if (isWeapons) return def.type === 5;
-      return def.type >= 1 && def.type <= 4;
-    });
+    const items = isWeapons
+      ? Game.weapons.filter(weapon => weapon.id !== Game.state.axeInstanceId)
+      : Game.inventory.filter(inv => {
+        const def = ITEMS[inv.itemId];
+        return def && def.type >= 1 && def.type <= 4;
+      });
 
     // 已占用格子数：道具每种占1格（数量显示角标），武器每把占1格
-    const filledSlots = isWeapons
-      ? items.reduce((sum, inv) => sum + inv.quantity, 0)
-      : items.length;
+    const filledSlots = items.length;
     // 填充空槽位（至少 20 格）
     const slots = Math.max(20, filledSlots);
     let html = '';
@@ -2688,19 +2743,14 @@ const PlayerView = {
     items.forEach(inv => {
       const def = ITEMS[inv.itemId];
       if (!def) return;
-      if (def.type === 5) {
-        // 武器：每把占一个格子，不显示数量
-        // 注：装备中的斧子已从背包扣除（手持状态，显示在砍树按钮/装备栏），
-        // 背包里的都是备用斧子，因此不标记“装备中”，避免同种斧子全部误亮
+      if (isWeapons) {
         const axeLocked = !canEquipAxeQuality(def.quality, Game.state.realmLevel);
-        for (let i = 0; i < inv.quantity; i++) {
-          html += `
-            <div class="item-slot weapon-slot quality-${def.quality} ${axeLocked ? 'item-locked' : ''}" onclick="PlayerView.showItemDetail('${inv.itemId}')">
-              <div class="item-icon">${renderItemIcon(inv.itemId, def.icon)}</div>
-              ${axeLocked ? `<div class="item-lock-badge">${renderFeatureIcon('icon-lock', '仙阶未解锁', 'lock-badge-icon')}</div>` : ''}
-            </div>
-          `;
-        }
+        html += `
+          <div class="item-slot weapon-slot quality-${def.quality} ${axeLocked ? 'item-locked' : ''}" onclick="PlayerView.showItemDetail('${inv.itemId}','${inv.id}')">
+            <div class="item-icon">${renderItemIcon(inv.itemId, def.icon)}</div>
+            ${axeLocked ? `<div class="item-lock-badge">${renderFeatureIcon('icon-lock', '仙阶未解锁', 'lock-badge-icon')}</div>` : ''}
+          </div>
+        `;
       } else {
         html += `
           <div class="item-slot quality-${def.quality}" onclick="PlayerView.showItemDetail('${inv.itemId}')">
@@ -2719,11 +2769,12 @@ const PlayerView = {
     grid.innerHTML = html;
   },
 
-  showItemDetail(itemId) {
+  showItemDetail(itemId, instanceId = null) {
     const def = ITEMS[itemId];
     if (!def) return;
     const qty = Game._getItemQty(itemId);
     const q = QUALITY[def.quality];
+    const weapon = instanceId ? Game.weapons.find(entry => entry.id === instanceId) : null;
 
     // 仙斧专属：仙阶限制
     let axeRealmHtml = '';
@@ -2753,21 +2804,19 @@ const PlayerView = {
       if (axeLocked) {
         actionBtn = `
           <button class="btn btn-outline btn-sm" disabled style="opacity:0.5">${renderFeatureIcon('icon-lock', '', 'button-feature-icon')}仙阶不足</button>
-          <button class="btn btn-outline btn-sm" onclick="PlayerView.sellItem('${itemId}',this)">出售 +${renderItemIcon('0', '🪙', 'item-icon-xs')} ${def.sellPrice}</button>
+          <button class="btn btn-outline btn-sm" onclick="PlayerView.sellItem('${instanceId}',this)">出售 +${renderItemIcon('0', '🪙', 'item-icon-xs')} ${def.sellPrice}</button>
         `;
       } else {
         actionBtn = `
-          <button class="btn btn-primary btn-sm" onclick="PlayerView.equipItem('${itemId}',this)">装备</button>
-          <button class="btn btn-outline btn-sm" onclick="PlayerView.sellItem('${itemId}',this)">出售 +${renderItemIcon('0', '🪙', 'item-icon-xs')} ${def.sellPrice}</button>
+          <button class="btn btn-primary btn-sm" onclick="PlayerView.equipItem('${instanceId}',this)">装备</button>
+          <button class="btn btn-outline btn-sm" onclick="PlayerView.sellItem('${instanceId}',this)">出售 +${renderItemIcon('0', '🪙', 'item-icon-xs')} ${def.sellPrice}</button>
         `;
       }
     }
 
     if (def.type === 5) {
-      const skillLines = (def.skillDesc || '此仙斧暂无特殊技能。')
-        .split(';')
-        .map(line => line.trim())
-        .filter(Boolean);
+      const skillLines = getWeaponSkillLines(weapon);
+      if (skillLines.length === 0) skillLines.push('此仙斧暂无特殊技能。');
       UI.modal(`
         <article class="weapon-detail quality-${def.quality}">
           <header class="weapon-detail-head">
@@ -2812,7 +2861,6 @@ const PlayerView = {
       </div>
       ${axeRealmHtml}
       <p style="font-size:13px;color:var(--text-secondary);text-align:center;margin-bottom:16px">${def.desc || ''}</p>
-      ${def.skillDesc ? `<p style="font-size:12px;color:var(--accent);text-align:center;margin-bottom:16px">斧技 · ${def.skillDesc}</p>` : ''}
       <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
         ${actionBtn}
       </div>
@@ -2955,7 +3003,7 @@ const PlayerView = {
     return outcome.started && outcome.value;
   },
 
-  async equipItem(itemId, button) {
+  async equipItem(instanceId, button) {
     const operationKey = 'equip-axe';
     if (OperationGuard.isActive(operationKey)) return;
     const originalHtml = button?.innerHTML;
@@ -2964,9 +3012,10 @@ const PlayerView = {
       button.textContent = '装备中...';
     }
     try {
-      const outcome = await OperationGuard.run(operationKey, () => Game.equipAxe(itemId));
+      const weapon = Game.weapons.find(entry => entry.id === instanceId);
+      const outcome = await OperationGuard.run(operationKey, () => Game.equipAxe(instanceId));
       if (outcome.started && outcome.value) {
-        await preloadAxeAnimation(itemId);
+        await preloadAxeAnimation(weapon?.itemId || Game.state.axeId);
         this.renderInventory(this.currentInvTab);
         document.querySelector('.modal-overlay')?.remove();
         await this.renderCultivate();
@@ -2983,7 +3032,7 @@ const PlayerView = {
   },
 
   // 锻造结果页直接装备
-  async _equipFromForge(itemId, button) {
+  async _equipFromForge(instanceId, button) {
     const operationKey = 'equip-axe';
     if (OperationGuard.isActive(operationKey)) return;
     const originalText = button?.textContent || '立即装备';
@@ -2993,9 +3042,10 @@ const PlayerView = {
       button.textContent = '装备中...';
     }
     try {
-      const outcome = await OperationGuard.run(operationKey, () => Game.equipAxe(itemId));
+      const weapon = Game.weapons.find(entry => entry.id === instanceId);
+      const outcome = await OperationGuard.run(operationKey, () => Game.equipAxe(instanceId));
       if (outcome.started && outcome.value) {
-        await preloadAxeAnimation(itemId);
+        await preloadAxeAnimation(weapon?.itemId || Game.state.axeId);
         equipped = true;
         if (button?.isConnected) {
           button.disabled = true;
@@ -3011,10 +3061,12 @@ const PlayerView = {
     }
   },
 
-  sellItem(itemId, button) {
-    const def = ITEMS[itemId];
+  sellItem(instanceId, button) {
+    const weapon = Game.weapons.find(entry => entry.id === instanceId);
+    const def = ITEMS[weapon?.itemId];
+    if (!weapon || !def) return;
     UI.confirm(`确定出售 ${def.name}，获得 ${def.sellPrice} 游戏币？`, async () => {
-      const operationKey = `sell-axe:${itemId}`;
+      const operationKey = `sell-axe:${instanceId}`;
       if (OperationGuard.isActive(operationKey)) return;
       const originalHtml = button?.innerHTML;
       if (button?.isConnected) {
@@ -3022,7 +3074,7 @@ const PlayerView = {
         button.textContent = '出售中...';
       }
       try {
-        const outcome = await OperationGuard.run(operationKey, () => Game.sellAxe(itemId));
+        const outcome = await OperationGuard.run(operationKey, () => Game.sellAxe(instanceId));
         if (outcome.started && outcome.value) {
           this.renderInventory(this.currentInvTab);
           document.querySelector('.modal-overlay')?.remove();
@@ -4506,9 +4558,10 @@ const PlayerView = {
         const q = QUALITY[result.quality] || QUALITY[1];
         const canEquip = canEquipAxeQuality(result.quality, Game.state.realmLevel);
         const minRealm = getMinRealmForAxeQuality(result.quality);
+        const resultSkillHtml = renderWeaponSkills(result.weapon, '');
         const resultAction = canEquip ? `
           <div class="forge-result-equip">
-            <button class="btn btn-outline btn-sm" onclick="PlayerView._equipFromForge('${result.itemId}',this)">立即装备</button>
+            <button class="btn btn-outline btn-sm" onclick="PlayerView._equipFromForge('${result.weapon.id}',this)">立即装备</button>
           </div>
         ` : `
           <div class="forge-result-lock">
@@ -4519,7 +4572,7 @@ const PlayerView = {
           detail.hidden = false;
           detail.innerHTML = `
             <div class="forge-result-quality" style="color:${q.color}">${q.name}</div>
-            ${result.item.skillDesc ? `<div class="forge-result-skill">斧技 · ${result.item.skillDesc}</div>` : ''}
+            ${resultSkillHtml ? `<div class="forge-result-skill">斧技 · ${resultSkillHtml}</div>` : ''}
             <div class="forge-result-copy">${result.item.desc || ''}</div>
             ${resultAction}
           `;
@@ -5288,6 +5341,7 @@ const AdminView = {
     const main = document.getElementById('admin-main');
     const state = await DB.getPlayerState();
     const inventory = state ? await DB.getInventory() : [];
+    const weapons = state ? await DB.getWeaponInstances() : [];
     const mails = state ? await DB.getMails() : [];
 
     if (!state) {
@@ -5304,6 +5358,8 @@ const AdminView = {
     }
 
     const axeDef = ITEMS[state.axeId] || ITEMS['51001'];
+    const equippedWeapon = weapons.find(weapon => weapon.id === state.axeInstanceId) || null;
+    const equippedSkillHtml = renderWeaponSkills(equippedWeapon, '');
 
     main.innerHTML = `
       <div class="page-title page-title-art">${renderFeatureIcon('icon-cultivate', '', 'page-title-icon')}<span>查看玩家</span></div>
@@ -5331,13 +5387,13 @@ const AdminView = {
           <div>
             <div style="font-weight:600">${axeDef.name}</div>
             <div style="font-size:12px;color:var(--text-secondary)">${axeDef.desc}</div>
-            ${axeDef.skillDesc ? `<div style="font-size:12px;color:var(--accent);margin-top:4px">斧技 · ${axeDef.skillDesc}</div>` : ''}
+            ${equippedSkillHtml ? `<div style="font-size:12px;color:var(--accent);margin-top:4px">斧技 · ${equippedSkillHtml}</div>` : ''}
           </div>
         </div>
       </div>
 
       <div class="card">
-        <div class="card-title">背包（${inventory.length} 种道具）</div>
+        <div class="card-title">背包（${inventory.length} 种道具 · ${Math.max(0, weapons.length - 1)} 把备用仙斧）</div>
         <div style="display:flex;flex-wrap:wrap;gap:8px">
           ${inventory.slice(0, 20).map(inv => {
             const def = ITEMS[inv.itemId];
@@ -5518,6 +5574,11 @@ const AdminView = {
       const newCount = (state?.choppingCount || 0) + qty;
       await DB.updatePlayerState({ choppingCount: newCount });
       UI.toast(`发放 ${itemEmoji(itemId)} ${def.name} ×${qty}（当前 ${newCount}）`, 'success');
+    } else if (def && def.type === 5) {
+      for (let index = 0; index < qty; index++) {
+        await DB.grantWeaponInstance(itemId, WeaponAffixes.rollSkills(def.skillIds || []));
+      }
+      UI.toast(`发放 ${itemEmoji(itemId)} ${def.name} ×${qty}`, 'success');
     } else {
       await DB.addItem(itemId, qty);
       UI.toast(`发放 ${itemEmoji(itemId)} ${def?.name || itemId} ×${qty}`, 'success');
@@ -5537,7 +5598,8 @@ const AdminView = {
   async gmGiveAllAxes() {
     const axes = (GAME_CONFIG?.itemTable || []).filter(i => i.type === 5);
     for (const item of axes) {
-      await DB.addItem(String(item.id), 1);
+      const def = ITEMS[String(item.id)];
+      await DB.grantWeaponInstance(String(item.id), WeaponAffixes.rollSkills(def?.skillIds || []));
     }
     UI.toast(`已发放全套仙斧（${axes.length}种×1）`, 'success');
     this.renderGM();

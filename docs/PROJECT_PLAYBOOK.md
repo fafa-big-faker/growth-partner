@@ -83,6 +83,16 @@ Python 语法检查：
 - 重绘背包时保留当前页签，不把玩家强制带回道具页。
 - 十连操作先一次性计算和保存，再播放表现时间轴，网络延迟不能改变动画节奏。
 
+### 独立仙斧与随机词条
+
+- 普通材料继续保存在 `inventory` 并按道具 ID 叠加；仙斧只保存在 `weapon_instances`，每把都有独立 UUID。
+- `player_state.axe_id` 保留为当前外观道具 ID；真正的装备归属以 `axe_instance_id` 为准。
+- 锻造时先根据道具的技能 ID，从同 `buff_id` 的配置中按 `weight` 抽档，再从 `value*_range` 生成数值。
+- 抽中的 `buffRowId`、`buffQuality` 和最终数值永久写入 `skill_rolls`；砍树时只读取这些固定值，禁止再次随机强度。
+- 锻造、装备、出售必须分别调用 `forge_weapon_instance`、`equip_weapon_instance`、`sell_weapon_instance` 原子 RPC。
+- 历史斧头迁移后若词条为空，由 `initialize_weapon_affixes` 只写一次；并发情况下以后端已保存结果为准。
+- 技能文案只给动态参数添加 `buff-quality-*` 颜色，正文保持中性，避免整段高饱和影响可读性。
+
 ## 6. 发布
 
 发布前清单：

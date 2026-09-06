@@ -1,7 +1,10 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 
 const { isBonusChop, rollPackItem } = require('../gameplay-rules');
+const app = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
 
 test('bonus chop cadence follows every persisted ten chops', () => {
   assert.equal(isBonusChop(0), false);
@@ -44,4 +47,15 @@ test('invalid packs do not produce a reward', () => {
   assert.equal(rollPackItem(null, 0), null);
   assert.equal(rollPackItem({ items: [] }, 0), null);
   assert.equal(rollPackItem({ rewards: [] }, 0), null);
+});
+
+test('chopping evaluates frozen rolls from the equipped weapon instance', () => {
+  const multiplier = app.match(/_applyAxeBuffs\(dropItem\)[\s\S]*?\n  },/)?.[0] || '';
+  const refund = app.match(/\n  _checkRefundBuff\(\) \{[\s\S]*?\n  },/)?.[0] || '';
+
+  assert.match(multiplier, /this\.equippedWeapon\?\.skillRolls/);
+  assert.match(multiplier, /WeaponAffixes\.applyRewardMultipliers/);
+  assert.match(refund, /this\.equippedWeapon\?\.skillRolls/);
+  assert.match(refund, /WeaponAffixes\.rollRefund/);
+  assert.doesNotMatch(`${multiplier}${refund}`, /buffParams|getSkillById|rollRange/);
 });

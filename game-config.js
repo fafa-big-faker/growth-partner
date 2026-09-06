@@ -1,6 +1,6 @@
 // ===== 游戏配置文件（由 sync-config.py 从飞书表格自动生成）=====
 // 修改飞书表格后运行同步脚本即可更新，请勿手动编辑此文件
-// 最后同步: 2026-09-06 15:47:33
+// 最后同步: 2026-09-07 01:14:33
 
 const GAME_CONFIG = {
   // 角色等级经验表（共 150 条）
@@ -1283,7 +1283,7 @@ const GAME_CONFIG = {
     "quality": 5,
     "stackLimit": 1,
     "interactionType": 3,
-    "interactionParams": "1000,1010,2010",
+    "interactionParams": "1000,1005,2005",
     "description": "当年开天辟地时一斧头砍歪了，才留下了马里亚纳海沟。",
     "icon": "❓",
     "iconImage": "assets/images/icons/55001.png"
@@ -1342,123 +1342,651 @@ const GAME_CONFIG = {
   }
 ],
 
-  // 技能表（共 20 条）
+  // 技能表（共 10 条）
   skillTable: [
   {
     "skillId": 1001,
-    "buffId": 1,
-    "buffParams": "1,15,2"
+    "buffId": 1
   },
   {
     "skillId": 1002,
-    "buffId": 1,
-    "buffParams": "1,25,2"
+    "buffId": 2
   },
   {
     "skillId": 1003,
-    "buffId": 1,
-    "buffParams": "2,15,2"
+    "buffId": 3
   },
   {
     "skillId": 1004,
-    "buffId": 1,
-    "buffParams": "2,25,2"
+    "buffId": 4
   },
   {
     "skillId": 1005,
-    "buffId": 1,
-    "buffParams": "3,11,2"
-  },
-  {
-    "skillId": 1006,
-    "buffId": 1,
-    "buffParams": "3,15,2"
-  },
-  {
-    "skillId": 1007,
-    "buffId": 1,
-    "buffParams": "1,15,3"
-  },
-  {
-    "skillId": 1008,
-    "buffId": 1,
-    "buffParams": "1,25,3"
-  },
-  {
-    "skillId": 1009,
-    "buffId": 1,
-    "buffParams": "2,15,3"
-  },
-  {
-    "skillId": 1010,
-    "buffId": 1,
-    "buffParams": "3,25,3"
+    "buffId": 5
   },
   {
     "skillId": 2001,
-    "buffId": 2,
-    "buffParams": "6,1"
+    "buffId": 6
   },
   {
     "skillId": 2002,
-    "buffId": 2,
-    "buffParams": "8,1"
+    "buffId": 7
   },
   {
     "skillId": 2003,
-    "buffId": 2,
-    "buffParams": "10,1"
+    "buffId": 8
   },
   {
     "skillId": 2004,
-    "buffId": 2,
-    "buffParams": "15,1"
+    "buffId": 9
   },
   {
     "skillId": 2005,
-    "buffId": 2,
-    "buffParams": "6,2"
-  },
-  {
-    "skillId": 2006,
-    "buffId": 2,
-    "buffParams": "8,2"
-  },
-  {
-    "skillId": 2007,
-    "buffId": 2,
-    "buffParams": "12,2"
-  },
-  {
-    "skillId": 2008,
-    "buffId": 2,
-    "buffParams": "6,3"
-  },
-  {
-    "skillId": 2009,
-    "buffId": 2,
-    "buffParams": "8,3"
-  },
-  {
-    "skillId": 2010,
-    "buffId": 2,
-    "buffParams": "12,3"
+    "buffId": 10
   }
 ],
 
-  // BUFF表（共 2 条）
+  // BUFF表（共 50 条）
   buffTable: [
   {
+    "id": 1,
     "buffId": 1,
+    "buffQuality": 1,
     "description": "每次砍树时若抽到{vlaue1}的奖励，有{value2}的概率使其掉落量×{value3}倍",
     "paramsTypeDesc": "value1,value2,value3",
-    "effectDesc": "value1代表砍树掉落道具的品质ID，在文本中替换为品质的名字，value2为概率中值，会从value2±10的范围内随机抽小数,value3代表翻倍的倍率"
+    "effectDesc": "value1代表砍树掉落道具的品质ID，在文本中替换为品质的名字，value2为概率，在锻造出斧子的那一刻从区间随机内随机抽一个值附上，value3为奖励的倍率，在锻造出斧子的那一刻从区间随机内随机抽一个值附上",
+    "value1Range": "1",
+    "value2Range": "1,5",
+    "value3Range": "2,2",
+    "weight": 800
   },
   {
-    "buffId": 2,
-    "description": "每次砍树时有{value1}的概率返还{value2}的砍树次数",
+    "id": 2,
+    "buffId": 1,
+    "buffQuality": 2,
+    "description": "每次砍树时若抽到{vlaue1}的奖励，有{value2}的概率使其掉落量×{value3}倍",
     "paramsTypeDesc": "value1,value2",
-    "effectDesc": "value1为概率中值，会从value1±5的范围内随机抽小数，value2为返还砍树次数"
+    "effectDesc": "",
+    "value1Range": "1",
+    "value2Range": "5.01,10",
+    "value3Range": "2,2",
+    "weight": 100
+  },
+  {
+    "id": 3,
+    "buffId": 1,
+    "buffQuality": 3,
+    "description": "每次砍树时若抽到{vlaue1}的奖励，有{value2}的概率使其掉落量×{value3}倍",
+    "paramsTypeDesc": "",
+    "effectDesc": "",
+    "value1Range": "1",
+    "value2Range": "10.01,15",
+    "value3Range": "2,3",
+    "weight": 50
+  },
+  {
+    "id": 4,
+    "buffId": 1,
+    "buffQuality": 4,
+    "description": "每次砍树时若抽到{vlaue1}的奖励，有{value2}的概率使其掉落量×{value3}倍",
+    "paramsTypeDesc": "",
+    "effectDesc": "",
+    "value1Range": "1",
+    "value2Range": "15.01,20",
+    "value3Range": "2,3",
+    "weight": 30
+  },
+  {
+    "id": 5,
+    "buffId": 1,
+    "buffQuality": 5,
+    "description": "每次砍树时若抽到{vlaue1}的奖励，有{value2}的概率使其掉落量×{value3}倍",
+    "paramsTypeDesc": "",
+    "effectDesc": "",
+    "value1Range": "1",
+    "value2Range": "20.01,25",
+    "value3Range": "2,4",
+    "weight": 20
+  },
+  {
+    "id": 6,
+    "buffId": 2,
+    "buffQuality": 1,
+    "description": "每次砍树时若抽到{vlaue1}的奖励，有{value2}的概率使其掉落量×{value3}倍",
+    "paramsTypeDesc": "",
+    "effectDesc": "",
+    "value1Range": "2",
+    "value2Range": "1,5",
+    "value3Range": "2,2",
+    "weight": 800
+  },
+  {
+    "id": 7,
+    "buffId": 2,
+    "buffQuality": 2,
+    "description": "每次砍树时若抽到{vlaue1}的奖励，有{value2}的概率使其掉落量×{value3}倍",
+    "paramsTypeDesc": "",
+    "effectDesc": "",
+    "value1Range": "2",
+    "value2Range": "5.01,10",
+    "value3Range": "2,2",
+    "weight": 100
+  },
+  {
+    "id": 8,
+    "buffId": 2,
+    "buffQuality": 3,
+    "description": "每次砍树时若抽到{vlaue1}的奖励，有{value2}的概率使其掉落量×{value3}倍",
+    "paramsTypeDesc": "",
+    "effectDesc": "",
+    "value1Range": "2",
+    "value2Range": "10.01,15",
+    "value3Range": "2,3",
+    "weight": 50
+  },
+  {
+    "id": 9,
+    "buffId": 2,
+    "buffQuality": 4,
+    "description": "每次砍树时若抽到{vlaue1}的奖励，有{value2}的概率使其掉落量×{value3}倍",
+    "paramsTypeDesc": "",
+    "effectDesc": "",
+    "value1Range": "2",
+    "value2Range": "15.01,20",
+    "value3Range": "2,3",
+    "weight": 30
+  },
+  {
+    "id": 10,
+    "buffId": 2,
+    "buffQuality": 5,
+    "description": "每次砍树时若抽到{vlaue1}的奖励，有{value2}的概率使其掉落量×{value3}倍",
+    "paramsTypeDesc": "",
+    "effectDesc": "",
+    "value1Range": "2",
+    "value2Range": "20.01,25",
+    "value3Range": "2,4",
+    "weight": 20
+  },
+  {
+    "id": 11,
+    "buffId": 3,
+    "buffQuality": 1,
+    "description": "每次砍树时若抽到{vlaue1}的奖励，有{value2}的概率使其掉落量×{value3}倍",
+    "paramsTypeDesc": "",
+    "effectDesc": "",
+    "value1Range": "3",
+    "value2Range": "1,5",
+    "value3Range": "2,2",
+    "weight": 800
+  },
+  {
+    "id": 12,
+    "buffId": 3,
+    "buffQuality": 2,
+    "description": "每次砍树时若抽到{vlaue1}的奖励，有{value2}的概率使其掉落量×{value3}倍",
+    "paramsTypeDesc": "",
+    "effectDesc": "",
+    "value1Range": "3",
+    "value2Range": "5.01,10",
+    "value3Range": "2,2",
+    "weight": 100
+  },
+  {
+    "id": 13,
+    "buffId": 3,
+    "buffQuality": 3,
+    "description": "每次砍树时若抽到{vlaue1}的奖励，有{value2}的概率使其掉落量×{value3}倍",
+    "paramsTypeDesc": "",
+    "effectDesc": "",
+    "value1Range": "3",
+    "value2Range": "10.01,15",
+    "value3Range": "2,3",
+    "weight": 50
+  },
+  {
+    "id": 14,
+    "buffId": 3,
+    "buffQuality": 4,
+    "description": "每次砍树时若抽到{vlaue1}的奖励，有{value2}的概率使其掉落量×{value3}倍",
+    "paramsTypeDesc": "",
+    "effectDesc": "",
+    "value1Range": "3",
+    "value2Range": "15.01,20",
+    "value3Range": "2,3",
+    "weight": 30
+  },
+  {
+    "id": 15,
+    "buffId": 3,
+    "buffQuality": 5,
+    "description": "每次砍树时若抽到{vlaue1}的奖励，有{value2}的概率使其掉落量×{value3}倍",
+    "paramsTypeDesc": "",
+    "effectDesc": "",
+    "value1Range": "3",
+    "value2Range": "20.01,25",
+    "value3Range": "2,4",
+    "weight": 20
+  },
+  {
+    "id": 16,
+    "buffId": 4,
+    "buffQuality": 1,
+    "description": "每次砍树时若抽到{vlaue1}的奖励，有{value2}的概率使其掉落量×{value3}倍",
+    "paramsTypeDesc": "",
+    "effectDesc": "",
+    "value1Range": "4",
+    "value2Range": "1,5",
+    "value3Range": "2,2",
+    "weight": 800
+  },
+  {
+    "id": 17,
+    "buffId": 4,
+    "buffQuality": 2,
+    "description": "每次砍树时若抽到{vlaue1}的奖励，有{value2}的概率使其掉落量×{value3}倍",
+    "paramsTypeDesc": "",
+    "effectDesc": "",
+    "value1Range": "4",
+    "value2Range": "5.01,10",
+    "value3Range": "2,2",
+    "weight": 100
+  },
+  {
+    "id": 18,
+    "buffId": 4,
+    "buffQuality": 3,
+    "description": "每次砍树时若抽到{vlaue1}的奖励，有{value2}的概率使其掉落量×{value3}倍",
+    "paramsTypeDesc": "",
+    "effectDesc": "",
+    "value1Range": "4",
+    "value2Range": "10.01,15",
+    "value3Range": "2,3",
+    "weight": 50
+  },
+  {
+    "id": 19,
+    "buffId": 4,
+    "buffQuality": 4,
+    "description": "每次砍树时若抽到{vlaue1}的奖励，有{value2}的概率使其掉落量×{value3}倍",
+    "paramsTypeDesc": "",
+    "effectDesc": "",
+    "value1Range": "4",
+    "value2Range": "15.01,20",
+    "value3Range": "2,3",
+    "weight": 30
+  },
+  {
+    "id": 20,
+    "buffId": 4,
+    "buffQuality": 5,
+    "description": "每次砍树时若抽到{vlaue1}的奖励，有{value2}的概率使其掉落量×{value3}倍",
+    "paramsTypeDesc": "",
+    "effectDesc": "",
+    "value1Range": "4",
+    "value2Range": "20.01,25",
+    "value3Range": "2,4",
+    "weight": 20
+  },
+  {
+    "id": 21,
+    "buffId": 5,
+    "buffQuality": 1,
+    "description": "每次砍树时若抽到{vlaue1}的奖励，有{value2}的概率使其掉落量×{value3}倍",
+    "paramsTypeDesc": "",
+    "effectDesc": "",
+    "value1Range": "5",
+    "value2Range": "1,5",
+    "value3Range": "2,2",
+    "weight": 800
+  },
+  {
+    "id": 22,
+    "buffId": 5,
+    "buffQuality": 2,
+    "description": "每次砍树时若抽到{vlaue1}的奖励，有{value2}的概率使其掉落量×{value3}倍",
+    "paramsTypeDesc": "",
+    "effectDesc": "",
+    "value1Range": "5",
+    "value2Range": "5.01,10",
+    "value3Range": "2,2",
+    "weight": 100
+  },
+  {
+    "id": 23,
+    "buffId": 5,
+    "buffQuality": 3,
+    "description": "每次砍树时若抽到{vlaue1}的奖励，有{value2}的概率使其掉落量×{value3}倍",
+    "paramsTypeDesc": "",
+    "effectDesc": "",
+    "value1Range": "5",
+    "value2Range": "10.01,15",
+    "value3Range": "2,3",
+    "weight": 50
+  },
+  {
+    "id": 24,
+    "buffId": 5,
+    "buffQuality": 4,
+    "description": "每次砍树时若抽到{vlaue1}的奖励，有{value2}的概率使其掉落量×{value3}倍",
+    "paramsTypeDesc": "",
+    "effectDesc": "",
+    "value1Range": "5",
+    "value2Range": "15.01,20",
+    "value3Range": "2,3",
+    "weight": 30
+  },
+  {
+    "id": 25,
+    "buffId": 5,
+    "buffQuality": 5,
+    "description": "每次砍树时若抽到{vlaue1}的奖励，有{value2}的概率使其掉落量×{value3}倍",
+    "paramsTypeDesc": "",
+    "effectDesc": "",
+    "value1Range": "5",
+    "value2Range": "20.01,25",
+    "value3Range": "2,4",
+    "weight": 20
+  },
+  {
+    "id": 26,
+    "buffId": 6,
+    "buffQuality": 1,
+    "description": "每次砍树时有{value1}的概率返还{value2}的砍树次数",
+    "paramsTypeDesc": "",
+    "effectDesc": "value1为概率，在锻造出斧子的那一刻从区间随机内随机抽一个值附上，value2为返还砍树次数，在锻造出斧子的那一刻从区间随机内随机抽一个值附上",
+    "value1Range": "1,3",
+    "value2Range": "1,1",
+    "value3Range": "",
+    "weight": 800
+  },
+  {
+    "id": 27,
+    "buffId": 6,
+    "buffQuality": 2,
+    "description": "每次砍树时有{value1}的概率返还{value2}的砍树次数",
+    "paramsTypeDesc": "",
+    "effectDesc": "",
+    "value1Range": "3.01,6",
+    "value2Range": "1,1",
+    "value3Range": "",
+    "weight": 100
+  },
+  {
+    "id": 28,
+    "buffId": 6,
+    "buffQuality": 3,
+    "description": "每次砍树时有{value1}的概率返还{value2}的砍树次数",
+    "paramsTypeDesc": "",
+    "effectDesc": "",
+    "value1Range": "6.01,9",
+    "value2Range": "1,1",
+    "value3Range": "",
+    "weight": 50
+  },
+  {
+    "id": 29,
+    "buffId": 6,
+    "buffQuality": 4,
+    "description": "每次砍树时有{value1}的概率返还{value2}的砍树次数",
+    "paramsTypeDesc": "",
+    "effectDesc": "",
+    "value1Range": "9.01,12",
+    "value2Range": "1,1",
+    "value3Range": "",
+    "weight": 30
+  },
+  {
+    "id": 30,
+    "buffId": 6,
+    "buffQuality": 5,
+    "description": "每次砍树时有{value1}的概率返还{value2}的砍树次数",
+    "paramsTypeDesc": "",
+    "effectDesc": "",
+    "value1Range": "12.01,15",
+    "value2Range": "1,1",
+    "value3Range": "",
+    "weight": 20
+  },
+  {
+    "id": 31,
+    "buffId": 7,
+    "buffQuality": 1,
+    "description": "每次砍树时有{value1}的概率返还{value2}的砍树次数",
+    "paramsTypeDesc": "",
+    "effectDesc": "",
+    "value1Range": "1,3",
+    "value2Range": "1,2",
+    "value3Range": "",
+    "weight": 800
+  },
+  {
+    "id": 32,
+    "buffId": 7,
+    "buffQuality": 2,
+    "description": "每次砍树时有{value1}的概率返还{value2}的砍树次数",
+    "paramsTypeDesc": "",
+    "effectDesc": "",
+    "value1Range": "3.01,6",
+    "value2Range": "1,2",
+    "value3Range": "",
+    "weight": 100
+  },
+  {
+    "id": 33,
+    "buffId": 7,
+    "buffQuality": 3,
+    "description": "每次砍树时有{value1}的概率返还{value2}的砍树次数",
+    "paramsTypeDesc": "",
+    "effectDesc": "",
+    "value1Range": "6.01,9",
+    "value2Range": "1,2",
+    "value3Range": "",
+    "weight": 50
+  },
+  {
+    "id": 34,
+    "buffId": 7,
+    "buffQuality": 4,
+    "description": "每次砍树时有{value1}的概率返还{value2}的砍树次数",
+    "paramsTypeDesc": "",
+    "effectDesc": "",
+    "value1Range": "9.01,12",
+    "value2Range": "1,2",
+    "value3Range": "",
+    "weight": 30
+  },
+  {
+    "id": 35,
+    "buffId": 7,
+    "buffQuality": 5,
+    "description": "每次砍树时有{value1}的概率返还{value2}的砍树次数",
+    "paramsTypeDesc": "",
+    "effectDesc": "",
+    "value1Range": "12.01,15",
+    "value2Range": "1,2",
+    "value3Range": "",
+    "weight": 20
+  },
+  {
+    "id": 36,
+    "buffId": 8,
+    "buffQuality": 1,
+    "description": "每次砍树时有{value1}的概率返还{value2}的砍树次数",
+    "paramsTypeDesc": "",
+    "effectDesc": "",
+    "value1Range": "1,3",
+    "value2Range": "1,3",
+    "value3Range": "",
+    "weight": 800
+  },
+  {
+    "id": 37,
+    "buffId": 8,
+    "buffQuality": 2,
+    "description": "每次砍树时有{value1}的概率返还{value2}的砍树次数",
+    "paramsTypeDesc": "",
+    "effectDesc": "",
+    "value1Range": "3.01,6",
+    "value2Range": "1,3",
+    "value3Range": "",
+    "weight": 100
+  },
+  {
+    "id": 38,
+    "buffId": 8,
+    "buffQuality": 3,
+    "description": "每次砍树时有{value1}的概率返还{value2}的砍树次数",
+    "paramsTypeDesc": "",
+    "effectDesc": "",
+    "value1Range": "6.01,9",
+    "value2Range": "1,3",
+    "value3Range": "",
+    "weight": 50
+  },
+  {
+    "id": 39,
+    "buffId": 8,
+    "buffQuality": 4,
+    "description": "每次砍树时有{value1}的概率返还{value2}的砍树次数",
+    "paramsTypeDesc": "",
+    "effectDesc": "",
+    "value1Range": "9.01,12",
+    "value2Range": "1,3",
+    "value3Range": "",
+    "weight": 30
+  },
+  {
+    "id": 40,
+    "buffId": 8,
+    "buffQuality": 5,
+    "description": "每次砍树时有{value1}的概率返还{value2}的砍树次数",
+    "paramsTypeDesc": "",
+    "effectDesc": "",
+    "value1Range": "12.01,15",
+    "value2Range": "1,3",
+    "value3Range": "",
+    "weight": 20
+  },
+  {
+    "id": 41,
+    "buffId": 9,
+    "buffQuality": 1,
+    "description": "每次砍树时有{value1}的概率返还{value2}的砍树次数",
+    "paramsTypeDesc": "",
+    "effectDesc": "",
+    "value1Range": "1,3",
+    "value2Range": "1,4",
+    "value3Range": "",
+    "weight": 800
+  },
+  {
+    "id": 42,
+    "buffId": 9,
+    "buffQuality": 2,
+    "description": "每次砍树时有{value1}的概率返还{value2}的砍树次数",
+    "paramsTypeDesc": "",
+    "effectDesc": "",
+    "value1Range": "3.01,6",
+    "value2Range": "1,4",
+    "value3Range": "",
+    "weight": 100
+  },
+  {
+    "id": 43,
+    "buffId": 9,
+    "buffQuality": 3,
+    "description": "每次砍树时有{value1}的概率返还{value2}的砍树次数",
+    "paramsTypeDesc": "",
+    "effectDesc": "",
+    "value1Range": "6.01,9",
+    "value2Range": "1,4",
+    "value3Range": "",
+    "weight": 50
+  },
+  {
+    "id": 44,
+    "buffId": 9,
+    "buffQuality": 4,
+    "description": "每次砍树时有{value1}的概率返还{value2}的砍树次数",
+    "paramsTypeDesc": "",
+    "effectDesc": "",
+    "value1Range": "9.01,12",
+    "value2Range": "1,4",
+    "value3Range": "",
+    "weight": 30
+  },
+  {
+    "id": 45,
+    "buffId": 9,
+    "buffQuality": 5,
+    "description": "每次砍树时有{value1}的概率返还{value2}的砍树次数",
+    "paramsTypeDesc": "",
+    "effectDesc": "",
+    "value1Range": "12.01,15",
+    "value2Range": "1,4",
+    "value3Range": "",
+    "weight": 20
+  },
+  {
+    "id": 46,
+    "buffId": 10,
+    "buffQuality": 1,
+    "description": "每次砍树时有{value1}的概率返还{value2}的砍树次数",
+    "paramsTypeDesc": "",
+    "effectDesc": "",
+    "value1Range": "1,3",
+    "value2Range": "1,5",
+    "value3Range": "",
+    "weight": 800
+  },
+  {
+    "id": 47,
+    "buffId": 10,
+    "buffQuality": 2,
+    "description": "每次砍树时有{value1}的概率返还{value2}的砍树次数",
+    "paramsTypeDesc": "",
+    "effectDesc": "",
+    "value1Range": "3.01,6",
+    "value2Range": "1,5",
+    "value3Range": "",
+    "weight": 100
+  },
+  {
+    "id": 48,
+    "buffId": 10,
+    "buffQuality": 3,
+    "description": "每次砍树时有{value1}的概率返还{value2}的砍树次数",
+    "paramsTypeDesc": "",
+    "effectDesc": "",
+    "value1Range": "6.01,9",
+    "value2Range": "1,5",
+    "value3Range": "",
+    "weight": 50
+  },
+  {
+    "id": 49,
+    "buffId": 10,
+    "buffQuality": 4,
+    "description": "每次砍树时有{value1}的概率返还{value2}的砍树次数",
+    "paramsTypeDesc": "",
+    "effectDesc": "",
+    "value1Range": "9.01,12",
+    "value2Range": "1,5",
+    "value3Range": "",
+    "weight": 30
+  },
+  {
+    "id": 50,
+    "buffId": 10,
+    "buffQuality": 5,
+    "description": "每次砍树时有{value1}的概率返还{value2}的砍树次数",
+    "paramsTypeDesc": "",
+    "effectDesc": "",
+    "value1Range": "12.01,15",
+    "value2Range": "1,5",
+    "value3Range": "",
+    "weight": 20
   }
 ],
 
@@ -3174,8 +3702,8 @@ function getExpForLevel(level) {
 function getSkillById(skillId) {
   const skill = GAME_CONFIG.skillTable.find(s => s.skillId === skillId);
   if (!skill) return null;
-  const buff = GAME_CONFIG.buffTable.find(b => b.buffId === skill.buffId);
-  return { ...skill, buff: buff || null };
+  const buffs = GAME_CONFIG.buffTable.filter(b => b.buffId === skill.buffId);
+  return { ...skill, buffs, buff: buffs[0] || null };
 }
 
 // 根据奖池ID获取奖池配置（含奖励包权重和道具列表）
