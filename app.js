@@ -221,58 +221,38 @@ const CULTIVATOR_IDLE_FRAMES = Array.from(
   { length: 6 },
   (_, index) => `assets/images/character/idle/frame-${String(index + 1).padStart(2, '0')}.png`,
 );
-const CULTIVATOR_CHOP_FRAMES = Array.from(
-  { length: 6 },
-  (_, index) => `assets/images/character/chop/frame-${String(index + 1).padStart(2, '0')}.png`,
-);
+const AXE_ANIMATION_IDS = ['51001', '51002', '52001', '52002', '53001', '53002', '54001', '54002', '55001'];
 
-const CULTIVATOR_WEAPON_POSES = {
-  idle: [
-    { x: 69, y: 62, rotate: -24, scale: 0.88 },
-    { x: 69, y: 62, rotate: -23, scale: 0.88 },
-    { x: 70, y: 61, rotate: -22, scale: 0.88 },
-    { x: 70, y: 61, rotate: -21, scale: 0.88 },
-    { x: 69, y: 62, rotate: -23, scale: 0.88 },
-    { x: 69, y: 62, rotate: -24, scale: 0.88 },
-  ],
-  chop: [
-    { x: 70, y: 62, rotate: -24, scale: 0.9 },
-    { x: 61, y: 50, rotate: -58, scale: 0.94 },
-    { x: 58, y: 56, rotate: -74, scale: 0.96 },
-    { x: 64, y: 43, rotate: 18, scale: 0.98 },
-    { x: 72, y: 34, rotate: 52, scale: 1 },
-    { x: 79, y: 61, rotate: 104, scale: 1.02 },
-  ],
-};
-
-function updateCultivatorWeapon({ state, index }) {
-  const weapon = document.getElementById('cultivator-weapon');
-  if (!weapon) return;
-  const mode = state.startsWith('chop') ? 'chop' : 'idle';
-  const poses = CULTIVATOR_WEAPON_POSES[mode];
-  const pose = poses[Math.min(index ?? 0, poses.length - 1)] || poses[0];
-  weapon.dataset.animationState = state;
-  weapon.dataset.animationFrame = String(index ?? 0);
-  weapon.style.setProperty('--weapon-x', `${pose.x}%`);
-  weapon.style.setProperty('--weapon-y', `${pose.y}%`);
-  weapon.style.setProperty('--weapon-rotate', `${pose.rotate}deg`);
-  weapon.style.setProperty('--weapon-scale', pose.scale);
+function getAxeChopFrames(itemId) {
+  const safeId = AXE_ANIMATION_IDS.includes(String(itemId)) ? String(itemId) : '51001';
+  return Array.from(
+    { length: 6 },
+    (_, index) => `assets/images/character/axes/${safeId}/frame-${String(index + 1).padStart(2, '0')}.png`,
+  );
 }
 
 const CultivatorAnimator = CharacterAnimator.createFrameAnimator({
-  idleFrames: CULTIVATOR_IDLE_FRAMES,
-  chopFrames: CULTIVATOR_CHOP_FRAMES,
+  idleFrames: [getAxeChopFrames('51001')[0]],
+  chopFrames: getAxeChopFrames('51001'),
   idleFrameMs: 190,
-  idlePauseMs: 4800,
   chopFrameMs: 90,
-  onFrame: updateCultivatorWeapon,
 });
 
-if (typeof Image !== 'undefined') {
-  [...CULTIVATOR_IDLE_FRAMES, ...CULTIVATOR_CHOP_FRAMES].forEach(src => {
-    const image = new Image();
-    image.src = src;
-  });
+function getAllGameImageAssets() {
+  const v2Files = [
+    'backgrounds/login-main.png', 'backgrounds/cultivate.webp', 'backgrounds/tasks.webp',
+    'backgrounds/reward.webp', 'trees/sprout.png', 'trees/spirit.png', 'trees/divine.png',
+    'effects/effect-drop-glow.png', 'effects/effect-hit-spark.png',
+    'effects/effect-leaf-gold.png', 'effects/effect-leaf-green.png',
+    ...['achievement', 'breakthrough', 'close', 'cultivate', 'forge', 'lock', 'mail', 'reward', 'shop', 'tasks', 'tree-info', 'wallet']
+      .map(name => `icons/icon-${name}.png`),
+    ...['button-primary', 'button-secondary', 'checkbox-off', 'checkbox-on', 'modal-crest', 'panel-corner',
+      'panel-divider', 'scroll-thumb', 'slot-blue', 'slot-gold', 'slot-neutral', 'slot-purple', 'slot-rose',
+      'status-pill', 'tab-active', 'tab-inactive'].map(name => `ui/${name}.png`),
+  ].map(path => `${V2_IMAGE_ROOT}/${path}`);
+  const configuredImages = (GAME_CONFIG?.itemTable || []).map(item => item.iconImage).filter(Boolean);
+  const axeFrames = AXE_ANIMATION_IDS.flatMap(getAxeChopFrames);
+  return AssetPreloader.collect([Object.values(ITEM_IMAGES), configuredImages, CULTIVATOR_IDLE_FRAMES, axeFrames, v2Files]);
 }
 
 // 仙阶表 → 从飞书表格配置合并生成（game-config.js）
@@ -376,12 +356,18 @@ try {
    DB 层
    ================================================================ */
 const DB = {
+  playerRole: 'player',
+
+  setPlayerRole(playerRole) {
+    this.playerRole = playerRole === 'player_live' ? 'player_live' : 'player';
+  },
+
   // --- 玩家状态 ---
   async getPlayerState() {
     const { data, error } = await dbClient
       .from('player_state')
       .select('*')
-      .eq('user_role', 'player')
+      .eq('user_role', this.playerRole)
       .single();
     if (error) {
       // PGRST116 = 没有匹配行，正常情况（首次登录）
@@ -448,7 +434,7 @@ const DB = {
     const { error } = await dbClient
       .from('player_state')
       .update(dbUpdates)
-      .eq('user_role', 'player');
+      .eq('user_role', this.playerRole);
     if (error) {
       // 新字段（coin/signin_*）若尚未执行升级SQL会报列不存在 → 剔除后重试
       const msg = error.message || '';
@@ -461,7 +447,7 @@ const DB = {
         const { error: err2 } = await dbClient
           .from('player_state')
           .update(safeUpdates)
-          .eq('user_role', 'player');
+          .eq('user_role', this.playerRole);
         if (err2) { console.error('DB updatePlayerState fallback error:', err2); return false; }
         console.warn('player_state 缺少新字段，请执行 upgrade_v4.sql');
         return true;
@@ -478,7 +464,7 @@ const DB = {
     if (existing) return existing;
 
     const defaultState = {
-      user_role: 'player',
+      user_role: this.playerRole,
       level: 1,
       exp: 0,
       chopping_count: 10,
@@ -506,7 +492,7 @@ const DB = {
     if (error) {
       // 字段不存在（未跑升级SQL）或日期空值等 → 降级为最小字段插入
       const fallbackState = {
-        user_role: 'player',
+        user_role: this.playerRole,
         level: 1,
         exp: 0,
         chopping_count: 10,
@@ -557,7 +543,7 @@ const DB = {
     const { data, error } = await dbClient
       .from('inventory')
       .select('*')
-      .eq('user_role', 'player')
+      .eq('user_role', this.playerRole)
       .gt('quantity', 0)
       .order('updated_at', { ascending: false });
     if (error) { console.error('DB getInventory error:', error); return []; }
@@ -571,7 +557,7 @@ const DB = {
     const { data: existing } = await dbClient
       .from('inventory')
       .select('*')
-      .eq('user_role', 'player')
+      .eq('user_role', this.playerRole)
       .eq('item_id', itemId)
       .maybeSingle();
 
@@ -588,7 +574,7 @@ const DB = {
       const { error } = await dbClient
         .from('inventory')
         .insert({
-          user_role: 'player',
+          user_role: this.playerRole,
           item_id: itemId,
           quantity: quantity,
         });
@@ -601,7 +587,7 @@ const DB = {
     const { data: existing } = await dbClient
       .from('inventory')
       .select('*')
-      .eq('user_role', 'player')
+      .eq('user_role', this.playerRole)
       .eq('item_id', itemId)
       .maybeSingle();
 
@@ -623,6 +609,7 @@ const DB = {
 
   async composeInventoryItem(sourceItemId, sourceQuantity, targetItemId, targetQuantity) {
     const { data, error } = await dbClient.rpc('compose_inventory_item', {
+      p_user_role: this.playerRole,
       p_source_item_id: String(sourceItemId),
       p_source_quantity: sourceQuantity,
       p_target_item_id: String(targetItemId),
@@ -637,6 +624,7 @@ const DB = {
 
   async reservePlayerClaim(claimType, claimKey) {
     const { data, error } = await dbClient.rpc('reserve_player_claim', {
+      p_user_role: this.playerRole,
       p_claim_type: claimType,
       p_claim_key: String(claimKey),
     });
@@ -649,6 +637,7 @@ const DB = {
 
   async dailyCheckIn(rewards) {
     const { data, error } = await dbClient.rpc('daily_check_in', {
+      p_user_role: this.playerRole,
       p_rewards: rewards,
     });
     if (error) {
@@ -760,7 +749,7 @@ const DB = {
 
   // --- 任务提交 ---
   async getSubmissions(status = null) {
-    let query = dbClient.from('task_submissions').select('*');
+    let query = dbClient.from('task_submissions').select('*').eq('user_role', this.playerRole);
     if (status) query = query.eq('status', status);
     const { data, error } = await query.order('submitted_at', { ascending: false });
     if (error) { console.error('DB getSubmissions error:', error); return []; }
@@ -785,6 +774,7 @@ const DB = {
     const { data, error } = await dbClient
       .from('task_submissions')
       .insert({
+        user_role: this.playerRole,
         task_id: submission.taskId || null,
         task_type: submission.taskType,
         task_title: submission.taskTitle,
@@ -836,7 +826,7 @@ const DB = {
       const { data, error } = await dbClient
         .from('mails')
         .select('*')
-        .eq('user_role', 'player')
+        .eq('user_role', this.playerRole)
         .eq('is_deleted', false)
         .order('created_at', { ascending: false });
       if (!error) {
@@ -863,7 +853,7 @@ const DB = {
     const { data: data2, error: err2 } = await dbClient
       .from('mails')
       .select('*')
-      .eq('user_role', 'player')
+      .eq('user_role', this.playerRole)
       .order('created_at', { ascending: false });
     if (err2) { console.error('DB getMails fallback error:', err2); return []; }
     return data2.map(m => ({
@@ -881,7 +871,7 @@ const DB = {
     const { error } = await dbClient
       .from('mails')
       .insert({
-        user_role: 'player',
+        user_role: this.playerRole,
         title: title,
         content: content,
         items: items,
@@ -924,7 +914,7 @@ const DB = {
 
   // --- 提现 ---
   async getWithdrawals(status = null) {
-    let query = dbClient.from('withdrawals').select('*');
+    let query = dbClient.from('withdrawals').select('*').eq('user_role', this.playerRole);
     if (status) query = query.eq('status', status);
     const { data, error } = await query.order('created_at', { ascending: false });
     if (error) { console.error('DB getWithdrawals error:', error); return []; }
@@ -940,7 +930,7 @@ const DB = {
     const { data, error } = await dbClient
       .from('withdrawals')
       .insert({
-        user_role: 'player',
+        user_role: this.playerRole,
         amount: amount,
         status: 'pending',
       })
@@ -1884,6 +1874,7 @@ const Game = {
    ================================================================ */
 const Auth = {
   currentRole: 'player',
+  _loggingIn: false,
 
   selectRole(role) {
     this.currentRole = role;
@@ -1893,32 +1884,55 @@ const Auth = {
   },
 
   async doLogin() {
+    if (this._loggingIn) return;
     const password = document.getElementById('login-password').value;
-    const correctPwd = this.currentRole === 'admin' ? 'admin' : 'player';
-
-    if (password !== correctPwd) {
+    const account = await AccountSession.verify(this.currentRole, password);
+    if (!account) {
       UI.toast('道号密码错误', 'error');
       return;
     }
 
-    await Game.init();
+    this._loggingIn = true;
+    DB.setPlayerRole(account.playerRole);
+    this._setLoading(true, 0);
+    try {
+      const assets = getAllGameImageAssets();
+      const preloadPromise = AssetPreloader.preload(assets, progress => this._setLoading(true, progress.percent));
+      await Promise.all([preloadPromise, Game.init()]);
 
-    // 玩家端必须初始化成功才能进入
-    if (this.currentRole === 'player' && !Game.state) {
-      UI.toast('初始化失败，请刷新重试', 'error');
-      return;
+      if (!Game.state) throw new Error('player initialization failed');
+      if (this.currentRole === 'admin') {
+        document.getElementById('login-screen').style.display = 'none';
+        document.getElementById('admin-dashboard').style.display = 'flex';
+        Router.adminTab('task-manage');
+      } else {
+        document.getElementById('login-screen').style.display = 'none';
+        document.getElementById('player-dashboard').style.display = 'flex';
+        UI.updateHeader();
+        Router.playerTab('cultivate');
+      }
+    } catch (error) {
+      console.error('login initialization failed:', error);
+      Game.state = null;
+      Game.inventory = [];
+      this._setLoading(false, 0);
+      UI.toast('入道未完成，请检查网络后重试', 'error');
+    } finally {
+      this._loggingIn = false;
     }
+  },
 
-    if (this.currentRole === 'admin') {
-      document.getElementById('login-screen').style.display = 'none';
-      document.getElementById('admin-dashboard').style.display = 'flex';
-      Router.adminTab('task-manage');
-    } else {
-      document.getElementById('login-screen').style.display = 'none';
-      document.getElementById('player-dashboard').style.display = 'flex';
-      UI.updateHeader();
-      Router.playerTab('cultivate');
-    }
+  _setLoading(loading, percent = 0) {
+    const form = document.getElementById('login-form-panel');
+    const panel = document.getElementById('login-loading');
+    const submit = document.getElementById('login-submit');
+    const bar = document.getElementById('login-loading-bar');
+    const label = document.getElementById('login-loading-percent');
+    if (form) form.hidden = loading;
+    if (panel) panel.hidden = !loading;
+    if (submit) submit.disabled = loading;
+    if (bar) bar.style.width = `${Math.min(100, Math.max(0, percent))}%`;
+    if (label) label.textContent = `${Math.round(percent)}%`;
   },
 
   logout() {
@@ -1926,6 +1940,10 @@ const Auth = {
     document.getElementById('admin-dashboard').style.display = 'none';
     document.getElementById('login-screen').style.display = 'flex';
     document.getElementById('login-password').value = '';
+    this._setLoading(false, 0);
+    CultivatorAnimator.stop();
+    Game.state = null;
+    Game.inventory = [];
   },
 };
 
@@ -2167,7 +2185,7 @@ const UI = {
     setTimeout(() => el.remove(), 1200);
   },
 
-  playScatterAnimation(item, treeElement, index) {
+  playScatterAnimation(item, treeElement, index, durationMs = 600) {
     const container = document.getElementById('floating-items-container');
     const el = document.createElement('div');
     el.className = 'scatter-item';
@@ -2187,6 +2205,7 @@ const UI = {
     el.style.left = startX + 'px';
     el.style.top = startY + 'px';
     el.style.zIndex = 400 + index;
+    el.style.setProperty('--scatter-duration', `${durationMs}ms`);
 
     container.appendChild(el);
 
@@ -2242,8 +2261,7 @@ const PlayerView = {
       <!-- ① 场景区：人物 + 仙树 -->
       <div class="cult-scene" id="tree-area">
         <div class="cult-char">
-          <img id="cultivator-sprite" src="assets/images/character/idle/frame-01.png" class="char-img" alt="修炼者" />
-          <img id="cultivator-weapon" src="${ITEM_IMAGES[String(Game.state.axeId)] || ITEM_IMAGES['51001']}" class="cultivator-weapon" alt="${axeDef.name}" />
+          <img id="cultivator-sprite" src="${getAxeChopFrames(Game.state.axeId)[0]}" class="char-img" alt="装备${axeDef.name}的修炼者" />
         </div>
         <div class="cult-tree" id="tree-icon" onclick="PlayerView.showTreeDetail()">
           <img src="${treeImg}" class="tree-img" alt="${treeConfig.name}" />
@@ -2305,6 +2323,8 @@ const PlayerView = {
       </div>
     `;
 
+    const axeFrames = getAxeChopFrames(Game.state.axeId);
+    CultivatorAnimator.setFrames({ idleFrames: [axeFrames[0]], chopFrames: axeFrames });
     CultivatorAnimator.attach(document.getElementById('cultivator-sprite'));
     this.renderInventory('items');
     UI._updateMailBadge();
@@ -2537,6 +2557,43 @@ const PlayerView = {
           <button class="btn btn-outline btn-sm" onclick="PlayerView.sellItem('${itemId}',this)">出售 +${renderItemIcon('0', '🪙', 'item-icon-xs')} ${def.sellPrice}</button>
         `;
       }
+    }
+
+    if (def.type === 5) {
+      const skillLines = (def.skillDesc || '此仙斧暂无特殊技能。')
+        .split(';')
+        .map(line => line.trim())
+        .filter(Boolean);
+      UI.modal(`
+        <article class="weapon-detail quality-${def.quality}">
+          <header class="weapon-detail-head">
+            <div class="weapon-detail-art">
+              ${renderItemIcon(itemId, def.icon, 'weapon-detail-image')}
+              ${axeLocked ? `<span class="detail-lock-art">${renderFeatureIcon('icon-lock', '仙阶未解锁', 'lock-detail-icon')}</span>` : ''}
+            </div>
+            <div class="weapon-detail-identity">
+              <h2 style="color:${q.color}">${def.name}</h2>
+              <div class="weapon-detail-meta">
+                <span class="tag" style="background:${q.color}20;color:${q.color};border-color:${q.color}55">${q.name}</span>
+                <span>${axeLocked ? '尚未满足穿戴要求' : '可穿戴'}</span>
+              </div>
+            </div>
+          </header>
+          ${axeRealmHtml}
+          <section class="weapon-skill-panel">
+            <div class="weapon-skill-label">仙斧技能</div>
+            ${skillLines.map((line, index) => `
+              <div class="weapon-skill-line">
+                <span class="weapon-skill-index">${String(index + 1).padStart(2, '0')}</span>
+                <strong>${line}</strong>
+              </div>
+            `).join('')}
+          </section>
+          <blockquote class="weapon-lore">${def.desc || '斧刃无言，唯有挥动之人知其分量。'}</blockquote>
+          <div class="weapon-detail-actions">${actionBtn}</div>
+        </article>
+      `, { title: '仙斧情报' });
+      return;
     }
 
     UI.modal(`
@@ -4233,7 +4290,8 @@ const PlayerView = {
     // 连砍期间保留砍树末帧，避免网络等待时插入待机动作。
     try {
       for (let i = 0; i < 10; i++) {
-        const characterAnimation = CultivatorAnimator.playChop({ resumeIdle: false });
+        const timing = TenChopTimeline.getStep(i);
+        const characterAnimation = CultivatorAnimator.playChop({ resumeIdle: false, frameMs: timing.frameMs });
         CultivationEffects.playHit({ scene, tree: treeIcon, intensity: 1 });
         if (treeIcon) {
           treeIcon.classList.add('shaking');
@@ -4245,13 +4303,13 @@ const PlayerView = {
         if (item) {
           results.push(item);
           if (treeIcon) {
-            const el = UI.playScatterAnimation(item, treeIcon, i);
+            const el = UI.playScatterAnimation(item, treeIcon, i, timing.dropMs);
             if (el) scatterEls.push(el);
           }
           if (item.extraDrop) {
             results.push(item.extraDrop);
             if (treeIcon) {
-              const extraEl = UI.playScatterAnimation(item.extraDrop, treeIcon, i + 0.5);
+              const extraEl = UI.playScatterAnimation(item.extraDrop, treeIcon, i + 0.5, timing.dropMs);
               if (extraEl) scatterEls.push(extraEl);
             }
           }
@@ -5225,7 +5283,7 @@ const AdminView = {
 
   async gmClearInventory() {
     UI.confirm('确定清空背包中所有道具？此操作不可恢复！', async () => {
-      const { error } = await dbClient.from('inventory').delete().eq('user_role', 'player');
+      const { error } = await dbClient.from('inventory').delete().eq('user_role', DB.playerRole);
       if (error) { UI.toast('清空失败: ' + error.message, 'error'); return; }
       UI.toast('背包已清空', 'success');
       this.renderGM();
@@ -5235,15 +5293,15 @@ const AdminView = {
   async gmResetAll() {
     UI.confirm('确定重置全部数据？等级、背包、仙阶都会回到初始状态！', async () => {
       // 清空背包
-      await dbClient.from('inventory').delete().eq('user_role', 'player');
+      await dbClient.from('inventory').delete().eq('user_role', DB.playerRole);
       // 清空邮件
-      await dbClient.from('mails').delete().eq('user_role', 'player');
+      await dbClient.from('mails').delete().eq('user_role', DB.playerRole);
       // 清空提现记录
-      await dbClient.from('withdrawals').delete().eq('user_role', 'player');
+      await dbClient.from('withdrawals').delete().eq('user_role', DB.playerRole);
       // 清空任务提交记录
-      await dbClient.from('task_submissions').delete().eq('user_role', 'player');
+      await dbClient.from('task_submissions').delete().eq('user_role', DB.playerRole);
       // 重置玩家状态
-      await dbClient.from('player_state').delete().eq('user_role', 'player');
+      await dbClient.from('player_state').delete().eq('user_role', DB.playerRole);
       UI.toast('全部数据已重置，请重新登录', 'success');
       // 重新初始化
       await Game.init();

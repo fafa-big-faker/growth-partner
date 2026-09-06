@@ -36,7 +36,8 @@ test('player pages consume v2 backgrounds, trees, navigation, and inventory fram
   assert.match(app, /assets\/images\/v2\/trees\/divine\.png/);
   assert.match(app, /dashboard\.dataset\.playerScene\s*=\s*tab/);
 
-  for (const scene of ['login', 'cultivate', 'tasks', 'reward']) {
+  assert.match(styles, /backgrounds\/login-main\.png/);
+  for (const scene of ['cultivate', 'tasks', 'reward']) {
     assert.match(styles, new RegExp(`backgrounds/${scene}\\.webp`));
   }
   for (const slot of ['neutral', 'blue', 'purple', 'rose', 'gold']) {

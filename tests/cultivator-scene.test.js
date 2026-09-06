@@ -14,9 +14,10 @@ test('cultivation scene places the animated cultivator before the tree', () => {
 
   assert.ok(characterIndex >= 0, 'missing cultivator sprite image');
   assert.ok(treeIndex > characterIndex, 'tree must render to the character\'s right');
-  assert.match(render, /id="cultivator-weapon"/);
-  assert.match(app, /CULTIVATOR_WEAPON_POSES/);
-  assert.match(app, /onFrame:\s*updateCultivatorWeapon/);
+  assert.doesNotMatch(render, /id="cultivator-weapon"/);
+  assert.doesNotMatch(css, /\.cultivator-weapon\s*\{/);
+  assert.match(app, /getAxeChopFrames\(Game\.state\.axeId\)/);
+  assert.match(app, /assets\/images\/character\/axes/);
   assert.match(render, /CultivatorAnimator\.attach/);
   assert.doesNotMatch(render, /character-paint\.jpg/);
 });
@@ -28,7 +29,8 @@ test('single and ten chop paths play the cultivator action', () => {
 
   assert.match(single, /CultivatorAnimator\.playChop\(\)/);
   assert.match(single, /await characterAnimation/);
-  assert.match(ten, /CultivatorAnimator\.playChop\(\{\s*resumeIdle:\s*false\s*\}\)/);
+  assert.match(ten, /TenChopTimeline\.getStep\(i\)/);
+  assert.match(ten, /frameMs:\s*timing\.frameMs/);
   assert.match(ten, /await characterAnimation/);
   assert.match(ten, /CultivatorAnimator\.resumeIdle\(\)/);
 });

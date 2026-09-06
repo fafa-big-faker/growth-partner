@@ -107,3 +107,19 @@ test('idle motion pauses on its neutral frame and reports every frame', async ()
   assert.ok(reports.includes('idle:1'));
   animator.stop();
 });
+
+test('frames can be replaced for the currently equipped weapon', async () => {
+  const animator = createFrameAnimator({
+    idleFrames: ['old-idle'],
+    chopFrames: ['old-chop'],
+    chopFrameMs: 20,
+  });
+  const image = trackedImage();
+  animator.attach(image);
+  animator.setFrames({ idleFrames: ['axe-idle'], chopFrames: ['axe-1', 'axe-2'] });
+
+  assert.equal(image.src, 'axe-idle');
+  assert.equal(await animator.playChop({ frameMs: 2, resumeIdle: false }), true);
+  assert.deepEqual(image.history.filter(src => src.startsWith('axe-')), ['axe-idle', 'axe-1', 'axe-2', 'axe-2']);
+  animator.stop();
+});
