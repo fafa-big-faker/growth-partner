@@ -2451,6 +2451,9 @@ const PlayerView = {
             ${renderFeatureIcon('icon-achievement', '成就', 'topbar-feature-icon')}
             <span class="ach-dot" id="ach-dot" style="display:none"></span>
           </div>
+          <button type="button" class="audio-toggle" aria-label="关闭声音" aria-pressed="false" title="关闭声音">
+            <span class="audio-toggle-icon" aria-hidden="true">🔊</span>
+          </button>
         </div>
         <div class="res-pill res-coin" id="coin-pill" title="游戏币 · 可在「天道酬勤」商店购买道具，砍树/出售仙斧可获得">
           <span class="res-icon">${renderItemIcon('0', '🪙', 'res-coin-img')}</span><span class="res-val" id="coin-count">${Game.state.coin || 0}</span>
@@ -2526,6 +2529,7 @@ const PlayerView = {
     const axeFrames = getAxeChopFrames(Game.state.axeId);
     CultivatorAnimator.setFrames({ idleFrames: idleFrames, chopFrames: axeFrames });
     CultivatorAnimator.attach(document.getElementById('cultivator-sprite'));
+    AudioManager.syncControls();
     this.renderInventory(this.currentInvTab);
     UI._updateMailBadge();
   },

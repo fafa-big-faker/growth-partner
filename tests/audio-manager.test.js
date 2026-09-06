@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { AUDIO_PATHS, createAudioManager } = require('../audio-manager');
+const { AUDIO_PATHS, AUDIO_VOLUMES, createAudioManager } = require('../audio-manager');
 
 class FakeAudio {
   static instances = [];
@@ -49,6 +49,18 @@ test('audio paths cover the supplied BGM and six effects', () => {
     'bgmMain', 'chopHit', 'forgeProcess', 'forgeSuccess', 'itemDrop', 'uiOpen', 'uiTap',
   ]);
   Object.values(AUDIO_PATHS).forEach(src => assert.match(src, /^assets\/runtime\/audio\//));
+});
+
+test('category mix keeps UI feedback audible above the restrained BGM', () => {
+  assert.deepEqual(AUDIO_VOLUMES, {
+    bgmMain: 0.18,
+    uiTap: 0.62,
+    uiOpen: 0.58,
+    chopHit: 0.64,
+    itemDrop: 0.62,
+    forgeProcess: 0.38,
+    forgeSuccess: 0.70,
+  });
 });
 
 test('sound effects use independent audio instances so repeated actions can overlap', async () => {

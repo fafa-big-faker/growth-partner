@@ -8,6 +8,23 @@ const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const app = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
 const styles = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
 
+function readPcmPeak(contents) {
+  let offset = 12;
+  while (offset + 8 <= contents.length) {
+    const chunkId = contents.subarray(offset, offset + 4).toString('ascii');
+    const chunkSize = contents.readUInt32LE(offset + 4);
+    if (chunkId === 'data') {
+      let peak = 0;
+      for (let sampleOffset = offset + 8; sampleOffset < offset + 8 + chunkSize; sampleOffset += 2) {
+        peak = Math.max(peak, Math.abs(contents.readInt16LE(sampleOffset) / 32768));
+      }
+      return peak;
+    }
+    offset += 8 + chunkSize + (chunkSize % 2);
+  }
+  throw new Error('WAV data chunk not found');
+}
+
 test('all supplied audio files are present and remain lightweight', () => {
   const files = [
     'bgm-main.mp3', 'ui-tap.wav', 'ui-open.wav', 'chop-hit.wav',
@@ -24,12 +41,35 @@ test('all supplied audio files are present and remain lightweight', () => {
   assert.ok(totalBytes < 2 * 1024 * 1024, 'audio bundle should remain under 2 MiB');
 });
 
+test('runtime effects use the approved peak-normalized loudness targets', () => {
+  const targets = {
+    'ui-tap.wav': 0.62,
+    'ui-open.wav': 0.60,
+    'chop-hit.wav': 0.72,
+    'item-drop.wav': 0.68,
+    'forge-process.wav': 0.72,
+    'forge-success.wav': 0.76,
+  };
+  Object.entries(targets).forEach(([file, target]) => {
+    const contents = fs.readFileSync(path.join(root, 'assets', 'runtime', 'audio', file));
+    assert.ok(Math.abs(readPcmPeak(contents) - target) < 0.01, `${file} should peak near ${target}`);
+  });
+});
+
 test('audio manager loads before the game and both dashboards expose mute controls', () => {
   assert.ok(html.indexOf('audio-manager.js') > -1);
   assert.ok(html.indexOf('audio-manager.js') < html.indexOf('app.js'));
-  assert.equal((html.match(/class="audio-toggle"/g) || []).length, 2);
+  assert.equal((html.match(/class="audio-toggle"/g) || []).length, 1);
+  assert.equal((app.match(/class="audio-toggle"/g) || []).length, 1);
+  const playerTools = app.match(/<div class="topbar-left">([\s\S]*?)<\/div>\s*<div class="res-pill/)?.[1] || '';
+  const adminTools = html.match(/<div class="header-right">([\s\S]*?)<\/div>/)?.[1] || '';
+  assert.match(playerTools, /audio-toggle/);
+  assert.match(adminTools, /audio-toggle/);
+  [...html.matchAll(/<nav class="bottom-nav">([\s\S]*?)<\/nav>/g)]
+    .forEach(match => assert.doesNotMatch(match[1], /audio-toggle/));
   assert.match(app, /AudioManager\.bindControls\(\)/);
-  assert.match(styles, /\.audio-toggle\s*\{/);
+  assert.match(styles, /\.topbar-left \.audio-toggle/);
+  assert.doesNotMatch(styles, /\.audio-toggle\s*\{[\s\S]*?top:\s*-48px/);
 });
 
 test('login preloads audio and owns BGM lifecycle', () => {

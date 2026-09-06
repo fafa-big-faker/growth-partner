@@ -11,12 +11,12 @@
 
   const AUDIO_VOLUMES = Object.freeze({
     bgmMain: 0.18,
-    uiTap: 0.22,
-    uiOpen: 0.28,
-    chopHit: 0.38,
-    itemDrop: 0.32,
-    forgeProcess: 0.25,
-    forgeSuccess: 0.42,
+    uiTap: 0.62,
+    uiOpen: 0.58,
+    chopHit: 0.64,
+    itemDrop: 0.62,
+    forgeProcess: 0.38,
+    forgeSuccess: 0.70,
   });
 
   const MUTE_STORAGE_KEY = 'growth-partner-audio-muted';
