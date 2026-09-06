@@ -2437,17 +2437,15 @@ body {
   background-image:
     linear-gradient(180deg, rgba(239, 247, 242, 0.36), rgba(236, 244, 238, 0.54)),
     var(--player-scene);
-  background-position: center;
+  background-position: center top;
   background-size: cover;
+  background-repeat: no-repeat;
   background-attachment: fixed;
 }
 
 #player-dashboard[data-player-scene="cultivate"] {
-  --player-scene: none;
+  --player-scene: url('assets/runtime/v2/backgrounds/cultivate.webp');
   background-color: #e6efe9;
-  background-image:
-    radial-gradient(circle at 16% 12%, rgba(255, 249, 224, 0.72), transparent 34%),
-    linear-gradient(155deg, #dcebe5, #eef2e3 48%, #d7e7e0);
 }
 #player-dashboard[data-player-scene="tasks"] { --player-scene: url('assets/runtime/v2/backgrounds/tasks.webp'); }
 #player-dashboard[data-player-scene="reward"] { --player-scene: url('assets/runtime/v2/backgrounds/reward.webp'); }
@@ -2493,6 +2491,9 @@ body {
   background-image:
     linear-gradient(180deg, rgba(225, 244, 241, 0.03), rgba(210, 228, 204, 0.13)),
     url('assets/runtime/v2/backgrounds/cultivate.webp');
+  background-position: center 42%;
+  background-size: cover;
+  background-repeat: no-repeat;
   border: 1px solid rgba(52, 96, 82, 0.58);
   border-radius: 8px;
   box-shadow: 0 7px 20px rgba(44, 64, 57, 0.18);
@@ -2720,6 +2721,179 @@ body {
 .lock-inline-icon { width: 20px; height: 20px; object-fit: contain; }
 .detail-lock-art { position: absolute; top: -4px; right: -16px; }
 .lock-detail-icon { width: 28px; height: 28px; object-fit: contain; }
+
+.modal-overlay.modal-locked {
+  cursor: progress;
+}
+
+.modal-overlay.modal-locked .modal-close,
+.modal-overlay.modal-locked .forge-close {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.forge-reveal-stage {
+  position: relative;
+  min-height: 300px;
+  padding: 14px 16px 8px;
+  overflow: hidden;
+  text-align: center;
+}
+
+.forge-reveal-stage[hidden],
+.forge-result-actions[hidden],
+.forge-result-detail[hidden] {
+  display: none;
+}
+
+.forge-reveal-art {
+  position: relative;
+  z-index: 1;
+  width: 112px;
+  height: 132px;
+  margin: 0 auto 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform-origin: 50% 72%;
+}
+
+.forge-reveal-art .forge-reveal-icon {
+  width: 104px;
+  height: 104px;
+  object-fit: contain;
+  filter: drop-shadow(0 7px 8px rgba(42, 48, 43, 0.2));
+}
+
+.forge-reveal-art.is-shaking {
+  animation: forge-item-shake 180ms ease-in-out infinite;
+}
+
+.forge-reveal-art.is-revealed {
+  animation: forge-item-reveal 340ms cubic-bezier(0.2, 0.84, 0.32, 1.18) both;
+}
+
+.forge-reveal-name {
+  min-height: 28px;
+  font-size: 20px;
+  line-height: 28px;
+  font-weight: 750;
+  transition: color 100ms linear;
+}
+
+.forge-reveal-status {
+  margin-top: 5px;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.forge-reveal-progress {
+  width: min(280px, 90%);
+  height: 8px;
+  margin: 12px auto 0;
+  overflow: hidden;
+  border: 1px solid rgba(72, 104, 91, 0.3);
+  border-radius: 4px;
+  background: rgba(51, 73, 65, 0.12);
+}
+
+.forge-reveal-progress-fill {
+  width: 0;
+  height: 100%;
+  background: #c78347;
+  transition: width 120ms linear;
+}
+
+.forge-reveal-flash {
+  position: absolute;
+  z-index: 0;
+  top: 58px;
+  left: 50%;
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0.65);
+  background: rgba(255, 244, 194, 0.72);
+  pointer-events: none;
+}
+
+.forge-reveal-flash.is-active {
+  animation: forge-result-flash 340ms ease-out both;
+}
+
+.forge-result-detail {
+  margin: 12px auto 0;
+  max-width: 330px;
+}
+
+.forge-result-quality {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.forge-result-skill {
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-left: 3px solid currentColor;
+  color: var(--accent);
+  background: rgba(54, 102, 84, 0.08);
+  font-size: 13px;
+  font-weight: 650;
+  text-align: left;
+}
+
+.forge-result-copy {
+  margin-top: 8px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.65;
+}
+
+.forge-result-lock {
+  display: inline-block;
+  margin-top: 10px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  color: var(--error);
+  background: rgba(194, 73, 65, 0.08);
+  font-size: 12px;
+}
+
+.forge-result-actions {
+  display: flex;
+  gap: 8px;
+}
+
+@keyframes forge-item-shake {
+  0%, 100% { transform: translateX(-3px) rotate(-2deg); }
+  50% { transform: translateX(3px) rotate(2deg); }
+}
+
+@keyframes forge-item-reveal {
+  0% { transform: scale(0.86); opacity: 0.68; }
+  72% { transform: scale(1.1); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes forge-result-flash {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.65); }
+  42% { opacity: 0.82; }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.25); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .forge-reveal-art,
+  .forge-reveal-art.is-shaking,
+  .forge-reveal-art.is-revealed,
+  .forge-reveal-flash.is-active {
+    animation: none;
+  }
+
+  .forge-reveal-progress-fill {
+    transition: none;
+  }
+}
 
 @media (min-width: 720px) {
   #player-dashboard .shop-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }

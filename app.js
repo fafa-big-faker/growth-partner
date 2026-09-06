@@ -2193,14 +2193,17 @@ const UI = {
       <div class="modal">
         <div class="modal-header">
           <div class="modal-title">${options.title || ''}</div>
-          <button class="modal-close" aria-label="关闭" title="关闭" onclick="this.closest('.modal-overlay').remove()">${renderFeatureIcon('icon-close', '关闭', 'modal-close-icon')}</button>
+          <button class="modal-close" aria-label="关闭" title="关闭">${renderFeatureIcon('icon-close', '关闭', 'modal-close-icon')}</button>
         </div>
         <div class="modal-body">${contentHTML}</div>
         ${options.footer || ''}
       </div>
     `;
+    overlay.querySelector('.modal-close')?.addEventListener('click', () => {
+      if (!overlay.classList.contains('modal-locked')) overlay.remove();
+    });
     overlay.addEventListener('click', (e) => {
-      if (e.target === overlay) overlay.remove();
+      if (e.target === overlay && !overlay.classList.contains('modal-locked')) overlay.remove();
     });
     container.appendChild(overlay);
     return overlay;
@@ -2319,6 +2322,72 @@ const UI = {
     });
 
     return el;
+  },
+};
+
+const ForgeReveal = {
+  delays: [320, 300, 270, 240, 215, 190, 165, 145, 125, 110, 95, 82, 76],
+
+  getCandidateItems() {
+    const ids = FORGE_POOL.flatMap(pool => pool.items.map(String));
+    return [...new Set(ids)].map(itemId => ITEMS[itemId]).filter(Boolean);
+  },
+
+  setProgress(elements, value) {
+    const progress = Math.max(0, Math.min(100, Math.round(value)));
+    if (elements.progress) {
+      elements.progress.setAttribute('aria-valuenow', String(progress));
+      elements.progress.setAttribute('aria-valuetext', `${progress}%`);
+    }
+    if (elements.progressFill) elements.progressFill.style.width = `${progress}%`;
+  },
+
+  showCandidate(elements, item, shaking = true) {
+    if (!item) return;
+    const quality = QUALITY[item.quality] || QUALITY[1];
+    if (elements.art) {
+      elements.art.innerHTML = renderItemIcon(item.id, item.icon, 'forge-reveal-icon');
+      elements.art.classList.toggle('is-shaking', shaking);
+    }
+    if (elements.name) {
+      elements.name.textContent = item.name;
+      elements.name.style.color = quality.color;
+    }
+  },
+
+  async run(elements, resultPromise) {
+    const candidates = this.getCandidateItems();
+    const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true;
+    const delays = reducedMotion ? [180, 150, 120] : this.delays;
+    if (elements.status) elements.status.textContent = '灵火淬炼中';
+    this.setProgress(elements, 0);
+
+    for (let index = 0; index < delays.length; index += 1) {
+      const item = candidates[index % candidates.length];
+      this.showCandidate(elements, item, !reducedMotion);
+      this.setProgress(elements, Math.round(((index + 1) / delays.length) * 88));
+      await new Promise(resolve => setTimeout(resolve, delays[index]));
+    }
+
+    elements.art?.classList.remove('is-shaking');
+    this.setProgress(elements, 94);
+    if (elements.status) elements.status.textContent = '凝聚器灵';
+    const result = await resultPromise;
+    if (!result) return null;
+
+    this.reveal(elements, result);
+    this.setProgress(elements, 100);
+    return result;
+  },
+
+  reveal(elements, result) {
+    const item = result.item || ITEMS[String(result.itemId)];
+    if (!item) return;
+    this.showCandidate(elements, item, false);
+    elements.art?.classList.add('is-revealed');
+    elements.flash?.classList.add('is-active');
+    if (elements.status) elements.status.textContent = '锻造完成';
+    setTimeout(() => elements.flash?.classList.remove('is-active'), 360);
   },
 };
 
@@ -4325,7 +4394,8 @@ const PlayerView = {
       </div>
     `).join('');
 
-    UI.modal(`
+    const overlay = UI.modal(`
+      <div id="forge-setup">
       <div style="text-align:center;margin-bottom:16px">
         <div style="margin:0 auto 8px;display:flex;justify-content:center">${renderFeatureIcon('icon-forge', '锻造', 'forge-modal-icon')}</div>
         <div style="font-size:18px;font-weight:700">锻造仙斧</div>
@@ -4338,53 +4408,89 @@ const PlayerView = {
       <div style="text-align:center;font-size:13px;color:var(--text-secondary)">
         当前锻铁：<span class="forge-current-stone">${renderItemIcon('40001', '', 'item-icon-xs')}<b>${forgeQty}</b> 个</span>
       </div>
+      </div>
+      <div id="forge-reveal-stage" class="forge-reveal-stage" hidden>
+        <div class="forge-reveal-flash" aria-hidden="true"></div>
+        <div id="forge-reveal-art" class="forge-reveal-art" aria-live="off"></div>
+        <div id="forge-reveal-name" class="forge-reveal-name">器灵汇聚</div>
+        <div id="forge-reveal-status" class="forge-reveal-status">准备锻造</div>
+        <div class="forge-reveal-progress" role="progressbar" aria-label="锻造进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+          <div class="forge-reveal-progress-fill"></div>
+        </div>
+        <div id="forge-result-detail" class="forge-result-detail" hidden></div>
+      </div>
     `, {
       title: '锻造',
       footer: `<div class="modal-footer">
-        <button class="btn btn-outline btn-sm" onclick="this.closest('.modal-overlay').remove()">关闭</button>
+        <button class="btn btn-outline btn-sm forge-close" onclick="this.closest('.modal-overlay').remove()">关闭</button>
         <button class="btn btn-primary btn-sm" id="forge-ok" ${forgeQty > 0 ? '' : 'disabled'}>锻造（消耗1个锻铁）</button>
+        <div id="forge-result-actions" class="forge-result-actions" hidden></div>
       </div>`
     });
 
     const btn = document.getElementById('forge-ok');
     if (btn) btn.addEventListener('click', async () => {
-      const outcome = await UI.runLockedAction('forge', btn, '锻造中...', () => Game.forge());
+      const setup = overlay.querySelector('#forge-setup');
+      const stage = overlay.querySelector('#forge-reveal-stage');
+      const closeControls = overlay.querySelectorAll('.modal-close, .forge-close');
+      const resultActions = overlay.querySelector('#forge-result-actions');
+      const elements = {
+        art: overlay.querySelector('#forge-reveal-art'),
+        name: overlay.querySelector('#forge-reveal-name'),
+        status: overlay.querySelector('#forge-reveal-status'),
+        progress: overlay.querySelector('[role="progressbar"]'),
+        progressFill: overlay.querySelector('.forge-reveal-progress-fill'),
+        flash: overlay.querySelector('.forge-reveal-flash'),
+      };
+
+      overlay.classList.add('modal-locked');
+      closeControls.forEach(control => { control.disabled = true; });
+      if (setup) setup.hidden = true;
+      if (stage) stage.hidden = false;
+
+      const outcome = await UI.runLockedAction('forge',
+        btn,
+        '',
+        () => ForgeReveal.run(elements, Game.forge()),
+      );
       const result = outcome.started ? outcome.value : null;
       if (result) {
-        // 显示锻造结果
         const q = QUALITY[result.quality] || QUALITY[1];
         const canEquip = canEquipAxeQuality(result.quality, Game.state.realmLevel);
         const minRealm = getMinRealmForAxeQuality(result.quality);
         const lockHint = canEquip ? '' : `
-          <div style="margin-top:10px;font-size:12px;color:var(--error);background:var(--error)12;border-radius:8px;padding:6px 10px;display:inline-block">
+          <div class="forge-result-lock">
             仙阶限制：需达到【${minRealm?.name || '?'}】才能装备，已放入背包
           </div>
         `;
-        const resultOverlay = UI.modal(`
-          <div style="text-align:center;padding:16px 0">
-            <div style="margin-bottom:12px;animation:tree-shake 0.5s ease-in-out;display:flex;align-items:center;justify-content:center;height:80px">${renderItemIcon(result.itemId || result.item.id, result.item.icon, 'item-icon-lg')}</div>
-            <div style="font-size:20px;font-weight:700;color:${q.color}">${result.item.name}</div>
-            <div style="margin-top:4px">${UI.qualityTag(result.quality)}</div>
-            <div style="font-size:12px;color:var(--text-secondary);margin-top:8px">${result.item.desc}</div>
-            ${result.item.skillDesc ? `<div style="font-size:12px;color:var(--accent);margin-top:8px">斧技 · ${result.item.skillDesc}</div>` : ''}
+        const detail = overlay.querySelector('#forge-result-detail');
+        if (detail) {
+          detail.hidden = false;
+          detail.innerHTML = `
+            <div class="forge-result-quality" style="color:${q.color}">${q.name}</div>
+            ${result.item.skillDesc ? `<div class="forge-result-skill">斧技 · ${result.item.skillDesc}</div>` : ''}
+            <div class="forge-result-copy">${result.item.desc || ''}</div>
             ${lockHint}
-          </div>
-        `, {
-          title: `${renderFeatureIcon('icon-forge', '', 'section-title-icon')} 锻造成功`,
-          footer: `<div class="modal-footer">
-            <button class="btn btn-primary btn-sm" onclick="PlayerView.showForge()">继续锻造</button>
-            ${canEquip ? `<button class="btn btn-accent btn-sm" onclick="PlayerView._equipFromForge('${result.itemId}',this)">立即装备</button>` : ''}
-          </div>`
-        });
-        // X按钮和遮罩关闭后，回到锻造弹窗（刷新按钮状态和锻铁数量）
-        const closeBtn = resultOverlay.querySelector('.modal-close');
-        if (closeBtn) {
-          closeBtn.onclick = () => { resultOverlay.remove(); PlayerView.showForge(); };
+          `;
         }
-        resultOverlay.addEventListener('click', (e) => {
-          if (e.target === resultOverlay) { resultOverlay.remove(); PlayerView.showForge(); }
-        });
+        if (resultActions) {
+          resultActions.hidden = false;
+          resultActions.innerHTML = `
+            <button class="btn btn-primary btn-sm" onclick="this.closest('.modal-overlay').remove();PlayerView.showForge()">继续锻造</button>
+            ${canEquip ? `<button class="btn btn-accent btn-sm" onclick="PlayerView._equipFromForge('${result.itemId}',this)">立即装备</button>` : ''}
+          `;
+        }
+        btn.hidden = true;
+        overlay.querySelector('.forge-close')?.setAttribute('hidden', '');
+        const title = overlay.querySelector('.modal-title');
+        if (title) title.innerHTML = `${renderFeatureIcon('icon-forge', '', 'section-title-icon')} 锻造成功`;
+      } else if (outcome.started) {
+        if (setup) setup.hidden = false;
+        if (stage) stage.hidden = true;
       }
+
+      overlay.classList.remove('modal-locked');
+      closeControls.forEach(control => { control.disabled = false; });
     });
   },
 

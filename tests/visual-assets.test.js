@@ -50,6 +50,19 @@ test('player pages consume optimized runtime backgrounds, trees, navigation, and
   assert.match(styles, /\.item-slot\s*\{[\s\S]*?aspect-ratio:\s*1/);
 });
 
+test('cultivation backgrounds cover their surfaces without tiling', () => {
+  const dashboard = styles.match(/#player-dashboard\s*\{[\s\S]*?\n\}/)?.[0] || '';
+  const cultivateDashboard = styles.match(/#player-dashboard\[data-player-scene="cultivate"\]\s*\{[\s\S]*?\n\}/)?.[0] || '';
+  const scene = styles.match(/\.cult-scene\s*\{[\s\S]*?background-image:[\s\S]*?\n\}/g)?.at(-1) || '';
+
+  assert.match(dashboard, /background-repeat:\s*no-repeat/);
+  assert.doesNotMatch(cultivateDashboard, /--player-scene:\s*none/);
+  assert.match(cultivateDashboard, /backgrounds\/cultivate\.webp/);
+  assert.match(scene, /background-size:\s*cover/);
+  assert.match(scene, /background-repeat:\s*no-repeat/);
+  assert.match(scene, /background-position:\s*center 42%/);
+});
+
 test('shop cards expose descriptions and use a dedicated purchase footer', () => {
   const render = app.match(/\n  _renderShop\(\)\s*\{[\s\S]*?\n  },/)?.[0] || '';
   assert.match(render, /item\.description/);
