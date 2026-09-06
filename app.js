@@ -1990,14 +1990,17 @@ const Auth = {
 
     this._loggingIn = true;
     DB.setPlayerRole(account.playerRole);
+    if (this.currentRole === 'player') void AudioManager.playBgm();
+    else AudioManager.pauseBgm();
     this._setLoading(true, 0);
     try {
       const staticAssets = getInitialGameImageAssets();
+      const audioPreload = AudioManager.preload();
       const staticPreload = AssetPreloader.preload(
         staticAssets,
         progress => this._setLoading(true, progress.percent * 0.85),
       );
-      await Promise.all([staticPreload, Game.init()]);
+      await Promise.all([staticPreload, audioPreload, Game.init()]);
 
       if (!Game.state) throw new Error('player initialization failed');
       await preloadAxeAnimation(
@@ -2016,6 +2019,7 @@ const Auth = {
       }
     } catch (error) {
       console.error('login initialization failed:', error);
+      AudioManager.pauseBgm();
       Game.state = null;
       Game.inventory = [];
       this._setLoading(false, 0);
@@ -2044,6 +2048,7 @@ const Auth = {
     document.getElementById('login-screen').style.display = 'flex';
     document.getElementById('login-password').value = '';
     this._setLoading(false, 0);
+    AudioManager.pauseBgm();
     CultivatorAnimator.stop();
     Game.state = null;
     Game.inventory = [];
@@ -2058,6 +2063,7 @@ const Router = {
   currentAdminTab: 'task-manage',
 
   playerTab(tab) {
+    void AudioManager.playEffect('uiOpen');
     this.currentPlayerTab = tab;
     const dashboard = document.getElementById('player-dashboard');
     if (dashboard) dashboard.dataset.playerScene = tab === 'mail' ? 'tasks' : tab;
@@ -2075,6 +2081,7 @@ const Router = {
   },
 
   adminTab(tab) {
+    void AudioManager.playEffect('uiOpen');
     this.currentAdminTab = tab;
     document.querySelectorAll('#admin-dashboard .bottom-nav .nav-item').forEach(el => {
       el.classList.toggle('active', el.dataset.tab === tab);
@@ -2186,6 +2193,7 @@ const UI = {
   },
 
   modal(contentHTML, options = {}) {
+    void AudioManager.playEffect('uiOpen');
     const container = document.getElementById('modal-container');
     const overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
@@ -2274,6 +2282,7 @@ const UI = {
 
   // 播放掉落动画
   playDropAnimation(item, treeElement) {
+    void AudioManager.playEffect('itemDrop');
     const container = document.getElementById('floating-items-container');
     const el = document.createElement('div');
     el.className = 'falling-item';
@@ -2292,6 +2301,7 @@ const UI = {
   },
 
   playScatterAnimation(item, treeElement, index, durationMs = 600) {
+    void AudioManager.playEffect('itemDrop');
     const container = document.getElementById('floating-items-container');
     const el = document.createElement('div');
     el.className = 'scatter-item';
@@ -3043,6 +3053,7 @@ const PlayerView = {
     const scene = document.getElementById('tree-area');
     const chopBtn = document.getElementById('chop-btn');
     const outcome = await UI.runLockedAction('chop', chopBtn, '', async () => {
+      void AudioManager.playEffect('chopHit');
       const characterAnimation = CultivatorAnimator.playChop();
       CultivationEffects.playHit({ scene, tree: treeIcon, intensity: 1 });
       if (treeIcon) {
@@ -4477,13 +4488,16 @@ const PlayerView = {
       if (elements.progressFill) elements.progressFill.style.transition = 'none';
       ForgeReveal.setProgress(elements, 0);
 
+      void AudioManager.startLoop('forgeProcess');
       const outcome = await UI.runLockedAction('forge',
         btn,
         '锻造中...',
         () => ForgeReveal.run(elements, Game.forge()),
       );
+      AudioManager.stopLoop('forgeProcess');
       const result = outcome.started ? outcome.value : null;
       if (result) {
+        void AudioManager.playEffect('forgeSuccess');
         if (stage) stage.dataset.state = 'result';
         const q = QUALITY[result.quality] || QUALITY[1];
         const canEquip = canEquipAxeQuality(result.quality, Game.state.realmLevel);
@@ -4554,6 +4568,7 @@ const PlayerView = {
       if (!chops) return false;
       for (let i = 0; i < 10; i++) {
         const timing = TenChopTimeline.getStep(i);
+        void AudioManager.playEffect('chopHit');
         const characterAnimation = CultivatorAnimator.playChop({ resumeIdle: false, frameMs: timing.frameMs });
         CultivationEffects.playHit({ scene, tree: treeIcon, intensity: 1 });
         if (treeIcon) {
@@ -5575,4 +5590,5 @@ const AdminView = {
 };
 
 // 初始化（登录时调用 Game.init()）
+AudioManager.bindControls();
 console.log('寻道大千 · 修仙系统加载完成 🎋');
