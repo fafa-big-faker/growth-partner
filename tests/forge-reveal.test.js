@@ -23,13 +23,18 @@ test('forge reveal accelerates configured candidates while waiting for the real 
 test('forge modal runs one guarded operation and reveals the result in place', () => {
   const showForge = app.match(/\r?\n  showForge\(\) \{[\s\S]*?\r?\n  },\r?\n\r?\n  \/\/ 十连砍/)?.[0] || '';
   assert.match(showForge, /id="forge-reveal-stage"/);
+  assert.doesNotMatch(showForge, /id="forge-reveal-stage"[^>]*hidden/);
   assert.match(showForge, /role="progressbar"/);
+  assert.match(showForge, /class="forge-probability-details"/);
+  assert.match(showForge, /<summary>查看概率详情<\/summary>/);
+  assert.match(showForge, /class="forge-primary-actions"/);
   assert.match(showForge, /UI\.runLockedAction\('forge'/);
   assert.match(showForge, /ForgeReveal\.run\([\s\S]*?Game\.forge\(\)/);
   assert.match(showForge, /forge-result-actions/);
   assert.match(showForge, />返回<\/button>/);
   assert.doesNotMatch(showForge, /继续锻造/);
   assert.doesNotMatch(showForge, /class="btn btn-outline btn-sm forge-close"/);
+  assert.doesNotMatch(showForge, /footer:/);
   assert.equal((showForge.match(/UI\.modal\(/g) || []).length, 1, 'forge should not stack a second result modal');
 });
 
@@ -39,5 +44,7 @@ test('forge reveal styling is restrained and has reduced-motion support', () => 
   assert.match(styles, /\.forge-reveal-progress-fill/);
   assert.match(styles, /\.forge-reveal-icon[\s\S]*?forge-candidate-in/);
   assert.match(styles, /#forge-ok\[hidden\]/);
+  assert.match(styles, /\.forge-primary-actions[\s\S]*?justify-content:\s*center/);
+  assert.match(styles, /\.forge-probability-details/);
   assert.match(styles, /@media \(prefers-reduced-motion:\s*reduce\)[\s\S]*?\.forge-reveal-art/);
 });

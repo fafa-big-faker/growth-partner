@@ -4402,54 +4402,53 @@ const PlayerView = {
     }).sort((a, b) => a.quality - b.quality);
 
     const poolHtml = qualityList.map(q => `
-      <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">
-        <span style="display:inline-block;padding:4px 12px;border-radius:12px;font-size:13px;font-weight:600;background:${q.color}20;color:${q.color};min-width:48px;text-align:center">${q.name}</span>
-        <div style="flex:1;height:8px;background:var(--border);border-radius:4px;overflow:hidden">
-          <div style="height:100%;width:${Math.max(q.pct, 2)}%;background:${q.color};border-radius:4px;transition:width 0.6s ease"></div>
+      <div class="forge-probability-row">
+        <span class="forge-probability-quality" style="background:${q.color}18;color:${q.color}">${q.name}</span>
+        <div class="forge-probability-track">
+          <div class="forge-probability-fill" style="width:${Math.max(q.pct, 2)}%;background:${q.color}"></div>
         </div>
-        <span style="font-weight:700;font-size:15px;color:${q.color};min-width:52px;text-align:right">${q.pct.toFixed(1)}%</span>
+        <span class="forge-probability-value" style="color:${q.color}">${q.pct.toFixed(1)}%</span>
       </div>
     `).join('');
 
     const overlay = UI.modal(`
-      <div id="forge-setup">
-      <div style="text-align:center;margin-bottom:16px">
-        <div style="margin:0 auto 8px;display:flex;justify-content:center">${renderFeatureIcon('icon-forge', '锻造', 'forge-modal-icon')}</div>
-        <div style="font-size:18px;font-weight:700">锻造仙斧</div>
-        <div style="font-size:12px;color:var(--text-secondary);margin-top:4px">消耗锻铁，随机获得一把仙斧</div>
+      <div class="forge-heading">
+        ${renderFeatureIcon('icon-forge', '锻造', 'forge-modal-icon')}
+        <div class="forge-heading-title">锻造仙斧</div>
+        <div class="forge-heading-copy">引灵火淬锻，静候仙斧成形</div>
       </div>
-      <div style="margin-bottom:16px">
-        <div style="font-weight:600;margin-bottom:8px">奖池概率</div>
-        ${poolHtml}
-      </div>
-      <div style="text-align:center;font-size:13px;color:var(--text-secondary)">
-        当前锻铁：<span class="forge-current-stone">${renderItemIcon('40001', '', 'item-icon-xs')}<b>${forgeQty}</b> 个</span>
-      </div>
-      </div>
-      <div id="forge-reveal-stage" class="forge-reveal-stage" hidden>
+      <div id="forge-reveal-stage" class="forge-reveal-stage" data-state="idle">
         <div class="forge-reveal-flash" aria-hidden="true"></div>
-        <div id="forge-reveal-art" class="forge-reveal-art" aria-live="off"></div>
-        <div id="forge-reveal-name" class="forge-reveal-name">器灵汇聚</div>
+        <div id="forge-reveal-art" class="forge-reveal-art" aria-live="off"><span class="forge-reveal-placeholder">?</span></div>
+        <div id="forge-reveal-name" class="forge-reveal-name">器灵待启</div>
         <div id="forge-reveal-status" class="forge-reveal-status">准备锻造</div>
         <div class="forge-reveal-progress" role="progressbar" aria-label="锻造进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
           <div class="forge-reveal-progress-fill"></div>
         </div>
         <div id="forge-result-detail" class="forge-result-detail" hidden></div>
       </div>
-    `, {
-      title: '锻造',
-      footer: `<div class="modal-footer">
+      <div class="forge-lower-panel">
+        <details class="forge-probability-details">
+          <summary>查看概率详情</summary>
+          <div class="forge-probability-list">${poolHtml}</div>
+        </details>
+        <div class="forge-current-stone">
+          <span>当前锻铁</span>${renderItemIcon('40001', '', 'item-icon-xs')}<b>${forgeQty}</b><span>个</span>
+        </div>
+        <div class="forge-primary-actions">
         <button class="btn btn-primary btn-sm" id="forge-ok" ${forgeQty > 0 ? '' : 'disabled'}>锻造（消耗1个锻铁）</button>
         <div id="forge-result-actions" class="forge-result-actions" hidden></div>
-      </div>`
-    });
+        </div>
+      </div>
+    `, { title: '锻造' });
+    overlay.querySelector('.modal')?.classList.add('forge-modal');
 
     const btn = document.getElementById('forge-ok');
     if (btn) btn.addEventListener('click', async () => {
-      const setup = overlay.querySelector('#forge-setup');
       const stage = overlay.querySelector('#forge-reveal-stage');
       const closeControls = overlay.querySelectorAll('.modal-close');
       const resultActions = overlay.querySelector('#forge-result-actions');
+      const probabilityDetails = overlay.querySelector('.forge-probability-details');
       const elements = {
         art: overlay.querySelector('#forge-reveal-art'),
         name: overlay.querySelector('#forge-reveal-name'),
@@ -4461,8 +4460,8 @@ const PlayerView = {
 
       overlay.classList.add('modal-locked');
       closeControls.forEach(control => { control.disabled = true; });
-      if (setup) setup.hidden = true;
-      if (stage) stage.hidden = false;
+      if (probabilityDetails) probabilityDetails.open = false;
+      if (stage) stage.dataset.state = 'running';
 
       const outcome = await UI.runLockedAction('forge',
         btn,
@@ -4471,6 +4470,7 @@ const PlayerView = {
       );
       const result = outcome.started ? outcome.value : null;
       if (result) {
+        if (stage) stage.dataset.state = 'result';
         const q = QUALITY[result.quality] || QUALITY[1];
         const canEquip = canEquipAxeQuality(result.quality, Game.state.realmLevel);
         const minRealm = getMinRealmForAxeQuality(result.quality);
@@ -4497,12 +4497,21 @@ const PlayerView = {
           `;
         }
         btn.hidden = true;
-        const title = overlay.querySelector('.modal-title');
-        if (title) title.innerHTML = `${renderFeatureIcon('icon-forge', '', 'section-title-icon')} 锻造成功`;
       } else if (outcome.started) {
-        if (setup) setup.hidden = false;
-        if (stage) stage.hidden = true;
+        if (stage) stage.dataset.state = 'idle';
+        if (elements.art) elements.art.innerHTML = '<span class="forge-reveal-placeholder">?</span>';
+        if (elements.name) {
+          elements.name.textContent = '器灵待启';
+          elements.name.style.removeProperty('color');
+        }
+        if (elements.status) elements.status.textContent = '准备锻造';
+        if (elements.progressFill) elements.progressFill.style.transition = 'none';
+        ForgeReveal.setProgress(elements, 0);
       }
+
+      const stoneCount = Game.inventory.find(item => item.itemId == '40001')?.quantity || 0;
+      const stoneValue = overlay.querySelector('.forge-current-stone b');
+      if (stoneValue) stoneValue.textContent = stoneCount;
 
       overlay.classList.remove('modal-locked');
       closeControls.forEach(control => { control.disabled = false; });
