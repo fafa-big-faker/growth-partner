@@ -88,6 +88,19 @@ def to_int(v, default=0):
 def to_str(v):
     return str(v).strip() if v else ""
 
+def header_indexes(rows, required, sheet_name):
+    """Build a stable field map from the first (English parameter) row."""
+    headers = [to_str(value) for value in (rows[0] if rows else [])]
+    indexes = {name: index for index, name in enumerate(headers) if name}
+    missing = [name for name in required if name not in indexes]
+    if missing:
+        raise RuntimeError(f"{sheet_name} 缺少英文参数名: {', '.join(missing)}")
+    return indexes
+
+def row_value(row, indexes, field, default=""):
+    index = indexes[field]
+    return row[index] if index < len(row) else default
+
 def parse_items(s):
     """解析逗号分隔的ID列表"""
     if not s:
@@ -328,35 +341,41 @@ print(f"    {len(tree_table)} 条")
 # 9. 奖池表（奖池→奖励包权重）
 print("  → 奖池表")
 rows = read_sheet(SHEETS["奖池表"], "奖池表", "A1:C100")
+pool_headers = header_indexes(rows, ["pool_id", "pack_id", "weight"], "奖池表")
 pool_weight_table = []
 for row in rows[2:]:  # 第1行空，第2行表头
-    if not row[0] or not row[1]:
+    if not row_value(row, pool_headers, "pool_id") or not row_value(row, pool_headers, "pack_id"):
         continue
     pool_weight_table.append({
-        "poolId": to_int(row[0]),
-        "packId": to_int(row[1]),
-        "weight": to_int(row[2]),
+        "poolId": to_int(row_value(row, pool_headers, "pool_id")),
+        "packId": to_int(row_value(row, pool_headers, "pack_id")),
+        "weight": to_int(row_value(row, pool_headers, "weight")),
     })
 print(f"    {len(pool_weight_table)} 条")
 
 # 10. 奖励包表（奖励包→道具列表）
 print("  → 奖励包表")
 rows = read_sheet(SHEETS["奖池表"], "奖励包ID", "A1:E30")
+pack_headers = header_indexes(
+    rows,
+    ["pack_id", "item_ids", "item_quantities", "quality_id", "quality_note"],
+    "奖励包ID",
+)
 pack_table = []
 for row in rows[2:]:
-    if not row[0]:
+    if not row_value(row, pack_headers, "pack_id"):
         continue
     rewards = parse_parallel_rewards(
-        row[1] if len(row) > 1 else "",
-        row[2] if len(row) > 2 else "",
+        row_value(row, pack_headers, "item_ids"),
+        row_value(row, pack_headers, "item_quantities"),
     )
     pack_table.append({
-        "packId": to_int(row[0]),
+        "packId": to_int(row_value(row, pack_headers, "pack_id")),
         "items": [to_int(reward["itemId"]) for reward in rewards],
         "quantities": [reward["quantity"] for reward in rewards],
         "rewards": rewards,
-        "qualityId": to_int(row[3]) if len(row) > 3 else 0,
-        "qualityNote": to_str(row[4]) if len(row) > 4 else "",
+        "qualityId": to_int(row_value(row, pack_headers, "quality_id")),
+        "qualityNote": to_str(row_value(row, pack_headers, "quality_note")),
     })
 print(f"    {len(pack_table)} 条")
 
@@ -379,18 +398,24 @@ print(f"    {len(forge_table)} 条")
 # 12. 天道酬勤商店表
 print("  → 天道酬勤商店表")
 rows = read_sheet(SHEETS["商店表"], "天道酬勤商店表", "A1:H100")
+shop_headers = header_indexes(
+    rows,
+    ["shop_id", "item_id", "item_count", "limit_type", "limit_param", "price", "note", "description"],
+    "天道酬勤商店表",
+)
 shop_table = []
 for row in rows[2:]:
-    if not row[0]:
+    if not row_value(row, shop_headers, "shop_id"):
         continue
     shop_table.append({
-        "shopId": to_int(row[0]),
-        "itemId": to_str(row[1]),
-        "itemCount": to_int(row[2], 1),
-        "limitType": to_int(row[3]),
-        "limitParam": to_str(row[4]),
-        "price": to_int(row[5]),
-        "note": to_str(row[6]) if len(row) > 6 else "",
+        "shopId": to_int(row_value(row, shop_headers, "shop_id")),
+        "itemId": to_str(row_value(row, shop_headers, "item_id")),
+        "itemCount": to_int(row_value(row, shop_headers, "item_count"), 1),
+        "limitType": to_int(row_value(row, shop_headers, "limit_type")),
+        "limitParam": to_str(row_value(row, shop_headers, "limit_param")),
+        "price": to_int(row_value(row, shop_headers, "price")),
+        "note": to_str(row_value(row, shop_headers, "note")),
+        "description": to_str(row_value(row, shop_headers, "description")),
     })
 print(f"    {len(shop_table)} 条")
 
@@ -420,13 +445,14 @@ print(f"    {len(signin_table)} 条")
 
 print("  → 每日签到奖励")
 rows = read_sheet(SHEETS["累签表"], "每日签到奖励", "A1:B10")
+daily_headers = header_indexes(rows, ["item_ids", "item_quantities"], "每日签到奖励")
 daily_signin_rewards = []
 for row in rows[2:]:
-    if not row or not row[0]:
+    if not row or not row_value(row, daily_headers, "item_ids"):
         continue
     daily_signin_rewards.extend(parse_parallel_rewards(
-        row[0],
-        row[1] if len(row) > 1 else "",
+        row_value(row, daily_headers, "item_ids"),
+        row_value(row, daily_headers, "item_quantities"),
         "count",
     ))
 print(f"    {len(daily_signin_rewards)} 条")
@@ -602,6 +628,7 @@ function getShopItems() {{
       limitParam: s.limitParam || '',
       price: s.price || 0,
       note: s.note || '',
+      description: s.description || '',
       name: def ? def.name : ('道具' + s.itemId),
       icon: def ? (def.icon || '❓') : '❓',
       quality: def ? def.quality : 1,

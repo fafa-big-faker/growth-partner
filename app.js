@@ -217,11 +217,15 @@ function getTreeImage(treeLevel) {
   return 'assets/images/v2/trees/sprout.png';
 }
 
-const CULTIVATOR_IDLE_FRAMES = Array.from(
-  { length: 6 },
-  (_, index) => `assets/images/character/idle/frame-${String(index + 1).padStart(2, '0')}.png`,
-);
 const AXE_ANIMATION_IDS = ['51001', '51002', '52001', '52002', '53001', '53002', '54001', '54002', '55001'];
+
+function getAxeIdleFrames(itemId) {
+  const safeId = AXE_ANIMATION_IDS.includes(String(itemId)) ? String(itemId) : '51001';
+  return Array.from(
+    { length: 4 },
+    (_, index) => `assets/images/character/idle-axes/${safeId}/frame-${String(index + 1).padStart(2, '0')}.png`,
+  );
+}
 
 function getAxeChopFrames(itemId) {
   const safeId = AXE_ANIMATION_IDS.includes(String(itemId)) ? String(itemId) : '51001';
@@ -232,9 +236,10 @@ function getAxeChopFrames(itemId) {
 }
 
 const CultivatorAnimator = CharacterAnimator.createFrameAnimator({
-  idleFrames: [getAxeChopFrames('51001')[0]],
+  idleFrames: getAxeIdleFrames('51001'),
   chopFrames: getAxeChopFrames('51001'),
-  idleFrameMs: 190,
+  idleFrameMs: 180,
+  idlePauseMs: 2400,
   chopFrameMs: 90,
 });
 
@@ -251,8 +256,9 @@ function getAllGameImageAssets() {
       'status-pill', 'tab-active', 'tab-inactive'].map(name => `ui/${name}.png`),
   ].map(path => `${V2_IMAGE_ROOT}/${path}`);
   const configuredImages = (GAME_CONFIG?.itemTable || []).map(item => item.iconImage).filter(Boolean);
-  const axeFrames = AXE_ANIMATION_IDS.flatMap(getAxeChopFrames);
-  return AssetPreloader.collect([Object.values(ITEM_IMAGES), configuredImages, CULTIVATOR_IDLE_FRAMES, axeFrames, v2Files]);
+  const idleAxeFrames = AXE_ANIMATION_IDS.flatMap(getAxeIdleFrames);
+  const chopAxeFrames = AXE_ANIMATION_IDS.flatMap(getAxeChopFrames);
+  return AssetPreloader.collect([Object.values(ITEM_IMAGES), configuredImages, idleAxeFrames, chopAxeFrames, v2Files]);
 }
 
 // 仙阶表 → 从飞书表格配置合并生成（game-config.js）
@@ -1797,14 +1803,96 @@ const Game = {
       UI.toast('砍树次数不足10次', 'warn');
       return null;
     }
+
+    const previousState = {
+      choppingCount: this.state.choppingCount,
+      totalChops: this.state.totalChops || 0,
+      level: this.state.level,
+      exp: this.state.exp,
+      coin: this.state.coin || 0,
+      totalCoinEarned: this.state.totalCoinEarned || 0,
+    };
+    const previousInventory = this.inventory.map(item => ({ ...item }));
+    const inventoryGrants = new Map();
     const results = [];
-    for (let i = 0; i < 10; i++) {
-      const item = await this.chop();
-      if (item) {
-        results.push(item);
-        if (item.extraDrop) results.push(item.extraDrop);
+    const startingLevel = this.state.level;
+
+    const applyLocalGrant = drop => {
+      const itemId = String(drop.itemId);
+      const quantity = Math.max(1, Number(drop.quantity) || 1);
+      const def = ITEMS[itemId];
+      if (def?.type === 0) {
+        this.state.coin = (this.state.coin || 0) + quantity;
+        this.state.totalCoinEarned = (this.state.totalCoinEarned || 0) + quantity;
+        drop.kind = 'coin';
+      } else if (def?.type === 6) {
+        this.state.choppingCount += quantity;
+        drop.kind = 'chopping';
+      } else {
+        this._setInventoryQuantity(itemId, this._getItemQty(itemId) + quantity);
+        inventoryGrants.set(itemId, (inventoryGrants.get(itemId) || 0) + quantity);
+        drop.kind = 'item';
       }
+    };
+
+    for (let i = 0; i < 10; i++) {
+      this.state.choppingCount -= 1;
+      this.state.totalChops = (this.state.totalChops || 0) + 1;
+
+      const treeConfig = TREE_LEVELS[this.state.treeLevel] || TREE_LEVELS[1];
+      const item = this._applyAxeBuffs(this._rollDrop(treeConfig));
+      this.state.exp += 1;
+      while (this.state.exp >= getExpForLevel(this.state.level)) {
+        this.state.exp -= getExpForLevel(this.state.level);
+        this.state.level += 1;
+      }
+
+      const refund = this._checkRefundBuff();
+      if (refund > 0) item.refundChopping = refund;
+      applyLocalGrant(item);
+
+      if (GameplayRules.isBonusChop(this.state.totalChops)) {
+        const extraDrop = this._rollPackDrop(1001);
+        if (extraDrop) {
+          extraDrop.isExtra = true;
+          applyLocalGrant(extraDrop);
+          item.extraDrop = extraDrop;
+        }
+      }
+      results.push(item);
     }
+
+    const stateUpdates = {
+      choppingCount: this.state.choppingCount,
+      totalChops: this.state.totalChops,
+      level: this.state.level,
+      exp: this.state.exp,
+      coin: this.state.coin,
+      totalCoinEarned: this.state.totalCoinEarned,
+    };
+    const grantEntries = [...inventoryGrants.entries()];
+    const saveResults = await Promise.all([
+      DB.updatePlayerState(stateUpdates),
+      ...grantEntries.map(([itemId, quantity]) => DB.addItem(itemId, quantity)),
+    ]);
+
+    if (saveResults.some(saved => !saved)) {
+      const successfulGrants = grantEntries.filter((entry, index) => saveResults[index + 1]);
+      await Promise.all([
+        DB.updatePlayerState(previousState),
+        ...successfulGrants.map(([itemId, quantity]) => DB.removeItem(itemId, quantity)),
+      ]);
+      Object.assign(this.state, previousState);
+      this.inventory = previousInventory;
+      await this.refresh();
+      UI.toast('十连砍未完成，消耗与奖励已回退', 'error');
+      return null;
+    }
+
+    if (this.state.level > startingLevel) {
+      UI.toast(`恭喜！升级到 Lv.${this.state.level}`, 'success');
+    }
+    UI._updateCultivateStats();
     UI.updateHeader();
     return results;
   },
@@ -2261,7 +2349,7 @@ const PlayerView = {
       <!-- ① 场景区：人物 + 仙树 -->
       <div class="cult-scene" id="tree-area">
         <div class="cult-char">
-          <img id="cultivator-sprite" src="${getAxeChopFrames(Game.state.axeId)[0]}" class="char-img" alt="装备${axeDef.name}的修炼者" />
+          <img id="cultivator-sprite" src="${getAxeIdleFrames(Game.state.axeId)[0]}" class="char-img" alt="装备${axeDef.name}的修炼者" />
         </div>
         <div class="cult-tree" id="tree-icon" onclick="PlayerView.showTreeDetail()">
           <img src="${treeImg}" class="tree-img" alt="${treeConfig.name}" />
@@ -2287,8 +2375,8 @@ const PlayerView = {
       <div class="cult-inventory">
         <div class="inventory-grid" id="inventory-grid"></div>
         <div class="inv-tabs-v">
-          <div class="inv-tab-v active" data-tab="items" onclick="PlayerView.switchInvTab('items')">道具</div>
-          <div class="inv-tab-v" data-tab="weapons" onclick="PlayerView.switchInvTab('weapons')">武器</div>
+          <div class="inv-tab-v ${this.currentInvTab === 'items' ? 'active' : ''}" data-tab="items" onclick="PlayerView.switchInvTab('items')">道具</div>
+          <div class="inv-tab-v ${this.currentInvTab === 'weapons' ? 'active' : ''}" data-tab="weapons" onclick="PlayerView.switchInvTab('weapons')">武器</div>
         </div>
       </div>
 
@@ -2323,10 +2411,11 @@ const PlayerView = {
       </div>
     `;
 
+    const idleFrames = getAxeIdleFrames(Game.state.axeId);
     const axeFrames = getAxeChopFrames(Game.state.axeId);
-    CultivatorAnimator.setFrames({ idleFrames: [axeFrames[0]], chopFrames: axeFrames });
+    CultivatorAnimator.setFrames({ idleFrames: idleFrames, chopFrames: axeFrames });
     CultivatorAnimator.attach(document.getElementById('cultivator-sprite'));
-    this.renderInventory('items');
+    this.renderInventory(this.currentInvTab);
     UI._updateMailBadge();
   },
 
@@ -3209,9 +3298,12 @@ const PlayerView = {
   },
 
   _renderTaskCard(task, status, type) {
-    const rewardItems = task.rewardItems || [];
+    const dailyRewards = type === 'daily' ? getDailySignInRewards() : [];
+    const rewardItems = type === 'daily'
+      ? dailyRewards.map(dailyReward => ({ item_id: dailyReward.itemId, quantity: dailyReward.count }))
+      : (task.rewardItems || []);
     let rewardHtml = '';
-    if (task.rewardChopping > 0) {
+    if (type !== 'daily' && task.rewardChopping > 0) {
       rewardHtml += `<span class="reward-chopping" style="display:inline-flex;align-items:center;gap:3px">${renderItemIcon('1', '🪓', 'item-icon-xs')} ×${task.rewardChopping}</span>`;
     }
     rewardItems.forEach(ri => {
@@ -3320,12 +3412,14 @@ const PlayerView = {
       const def = first ? ITEMS[String(first.itemId)] : null;
       const icon = def ? renderItemIcon(first.itemId, def.icon, 'item-icon-xs') : '🎁';
       const count = first ? first.count : '';
-      const circleContent = claimed ? '✓' : icon;
       const click = claimable ? `onclick="PlayerView.claimSignIn(${r.rewardId},this)"` : '';
       nodes += `
         <div class="signin-node ${state}" ${click}>
-          <div class="node-reward">${icon}${count ? '×' + count : ''}</div>
-          <div class="node-circle">${circleContent}</div>
+          <div class="node-circle">
+            <span class="node-icon">${icon}</span>
+            ${count ? `<span class="node-amount">×${count}</span>` : ''}
+            ${claimed ? '<span class="node-claim-mark">✓</span>' : ''}
+          </div>
           <div class="node-day">${r.requiredDays}天</div>
         </div>
       `;
@@ -3711,12 +3805,19 @@ const PlayerView = {
 
       const afford = coin >= item.price;
       const countText = item.itemCount > 1 ? ` ×${item.itemCount}` : '';
+      const actionLabel = disabled
+        ? (limitType === SHOP_LIMIT_TYPE.MONTHLY ? '本月售罄' : '尚未解锁')
+        : (afford ? '兑换' : '余额不足');
       html += `
-        <div class="shop-item ${disabled ? 'shop-disabled' : ''}" ${disabled ? '' : `onclick="PlayerView.buyShopItem(${item.shopId},this)"`}>
+        <div class="shop-item ${disabled || !afford ? 'shop-disabled' : ''}">
           <div class="shop-badge-slot">${badge}</div>
           <div class="shop-icon" style="box-shadow:inset 0 0 0 2px ${qColor}66;border-radius:12px">${renderItemIcon(item.itemId, item.icon)}</div>
           <div class="shop-name">${item.name}${countText}</div>
-          <div class="shop-cost ${afford ? '' : 'shop-cost-no'}" style="display:inline-flex;align-items:center;gap:3px">${renderItemIcon('0', '🪙', 'item-icon-xs')} ${item.price}</div>
+          <div class="shop-description">${item.description || ''}</div>
+          <button class="shop-action ${afford ? '' : 'shop-cost-no'}" ${disabled || !afford ? 'disabled' : ''} onclick="PlayerView.buyShopItem(${item.shopId},this)">
+            <span>${renderItemIcon('0', '🪙', 'item-icon-xs')} ${item.price}</span>
+            <strong>${actionLabel}</strong>
+          </button>
         </div>
       `;
     });
@@ -4287,8 +4388,10 @@ const PlayerView = {
     const results = [];
     const scatterEls = [];
 
-    // 连砍期间保留砍树末帧，避免网络等待时插入待机动作。
+    // 先合并保存十次结果，再用独立时间轴播放，避免网络延迟破坏加速节奏。
     try {
+      const chops = await Game.chopTen();
+      if (!chops) return false;
       for (let i = 0; i < 10; i++) {
         const timing = TenChopTimeline.getStep(i);
         const characterAnimation = CultivatorAnimator.playChop({ resumeIdle: false, frameMs: timing.frameMs });
@@ -4298,7 +4401,7 @@ const PlayerView = {
           setTimeout(() => treeIcon && treeIcon.classList.remove('shaking'), 250);
         }
 
-        const item = await Game.chop();
+        const item = chops[i];
         await characterAnimation;
         if (item) {
           results.push(item);
@@ -4314,6 +4417,7 @@ const PlayerView = {
             }
           }
         }
+        await new Promise(resolve => setTimeout(resolve, timing.gapMs));
       }
     } finally {
       CultivatorAnimator.resumeIdle();

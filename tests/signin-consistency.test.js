@@ -7,6 +7,7 @@ const v6Path = path.join(__dirname, '..', 'upgrade_v6.sql');
 const v7Path = path.join(__dirname, '..', 'upgrade_v7.sql');
 const app = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
 const sync = fs.readFileSync(path.join(__dirname, '..', 'sync-config.py'), 'utf8');
+const styles = fs.readFileSync(path.join(__dirname, '..', 'styles.css'), 'utf8');
 
 test('v6 migration stores one dated sign-in per player and day', () => {
   assert.equal(fs.existsSync(v6Path), true);
@@ -49,7 +50,26 @@ test('client delegates configured sign-in rewards to the database RPC', () => {
 
 test('configuration sync reads the daily sign-in worksheet', () => {
   assert.match(sync, /"每日签到奖励",\s*"A1:B10"/);
+  assert.match(sync, /daily_headers\s*=\s*header_indexes/);
+  assert.match(sync, /"item_ids"/);
+  assert.match(sync, /"item_quantities"/);
   assert.match(sync, /daily_signin_rewards/);
   assert.match(sync, /dailySignInRewards:/);
   assert.match(sync, /function getDailySignInRewards\(\)/);
+});
+
+test('daily task card renders configured rewards instead of the legacy chopping reward', () => {
+  const render = app.match(/\n  _renderTaskCard\(task, status, type\)\s*\{[\s\S]*?\n  },/)?.[0] || '';
+  assert.match(render, /type === 'daily'[\s\S]*?getDailySignInRewards\(\)/);
+  assert.match(render, /dailyReward/);
+  assert.match(render, /type !== 'daily' && task\.rewardChopping > 0/);
+});
+
+test('cumulative sign-in milestones use one icon with separate amount and claim state', () => {
+  const render = app.match(/\n  _signInTimelineHtml\(\)\s*\{[\s\S]*?\n  },/)?.[0] || '';
+  assert.match(render, /node-amount/);
+  assert.match(render, /node-claim-mark/);
+  assert.doesNotMatch(render, /node-reward/);
+  assert.match(styles, /\.node-amount/);
+  assert.match(styles, /\.node-claim-mark/);
 });

@@ -25,12 +25,30 @@ test('ordinary and direct pack drops propagate configured quantities', () => {
 
 test('configuration sync reads parallel reward item counts', () => {
   assert.match(sync, /parse_parallel_rewards/);
+  assert.match(sync, /header_indexes/);
+  assert.match(sync, /pool_id/);
+  assert.match(sync, /pack_id/);
+  assert.match(sync, /item_ids/);
+  assert.match(sync, /item_quantities/);
   assert.match(sync, /"rewards":\s*rewards/);
   assert.match(sync, /"quantities":/);
   assert.match(sync, /"奖励包ID",\s*"A1:E30"/);
 });
 
+test('shop configuration exposes its player-facing description separately from notes', () => {
+  assert.match(sync, /"description":\s*to_str\(row_value\(row, shop_headers, "description"\)\)/);
+  assert.match(gameConfig, /shopTable:\s*\[[\s\S]*?"description":/);
+  assert.match(gameConfig, /function getShopItems\(\)[\s\S]*?description:\s*s\.description\s*\|\|\s*''/);
+});
+
 test('configured cash-out values preserve decimal amounts', () => {
   assert.match(gameConfig, /"interactionParams": "0\.5"/);
   assert.match(app, /entry\.value\s*=\s*parseFloat\(params\[0\]/);
+});
+
+test('ten-chop batches persistence before the visual timeline', () => {
+  const gameMethod = app.match(/\n  async chopTen\(\)\s*\{[\s\S]*?\n  },/)?.[0] || '';
+  assert.match(gameMethod, /Promise\.all/);
+  assert.match(gameMethod, /inventoryGrants/);
+  assert.doesNotMatch(gameMethod, /await this\.chop\(\)/);
 });

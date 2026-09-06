@@ -1,6 +1,6 @@
 // ===== 游戏配置文件（由 sync-config.py 从飞书表格自动生成）=====
 // 修改飞书表格后运行同步脚本即可更新，请勿手动编辑此文件
-// 最后同步: 2026-09-06 03:20:00
+// 最后同步: 2026-09-06 15:47:33
 
 const GAME_CONFIG = {
   // 角色等级经验表（共 150 条）
@@ -2387,7 +2387,8 @@ const GAME_CONFIG = {
     "limitType": 1,
     "limitParam": "",
     "price": 50,
-    "note": "购买消耗道具固定为游戏币"
+    "note": "购买消耗道具固定为游戏币",
+    "description": "可以拿来抽武器"
   },
   {
     "shopId": 2,
@@ -2396,7 +2397,8 @@ const GAME_CONFIG = {
     "limitType": 2,
     "limitParam": "10",
     "price": 188,
-    "note": ""
+    "note": "",
+    "description": "可以换点小钱"
   }
 ],
 
@@ -3222,6 +3224,7 @@ function getShopItems() {
       limitParam: s.limitParam || '',
       price: s.price || 0,
       note: s.note || '',
+      description: s.description || '',
       name: def ? def.name : ('道具' + s.itemId),
       icon: def ? (def.icon || '❓') : '❓',
       quality: def ? def.quality : 1,

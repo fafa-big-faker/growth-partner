@@ -43,6 +43,14 @@ test('same-id backpack axes remain equipable and sellable', () => {
   assert.match(sell, /if \(!removed\) return false/);
 });
 
+test('cultivate redraw preserves the selected inventory tab', () => {
+  const render = app.match(/async renderCultivate\(\)[\s\S]*?\n  },/)?.[0] || '';
+  assert.match(render, /currentInvTab === 'items'/);
+  assert.match(render, /currentInvTab === 'weapons'/);
+  assert.match(render, /renderInventory\(this\.currentInvTab\)/);
+  assert.doesNotMatch(render, /renderInventory\('items'\)/);
+});
+
 test('all high-risk resource entry points use stable operation keys', () => {
   const guardedKeys = [
     'cash:',

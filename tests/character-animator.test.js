@@ -123,3 +123,28 @@ test('frames can be replaced for the currently equipped weapon', async () => {
   assert.deepEqual(image.history.filter(src => src.startsWith('axe-')), ['axe-idle', 'axe-1', 'axe-2', 'axe-2']);
   animator.stop();
 });
+
+test('equipped weapon can replace the complete four-frame idle loop', async () => {
+  const animator = createFrameAnimator({
+    idleFrames: ['old-idle'],
+    chopFrames: ['old-chop'],
+    idleFrameMs: 2,
+    idlePauseMs: 4,
+  });
+  const image = trackedImage();
+  animator.attach(image);
+  animator.setFrames({
+    idleFrames: ['idle-axe-1', 'idle-axe-2', 'idle-axe-3', 'idle-axe-4'],
+    chopFrames: ['chop-axe-1'],
+  });
+
+  try {
+    assert.equal(image.src, 'idle-axe-1');
+    await new Promise(resolve => setTimeout(resolve, 80));
+    assert.ok(image.history.includes('idle-axe-2'));
+    assert.ok(image.history.includes('idle-axe-3'));
+    assert.ok(image.history.includes('idle-axe-4'));
+  } finally {
+    animator.stop();
+  }
+});

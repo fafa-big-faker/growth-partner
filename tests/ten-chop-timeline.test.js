@@ -13,4 +13,6 @@ test('ten chop accelerates linearly from one to three times speed', () => {
   assert.equal(last.frameMs, 30);
   assert.equal(first.dropMs, 600);
   assert.equal(last.dropMs, 200);
+  assert.equal(first.gapMs, 120);
+  assert.equal(last.gapMs, 40);
 });

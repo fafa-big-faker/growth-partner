@@ -22,8 +22,19 @@ config-backup/
 
 # AI 美术生成中间文件（最终素材会复制到 assets/images/v2）
 tmp/imagegen/
-output/imagegen/
+output/
 
 # Python bytecode
 __pycache__/
 *.pyc
+
+# 本地凭据（绝不提交）
+apikey
+apikey.*
+.env
+.env.*
+!.env.example
+*.pem
+*.p12
+credentials.json
+service-account*.json

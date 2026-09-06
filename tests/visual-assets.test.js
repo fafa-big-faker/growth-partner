@@ -45,3 +45,19 @@ test('player pages consume v2 backgrounds, trees, navigation, and inventory fram
   }
   assert.match(styles, /\.item-slot\s*\{[\s\S]*?aspect-ratio:\s*1/);
 });
+
+test('shop cards expose descriptions and use a dedicated purchase footer', () => {
+  const render = app.match(/\n  _renderShop\(\)\s*\{[\s\S]*?\n  },/)?.[0] || '';
+  assert.match(render, /item\.description/);
+  assert.match(render, /shop-description/);
+  assert.match(render, /shop-action/);
+  assert.match(styles, /\.shop-description/);
+  assert.match(styles, /\.shop-action/);
+});
+
+test('login submit has hover, press, keyboard focus, and disabled feedback', () => {
+  assert.match(styles, /\.login-submit:hover:not\(:disabled\)/);
+  assert.match(styles, /\.login-submit:active:not\(:disabled\)/);
+  assert.match(styles, /\.login-submit:focus-visible/);
+  assert.match(styles, /\.login-submit:disabled/);
+});
