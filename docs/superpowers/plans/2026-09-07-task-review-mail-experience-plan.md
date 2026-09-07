@@ -242,6 +242,6 @@ Expected: all tests and syntax checks pass with no diff errors.
 
 Exclude the untracked `supabase/` CLI directory. Inspect for credentials and unrelated changes, then commit the implementation and completed plan.
 
-- [ ] **Step 4: Push and verify deployment**
+- [x] **Step 4: Push and verify deployment**
 
 Push `main`, confirm `origin/main` matches local `HEAD`, and verify the GitHub Pages workflow completes successfully. Do not perform browser visual acceptance.
