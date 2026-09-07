@@ -8,7 +8,7 @@ const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
 const css = fs.readFileSync(path.join(__dirname, '..', 'styles.css'), 'utf8');
 
 test('novelty module loads before app and game syncs successful inventory changes', () => {
-  assert.match(html, /<script src="inventory-novelty\.js"><\/script>[\s\S]*<script src="app\.js"><\/script>/);
+  assert.match(html, /<script src="inventory-novelty\.js"><\/script>[\s\S]*<script src="app\.js(?:\?[^\"]+)?"><\/script>/);
   assert.match(app, /const InventoryNewState = InventoryNovelty\.create/);
   assert.match(app, /_syncInventoryNovelty\(\)/);
 

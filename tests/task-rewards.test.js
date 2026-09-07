@@ -42,7 +42,7 @@ test('invalid or empty task rewards produce no entries', () => {
 });
 
 test('fixed and self-submitted cards share reward rendering', () => {
-  assert.match(html, /<script src="task-rewards\.js"><\/script>[\s\S]*<script src="app\.js"><\/script>/);
+  assert.match(html, /<script src="task-rewards\.js"><\/script>[\s\S]*<script src="app\.js(?:\?[^\"]+)?"><\/script>/);
   assert.match(app, /function renderTaskRewardChips\(/);
   assert.match(app, /_renderTaskCard[\s\S]*renderTaskRewardChips\(rewardSource/);
   assert.match(app, /_renderSelfSubCard[\s\S]*renderTaskRewardChips\(sub/);

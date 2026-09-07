@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const root = path.join(__dirname, '..');
+const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const app = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
 const styles = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
 
@@ -17,7 +18,12 @@ test('cultivation action uses the ink button and a digits-only count', () => {
   assert.match(styles, /@keyframes chop-axe-strike/);
   assert.match(styles, /@keyframes chop-ink-ripple/);
   assert.match(app, /classList\.add\('is-striking'\)/);
-  assert.match(styles, /\.chop-circle-btn\.is-striking \.chop-axe-icon/);
+  assert.match(styles, /\.chop-circle-btn:hover:not\(:disabled\):not\(\.is-striking\) \.chop-axe-img/);
+  assert.match(styles, /\.chop-circle-btn\.is-striking \.chop-axe-img/);
+  assert.match(styles, /\.chop-circle-btn\.is-striking \.chop-ink-ripple/);
+  assert.match(styles, /@media \(prefers-reduced-motion: reduce\) \{\s*\.tree-upgrade-hint \{\s*animation: none;\s*\}\s*\}\s*$/);
+  assert.match(html, /styles\.css\?v=cc7329f-motion-fix/);
+  assert.match(html, /app\.js\?v=cc7329f-motion-fix/);
 });
 
 test('tree hint and forge entrance stay contextual and uncluttered', () => {

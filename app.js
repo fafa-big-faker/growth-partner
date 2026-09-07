@@ -3365,7 +3365,7 @@ const PlayerView = {
     button.classList.remove('is-striking');
     void button.offsetWidth;
     button.classList.add('is-striking');
-    setTimeout(() => button.classList.remove('is-striking'), 430);
+    setTimeout(() => button.classList.remove('is-striking'), 560);
   },
 
   async doChop() {
