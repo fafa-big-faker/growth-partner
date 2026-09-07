@@ -1,0 +1,142 @@
+{
+  "backgrounds": {
+    "login": {
+      "path": "assets/runtime/v3/backgrounds/login.webp",
+      "size": [
+        1448,
+        1086
+      ]
+    }
+  },
+  "ui": {
+    "logo": {
+      "path": "assets/runtime/v3/ui/logo.webp",
+      "size": [
+        949,
+        512
+      ]
+    },
+    "frame-topbar": {
+      "path": "assets/runtime/v3/ui/frame-topbar.webp",
+      "size": [
+        692,
+        86
+      ],
+      "slice": [
+        16,
+        48,
+        16,
+        48
+      ]
+    },
+    "frame-status": {
+      "path": "assets/runtime/v3/ui/frame-status.webp",
+      "size": [
+        668,
+        129
+      ],
+      "slice": [
+        30,
+        48,
+        30,
+        48
+      ]
+    },
+    "frame-inventory": {
+      "path": "assets/runtime/v3/ui/frame-inventory.webp",
+      "size": [
+        665,
+        360
+      ],
+      "slice": [
+        52,
+        56,
+        52,
+        56
+      ]
+    },
+    "frame-equip": {
+      "path": "assets/runtime/v3/ui/frame-equip.webp",
+      "size": [
+        660,
+        185
+      ],
+      "slice": [
+        38,
+        58,
+        38,
+        58
+      ]
+    },
+    "frame-nav": {
+      "path": "assets/runtime/v3/ui/frame-nav.webp",
+      "size": [
+        684,
+        116
+      ],
+      "slice": [
+        28,
+        48,
+        18,
+        48
+      ]
+    },
+    "button-primary": {
+      "path": "assets/runtime/v3/ui/button-primary.webp",
+      "size": [
+        536,
+        159
+      ],
+      "slice": [
+        36,
+        48,
+        36,
+        48
+      ]
+    }
+  },
+  "icons": {
+    "icon-cultivate": {
+      "path": "assets/runtime/v3/icons/icon-cultivate.webp",
+      "size": [
+        160,
+        160
+      ]
+    },
+    "icon-tasks": {
+      "path": "assets/runtime/v3/icons/icon-tasks.webp",
+      "size": [
+        160,
+        160
+      ]
+    },
+    "icon-shop": {
+      "path": "assets/runtime/v3/icons/icon-shop.webp",
+      "size": [
+        160,
+        160
+      ]
+    },
+    "icon-mail": {
+      "path": "assets/runtime/v3/icons/icon-mail.webp",
+      "size": [
+        160,
+        160
+      ]
+    },
+    "icon-achievement": {
+      "path": "assets/runtime/v3/icons/icon-achievement.webp",
+      "size": [
+        160,
+        160
+      ]
+    },
+    "icon-sound": {
+      "path": "assets/runtime/v3/icons/icon-sound.webp",
+      "size": [
+        160,
+        160
+      ]
+    }
+  }
+}

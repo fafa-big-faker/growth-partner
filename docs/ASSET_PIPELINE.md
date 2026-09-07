@@ -154,3 +154,15 @@ node scripts\normalize_audio.js
 - 运行资源为 WebP，90 帧角色合计小于 4 MiB，全部运行图片合计小于 7 MiB。
 
 除非用户明确要求，不执行浏览器视觉验收；脚本和自动测试仍必须完成。
+
+## 9. 仙来 V3 水墨资源
+
+- 原图目录：仓库同级 `美术风格参考V３`，末位为全角数字。包含独立logo、无字登录背景、2列3行框图集、3列2行功能图标图集。
+- 导入：`python scripts/import_xianlai_art.py`，再执行 `python scripts/build_runtime_images.py`。
+- 输出在 `assets/images/v3` 与 `assets/runtime/v3`；原始四图不覆盖。清除透明区噪点和绿边，不按去黑算法损伤墨色笔画。
+- 本次14张运行图片合计443,002字节。功能图标160x160；logo949x512；界面框保留536至692px原生宽，不能套用V2的256px上限。
+- `source-manifest.json`记录原始文件指纹和切片尺寸；运行manifest记录输出尺寸及九宫格上/右/下/左slice。换图后核对slice，不能盲目沿用旧切片。
+- `xianlai-ui.css`绘制点击穿透的九宫格背景，保持现有布局占位；`login-art.css/js`负责独立登录排布和轻水墨动效。不把临时示意加入正式页面。
+- `getFeatureIconPath()`统一解析新旧图标；首屏预加载必须包含所有使用中的V3素材。声音只切换状态类和辅助标签，不再用textContent覆盖图标图片。
+- LoginArt跟随实际加载进度、不增加人为等待；后台、离屏和离开登录页时停动画，减少动态模式使用静态显示。登录失败后，旧预加载回调不得再隐藏恢复的表单。
+- 回归执行 `python tests/xianlai-art-assets.test.py`，连同既有图片规格/锚点测试；无账号自动检查含360/390/1440和844x390横屏，不做额外视觉验收。

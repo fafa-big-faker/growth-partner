@@ -1,0 +1,162 @@
+{
+  "sources": {
+    "logo": {
+      "file": "仙来-logo.png",
+      "sha256": "61b08e9a726867d405283e34f9ded470d1d521f2bd6967bf885f1900ab691f74"
+    },
+    "frames": {
+      "file": "仙来-界面框图集.png",
+      "sha256": "759ef5d7bc82c6aa5e2fc87fb684bce8c66ac2bb17cf64f7e047b938aadc5ea6"
+    },
+    "icons": {
+      "file": "仙来-功能图标图集.png",
+      "sha256": "a71db2308a7e10313ebfcf7ca7ed12218db6515d018eed91c59df31487501be3"
+    },
+    "login": {
+      "file": "仙来-登录背景.png",
+      "sha256": "9b13b580d44d6c110603a08d5b1f44b7e615a00860f2856c1089050d00842cd0"
+    }
+  },
+  "assets": {
+    "backgrounds": {
+      "login": {
+        "path": "assets/images/v3/backgrounds/login.png",
+        "size": [
+          1448,
+          1086
+        ]
+      }
+    },
+    "ui": {
+      "logo": {
+        "path": "assets/images/v3/ui/logo.png",
+        "size": [
+          1327,
+          716
+        ]
+      },
+      "frame-topbar": {
+        "path": "assets/images/v3/ui/frame-topbar.png",
+        "size": [
+          692,
+          86
+        ],
+        "slice": [
+          16,
+          48,
+          16,
+          48
+        ]
+      },
+      "frame-status": {
+        "path": "assets/images/v3/ui/frame-status.png",
+        "size": [
+          668,
+          129
+        ],
+        "slice": [
+          30,
+          48,
+          30,
+          48
+        ]
+      },
+      "frame-inventory": {
+        "path": "assets/images/v3/ui/frame-inventory.png",
+        "size": [
+          665,
+          360
+        ],
+        "slice": [
+          52,
+          56,
+          52,
+          56
+        ]
+      },
+      "frame-equip": {
+        "path": "assets/images/v3/ui/frame-equip.png",
+        "size": [
+          660,
+          185
+        ],
+        "slice": [
+          38,
+          58,
+          38,
+          58
+        ]
+      },
+      "frame-nav": {
+        "path": "assets/images/v3/ui/frame-nav.png",
+        "size": [
+          684,
+          116
+        ],
+        "slice": [
+          28,
+          48,
+          18,
+          48
+        ]
+      },
+      "button-primary": {
+        "path": "assets/images/v3/ui/button-primary.png",
+        "size": [
+          536,
+          159
+        ],
+        "slice": [
+          36,
+          48,
+          36,
+          48
+        ]
+      }
+    },
+    "icons": {
+      "icon-cultivate": {
+        "path": "assets/images/v3/icons/icon-cultivate.png",
+        "size": [
+          514,
+          514
+        ]
+      },
+      "icon-tasks": {
+        "path": "assets/images/v3/icons/icon-tasks.png",
+        "size": [
+          456,
+          456
+        ]
+      },
+      "icon-shop": {
+        "path": "assets/images/v3/icons/icon-shop.png",
+        "size": [
+          481,
+          481
+        ]
+      },
+      "icon-mail": {
+        "path": "assets/images/v3/icons/icon-mail.png",
+        "size": [
+          459,
+          459
+        ]
+      },
+      "icon-achievement": {
+        "path": "assets/images/v3/icons/icon-achievement.png",
+        "size": [
+          457,
+          457
+        ]
+      },
+      "icon-sound": {
+        "path": "assets/images/v3/icons/icon-sound.png",
+        "size": [
+          452,
+          452
+        ]
+      }
+    }
+  }
+}

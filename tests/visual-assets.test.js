@@ -31,9 +31,9 @@ test('visual manifest exposes every player-facing asset group', () => {
 });
 
 test('player pages consume optimized runtime backgrounds, trees, navigation, and inventory frames', () => {
-  assert.match(html, /assets\/runtime\/v2\/icons\/icon-cultivate\.webp/);
-  assert.match(html, /assets\/runtime\/v2\/icons\/icon-tasks\.webp/);
-  assert.match(html, /assets\/runtime\/v2\/icons\/icon-reward\.webp/);
+  assert.match(html, /assets\/runtime\/v3\/icons\/icon-cultivate\.webp/);
+  assert.match(html, /assets\/runtime\/v3\/icons\/icon-tasks\.webp/);
+  assert.match(html, /assets\/runtime\/v3\/icons\/icon-shop\.webp/);
 
   assert.match(app, /\/trees\/sprout\.webp/);
   assert.match(app, /\/trees\/spirit\.webp/);

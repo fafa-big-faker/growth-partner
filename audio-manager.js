@@ -70,8 +70,6 @@
         control.setAttribute('aria-pressed', String(muted));
         control.setAttribute('aria-label', muted ? '开启声音' : '关闭声音');
         control.setAttribute('title', muted ? '开启声音' : '关闭声音');
-        const icon = control.querySelector?.('.audio-toggle-icon');
-        if (icon) icon.textContent = muted ? '🔇' : '🔊';
       });
     }
 

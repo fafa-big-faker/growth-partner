@@ -1,0 +1,180 @@
+/* Artwork is painted behind existing controls without changing their layout. */
+.audio-toggle-icon {
+  position: relative;
+  width: 28px;
+  height: 28px;
+  pointer-events: none;
+}
+
+.audio-toggle-image { display: block; width: 100%; height: 100%; object-fit: contain; }
+.audio-toggle.is-muted .audio-toggle-image { opacity: .55; }
+.audio-toggle.is-muted .audio-toggle-icon::after {
+  content: '';
+  position: absolute;
+  width: 30px;
+  height: 2px;
+  top: 13px;
+  left: -1px;
+  background: #a4483c;
+  transform: rotate(-45deg);
+}
+
+#player-dashboard .cult-topbar,
+#player-dashboard .cult-status,
+#player-dashboard .cult-inventory,
+#player-dashboard .equip-info-bar {
+  position: relative;
+  isolation: isolate;
+  background: transparent;
+  border-color: transparent;
+  border-radius: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+#player-dashboard .bottom-nav {
+  isolation: isolate;
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+#player-dashboard .cult-topbar {
+  --xianlai-frame: url('assets/runtime/v3/ui/frame-topbar.webp');
+  --xianlai-slice: 16 48 16 48;
+  --xianlai-border: 8px 24px;
+}
+
+#player-dashboard .cult-status {
+  --xianlai-frame: url('assets/runtime/v3/ui/frame-status.webp');
+  --xianlai-slice: 30 48 30 48;
+  --xianlai-border: 12px 24px;
+}
+
+#player-dashboard .cult-inventory {
+  --xianlai-frame: url('assets/runtime/v3/ui/frame-inventory.webp');
+  --xianlai-slice: 52 56 52 56;
+  --xianlai-border: 20px 24px;
+}
+
+#player-dashboard .equip-info-bar {
+  --xianlai-frame: url('assets/runtime/v3/ui/frame-equip.webp');
+  --xianlai-slice: 38 58 38 58;
+  --xianlai-border: 16px 24px;
+}
+
+#player-dashboard .bottom-nav {
+  --xianlai-frame: url('assets/runtime/v3/ui/frame-nav.webp');
+  --xianlai-slice: 28 48 18 48;
+  --xianlai-border: 14px 24px 10px;
+}
+
+#player-dashboard .cult-topbar::before,
+#player-dashboard .cult-status::before,
+#player-dashboard .cult-inventory::before,
+#player-dashboard .equip-info-bar::before,
+#player-dashboard .bottom-nav::before {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  z-index: -1;
+  border: 0 solid transparent;
+  border-image-source: var(--xianlai-frame);
+  border-image-slice: var(--xianlai-slice) fill;
+  border-image-width: var(--xianlai-border);
+  border-image-repeat: stretch;
+  pointer-events: none;
+}
+
+#player-dashboard .cult-inventory::before { inset: -5px; }
+#player-dashboard .bottom-nav::before { inset: 0; }
+
+#player-dashboard .cult-topbar .status-mail,
+#player-dashboard .cult-topbar .audio-toggle,
+#player-dashboard .cult-topbar .res-pill {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  color: #344b42;
+}
+
+#player-dashboard .inv-tab-v {
+  background: transparent;
+  box-shadow: none;
+  text-shadow: none;
+  color: #586e61;
+}
+
+#player-dashboard .inv-tab-v.active {
+  background: rgba(59, 98, 74, 0.1);
+  box-shadow: inset -2px 0 #63816b;
+  color: #294b37;
+}
+
+#player-dashboard .inv-tab-v:hover:not(.active) {
+  background: rgba(59, 98, 74, 0.06);
+  color: #294b37;
+}
+
+#player-dashboard .cult-status .btn-accent {
+  position: relative;
+  isolation: isolate;
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  color: #294738;
+}
+
+#player-dashboard .cult-status .btn-accent::before {
+  content: '';
+  position: absolute;
+  inset: -1px -2px;
+  z-index: -1;
+  border: 0 solid transparent;
+  border-image: url('assets/runtime/v3/ui/button-primary.webp') 36 48 36 48 fill / 12px 16px / 0 stretch;
+  pointer-events: none;
+}
+
+#player-dashboard .nav-item .nav-icon-img {
+  width: 32px;
+  height: 32px;
+  opacity: 0.82;
+  filter: saturate(0.88);
+  transform: none;
+  transform-origin: center;
+  transition: transform 180ms ease-out, opacity 180ms ease-out, filter 180ms ease-out;
+}
+
+#player-dashboard .nav-item .nav-text { color: #5b6e62; }
+
+#player-dashboard .nav-item.active .nav-icon-img {
+  opacity: 1;
+  filter: saturate(1.08) drop-shadow(0 1px 2px rgba(40, 65, 46, 0.16));
+  transform: translateY(-2px) scale(1.06);
+}
+
+#player-dashboard .nav-item.active .nav-text { color: #294734; }
+
+@media (hover: hover) and (pointer: fine) {
+  #player-dashboard .nav-item:hover .nav-icon-img {
+    opacity: 1;
+    filter: saturate(1.08);
+    transform: translateY(-2px) rotate(-3deg) scale(1.06);
+  }
+}
+
+#player-dashboard .nav-item:active .nav-icon-img {
+  opacity: 1;
+  transform: translateY(1px) scale(0.96);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #player-dashboard .nav-item .nav-icon-img,
+  #player-dashboard .nav-item.active .nav-icon-img,
+  #player-dashboard .nav-item:hover .nav-icon-img,
+  #player-dashboard .nav-item:active .nav-icon-img {
+    transform: none;
+    transition: none;
+  }
+}

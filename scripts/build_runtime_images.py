@@ -25,6 +25,7 @@ GROUP_LIMITS = {
     "effects": (160, 160),
 }
 IMAGE_SUFFIXES = {".png", ".webp", ".jpg", ".jpeg"}
+V3_GROUP_LIMITS = {"backgrounds": (1600, 1200), "ui": (960, 512), "icons": (160, 160)}
 
 
 def save_webp(image: Image.Image, destination: Path, quality: int) -> None:
@@ -96,14 +97,44 @@ def mib(byte_count: int) -> float:
     return byte_count / (1024 * 1024)
 
 
+def build_v3_assets() -> tuple[dict, int, int, int]:
+    source_manifest = SOURCE_ROOT / "v3/source-manifest.json"
+    if not source_manifest.exists():
+        return {}, 0, 0, 0
+    specs = json.loads(source_manifest.read_text(encoding="utf-8"))["assets"]
+    manifest = {}
+    count = source_bytes = runtime_bytes = 0
+    for group, assets in specs.items():
+        manifest[group] = {}
+        for name, spec in assets.items():
+            source = ROOT / spec["path"]
+            destination = RUNTIME_ROOT / "v3" / group / f"{name}.webp"
+            with Image.open(source) as image:
+                optimized = fit_within(image, V3_GROUP_LIMITS[group])
+                save_webp(optimized, destination, quality=86 if group == "backgrounds" else 92)
+                runtime_spec = {"path": destination.relative_to(ROOT).as_posix(), "size": list(optimized.size)}
+                if "slice" in spec:
+                    scale = optimized.width / image.width
+                    runtime_spec["slice"] = [round(value * scale) for value in spec["slice"]]
+                manifest[group][name] = runtime_spec
+            source_bytes += source.stat().st_size
+            runtime_bytes += destination.stat().st_size
+            count += 1
+    destination = RUNTIME_ROOT / "v3/manifest.json"
+    destination.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    return manifest, count, source_bytes, runtime_bytes
+
+
 def main() -> None:
     character_count, character_source, character_runtime = build_character_frames()
     _, v2_count, v2_source, v2_runtime = build_v2_assets()
-    source_total = character_source + v2_source
-    runtime_total = character_runtime + v2_runtime
+    _, v3_count, v3_source, v3_runtime = build_v3_assets()
+    source_total = character_source + v2_source + v3_source
+    runtime_total = character_runtime + v2_runtime + v3_runtime
     reduction = 100 * (1 - runtime_total / source_total) if source_total else 0
     print(f"Character frames: {character_count} ({mib(character_source):.2f} MiB -> {mib(character_runtime):.2f} MiB)")
     print(f"V2 assets: {v2_count} ({mib(v2_source):.2f} MiB -> {mib(v2_runtime):.2f} MiB)")
+    print(f"V3 assets: {v3_count} ({mib(v3_source):.2f} MiB -> {mib(v3_runtime):.2f} MiB)")
     print(f"Total: {mib(source_total):.2f} MiB -> {mib(runtime_total):.2f} MiB ({reduction:.1f}% smaller)")
 
 

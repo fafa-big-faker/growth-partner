@@ -3,8 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>寻道大千 · 社交修仙</title>
-  <link rel="icon" href="assets/runtime/v2/icons/icon-cultivate.webp">
+  <title>仙来 · 社交修仙</title>
+  <link rel="icon" href="assets/runtime/v3/icons/icon-cultivate.webp">
+  <link rel="preload" as="image" href="assets/runtime/v3/backgrounds/login.webp" fetchpriority="high">
+  <link rel="preload" as="image" href="assets/runtime/v3/ui/logo.webp" fetchpriority="high">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700;900&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -12,13 +14,20 @@
     window.SUPABASE_URL = 'https://fczkdiakiykcgctrffur.supabase.co';
     window.SUPABASE_KEY = 'sb_publishable_ZBRpp9ITVRY0Ipj2haU09Q_fAB6S-hg';
   </script>
-  <link rel="stylesheet" href="styles.css?v=cult-hit-layout-20260908">
+  <link rel="stylesheet" href="styles.css?v=xianlai-art-v3-20260908">
+  <link rel="stylesheet" href="xianlai-ui.css?v=xianlai-art-v3-20260908">
+  <link rel="stylesheet" href="login-art.css?v=xianlai-art-v3-20260908">
 </head>
 <body>
   <!-- 登录页 -->
   <div id="login-screen">
-    <div class="login-bg"></div>
+    <canvas id="login-ink-canvas" width="960" height="720" aria-hidden="true"></canvas>
     <main class="login-shell">
+      <h1 class="login-brand">
+        <img id="login-brand-image" src="assets/runtime/v3/ui/logo.webp" width="949" height="512" alt="仙来" fetchpriority="high">
+        <span id="login-brand-fallback" hidden>仙来</span>
+      </h1>
+      <div class="login-access">
       <form class="login-card" id="login-form-panel" method="post" autocomplete="on" onsubmit="event.preventDefault()">
       <input type="text" class="login-role-username" id="login-username" name="username" value="player" autocomplete="username" aria-label="登录身份" tabindex="-1" readonly>
       <div class="role-select">
@@ -32,13 +41,14 @@
       <div class="login-input-wrap">
         <input type="password" id="login-password" name="password" aria-label="道号密码" placeholder="请输入道号密码" autocomplete="current-password" required>
       </div>
-      <button type="submit" class="login-submit" id="login-submit">开始游戏</button>
+      <button type="submit" class="login-submit" id="login-submit"><span id="login-button-ink" aria-hidden="true"></span>开始游戏</button>
       </form>
       <section class="login-loading" id="login-loading" hidden aria-live="polite">
-        <div class="loading-track"><span id="login-loading-bar"></span></div>
+        <div class="loading-track" id="login-loading-track" role="progressbar" aria-label="入道进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span id="login-loading-bar"></span></div>
         <div class="loading-copy">入道中<span class="loading-dots"><i></i><i></i><i></i></span></div>
         <div class="loading-percent" id="login-loading-percent">0%</div>
       </section>
+      </div>
     </main>
   </div>
 
@@ -48,15 +58,15 @@
 
     <nav class="bottom-nav">
       <div class="nav-item active" data-tab="cultivate" onclick="Router.playerTab('cultivate')">
-        <div class="nav-icon"><img class="nav-icon-img" src="assets/runtime/v2/icons/icon-cultivate.webp" alt="" /></div>
+        <div class="nav-icon"><img class="nav-icon-img" src="assets/runtime/v3/icons/icon-cultivate.webp" alt="" /></div>
         <div class="nav-text">修仙</div>
       </div>
       <div class="nav-item" data-tab="tasks" onclick="Router.playerTab('tasks')">
-        <div class="nav-icon"><img class="nav-icon-img" src="assets/runtime/v2/icons/icon-tasks.webp" alt="" /></div>
+        <div class="nav-icon"><img class="nav-icon-img" src="assets/runtime/v3/icons/icon-tasks.webp" alt="" /></div>
         <div class="nav-text">任务</div>
       </div>
       <div class="nav-item" data-tab="reward" onclick="Router.playerTab('reward')">
-        <div class="nav-icon"><img class="nav-icon-img" src="assets/runtime/v2/icons/icon-reward.webp" alt="" /></div>
+        <div class="nav-icon"><img class="nav-icon-img" src="assets/runtime/v3/icons/icon-shop.webp" alt="" /></div>
         <div class="nav-text">天道酬勤</div>
       </div>
       <div class="nav-item admin-only" data-tab="admin" onclick="Router.playerTab('admin')" style="display:none">
@@ -80,7 +90,7 @@
       </div>
       <div class="header-right">
         <button type="button" class="audio-toggle" aria-label="关闭声音" aria-pressed="false" title="关闭声音">
-          <span class="audio-toggle-icon" aria-hidden="true">🔊</span>
+          <span class="audio-toggle-icon" aria-hidden="true"><img class="audio-toggle-image" src="assets/runtime/v3/icons/icon-sound.webp" alt="" /></span>
         </button>
         <button class="btn btn-ghost btn-sm" onclick="Auth.logout()">退出</button>
       </div>
@@ -88,11 +98,11 @@
     <main class="app-main" id="admin-main"></main>
     <nav class="bottom-nav">
       <div class="nav-item active" data-tab="task-manage" onclick="Router.adminTab('task-manage')">
-        <div class="nav-icon"><img class="nav-icon-img" src="assets/runtime/v2/icons/icon-tasks.webp" alt="" /></div>
+        <div class="nav-icon"><img class="nav-icon-img" src="assets/runtime/v3/icons/icon-tasks.webp" alt="" /></div>
         <div class="nav-text">任务管理</div>
       </div>
       <div class="nav-item" data-tab="review" onclick="Router.adminTab('review')">
-        <div class="nav-icon"><img class="nav-icon-img" src="assets/runtime/v2/icons/icon-achievement.webp" alt="" /></div>
+        <div class="nav-icon"><img class="nav-icon-img" src="assets/runtime/v3/icons/icon-achievement.webp" alt="" /></div>
         <div class="nav-text">审核</div>
       </div>
       <div class="nav-item" data-tab="withdraw" onclick="Router.adminTab('withdraw')">
@@ -100,7 +110,7 @@
         <div class="nav-text">提现审批</div>
       </div>
       <div class="nav-item" data-tab="player-view" onclick="Router.adminTab('player-view')">
-        <div class="nav-icon"><img class="nav-icon-img" src="assets/runtime/v2/icons/icon-cultivate.webp" alt="" /></div>
+        <div class="nav-icon"><img class="nav-icon-img" src="assets/runtime/v3/icons/icon-cultivate.webp" alt="" /></div>
         <div class="nav-text">查看玩家</div>
       </div>
       <div class="nav-item" data-tab="gm" onclick="Router.adminTab('gm')">
@@ -127,9 +137,10 @@
   <script src="asset-preloader.js"></script>
   <script src="character-animator.js"></script>
   <script src="cultivation-effects.js"></script>
-  <script src="audio-manager.js"></script>
+  <script src="audio-manager.js?v=xianlai-art-v3-20260908"></script>
+  <script src="login-art.js?v=xianlai-art-v3-20260908"></script>
   <script src="player-data-cache.js"></script>
   <script src="inventory-novelty.js"></script>
-  <script src="app.js?v=cult-hit-layout-20260908"></script>
+  <script src="app.js?v=xianlai-art-v3-20260908"></script>
 </body>
 </html>

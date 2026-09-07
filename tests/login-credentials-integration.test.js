@@ -16,6 +16,7 @@ function setup(verify = async () => ({ playerRole: 'fixture-player' })) {
   const saved = [];
   const toast = [];
   const routed = [];
+  const artCalls = [];
   const scope = {
     document: { getElementById: getElement, querySelectorAll: () => [] },
     AccountSession: { verify },
@@ -23,6 +24,11 @@ function setup(verify = async () => ({ playerRole: 'fixture-player' })) {
     DB: { setPlayerRole() {} },
     PlayerView: { clearDataCaches() {} },
     AudioManager: { playBgm() {}, pauseBgm() {}, async preload() {} },
+    CultivatorAnimator: { stop() {} },
+    LoginArt: {
+      setLoading: (...args) => artCalls.push(['loading', ...args]),
+      setVisible: (...args) => artCalls.push(['visible', ...args]),
+    },
     Game: { state: null, inventory: [], async init() { this.state = { axeId: 'fixture-axe' }; } },
     getInitialGameImageAssets: () => [],
     AssetPreloader: { async preload() {} },
@@ -33,10 +39,11 @@ function setup(verify = async () => ({ playerRole: 'fixture-player' })) {
   vm.runInNewContext(`${authSource}\nglobalThis.auth = Auth;`, scope);
   const auth = scope.auth;
   auth._credentials = {
+    clear() {},
     readPassword: () => 'fixture-password',
     saveVerified: (...args) => saved.push(args),
   };
-  return { auth, saved, toast, routed, scope, getElement };
+  return { auth, saved, toast, routed, artCalls, scope, getElement };
 }
 
 test('successful login saves the verified role only after initialization', async () => {
@@ -80,6 +87,56 @@ test('verification is locked before its first await and role cannot change mid-l
   finish({ playerRole: 'fixture-player' });
   await Promise.all([first, second]);
   assert.equal(state.saved.length, 1);
+});
+
+test('Auth forwards actual combined asset progress to LoginArt without writing a competing bar width', async () => {
+  const state = setup();
+  state.scope.AssetPreloader.preload = async (_, progress) => progress({ percent: 40 });
+  state.scope.preloadAxeAnimation = async (_, progress) => progress({ percent: 60 });
+  await state.auth.doLogin();
+  assert.deepEqual(state.artCalls, [
+    ['loading', true, 0], ['loading', true, 34], ['loading', true, 94], ['visible', false],
+  ]);
+  assert.equal(state.getElement('login-loading-bar').style.width, undefined);
+});
+
+test('both role dashboards stop login effects on entry and restore them on logout', async () => {
+  for (const role of ['player', 'admin']) {
+    const state = setup();
+    state.auth.currentRole = role;
+    await state.auth.doLogin();
+    assert.equal(state.getElement('login-screen').style.display, 'none');
+    assert.deepEqual(state.artCalls.at(-1), ['visible', false]);
+    state.auth.logout();
+    assert.equal(state.getElement('login-screen').style.display, 'flex');
+    assert.equal(state.getElement('login-form-panel').hidden, false);
+    assert.deepEqual(state.artCalls.slice(-2), [['visible', true], ['loading', false, 0]]);
+  }
+});
+
+test('a late preload update cannot hide the restored form after login initialization fails', async () => {
+  const state = setup();
+  let progress;
+  state.scope.AssetPreloader.preload = (_, callback) => { progress = callback; return Promise.resolve(); };
+  state.scope.Game.init = async () => { throw new Error('fixture failure'); };
+  await state.auth.doLogin();
+  assert.equal(state.getElement('login-form-panel').hidden, false);
+  const before = state.artCalls.length;
+  progress({ percent: 80 });
+  assert.equal(state.getElement('login-form-panel').hidden, false);
+  assert.equal(state.artCalls.length, before);
+});
+
+test('a routing failure after animation hiding restores login visibility and effects', async () => {
+  const state = setup();
+  state.scope.Router.playerTab = () => { throw new Error('fixture routing failure'); };
+  await state.auth.doLogin();
+  assert.equal(state.getElement('login-screen').style.display, 'flex');
+  assert.equal(state.getElement('player-dashboard').style.display, 'none');
+  assert.equal(state.getElement('admin-dashboard').style.display, 'none');
+  assert.equal(state.getElement('login-form-panel').hidden, false);
+  assert.ok(state.artCalls.some(call => call[0] === 'visible' && call[1] === true));
+  assert.equal(state.saved.length, 0);
 });
 
 test('markup supports native managers and never submits a password to static hosting', () => {

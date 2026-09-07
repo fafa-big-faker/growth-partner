@@ -217,12 +217,28 @@ function getTreeAppearance(treeRealm) {
   return { key, ...TREE_APPEARANCES[key] };
 }
 
+const V3_IMAGE_ROOT = 'assets/runtime/v3';
+const FEATURE_ICON_OVERRIDES = Object.freeze({
+  'icon-cultivate': 'icon-cultivate',
+  'icon-tasks': 'icon-tasks',
+  'icon-reward': 'icon-shop',
+  'icon-shop': 'icon-shop',
+  'icon-mail': 'icon-mail',
+  'icon-achievement': 'icon-achievement',
+  'icon-sound': 'icon-sound',
+});
+
+function getFeatureIconPath(name) {
+  const replacement = FEATURE_ICON_OVERRIDES[name];
+  return replacement ? `${V3_IMAGE_ROOT}/icons/${replacement}.webp` : `${V2_IMAGE_ROOT}/icons/${name}.webp`;
+}
+
 function renderFeatureIcon(name, alt = '', cls = 'feature-icon') {
-  return `<img src="${V2_IMAGE_ROOT}/icons/${name}.webp" class="${cls}" alt="${alt}" />`;
+  return `<img src="${getFeatureIconPath(name)}" class="${cls}" alt="${alt}" />`;
 }
 
 function renderEmptyState(iconName, text) {
-  return `<div class="empty-state" style="padding:24px"><img src="${V2_IMAGE_ROOT}/icons/${iconName}.webp" class="empty-state-art" alt="" /><p>${text}</p></div>`;
+  return `<div class="empty-state" style="padding:24px"><img src="${getFeatureIconPath(iconName)}" class="empty-state-art" alt="" /><p>${text}</p></div>`;
 }
 
 function escapeHtml(value) {
@@ -263,21 +279,26 @@ const CultivatorAnimator = CharacterAnimator.createFrameAnimator({
 
 function getInitialGameImageAssets(axeId = null) {
   const v2Files = [
-    'backgrounds/login-main.webp', 'backgrounds/cultivate.webp', 'backgrounds/tasks.webp',
+    'backgrounds/cultivate.webp', 'backgrounds/tasks.webp',
     'backgrounds/reward.webp', 'trees/sprout.webp', 'trees/spirit.webp', 'trees/divine.webp',
     'effects/effect-drop-glow.webp', 'effects/effect-hit-spark.webp',
     'effects/effect-leaf-gold.webp', 'effects/effect-leaf-green.webp',
-    ...['achievement', 'breakthrough', 'close', 'cultivate', 'forge', 'lock', 'mail', 'reward', 'shop', 'tasks', 'tree-info', 'wallet']
+    ...['breakthrough', 'close', 'forge', 'lock', 'tree-info', 'wallet']
       .map(name => `icons/icon-${name}.webp`),
     ...['button-primary', 'button-secondary', 'checkbox-off', 'checkbox-on', 'chop-button-bg', 'modal-crest', 'panel-corner',
       'panel-divider', 'scroll-thumb', 'slot-blue', 'slot-gold', 'slot-neutral', 'slot-purple', 'slot-rose',
       'status-pill', 'tab-active', 'tab-inactive'].map(name => `ui/${name}.webp`),
   ].map(path => `${V2_IMAGE_ROOT}/${path}`);
+  const v3Files = [
+    'backgrounds/login.webp', 'ui/logo.webp', 'ui/button-primary.webp',
+    ...['topbar', 'status', 'inventory', 'equip', 'nav'].map(name => `ui/frame-${name}.webp`),
+    ...['cultivate', 'tasks', 'shop', 'mail', 'achievement', 'sound'].map(name => `icons/icon-${name}.webp`),
+  ].map(path => `${V3_IMAGE_ROOT}/${path}`);
   const configuredImages = (GAME_CONFIG?.itemTable || []).map(item => item.iconImage).filter(Boolean);
   const currentAxeFrames = axeId
     ? [...getAxeIdleFrames(axeId), ...getAxeChopFrames(axeId)]
     : [];
-  return AssetPreloader.collect([Object.values(ITEM_IMAGES), configuredImages, currentAxeFrames, v2Files]);
+  return AssetPreloader.collect([Object.values(ITEM_IMAGES), configuredImages, currentAxeFrames, v2Files, v3Files]);
 }
 
 function preloadAxeAnimation(itemId, onProgress = () => {}) {
@@ -2131,6 +2152,7 @@ const Auth = {
   _credentials: null,
 
   init() {
+    if (typeof LoginArt !== 'undefined') LoginArt.init();
     this._credentials = LoginCredentials.create({
       usernameInput: document.getElementById('login-username'),
       passwordInput: document.getElementById('login-password'),
@@ -2163,6 +2185,7 @@ const Auth = {
     const password = this._credentials
       ? this._credentials.readPassword(role)
       : document.getElementById('login-password').value;
+    let attemptActive = true;
     try {
       const account = await AccountSession.verify(role, password);
       if (!account) {
@@ -2178,15 +2201,16 @@ const Auth = {
       const audioPreload = AudioManager.preload();
       const staticPreload = AssetPreloader.preload(
         staticAssets,
-        progress => this._setLoading(true, progress.percent * 0.85),
+        progress => { if (attemptActive) this._setLoading(true, progress.percent * 0.85); },
       );
       await Promise.all([staticPreload, audioPreload, Game.init()]);
 
       if (!Game.state) throw new Error('player initialization failed');
       await preloadAxeAnimation(
         Game.state.axeId,
-        progress => this._setLoading(true, 85 + progress.percent * 0.15),
+        progress => { if (attemptActive) this._setLoading(true, 85 + progress.percent * 0.15); },
       );
+      if (typeof LoginArt !== 'undefined') LoginArt.setVisible(false);
       if (role === 'admin') {
         document.getElementById('login-screen').style.display = 'none';
         document.getElementById('admin-dashboard').style.display = 'flex';
@@ -2199,13 +2223,19 @@ const Auth = {
       }
       void this._credentials?.saveVerified(role, password);
     } catch (error) {
+      attemptActive = false;
       console.error('login initialization failed:', error);
       AudioManager.pauseBgm();
       Game.state = null;
       Game.inventory = [];
+      document.getElementById('player-dashboard').style.display = 'none';
+      document.getElementById('admin-dashboard').style.display = 'none';
+      document.getElementById('login-screen').style.display = 'flex';
+      if (typeof LoginArt !== 'undefined') LoginArt.setVisible(true);
       this._setLoading(false, 0);
       UI.toast('入道未完成，请检查网络后重试', 'error');
     } finally {
+      attemptActive = false;
       this._loggingIn = false;
       if (submit) submit.disabled = false;
     }
@@ -2220,14 +2250,18 @@ const Auth = {
     if (form) form.hidden = loading;
     if (panel) panel.hidden = !loading;
     if (submit) submit.disabled = loading;
-    if (bar) bar.style.width = `${Math.min(100, Math.max(0, percent))}%`;
-    if (label) label.textContent = `${Math.round(percent)}%`;
+    if (typeof LoginArt !== 'undefined') LoginArt.setLoading(loading, percent);
+    else {
+      if (bar) bar.style.width = `${Math.min(100, Math.max(0, percent))}%`;
+      if (label) label.textContent = `${Math.round(percent)}%`;
+    }
   },
 
   logout() {
     document.getElementById('player-dashboard').style.display = 'none';
     document.getElementById('admin-dashboard').style.display = 'none';
     document.getElementById('login-screen').style.display = 'flex';
+    if (typeof LoginArt !== 'undefined') LoginArt.setVisible(true);
     if (this._credentials) this._credentials.clear();
     else document.getElementById('login-password').value = '';
     this._setLoading(false, 0);
@@ -2765,7 +2799,7 @@ const PlayerView = {
             <span class="ach-dot" id="ach-dot" style="display:none"></span>
           </div>
           <button type="button" class="audio-toggle" aria-label="关闭声音" aria-pressed="false" title="关闭声音">
-            <span class="audio-toggle-icon" aria-hidden="true">🔊</span>
+            <span class="audio-toggle-icon" aria-hidden="true">${renderFeatureIcon('icon-sound', '', 'audio-toggle-image')}</span>
           </button>
         </div>
         <div class="res-pill res-coin" id="coin-pill" title="游戏币 · 可在「天道酬勤」商店购买道具，砍树/出售仙斧可获得">
