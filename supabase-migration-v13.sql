@@ -186,6 +186,8 @@ BEGIN
 END;
 $$;
 
+DROP FUNCTION IF EXISTS public.daily_check_in(JSONB);
+
 CREATE OR REPLACE FUNCTION public.daily_check_in(p_user_role TEXT, p_rewards JSONB)
 RETURNS JSONB
 LANGUAGE plpgsql

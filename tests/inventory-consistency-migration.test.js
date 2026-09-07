@@ -39,6 +39,7 @@ test('v13 provides atomic add and remove inventory RPCs', () => {
 
 test('v13 compose, sign-in and forge use the unique inventory contract', () => {
   const sql = fs.readFileSync(migrationPath, 'utf8');
+  assert.match(sql, /drop\s+function\s+if\s+exists\s+public\.daily_check_in\s*\(\s*jsonb\s*\)/i);
   for (const functionName of ['compose_inventory_item', 'daily_check_in', 'forge_weapon_instance']) {
     assert.match(sql, new RegExp(`create\\s+or\\s+replace\\s+function\\s+public\\.${functionName}`, 'i'));
   }
