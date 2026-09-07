@@ -2129,6 +2129,7 @@ const Auth = {
 
     this._loggingIn = true;
     DB.setPlayerRole(account.playerRole);
+    PlayerView.clearDataCaches();
     if (this.currentRole === 'player') void AudioManager.playBgm();
     else AudioManager.pauseBgm();
     this._setLoading(true, 0);
@@ -2154,7 +2155,7 @@ const Auth = {
         document.getElementById('login-screen').style.display = 'none';
         document.getElementById('player-dashboard').style.display = 'flex';
         UI.updateHeader();
-        Router.playerTab('cultivate');
+        Router.playerTab('cultivate', { force: true });
       }
     } catch (error) {
       console.error('login initialization failed:', error);
@@ -2189,6 +2190,7 @@ const Auth = {
     this._setLoading(false, 0);
     AudioManager.pauseBgm();
     CultivatorAnimator.stop();
+    PlayerView.clearDataCaches();
     Game.state = null;
     Game.inventory = [];
   },
@@ -2200,23 +2202,40 @@ const Auth = {
 const Router = {
   currentPlayerTab: 'cultivate',
   currentAdminTab: 'task-manage',
+  _playerRenderVersion: 0,
 
-  playerTab(tab) {
+  playerTab(tab, options = {}) {
+    const main = document.getElementById('player-main');
+    if (this.currentPlayerTab === tab && main?.dataset.renderedTab === tab && !options.force) return;
+
     void AudioManager.playEffect('uiOpen');
     this.currentPlayerTab = tab;
+    const version = ++this._playerRenderVersion;
+    if (main) {
+      main.dataset.renderedTab = tab;
+      main.classList.remove('player-page-enter');
+      requestAnimationFrame(() => {
+        if (this.isCurrentPlayerRender(tab, version)) main.classList.add('player-page-enter');
+      });
+    }
     const dashboard = document.getElementById('player-dashboard');
     if (dashboard) dashboard.dataset.playerScene = tab === 'mail' ? 'tasks' : tab;
     document.querySelectorAll('#player-dashboard .bottom-nav .nav-item').forEach(el => {
       el.classList.toggle('active', el.dataset.tab === tab);
     });
-    const main = document.getElementById('player-main');
-
     switch (tab) {
       case 'cultivate': PlayerView.renderCultivate(); break;
-      case 'tasks': PlayerView.renderTasks(); break;
-      case 'reward': PlayerView.renderReward(); break;
+      case 'tasks': PlayerView.renderTasks(version); break;
+      case 'reward': PlayerView.renderReward(version); break;
       case 'mail': PlayerView.renderMail(); break;
     }
+  },
+
+  isCurrentPlayerRender(tab, version) {
+    const main = document.getElementById('player-main');
+    return this.currentPlayerTab === tab
+      && this._playerRenderVersion === version
+      && main?.dataset.renderedTab === tab;
   },
 
   adminTab(tab) {
@@ -2603,9 +2622,33 @@ const PlayerView = {
     page: { container: null, mails: [], expandedId: null },
   },
   _mailCache: PlayerDataCache.createResourceCache({ ttlMs: 10000 }),
+  _taskCache: PlayerDataCache.createResourceCache({ ttlMs: 10000 }),
+  _withdrawalCache: PlayerDataCache.createResourceCache({ ttlMs: 10000 }),
 
   _loadMails(options = {}) {
     return this._mailCache.get(() => DB.getMails(), options);
+  },
+
+  _loadTaskData(options = {}) {
+    return this._taskCache.get(async () => {
+      const [tasks, submissions] = await Promise.all([DB.getTasks(), DB.getSubmissions()]);
+      return {
+        dailyTasks: tasks.filter(task => task.taskType === 'daily'),
+        weeklyTasks: tasks.filter(task => task.taskType === 'weekly'),
+        themeTasks: tasks.filter(task => task.taskType === 'theme'),
+        submissions,
+      };
+    }, options);
+  },
+
+  _loadWithdrawals(options = {}) {
+    return this._withdrawalCache.get(() => DB.getWithdrawals(), options);
+  },
+
+  clearDataCaches() {
+    this._mailCache.clear();
+    this._taskCache.clear();
+    this._withdrawalCache.clear();
   },
 
   async renderCultivate() {
@@ -3322,31 +3365,13 @@ const PlayerView = {
   },
 
   // --- 任务页 ---
-  async renderTasks() {
+  async renderTasks(version = Router._playerRenderVersion) {
     const main = document.getElementById('player-main');
-    const [dailyTasks, weeklyTasks, themeTasks, submissions] = await Promise.all([
-      DB.getTasks('daily'),
-      DB.getTasks('weekly'),
-      DB.getTasks('theme'),
-      DB.getSubmissions(),
-    ]);
-
-    // 检查今日是否已签到（本地日期，与 dailyCheckIn 保持一致）
-    const today = localDateStr();
-    const dailyChecked = Game.state.lastDailyDate === today;
-
-    // 数据去重：飞书/后台可能误插入重复任务（同类型+同标题+同排序），玩家侧只展示一条
-    this._dailyTasks = this._dedupeTasks(dailyTasks, submissions, 'daily');
-    this._weeklyTasks = this._dedupeTasks(weeklyTasks, submissions, 'weekly');
-    this._themeTasks = this._dedupeTasks(themeTasks, submissions, 'theme');
-    this._submissions = submissions;
-    this._dailyChecked = dailyChecked;
-
     main.innerHTML = `
       <div class="page-title page-title-art">${renderFeatureIcon('icon-tasks', '', 'page-title-icon')}<span>任务</span></div>
       <div class="page-subtitle">完成任务获得砍树次数，砍树掉落奖励</div>
 
-      <div id="theme-section">${this._themeSectionHtml()}</div>
+      <div id="theme-section"></div>
 
       <div class="filter-bar">
         <div class="filter-chip active" data-filter="all" onclick="PlayerView.filterTasks('all')">全部</div>
@@ -3363,8 +3388,39 @@ const PlayerView = {
     `;
 
     this.currentTaskFilter = 'all';
+    const cached = this._taskCache.peek();
+    if (cached) {
+      this._applyTaskData(cached);
+      this._renderTaskList();
+    } else {
+      document.getElementById('theme-section').innerHTML = '<div class="task-skeleton task-skeleton-theme" aria-hidden="true"></div>';
+      document.getElementById('task-list').innerHTML = Array.from(
+        { length: 5 },
+        () => '<div class="task-skeleton" aria-hidden="true"><span></span><i></i></div>',
+      ).join('');
+    }
 
+    const data = await this._loadTaskData();
+    if (!Router.isCurrentPlayerRender('tasks', version)) return;
+    this._applyTaskData(data);
     this._renderTaskList();
+  },
+
+  _applyTaskData(data) {
+    const submissions = data?.submissions || [];
+    this._dailyTasks = this._dedupeTasks(data?.dailyTasks || [], submissions, 'daily');
+    this._weeklyTasks = this._dedupeTasks(data?.weeklyTasks || [], submissions, 'weekly');
+    this._themeTasks = this._dedupeTasks(data?.themeTasks || [], submissions, 'theme');
+    this._submissions = submissions;
+    this._dailyChecked = Game.state.lastDailyDate === localDateStr();
+  },
+
+  async _refreshTaskData() {
+    this._taskCache.invalidate();
+    const data = await this._loadTaskData({ force: true });
+    this._applyTaskData(data);
+    if (Router.currentPlayerTab === 'tasks') this._renderTaskList();
+    return data;
   },
 
   currentTaskFilter: 'all',
@@ -3497,12 +3553,10 @@ const PlayerView = {
     return result;
   },
 
-  async _renderTaskList() {
+  _renderTaskList() {
     const list = document.getElementById('task-list');
     if (!list) return;
-
-    const submissions = await DB.getSubmissions();
-    this._submissions = submissions;
+    const submissions = this._submissions;
 
     // 主题活动区随提交状态一起刷新（领取/审核状态变化）
     const themeSec = document.getElementById('theme-section');
@@ -3803,7 +3857,7 @@ const PlayerView = {
       if (outcome.started && outcome.value) {
         UI.closeModal(overlay);
         UI.toast('已提交审核', 'success');
-        this._renderTaskList();
+        await this._refreshTaskData();
       } else if (outcome.started) {
         UI.toast('任务提交失败，请稍后重试', 'error');
       }
@@ -3851,7 +3905,7 @@ const PlayerView = {
       if (outcome.started && outcome.value) {
         UI.closeModal(overlay);
         UI.toast('已提交审核', 'success');
-        this._renderTaskList();
+        await this._refreshTaskData();
       } else if (outcome.started) {
         UI.toast('任务提交失败，请稍后重试', 'error');
       }
@@ -3910,7 +3964,7 @@ const PlayerView = {
 
       await Game.refresh();
       UI.showRewardBubble(entries);
-      this._renderTaskList();
+      await this._refreshTaskData();
       return true;
     });
     return outcome.started && outcome.value;
@@ -3999,10 +4053,8 @@ const PlayerView = {
   },
 
   // --- 天道酬勤 ---
-  async renderReward() {
+  async renderReward(version = Router._playerRenderVersion) {
     const main = document.getElementById('player-main');
-    const withdrawals = await DB.getWithdrawals();
-
     main.innerHTML = `
       <div class="page-title page-title-art">${renderFeatureIcon('icon-reward', '', 'page-title-icon')}<span>天道酬勤</span></div>
       <div class="page-subtitle">努力修仙，天道自会酬勤</div>
@@ -4037,16 +4089,32 @@ const PlayerView = {
         <div class="section-header">
           <div class="section-title section-title-art">${renderFeatureIcon('icon-wallet', '', 'section-title-icon')}<span>提现记录</span></div>
         </div>
-        <div id="withdraw-list"></div>
+        <div id="withdraw-list" class="withdraw-list-skeleton"></div>
       </div>
     `;
 
     this._withdrawAmount = 100;
     this._renderShop();
+    const cached = this._withdrawalCache.peek();
+    if (cached) this._renderWithdrawList(cached);
+    else this._renderWithdrawSkeleton();
+
+    const withdrawals = await this._loadWithdrawals();
+    if (!Router.isCurrentPlayerRender('reward', version)) return;
     this._renderWithdrawList(withdrawals);
   },
 
   _withdrawAmount: 100,
+
+  _renderWithdrawSkeleton() {
+    const el = document.getElementById('withdraw-list');
+    if (!el) return;
+    el.classList.add('withdraw-list-skeleton');
+    el.innerHTML = Array.from(
+      { length: 3 },
+      () => '<div class="withdraw-skeleton" aria-hidden="true"><span></span><i></i></div>',
+    ).join('');
+  },
 
   adjustWithdraw(delta) {
     this._withdrawAmount += delta;
@@ -4071,7 +4139,8 @@ const PlayerView = {
         () => Game.withdraw(this._withdrawAmount),
       );
       if (outcome.started && outcome.value) {
-        Router.playerTab('reward'); // 刷新页面
+        this._withdrawalCache.invalidate();
+        Router.playerTab('reward', { force: true });
       }
     });
   },
@@ -4162,6 +4231,7 @@ const PlayerView = {
   _renderWithdrawList(list) {
     const el = document.getElementById('withdraw-list');
     if (!el) return;
+    el.classList.remove('withdraw-list-skeleton');
     if (list.length === 0) {
       el.innerHTML = renderEmptyState('icon-wallet', '暂无提现记录');
       return;
@@ -4943,7 +5013,7 @@ const PlayerView = {
 
   // 提现记录
   showWithdrawRecords() {
-    DB.getWithdrawals().then(records => {
+    this._loadWithdrawals().then(records => {
       if (records.length === 0) {
         UI.modal('<p style="text-align:center;padding:24px;color:var(--text-secondary)">暂无提现记录</p>', { title: '提现记录' });
         return;

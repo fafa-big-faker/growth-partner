@@ -256,7 +256,7 @@ git commit -m=feat-fast-mail-and-bulk-delete
 - Produces: `Router._playerRenderVersion`, `Router.isCurrentPlayerRender(tab, version)`, `PlayerView._taskCache`, `PlayerView._withdrawalCache`, and immediate skeleton renderers.
 - Consumes: `PlayerDataCache.createResourceCache`, `DB.getTasks(null)`, and `DB.getSubmissions()`.
 
-- [ ] **Step 1: Write failing navigation tests**
+- [x] **Step 1: Write failing navigation tests**
 
 Assert that repeated active-tab clicks do not rerender, every navigation increments a token, async task/reward writes check that token, task loading calls `DB.getTasks()` once plus `DB.getSubmissions()` once, and page shells are written before the first await.
 
@@ -266,17 +266,17 @@ assert.match(tasks, /Promise\.all\(\[DB\.getTasks\(\), DB\.getSubmissions\(\)\]\
 assert.doesNotMatch(tasks, /DB\.getTasks\('daily'\)/);
 ```
 
-- [ ] **Step 2: Run focused test and verify failure**
+- [x] **Step 2: Run focused test and verify failure**
 
 Run: `node --test tests\player-navigation-performance.test.js`
 
 Expected: FAIL because the router has no render token or view cache.
 
-- [ ] **Step 3: Add navigation tokens and repeat-click suppression**
+- [x] **Step 3: Add navigation tokens and repeat-click suppression**
 
 Update the bottom-nav active state immediately, set `main.dataset.renderedTab`, increment `_playerRenderVersion`, and pass the version into the renderer. Before any asynchronous DOM write, require both current tab and version to match.
 
-- [ ] **Step 4: Reduce task requests and render stale-while-revalidate**
+- [x] **Step 4: Reduce task requests and render stale-while-revalidate**
 
 Use one published-task query and one submission query:
 
@@ -292,19 +292,19 @@ const data = {
 
 Render cached task data immediately. When no cache exists, insert the task shell and skeleton before awaiting the loader. Apply refreshed data only if `Router.isCurrentPlayerRender('tasks', version)` remains true.
 
-- [ ] **Step 5: Decouple withdrawal loading from reward-page first paint**
+- [x] **Step 5: Decouple withdrawal loading from reward-page first paint**
 
 Render the balance and shop synchronously from `Game.state`, with cached withdrawals or a list skeleton. Fetch withdrawals through `_withdrawalCache` and update only `#withdraw-list` if the reward route token remains current.
 
-- [ ] **Step 6: Add short transition and reduced-motion support**
+- [x] **Step 6: Add short transition and reduced-motion support**
 
 Use a 120ms opacity transition on newly rendered player page content and fixed skeleton dimensions. Do not animate layout properties or block input.
 
-- [ ] **Step 7: Invalidate caches after writes**
+- [x] **Step 7: Invalidate caches after writes**
 
 Invalidate task cache after task submission or reward claims and withdrawal cache after a withdrawal request. Clear all player-view caches when the selected player role changes at login so test and live accounts never share cached records.
 
-- [ ] **Step 8: Run focused tests and commit**
+- [x] **Step 8: Run focused tests and commit**
 
 Run:
 
