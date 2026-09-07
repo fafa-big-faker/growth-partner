@@ -2551,11 +2551,22 @@ const UI = {
 };
 
 const ForgeReveal = {
-  delays: [160, 150, 135, 120, 108, 95, 83, 73, 63, 55, 48, 42, 38],
-
   getMinimumDuration(random = Math.random) {
     const sample = Math.max(0, Math.min(1, Number(random()) || 0));
     return 2000 + Math.min(1000, Math.floor(sample * 1001));
+  },
+
+  getTimelineState(elapsedMs, durationMs) {
+    const duration = Math.max(1, Number(durationMs) || 1);
+    const elapsed = Math.max(0, Number(elapsedMs) || 0);
+    const accelerationDuration = duration * 0.6;
+    const ratio = Math.min(1, elapsed / accelerationDuration);
+    const easedRatio = ratio * ratio * (3 - (2 * ratio));
+    return {
+      progress: Number((98 * easedRatio).toFixed(2)),
+      candidateDelay: Math.round(120 - (82 * ratio)),
+      isHolding: elapsed >= accelerationDuration,
+    };
   },
 
   getCandidateItems() {
@@ -2564,21 +2575,19 @@ const ForgeReveal = {
   },
 
   setProgress(elements, value) {
-    const progress = Math.max(0, Math.min(100, Math.round(value)));
+    const safeProgress = Math.max(0, Math.min(100, Number(value) || 0));
+    const accessibleProgress = Math.round(safeProgress);
     if (elements.progress) {
-      elements.progress.setAttribute('aria-valuenow', String(progress));
-      elements.progress.setAttribute('aria-valuetext', `${progress}%`);
+      elements.progress.setAttribute('aria-valuenow', String(accessibleProgress));
+      elements.progress.setAttribute('aria-valuetext', `${accessibleProgress}%`);
     }
-    if (elements.progressFill) elements.progressFill.style.width = `${progress}%`;
+    if (elements.progressFill) elements.progressFill.style.width = `${safeProgress.toFixed(2)}%`;
   },
 
-  animateProgress(elements, value, duration) {
-    if (!elements.progressFill) return;
-    elements.progressFill.style.transition = 'none';
-    elements.progressFill.style.width = '0%';
-    requestAnimationFrame(() => {
-      elements.progressFill.style.transition = `width ${duration}ms linear`;
-      this.setProgress(elements, value);
+  nextFrame() {
+    return new Promise(resolve => {
+      if (typeof requestAnimationFrame === 'function') requestAnimationFrame(resolve);
+      else setTimeout(resolve, 16);
     });
   },
 
@@ -2598,7 +2607,7 @@ const ForgeReveal = {
 
   async run(elements, resultPromise) {
     const minimumDuration = this.getMinimumDuration();
-    const minimumDeadline = Date.now() + minimumDuration;
+    const startedAt = Date.now();
     const tracked = { settled: false, value: null, error: null };
     Promise.resolve(resultPromise).then(
       value => {
@@ -2612,29 +2621,32 @@ const ForgeReveal = {
     );
     const candidates = this.getCandidateItems();
     const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true;
-    const delays = reducedMotion ? [90, 75, 60] : this.delays;
     if (elements.status) elements.status.textContent = '灵火淬炼中';
+    if (elements.progressFill) elements.progressFill.style.transition = 'none';
     this.setProgress(elements, 0);
-    if (reducedMotion) this.setProgress(elements, 98);
-    else this.animateProgress(elements, 98, minimumDuration);
 
-    for (let index = 0; index < delays.length; index += 1) {
-      const item = candidates[index % candidates.length];
-      const transitionMs = reducedMotion ? 0 : Math.min(85, Math.max(28, delays[index] * 0.62));
-      this.showCandidate(elements, item, !reducedMotion, transitionMs);
-      await new Promise(resolve => setTimeout(resolve, delays[index]));
-    }
+    let elapsed = 0;
+    let candidateIndex = 0;
+    let nextCandidateAt = 0;
+    let holdingStarted = false;
+    while (elapsed < minimumDuration || !tracked.settled) {
+      const timeline = this.getTimelineState(elapsed, minimumDuration);
+      this.setProgress(elements, timeline.progress);
 
-    if (elements.status) elements.status.textContent = '凝聚器灵';
-
-    const fastDelay = 38;
-    let candidateIndex = delays.length;
-    while (!tracked.settled || Date.now() < minimumDeadline) {
-      if (!reducedMotion) {
-        this.showCandidate(elements, candidates[candidateIndex % candidates.length], true, 28);
-        candidateIndex += 1;
+      if (timeline.isHolding && !holdingStarted) {
+        holdingStarted = true;
+        if (elements.status) elements.status.textContent = '凝聚器灵';
       }
-      await new Promise(resolve => setTimeout(resolve, fastDelay));
+
+      if (candidates.length > 0 && elapsed >= nextCandidateAt) {
+        const transitionMs = reducedMotion ? 0 : Math.min(70, Math.max(24, Math.round(timeline.candidateDelay * 0.62)));
+        this.showCandidate(elements, candidates[candidateIndex % candidates.length], !reducedMotion, transitionMs);
+        candidateIndex += 1;
+        nextCandidateAt = elapsed + timeline.candidateDelay;
+      }
+
+      await this.nextFrame();
+      elapsed = Date.now() - startedAt;
     }
 
     elements.art?.classList.remove('is-shaking');
@@ -2643,7 +2655,7 @@ const ForgeReveal = {
     if (!result) return null;
 
     if (elements.progressFill) {
-      elements.progressFill.style.transition = reducedMotion ? 'none' : 'width 180ms ease-out';
+      elements.progressFill.style.transition = reducedMotion ? 'none' : 'width 140ms ease-out';
     }
     this.reveal(elements, result);
     this.setProgress(elements, 100);

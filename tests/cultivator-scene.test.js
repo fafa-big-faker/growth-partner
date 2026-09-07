@@ -43,19 +43,21 @@ test('every equipped axe has four idle frames and six V2 chop frames', () => {
 test('cultivation scene keeps the character and tree within striking distance', () => {
   assert.match(
     css,
-    /#player-dashboard \.cult-scene \{[^}]*gap:\s*24px;/,
-    'desktop scene should keep the axe close to the tree',
-  );
-  assert.match(
-    css,
-    /@media \(max-width:\s*380px\)[\s\S]*?\.cult-scene \{[^}]*gap:\s*6px;/,
-    'narrow scene should use a compact gap',
+    /\.cult-scene \{[^}]*position:\s*relative[^}]*overflow:\s*hidden/,
+    'the scene should provide one positioned coordinate system',
   );
   for (const appearance of ['sprout', 'spirit', 'divine']) {
-    assert.match(css, new RegExp(`\\.tree-appearance-${appearance}\\s*\\{[\\s\\S]*?--tree-overlap:`));
+    assert.match(css, new RegExp(`\\.tree-appearance-${appearance}\\s*\\{[\\s\\S]*?--tree-left:`));
   }
-  assert.match(css, /\.cult-tree \{[\s\S]*?z-index:\s*1/);
-  assert.match(css, /\.cult-char \{[\s\S]*?z-index:\s*2/);
+  const treeRule = css.match(/\.cult-tree\s*\{[\s\S]*?\}/)?.[0] || '';
+  const characterRule = css.match(/\.cult-char\s*\{[\s\S]*?\}/)?.[0] || '';
+  assert.match(treeRule, /position:\s*absolute/);
+  assert.match(treeRule, /z-index:\s*1/);
+  assert.match(treeRule, /left:\s*calc\(50% \+ var\(--tree-left\)\)/);
+  assert.match(characterRule, /position:\s*absolute/);
+  assert.match(characterRule, /z-index:\s*3/);
+  assert.match(characterRule, /left:\s*calc\(50% \+ var\(--character-left\)\)/);
+  assert.match(css, /\.cult-effect \{[\s\S]*?z-index:\s*4/);
   assert.match(css, /\.cult-tree \.tree-img \{[\s\S]*?object-position:\s*center bottom/);
   assert.match(css, /\.cult-char \.char-img \{[\s\S]*?transform:\s*scale\(1\.2\)/);
 });

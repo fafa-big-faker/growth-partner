@@ -7,23 +7,102 @@ const vm = require('node:vm');
 const app = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
 const styles = fs.readFileSync(path.join(__dirname, '..', 'styles.css'), 'utf8');
 
-test('forge reveal accelerates configured candidates while waiting for the real result', () => {
+test('forge reveal uses a network-independent 60/40 presentation timeline', () => {
   const controller = app.match(/const ForgeReveal = \{[\s\S]*?\n\};/)?.[0] || '';
   assert.match(controller, /FORGE_POOL\.flatMap/);
-  assert.match(controller, /160,\s*150,\s*135,\s*120,\s*108,\s*95,\s*83,\s*73,\s*63,\s*55,\s*48,\s*42,\s*38/);
   assert.match(controller, /Promise\.resolve\(resultPromise\)\.then/);
   assert.match(controller, /settled:\s*false/);
-  assert.match(controller, /animateProgress\(elements,\s*98,\s*minimumDuration\)/);
-  assert.match(controller, /transition\s*=\s*`width \$\{duration\}ms linear`/);
+  assert.match(controller, /requestAnimationFrame/);
   assert.match(controller, /prefers-reduced-motion:\s*reduce/);
-  assert.match(controller, /while \(!tracked\.settled \|\| Date\.now\(\) < minimumDeadline\)/);
-  assert.match(controller, /const fastDelay = 38/);
-  assert.match(controller, /showCandidate\(elements,[\s\S]*?fastDelay/);
-  assert.match(controller, /setProgress\(elements,\s*98\)/);
+  assert.match(controller, /while \(elapsed < minimumDuration \|\| !tracked\.settled\)/);
+  assert.match(controller, /timeline\.candidateDelay/);
+  assert.match(controller, /timeline\.isHolding/);
+  assert.doesNotMatch(controller, /animateProgress/);
+  assert.doesNotMatch(controller, /transition\s*=\s*`width \$\{duration\}ms linear`/);
   assert.match(controller, /if \(tracked\.error\) throw tracked\.error/);
   assert.match(controller, /if \(!result\)/);
   assert.match(controller, /setProgress\(elements,\s*100\)/);
   assert.match(controller, /result\.itemId/);
+});
+
+test('forge timeline reaches 98 percent after 60 percent and then keeps spinning fast', () => {
+  const controller = app.match(/const ForgeReveal = \{[\s\S]*?\n\};/)?.[0] || '';
+  const sandbox = {};
+  vm.runInNewContext(`${controller}\n;globalThis.__forgeReveal = ForgeReveal;`, sandbox);
+  const forgeReveal = sandbox.__forgeReveal;
+
+  assert.deepEqual(
+    { ...forgeReveal.getTimelineState(0, 3000) },
+    { progress: 0, candidateDelay: 120, isHolding: false },
+  );
+  const halfway = forgeReveal.getTimelineState(900, 3000);
+  assert.equal(halfway.progress, 49);
+  assert.equal(halfway.candidateDelay, 79);
+  assert.equal(halfway.isHolding, false);
+  assert.deepEqual(
+    { ...forgeReveal.getTimelineState(1800, 3000) },
+    { progress: 98, candidateDelay: 38, isHolding: true },
+  );
+  assert.deepEqual(
+    { ...forgeReveal.getTimelineState(3600, 3000) },
+    { progress: 98, candidateDelay: 38, isHolding: true },
+  );
+  assert.match(controller, /safeProgress\.toFixed\(2\)/);
+});
+
+test('an instant backend result cannot skip the forge presentation timeline', async () => {
+  const controller = app.match(/const ForgeReveal = \{[\s\S]*?\n\};/)?.[0] || '';
+  let clock = 0;
+  const progressWrites = [];
+  const candidateWrites = [];
+  const math = Object.create(Math);
+  math.random = () => 0;
+  const style = {
+    transition: '',
+    set width(value) {
+      progressWrites.push({ at: clock, value: parseFloat(value) });
+    },
+    setProperty() {},
+  };
+  const sandbox = {
+    Date: { now: () => clock },
+    Math: math,
+    Promise,
+    FORGE_POOL: [{ items: ['51001', '51002'] }],
+    ITEMS: {
+      '51001': { id: '51001', name: '甲斧', quality: 1, icon: '' },
+      '51002': { id: '51002', name: '乙斧', quality: 2, icon: '' },
+    },
+    QUALITY: { 1: { color: '#999' }, 2: { color: '#49d' } },
+    renderItemIcon: () => '<img>',
+    window: { matchMedia: () => ({ matches: false }) },
+    requestAnimationFrame: callback => {
+      clock += 100;
+      callback(clock);
+    },
+    setTimeout: callback => callback(),
+  };
+  vm.runInNewContext(`${controller}\n;globalThis.__forgeReveal = ForgeReveal;`, sandbox);
+  const classList = { add() {}, remove() {}, toggle() {} };
+  const elements = {
+    progress: { setAttribute() {} },
+    progressFill: { style },
+    art: { style, classList, set innerHTML(value) { candidateWrites.push({ at: clock, value }); } },
+    name: { style: {}, textContent: '' },
+    status: { textContent: '' },
+    flash: { classList },
+  };
+  const result = { itemId: '51001', item: sandbox.ITEMS['51001'] };
+
+  await sandbox.__forgeReveal.run(elements, Promise.resolve(result));
+
+  const firstNinetyEight = progressWrites.find(write => write.value >= 98);
+  assert.ok(progressWrites.length >= 20, 'progress should be updated across animation frames');
+  assert.ok(firstNinetyEight.at >= 1200, '98% must not be reached before 60% of two seconds');
+  assert.ok(progressWrites.some(write => write.at >= 1200 && write.at < 2000 && write.value === 98));
+  assert.ok(candidateWrites.some(write => write.at >= 1200), 'candidates keep spinning during the hold phase');
+  assert.equal(progressWrites.at(-1).value, 100);
+  assert.ok(clock >= 2000, 'instant results still honor the sampled presentation duration');
 });
 
 test('forge reveal samples an inclusive two-to-three-second presentation floor', () => {
@@ -33,7 +112,7 @@ test('forge reveal samples an inclusive two-to-three-second presentation floor',
   assert.equal(sandbox.__forgeReveal.getMinimumDuration(() => 0), 2000);
   assert.equal(sandbox.__forgeReveal.getMinimumDuration(() => 1), 3000);
   assert.match(controller, /const minimumDuration = this\.getMinimumDuration\(\)/);
-  assert.match(controller, /const minimumDeadline = Date\.now\(\) \+ minimumDuration/);
+  assert.match(controller, /const startedAt = Date\.now\(\)/);
 });
 
 test('forge modal runs one guarded operation and reveals the result in place', () => {
