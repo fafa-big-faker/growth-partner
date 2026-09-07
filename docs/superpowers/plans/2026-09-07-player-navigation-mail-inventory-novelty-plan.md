@@ -328,7 +328,7 @@ git commit -m=perf-immediate-player-navigation
 **Interfaces:**
 - Produces: verified GitHub Pages release with no database migration.
 
-- [ ] **Step 1: Run the complete verification suite**
+- [x] **Step 1: Run the complete verification suite**
 
 ```bat
 node --test tests\*.test.js
@@ -343,10 +343,10 @@ git diff --check
 
 Expected: every test and syntax check passes.
 
-- [ ] **Step 2: Inspect and commit only scoped files**
+- [x] **Step 2: Inspect and commit only scoped files**
 
 Exclude the untracked `supabase/` CLI cache. Scan changed files for credentials and unrelated modifications, then commit the completed plan.
 
-- [ ] **Step 3: Push and verify deployment**
+- [x] **Step 3: Push and verify deployment**
 
 Push `main`, confirm local `HEAD` equals `origin/main`, and verify the GitHub Pages workflow for that SHA completes with `conclusion: success`. Perform only a nonvisual HTTP availability check.
