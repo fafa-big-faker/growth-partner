@@ -3556,3 +3556,218 @@ body {
   }
 }
 
+/* ===== 砍树核心操作精修 ===== */
+.tree-upgrade-hint {
+  position: absolute;
+  top: -2px;
+  left: 50%;
+  z-index: 4;
+  min-width: 48px;
+  padding: 3px 9px;
+  border: 1px solid rgba(71, 128, 104, 0.34);
+  border-radius: 12px;
+  background: rgba(235, 248, 240, 0.68);
+  box-shadow: 0 3px 12px rgba(37, 81, 66, 0.14);
+  color: rgba(37, 101, 80, 0.84);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+  white-space: nowrap;
+  pointer-events: none;
+  animation: tree-upgrade-float 2.1s ease-in-out infinite;
+}
+
+@keyframes tree-upgrade-float {
+  0%, 100% { opacity: 0.58; transform: translate(-50%, 1px); }
+  50% { opacity: 0.92; transform: translate(-50%, -5px); }
+}
+
+.action-chop-area { gap: 12px; }
+
+.chop-circle-btn {
+  width: 118px;
+  height: 118px;
+  border: 0;
+  background: transparent url('assets/runtime/v2/ui/chop-button-bg.webp') center / contain no-repeat;
+  color: #263a34;
+  box-shadow: none;
+  filter: drop-shadow(0 7px 9px rgba(31, 46, 40, 0.24));
+  transition: filter 180ms ease, transform 160ms ease;
+  overflow: visible;
+  isolation: isolate;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.chop-circle-btn:hover:not(:disabled) {
+  transform: none;
+  box-shadow: none;
+  filter: drop-shadow(0 9px 12px rgba(31, 53, 45, 0.3));
+}
+
+.chop-circle-btn:focus-visible {
+  outline: 2px solid rgba(52, 111, 91, 0.78);
+  outline-offset: 5px;
+}
+
+.chop-circle-btn:active:not(:disabled) { transform: scale(0.96); }
+
+.chop-circle-btn:disabled {
+  opacity: 0.48;
+  background: transparent url('assets/runtime/v2/ui/chop-button-bg.webp') center / contain no-repeat;
+  box-shadow: none;
+  filter: grayscale(0.72) drop-shadow(0 3px 5px rgba(31, 46, 40, 0.14));
+}
+
+.chop-axe-icon {
+  z-index: 2;
+  width: 98px;
+  height: 110px;
+  display: grid;
+  place-items: center;
+  line-height: 1;
+  filter: none;
+  transform-origin: 52% 78%;
+  will-change: transform;
+}
+
+.chop-circle-btn:hover:not(:disabled) .chop-axe-icon {
+  animation: chop-axe-wiggle 620ms ease-in-out 1;
+}
+
+.chop-circle-btn:active:not(:disabled) .chop-axe-icon,
+.chop-circle-btn.is-striking .chop-axe-icon {
+  animation: chop-axe-strike 220ms cubic-bezier(0.2, 0.78, 0.35, 1) 1;
+}
+
+@keyframes chop-axe-wiggle {
+  0%, 100% { transform: rotate(0deg); }
+  18% { transform: rotate(-6deg); }
+  36% { transform: rotate(5deg); }
+  54% { transform: rotate(-4deg); }
+  72% { transform: rotate(3deg); }
+  88% { transform: rotate(-1deg); }
+}
+
+@keyframes chop-axe-strike {
+  0% { transform: translate(-1px, 1px) rotate(-5deg) scale(1); }
+  55% { transform: translate(4px, 5px) rotate(11deg) scale(1.04); }
+  100% { transform: translate(0, 0) rotate(0deg) scale(1); }
+}
+
+.chop-ink-ripple {
+  position: absolute;
+  inset: 18px;
+  z-index: 1;
+  border: 2px solid rgba(38, 69, 60, 0.42);
+  border-radius: 50%;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.chop-circle-btn:active:not(:disabled) .chop-ink-ripple,
+.chop-circle-btn.is-striking .chop-ink-ripple {
+  animation: chop-ink-ripple 420ms ease-out 1;
+}
+
+@keyframes chop-ink-ripple {
+  0% { opacity: 0.48; transform: scale(0.76); }
+  100% { opacity: 0; transform: scale(1.55); }
+}
+
+.chop-axe-img {
+  width: auto;
+  height: 104px;
+  max-width: 92px;
+  object-fit: contain;
+  filter: drop-shadow(0 5px 5px rgba(20, 29, 25, 0.3));
+}
+
+.chop-count-badge {
+  top: auto;
+  right: auto;
+  left: 50%;
+  bottom: -7px;
+  z-index: 4;
+  transform: translateX(-50%);
+  min-width: 38px;
+  height: 25px;
+  padding: 0 9px;
+  border: 1px solid rgba(232, 237, 223, 0.7);
+  border-radius: 13px;
+  background: rgba(35, 52, 47, 0.88);
+  box-shadow: 0 3px 8px rgba(21, 38, 33, 0.22);
+  color: #f2f0df;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+.equip-info-bar {
+  position: relative;
+  overflow: visible;
+}
+
+.forge-btn {
+  flex-shrink: 0;
+  width: 88px;
+  height: 82px;
+  margin: -18px -12px -18px 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  justify-content: center;
+  overflow: visible;
+  transition: transform 180ms ease, filter 180ms ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.forge-btn:hover {
+  border-color: transparent;
+  box-shadow: none;
+  transform: translateY(-2px) rotate(-2deg) scale(1.04);
+  filter: drop-shadow(0 7px 7px rgba(75, 47, 27, 0.26));
+}
+
+.forge-btn:active { transform: translateY(1px) scale(0.95); }
+
+.forge-btn:focus-visible {
+  outline: 2px solid rgba(52, 111, 91, 0.78);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+.forge-btn-icon {
+  width: 88px;
+  height: 82px;
+  display: grid;
+  place-items: center;
+}
+
+.forge-btn .forge-feature-icon {
+  width: 88px;
+  height: 82px;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 5px rgba(34, 35, 28, 0.22));
+}
+
+@media (max-width: 380px) {
+  .chop-circle-btn { width: 102px; height: 102px; }
+  .chop-axe-icon { width: 86px; height: 96px; }
+  .chop-axe-img { height: 90px; max-width: 80px; }
+  .forge-btn,
+  .forge-btn-icon,
+  .forge-btn .forge-feature-icon { width: 76px; height: 72px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tree-upgrade-hint,
+  .chop-circle-btn:hover:not(:disabled) .chop-axe-icon,
+  .chop-circle-btn:active:not(:disabled) .chop-axe-icon,
+  .chop-circle-btn:active:not(:disabled) .chop-ink-ripple,
+  .chop-circle-btn.is-striking .chop-axe-icon,
+  .chop-circle-btn.is-striking .chop-ink-ripple {
+    animation: none;
+  }
+}
+

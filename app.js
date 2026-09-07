@@ -269,7 +269,7 @@ function getInitialGameImageAssets(axeId = null) {
     'effects/effect-leaf-gold.webp', 'effects/effect-leaf-green.webp',
     ...['achievement', 'breakthrough', 'close', 'cultivate', 'forge', 'lock', 'mail', 'reward', 'shop', 'tasks', 'tree-info', 'wallet']
       .map(name => `icons/icon-${name}.webp`),
-    ...['button-primary', 'button-secondary', 'checkbox-off', 'checkbox-on', 'modal-crest', 'panel-corner',
+    ...['button-primary', 'button-secondary', 'checkbox-off', 'checkbox-on', 'chop-button-bg', 'modal-crest', 'panel-corner',
       'panel-divider', 'scroll-thumb', 'slot-blue', 'slot-gold', 'slot-neutral', 'slot-purple', 'slot-rose',
       'status-pill', 'tab-active', 'tab-inactive'].map(name => `ui/${name}.webp`),
   ].map(path => `${V2_IMAGE_ROOT}/${path}`);
@@ -2722,7 +2722,7 @@ const PlayerView = {
     const nextTreeRealm = TREE_REALMS.find(r => r.level == Game.state.treeRealm + 1);
     const axeDef = ITEMS[Game.state.axeId] || ITEMS['51001'];
     const equippedSkillHtml = renderWeaponSkills(Game.equippedWeapon, '');
-    const forgeStoneQty = Game.inventory.find(i => i.itemId == '40001')?.quantity || 0;
+    const canUpgradeTree = GameplayRules.canUpgradeTreeRealm(nextTreeRealm, Game.inventory);
     const expMax = getExpForLevel(Game.state.level);
 
     const treeAppearance = getTreeAppearance(treeRealm);
@@ -2754,6 +2754,7 @@ const PlayerView = {
           <img id="cultivator-sprite" src="${getAxeIdleFrames(Game.state.axeId)[0]}" class="char-img" alt="装备${axeDef.name}的修炼者" />
         </div>
         <div class="cult-tree tree-appearance-${treeAppearance.key}" id="tree-icon" onclick="PlayerView.showTreeDetail()">
+          ${canUpgradeTree ? '<span class="tree-upgrade-hint" aria-hidden="true">可升级</span>' : ''}
           <img src="${treeAppearance.src}" class="tree-img" alt="${treeConfig.name}" />
           <div class="tree-label">${treeConfig.name}</div>
         </div>
@@ -2786,6 +2787,7 @@ const PlayerView = {
       <div class="cult-action">
         <div class="action-chop-area">
           <button class="chop-circle-btn" id="chop-btn" onclick="PlayerView.doChop()" ${Game.state.choppingCount <= 0 ? 'disabled' : ''}>
+            <span class="chop-ink-ripple" aria-hidden="true"></span>
             <span class="chop-axe-icon">${renderItemIcon(Game.state.axeId, axeDef.icon, 'chop-axe-img')}</span>
           </button>
           <span class="chop-count-badge">${Game.state.choppingCount}</span>
@@ -2806,9 +2808,8 @@ const PlayerView = {
           </div>
           ${equippedSkillHtml ? `<div class="equip-skill">斧技 · ${equippedSkillHtml}</div>` : ''}
         </div>
-        <button class="forge-btn" onclick="PlayerView.showForge()">
+        <button class="forge-btn" onclick="PlayerView.showForge()" aria-label="前往锻造" title="前往锻造">
           <span class="forge-btn-icon">${renderFeatureIcon('icon-forge', '锻造', 'forge-feature-icon')}</span>
-          <span class="forge-btn-stone">${renderItemIcon('40001', '', 'forge-stone-img')}<span>${forgeStoneQty}</span></span>
         </button>
       </div>
     `;
@@ -2890,9 +2891,7 @@ const PlayerView = {
     let costHtml = '';
     let canUpgrade = false;
     if (nextTreeRealm && nextTreeRealm.reqItems && nextTreeRealm.reqItems.length > 0) {
-      canUpgrade = nextTreeRealm.reqItems.every(req =>
-        (Game.inventory.find(i => i.itemId == req.itemId)?.quantity || 0) >= req.count
-      );
+      canUpgrade = GameplayRules.canUpgradeTreeRealm(nextTreeRealm, Game.inventory);
       costHtml = nextTreeRealm.reqItems.map(req => {
         const def = ITEMS[req.itemId];
         const have = Game.inventory.find(i => i.itemId == req.itemId)?.quantity || 0;
@@ -2964,9 +2963,6 @@ const PlayerView = {
     const cost = Math.max(1, parseInt(forgeConfig?.costCount) || 1);
     const quantity = Game._getItemQty(costItemId);
 
-    const entranceValue = document.querySelector('.forge-btn-stone > span:last-child');
-    if (entranceValue) entranceValue.textContent = quantity;
-
     const forgeModal = document.querySelector('.forge-modal');
     if (forgeModal) {
       const materialValue = forgeModal.querySelector('.forge-material-cost b');
@@ -2975,6 +2971,18 @@ const PlayerView = {
       if (forgeButton && forgeButton.getAttribute('aria-busy') !== 'true') {
         forgeButton.disabled = quantity < cost;
         if (forgeButton.disabled) forgeButton.textContent = '锻铁不足';
+      }
+    }
+
+    const treeElement = document.getElementById('tree-icon');
+    if (treeElement) {
+      const nextTreeRealm = TREE_REALMS.find(r => r.level == Game.state.treeRealm + 1);
+      const canUpgradeTree = GameplayRules.canUpgradeTreeRealm(nextTreeRealm, Game.inventory);
+      const existingHint = treeElement.querySelector('.tree-upgrade-hint');
+      if (canUpgradeTree && !existingHint) {
+        treeElement.insertAdjacentHTML('afterbegin', '<span class="tree-upgrade-hint" aria-hidden="true">可升级</span>');
+      } else if (!canUpgradeTree && existingHint) {
+        existingHint.remove();
       }
     }
 
@@ -3352,6 +3360,14 @@ const PlayerView = {
     });
   },
 
+  _playChopButtonFeedback(button) {
+    if (!button) return;
+    button.classList.remove('is-striking');
+    void button.offsetWidth;
+    button.classList.add('is-striking');
+    setTimeout(() => button.classList.remove('is-striking'), 430);
+  },
+
   async doChop() {
     // 十连砍模式
     if (this._tenChopMode) {
@@ -3366,6 +3382,7 @@ const PlayerView = {
     const treeIcon = document.getElementById('tree-icon');
     const scene = document.getElementById('tree-area');
     const chopBtn = document.getElementById('chop-btn');
+    this._playChopButtonFeedback(chopBtn);
     const outcome = await UI.runLockedAction('chop', chopBtn, '', async () => {
       void AudioManager.playEffect('chopHit');
       const characterAnimation = CultivatorAnimator.playChop();
@@ -4723,9 +4740,7 @@ const PlayerView = {
     const next = TREE_REALMS.find(r => r.level == Game.state.treeRealm + 1);
     if (!next) return;
 
-    const canUpgrade = next.reqItems.every(req =>
-      (Game.inventory.find(i => i.itemId == req.itemId)?.quantity || 0) >= req.count
-    );
+    const canUpgrade = GameplayRules.canUpgradeTreeRealm(next, Game.inventory);
 
     const reqItemsHtml = next.reqItems.map(req => {
       const def = ITEMS[req.itemId];
@@ -4939,6 +4954,7 @@ const PlayerView = {
     const chopBtn = document.getElementById('chop-btn');
     const treeIcon = document.getElementById('tree-icon');
     const scene = document.getElementById('tree-area');
+    this._playChopButtonFeedback(chopBtn);
     const outcome = await UI.runLockedAction('chop', chopBtn, '', async () => {
 
     const results = [];

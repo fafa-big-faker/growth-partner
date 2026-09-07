@@ -5,6 +5,20 @@
     return Number(realmLevel) >= TEN_CHOP_UNLOCK_REALM;
   }
 
+  function canUpgradeTreeRealm(nextRealm, inventory = []) {
+    const requirements = nextRealm?.reqItems;
+    if (!Array.isArray(requirements) || requirements.length === 0) return false;
+    return requirements.every(requirement => {
+      const requiredQuantity = Number(requirement?.count);
+      if (!Number.isFinite(requiredQuantity) || requiredQuantity <= 0) return false;
+      const itemId = String(requirement.itemId);
+      const ownedQuantity = inventory.reduce((total, entry) => (
+        String(entry?.itemId) === itemId ? total + (Number(entry.quantity) || 0) : total
+      ), 0);
+      return ownedQuantity >= requiredQuantity;
+    });
+  }
+
   function isBonusChop(totalChops, interval = 10) {
     const count = Number(totalChops);
     const cadence = Number(interval);
@@ -35,7 +49,13 @@
     };
   }
 
-  const api = { TEN_CHOP_UNLOCK_REALM, canUseTenChop, isBonusChop, rollPackItem };
+  const api = {
+    TEN_CHOP_UNLOCK_REALM,
+    canUseTenChop,
+    canUpgradeTreeRealm,
+    isBonusChop,
+    rollPackItem,
+  };
   root.GameplayRules = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(typeof globalThis !== 'undefined' ? globalThis : window);

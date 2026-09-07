@@ -31,6 +31,7 @@ class RuntimeImageAssetsTest(unittest.TestCase):
         manifest_path = RUNTIME_ROOT / "v2" / "manifest.json"
         self.assertTrue(manifest_path.exists())
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        self.assertIn("chop-button-bg", manifest["ui"])
         limits = {
             "backgrounds": (1600, 1000),
             "trees": (512, 512),

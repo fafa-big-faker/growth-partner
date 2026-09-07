@@ -6,6 +6,7 @@ const path = require('node:path');
 const {
   TEN_CHOP_UNLOCK_REALM,
   canUseTenChop,
+  canUpgradeTreeRealm,
   isBonusChop,
   rollPackItem,
 } = require('../gameplay-rules');
@@ -24,6 +25,25 @@ test('ten chop unlocks from middle kalami realm', () => {
   assert.equal(canUseTenChop(1), false);
   assert.equal(canUseTenChop(2), true);
   assert.equal(canUseTenChop(5), true);
+});
+
+test('tree upgrade hint requires a next realm and every configured material', () => {
+  const nextRealm = {
+    reqItems: [
+      { itemId: 40001, count: 2 },
+      { itemId: '30001', count: 3 },
+    ],
+  };
+  assert.equal(canUpgradeTreeRealm(null, []), false);
+  assert.equal(canUpgradeTreeRealm({ reqItems: [] }, []), false);
+  assert.equal(canUpgradeTreeRealm(nextRealm, [
+    { itemId: '40001', quantity: 2 },
+    { itemId: '30001', quantity: 2 },
+  ]), false);
+  assert.equal(canUpgradeTreeRealm(nextRealm, [
+    { itemId: '40001', quantity: 2 },
+    { itemId: 30001, quantity: 3 },
+  ]), true);
 });
 
 test('all ten chop entry points enforce the realm requirement before work starts', () => {

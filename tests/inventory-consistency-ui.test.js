@@ -37,7 +37,7 @@ test('one inventory synchronization path updates every visible consumer', () => 
   assert.match(apply, /_syncInventoryNovelty/);
   assert.match(apply, /PlayerView\.refreshInventoryConsumers/);
   assert.match(apply, /UI\._updateAchBadge/);
-  assert.match(refresh, /forge-btn-stone/);
+  assert.doesNotMatch(refresh, /forge-btn-stone/);
   assert.match(refresh, /forge-material-cost/);
   assert.match(refresh, /forge-ok/);
   assert.match(refresh, /renderInventory\(this\.currentInvTab\)/);
