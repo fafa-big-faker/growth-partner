@@ -13,12 +13,22 @@ test('novelty module loads before app and game syncs successful inventory change
   assert.match(app, /_syncInventoryNovelty\(\)/);
 
   const grant = app.match(/async grantItem\(itemId, quantity = 1\)[\s\S]*?\n  },/)?.[0] || '';
-  assert.match(grant, /kind: 'weapon'[\s\S]*?_syncInventoryNovelty/);
-  assert.match(grant, /kind: 'item'[\s\S]*?_syncInventoryNovelty|_syncInventoryNovelty[\s\S]*?kind: 'item'/);
+  assert.match(
+    grant,
+    /(?:_syncInventoryNovelty|_applyInventoryChanges)[\s\S]*?kind: 'weapon'|kind: 'weapon'[\s\S]*?(?:_syncInventoryNovelty|_applyInventoryChanges)/,
+  );
+  assert.match(
+    grant,
+    /kind: 'item'[\s\S]*?(?:_syncInventoryNovelty|_applyInventoryChanges)|(?:_syncInventoryNovelty|_applyInventoryChanges)[\s\S]*?kind: 'item'/,
+  );
 
   for (const method of ['composeMulti', 'forge', 'chopTen']) {
     const block = app.match(new RegExp(`async ${method}\\([^)]*\\)[\\s\\S]*?\\n  },`))?.[0] || '';
-    assert.match(block, /_syncInventoryNovelty\(\)/, `${method} must synchronize novelty after success`);
+    assert.match(
+      block,
+      /_syncInventoryNovelty\(\)|_applyInventoryChanges\(/,
+      `${method} must synchronize novelty after success`,
+    );
   }
 });
 

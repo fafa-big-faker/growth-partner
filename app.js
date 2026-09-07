@@ -424,7 +424,7 @@ const DB = {
       // 成就系统：累计统计 + 已领取成就
       totalChops: parseInt(data.total_chops) || 0,
       totalCoinEarned: parseInt(data.total_coin_earned) || 0,
-      achievementClaims: Array.isArray(data.achievement_claims) ? data.achievement_claims : [],
+      achievementClaims: Array.isArray(data.achievement_claims) ? data.achievement_claims.map(String) : [],
       themeRewardClaims: Array.isArray(data.theme_reward_claims) ? data.theme_reward_claims : [],
     };
   },
@@ -575,10 +575,15 @@ const DB = {
       .gt('quantity', 0)
       .order('updated_at', { ascending: false });
     if (error) { console.error('DB getInventory error:', error); return []; }
-    return data.map(item => ({
-      itemId: item.item_id,
-      quantity: item.quantity,
-    }));
+    const quantities = new Map();
+    for (const item of data || []) {
+      const itemId = String(item.item_id);
+      const quantity = Math.max(0, Number(item.quantity) || 0);
+      if (!itemId || quantity <= 0) continue;
+      const current = quantities.get(itemId) || 0;
+      quantities.set(itemId, current + quantity);
+    }
+    return Array.from(quantities, ([itemId, quantity]) => ({ itemId, quantity }));
   },
 
   async getWeaponInstances() {
@@ -678,57 +683,29 @@ const DB = {
   },
 
   async addItem(itemId, quantity = 1) {
-    const { data: existing } = await dbClient
-      .from('inventory')
-      .select('*')
-      .eq('user_role', this.playerRole)
-      .eq('item_id', itemId)
-      .maybeSingle();
-
-    if (existing) {
-      const { error } = await dbClient
-        .from('inventory')
-        .update({
-          quantity: existing.quantity + quantity,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', existing.id);
-      if (error) { console.error('DB addItem update error:', error); return false; }
-    } else {
-      const { error } = await dbClient
-        .from('inventory')
-        .insert({
-          user_role: this.playerRole,
-          item_id: itemId,
-          quantity: quantity,
-        });
-      if (error) { console.error('DB addItem insert error:', error); return false; }
+    const { data, error } = await dbClient.rpc('add_inventory_item', {
+      p_user_role: this.playerRole,
+      p_item_id: String(itemId),
+      p_quantity: quantity,
+    });
+    if (error) {
+      console.error('DB addItem error:', error);
+      return null;
     }
-    return true;
+    return data?.ok ? data : null;
   },
 
   async removeItem(itemId, quantity = 1) {
-    const { data: existing } = await dbClient
-      .from('inventory')
-      .select('*')
-      .eq('user_role', this.playerRole)
-      .eq('item_id', itemId)
-      .maybeSingle();
-
-    if (!existing || existing.quantity < quantity) return false;
-
-    const newQty = existing.quantity - quantity;
-    if (newQty <= 0) {
-      const { error } = await dbClient.from('inventory').delete().eq('id', existing.id);
-      if (error) { console.error('DB removeItem delete error:', error); return false; }
-    } else {
-      const { error } = await dbClient
-        .from('inventory')
-        .update({ quantity: newQty, updated_at: new Date().toISOString() })
-        .eq('id', existing.id);
-      if (error) { console.error('DB removeItem update error:', error); return false; }
+    const { data, error } = await dbClient.rpc('remove_inventory_item', {
+      p_user_role: this.playerRole,
+      p_item_id: String(itemId),
+      p_quantity: quantity,
+    });
+    if (error) {
+      console.error('DB removeItem error:', error);
+      return null;
     }
-    return true;
+    return data?.ok ? data : null;
   },
 
   async composeInventoryItem(sourceItemId, sourceQuantity, targetItemId, targetQuantity) {
@@ -1188,6 +1165,7 @@ const Game = {
     this.inventory = await DB.getInventory();
     if (this.state) await this._loadWeapons();
     this._syncInventoryNovelty();
+    PlayerView.refreshInventoryConsumers();
     UI.updateHeader();
   },
 
@@ -1249,6 +1227,16 @@ const Game = {
     }
   },
 
+  _applyInventoryChanges(changes) {
+    for (const change of Array.isArray(changes) ? changes : []) {
+      if (!change || change.itemId === undefined) continue;
+      this._setInventoryQuantity(change.itemId, change.quantity);
+    }
+    this._syncInventoryNovelty();
+    PlayerView.refreshInventoryConsumers();
+    UI._updateAchBadge();
+  },
+
   // 统一发放道具（特殊道具不进背包）：
   //   type 0 游戏币 → state.coin；type 6 砍树次数 → state.choppingCount；其余 → 背包
   // 返回 { kind: 'coin'|'chopping'|'item', id, quantity, def }
@@ -1269,6 +1257,7 @@ const Game = {
         this.state.totalCoinEarned -= qty;
         return null;
       }
+      UI._updateCultivateStats();
       return { kind: 'coin', id, quantity: qty, def };
     }
     if (def && def.type === 6) {
@@ -1278,6 +1267,7 @@ const Game = {
         this.state.choppingCount -= qty;
         return null;
       }
+      UI._updateCultivateStats();
       return { kind: 'chopping', id, quantity: qty, def };
     }
     if (def && def.type === 5) {
@@ -1289,20 +1279,13 @@ const Game = {
         created.push(weapon);
       }
       this.weapons.unshift(...created);
-      this._syncInventoryNovelty();
+      this._applyInventoryChanges([]);
       return { kind: 'weapon', id, quantity: qty, def, weapons: created };
     }
-    // 普通道具 → 背包（本地 + DB）
-    const idx = this.inventory.findIndex(i => i.itemId == id);
-    if (idx >= 0) this.inventory[idx].quantity += qty;
-    else this.inventory.push({ itemId: id, quantity: qty });
+    // 普通道具由数据库原子累加，再使用返回数量同步全部可见入口。
     const saved = await DB.addItem(id, qty);
-    if (!saved) {
-      if (idx >= 0) this.inventory[idx].quantity -= qty;
-      else this.inventory = this.inventory.filter(item => item.itemId != id);
-      return null;
-    }
-    this._syncInventoryNovelty();
+    if (!saved) return null;
+    this._applyInventoryChanges([{ itemId: id, quantity: saved.quantity }]);
     return { kind: 'item', id, quantity: qty, def };
   },
 
@@ -1556,12 +1539,14 @@ const Game = {
   // ===== 成就系统 =====
   // 计算全部成就进度
   getAchievementProgress() {
-    const claims = Array.isArray(this.state.achievementClaims) ? this.state.achievementClaims : [];
+    const claims = new Set(
+      (Array.isArray(this.state.achievementClaims) ? this.state.achievementClaims : []).map(String),
+    );
     return getAchievements().map(a => {
       const meta = ACH_TYPE_META[a.typeId] || { stat: 'level', iconName: 'icon-achievement', tab: 1 };
       const current = parseInt(this.state[meta.stat]) || 0;
       const target = a.typeParam || 1;
-      const claimed = claims.includes(a.achievementId);
+      const claimed = claims.has(String(a.achievementId));
       const done = current >= target;
       return {
         ...a,
@@ -1583,14 +1568,17 @@ const Game = {
 
   // 领取成就奖励
   async claimAchievement(achievementId) {
+    const normalizedId = String(achievementId);
     const list = this.getAchievementProgress();
-    const ach = list.find(x => x.achievementId === achievementId);
+    const ach = list.find(x => String(x.achievementId) === normalizedId);
     if (!ach) return false;
-    const claims = Array.isArray(this.state.achievementClaims) ? this.state.achievementClaims : [];
-    if (claims.includes(achievementId)) { UI.toast('该成就已领取', 'warn'); return false; }
+    const claims = new Set(
+      (Array.isArray(this.state.achievementClaims) ? this.state.achievementClaims : []).map(String),
+    );
+    if (claims.has(normalizedId)) { UI.toast('该成就已领取', 'warn'); return false; }
     if (!ach.claimable) { UI.toast('尚未达成该成就', 'warn'); return false; }
 
-    const reserved = await DB.reservePlayerClaim('achievement', achievementId);
+    const reserved = await DB.reservePlayerClaim('achievement', normalizedId);
     if (!reserved.ok) {
       if (reserved.code === 'already_claimed') {
         await this.refresh();
@@ -1601,11 +1589,11 @@ const Game = {
       return false;
     }
 
-    const newClaims = [...claims, achievementId];
+    const newClaims = [...claims, normalizedId];
     this.state.achievementClaims = newClaims;
     const granted = await this.grantItem(ach.rewardItemId, ach.rewardCount);
     if (!granted) {
-      console.error('claimAchievement grant failed:', achievementId);
+      console.error('claimAchievement grant failed:', normalizedId);
       UI.toast('奖励状态已同步，请联系天道检查', 'error');
       return false;
     }
@@ -1663,6 +1651,7 @@ const Game = {
     if (!result.ok) {
       if (result.code === 'insufficient_materials') {
         this.inventory = await DB.getInventory();
+        this._applyInventoryChanges([]);
         UI.toast(`材料不足，需要 ${totalNeed} 个`, 'warn');
       } else {
         UI.toast('合成未完成，请重试', 'error');
@@ -1670,9 +1659,10 @@ const Game = {
       return false;
     }
 
-    this._setInventoryQuantity(itemId, result.sourceQuantity);
-    this._setInventoryQuantity(itemDef.composeTo, result.targetQuantity);
-    this._syncInventoryNovelty();
+    this._applyInventoryChanges([
+      { itemId, quantity: result.sourceQuantity },
+      { itemId: itemDef.composeTo, quantity: result.targetQuantity },
+    ]);
 
     const targetItem = ITEMS[itemDef.composeTo];
     UI.toast(`合成成功！获得 ${targetItem.name} ×${composeQty}`, 'success');
@@ -1974,10 +1964,11 @@ const Game = {
       UI.toast(result.code === 'insufficient_materials' ? '锻铁不足' : '锻造未完成，请重试', 'error');
       return null;
     }
-    this._setInventoryQuantity(costItemId, Number(result.remainingMaterial) || 0);
     const weapon = result.weapon;
     this.weapons.unshift(weapon);
-    this._syncInventoryNovelty();
+    this._applyInventoryChanges([
+      { itemId: costItemId, quantity: Number(result.remainingMaterial) || 0 },
+    ]);
     return { itemId, quality: selectedPool.quality, item: axeDef, weapon };
   },
 
@@ -2076,7 +2067,10 @@ const Game = {
     if (this.state.level > startingLevel) {
       UI.toast(`恭喜！升级到 Lv.${this.state.level}`, 'success');
     }
-    this._syncInventoryNovelty();
+    this._applyInventoryChanges(grantEntries.map(([itemId], index) => ({
+      itemId,
+      quantity: Number(saveResults[index + 1]?.quantity) || 0,
+    })));
     UI._updateCultivateStats();
     UI.updateHeader();
     return results;
@@ -2260,6 +2254,8 @@ const Router = {
    UI 工具
    ================================================================ */
 const UI = {
+  _achievementBadgeVisible: false,
+
   updateHeader() {
     if (!Game.state) return;
     // 旧版 header 已移除，这里更新邮件 badge + 游戏币显示 + 成就红点
@@ -2286,12 +2282,14 @@ const UI = {
     if (coinEl) coinEl.textContent = Game.state.coin || 0;
     const chopBtn = document.getElementById('chop-btn');
     if (chopBtn) chopBtn.disabled = Game.state.choppingCount <= 0;
+    this._updateAchBadge();
   },
 
   _updateAchBadge() {
+    this._achievementBadgeVisible = Game.hasClaimableAchievements();
     const dot = document.getElementById('ach-dot');
     if (!dot) return;
-    dot.style.display = Game.hasClaimableAchievements() ? 'inline-block' : 'none';
+    dot.style.display = this._achievementBadgeVisible ? 'inline-block' : 'none';
   },
 
   async _updateMailBadge() {
@@ -2759,6 +2757,7 @@ const PlayerView = {
     AudioManager.syncControls();
     this.renderInventory(this.currentInvTab);
     UI._updateMailBadge();
+    UI._updateAchBadge();
   },
 
   toggleTenChop(checked) {
@@ -2887,6 +2886,30 @@ const PlayerView = {
       el.classList.toggle('active', el.dataset.tab === tab);
     });
     this.renderInventory(tab);
+  },
+
+  refreshInventoryConsumers() {
+    const forgeConfig = (GAME_CONFIG?.forgeTable || [])[0];
+    const costItemId = String(forgeConfig?.costItemId || '40001');
+    const cost = Math.max(1, parseInt(forgeConfig?.costCount) || 1);
+    const quantity = Game._getItemQty(costItemId);
+
+    const entranceValue = document.querySelector('.forge-btn-stone > span:last-child');
+    if (entranceValue) entranceValue.textContent = quantity;
+
+    const forgeModal = document.querySelector('.forge-modal');
+    if (forgeModal) {
+      const materialValue = forgeModal.querySelector('.forge-material-cost b');
+      if (materialValue) materialValue.textContent = quantity;
+      const forgeButton = forgeModal.querySelector('#forge-ok');
+      if (forgeButton && forgeButton.getAttribute('aria-busy') !== 'true') {
+        forgeButton.disabled = quantity < cost;
+        if (forgeButton.disabled) forgeButton.textContent = '锻铁不足';
+      }
+    }
+
+    const inventoryGrid = document.getElementById('inventory-grid');
+    if (inventoryGrid?.isConnected) this.renderInventory(this.currentInvTab);
   },
 
   renderInventory(tab) {
@@ -3170,9 +3193,7 @@ const PlayerView = {
           return false;
         }
 
-        Game._setInventoryQuantity(itemId, Game._getItemQty(itemId) - cashQty);
-        Game._syncInventoryNovelty();
-        this.renderInventory(this.currentInvTab);
+        Game._applyInventoryChanges([{ itemId, quantity: removed.quantity }]);
         UI.toast(`到账 ¥${total.toFixed(2)}`, 'success');
         document.querySelector('.modal-overlay')?.remove();
         return true;

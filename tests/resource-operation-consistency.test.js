@@ -23,7 +23,7 @@ test('compose uses one guarded RPC and updates inventory locally', () => {
 
   const body = app.match(/async composeMulti\([\s\S]*?\n  },/)?.[0] || '';
   assert.match(body, /DB\.composeInventoryItem/);
-  assert.match(body, /_setInventoryQuantity/);
+  assert.match(body, /_applyInventoryChanges/);
   assert.doesNotMatch(body, /DB\.removeItem/);
   assert.doesNotMatch(body, /DB\.addItem/);
   assert.doesNotMatch(body, /this\.refresh\(/);
