@@ -3666,6 +3666,8 @@ const PlayerView = {
         UI.closeModal(overlay);
         UI.toast('已提交审核', 'success');
         this._renderTaskList();
+      } else if (outcome.started) {
+        UI.toast('任务提交失败，请稍后重试', 'error');
       }
     });
   },
@@ -3712,6 +3714,8 @@ const PlayerView = {
         UI.closeModal(overlay);
         UI.toast('已提交审核', 'success');
         this._renderTaskList();
+      } else if (outcome.started) {
+        UI.toast('任务提交失败，请稍后重试', 'error');
       }
     });
   },
@@ -4026,7 +4030,7 @@ const PlayerView = {
     let html = '';
     list.slice(0, 10).forEach(w => {
       const statusMap = { pending: '审核中', approved: '已通过', rejected: '已驳回' };
-      const date = new Date(w.createdAt).toLocaleDateString('zh-CN');
+      const date = GameDateTime.formatShanghaiDate(w.createdAt);
       html += `
         <div class="task-card" style="padding:12px">
           <div class="task-card-header">
@@ -5060,7 +5064,7 @@ const AdminView = {
 
     let html = '';
     subs.forEach(sub => {
-      const date = new Date(sub.submittedAt).toLocaleDateString('zh-CN');
+      const date = GameDateTime.formatShanghaiDate(sub.submittedAt);
       const isSelf = sub.isSelfTask;
 
       html += `
@@ -5246,7 +5250,7 @@ const AdminView = {
 
     let html = '';
     ws.forEach(w => {
-      const date = new Date(w.createdAt).toLocaleString('zh-CN');
+      const date = GameDateTime.formatShanghaiDateTime(w.createdAt);
       html += `
         <div class="task-card">
           <div class="task-card-header">
