@@ -50,4 +50,4 @@ Files: scripts/split_idle_axe_sheets.py、scripts/idle_frame_offsets.json、idle
 
 - [x] 更新待机资源和前端缓存版本、制作规范。
 - [x] Node全量163项测试、JS语法、Python编译、sprite/runtime测试、git diff --check。独立代码复查未发现发布阻断问题。
-- [ ] 精确暂存本次文件、审查无敏感信息，提交并推送origin/main，核对Pages部署状态。
+- [x] 精确暂存本次文件、审查无敏感信息，提交并推送origin/main，核对Pages部署状态。代码版本d863aab：线上HTML版本、逐次下劈调用、待机缓存标记和密码模块均已验证；待机WebP与本地文件一致。
