@@ -1065,6 +1065,18 @@ const DB = {
     return true;
   },
 
+  async deleteMails(ids) {
+    if (!Array.isArray(ids) || ids.length === 0) return true;
+    const { error } = await dbClient
+      .from('mails')
+      .update({ is_deleted: true })
+      .in('id', ids)
+      .eq('is_read', true)
+      .eq('user_role', this.playerRole);
+    if (error) { console.error('DB deleteMails error:', error); return false; }
+    return true;
+  },
+
   // --- 提现 ---
   async getWithdrawals(status = null) {
     let query = dbClient.from('withdrawals').select('*').eq('user_role', this.playerRole);
@@ -2264,7 +2276,7 @@ const UI = {
   },
 
   async _updateMailBadge() {
-    const mails = await DB.getMails();
+    const mails = await PlayerView._loadMails();
     const unread = mails.filter(m => !m.isRead || (!m.isClaimed && m.items.length > 0)).length;
     const badge = document.getElementById('mail-badge');
     if (badge) {
@@ -2376,7 +2388,12 @@ const UI = {
     if (overlay && overlay.parentNode) overlay.remove();
   },
 
-  confirm(message, onConfirm) {
+  confirm(message, onConfirm, options = {}) {
+    if (options.key) {
+      const existing = Array.from(document.querySelectorAll('.modal-overlay'))
+        .find(entry => entry.isConnected && entry.dataset.confirmKey === options.key);
+      if (existing) return existing;
+    }
     const overlay = this.modal(`
       <p style="margin-bottom:16px">${message}</p>
     `, {
@@ -2386,10 +2403,12 @@ const UI = {
         <button class="btn btn-primary btn-sm" id="confirm-ok-btn">确定</button>
       </div>`
     });
+    if (options.key) overlay.dataset.confirmKey = options.key;
     overlay.querySelector('#confirm-ok-btn').addEventListener('click', () => {
       this.closeModal(overlay);
       onConfirm();
     });
+    return overlay;
   },
 
   // 品质标签
@@ -2582,6 +2601,11 @@ const PlayerView = {
   _mailSurfaces: {
     modal: { container: null, mails: [], expandedId: null },
     page: { container: null, mails: [], expandedId: null },
+  },
+  _mailCache: PlayerDataCache.createResourceCache({ ttlMs: 10000 }),
+
+  _loadMails(options = {}) {
+    return this._mailCache.get(() => DB.getMails(), options);
   },
 
   async renderCultivate() {
@@ -4162,15 +4186,22 @@ const PlayerView = {
   // --- 邮件 ---
   async showMailModal() {
     document.querySelectorAll('.modal-overlay').forEach(el => el.remove());
-    const mails = await DB.getMails();
     const overlay = UI.modal('<div id="mail-modal-list" class="mail-list"></div>', {
       title: `${renderFeatureIcon('icon-mail', '', 'section-title-icon')} 邮件`,
     });
-    this._mailSurfaces.modal = {
+    const cached = this._mailCache.peek();
+    const mailState = {
       container: overlay.querySelector('#mail-modal-list'),
-      mails,
+      mails: cached || [],
       expandedId: null,
     };
+    this._mailSurfaces.modal = mailState;
+    if (cached) this._renderMailAccordion('modal');
+    else this._renderMailSkeleton('modal');
+
+    const mails = await this._loadMails();
+    if (!mailState.container?.isConnected) return;
+    mailState.mails = mails;
     this._renderMailAccordion('modal');
     UI._updateMailBadge();
   },
@@ -4277,31 +4308,66 @@ const PlayerView = {
 
   async renderMail() {
     const main = document.getElementById('player-main');
-    const mails = await DB.getMails();
-
     main.innerHTML = `
       <div class="page-title page-title-art">${renderFeatureIcon('icon-mail', '', 'page-title-icon')}<span>邮件</span></div>
       <div class="page-subtitle">天道消息和奖励都在这里</div>
       <div id="mail-list" class="mail-list"></div>
     `;
-    this._mailSurfaces.page = {
+    const cached = this._mailCache.peek();
+    const mailState = {
       container: document.getElementById('mail-list'),
-      mails,
+      mails: cached || [],
       expandedId: null,
     };
+    this._mailSurfaces.page = mailState;
+    if (cached) this._renderMailAccordion('page');
+    else this._renderMailSkeleton('page');
+
+    const mails = await this._loadMails();
+    if (!mailState.container?.isConnected) return;
+    mailState.mails = mails;
     this._renderMailAccordion('page');
     UI._updateMailBadge();
+  },
+
+  _renderMailSkeleton(surface) {
+    const state = this._mailSurfaces[surface];
+    if (!state?.container?.isConnected) return;
+    state.container.innerHTML = `
+      <div class="mail-toolbar mail-toolbar-skeleton"></div>
+      ${Array.from({ length: 4 }, () => `
+        <div class="mail-skeleton" aria-hidden="true">
+          <span></span><i></i>
+        </div>
+      `).join('')}
+    `;
+  },
+
+  _getDeletableReadMails(mails) {
+    return (Array.isArray(mails) ? mails : []).filter(mail => {
+      const hasItems = Array.isArray(mail.items) && mail.items.length > 0;
+      return mail.isRead && (!hasItems || mail.isClaimed);
+    });
   },
 
   _renderMailAccordion(surface) {
     const state = this._mailSurfaces[surface];
     if (!state?.container?.isConnected) return;
+    const deletableCount = this._getDeletableReadMails(state.mails).length;
+    const toolbar = `
+      <div class="mail-toolbar">
+        <span>${state.mails.length} 封邮件</span>
+        <button type="button" class="mail-delete-read" onclick="PlayerView.deleteReadMails('${surface}', this)" ${deletableCount === 0 ? 'disabled' : ''}>
+          删除已读${deletableCount > 0 ? ` (${deletableCount})` : ''}
+        </button>
+      </div>
+    `;
     if (state.mails.length === 0) {
-      state.container.innerHTML = renderEmptyState('icon-mail', '暂无邮件');
+      state.container.innerHTML = toolbar + renderEmptyState('icon-mail', '暂无邮件');
       return;
     }
 
-    state.container.innerHTML = state.mails.map(mail => {
+    state.container.innerHTML = toolbar + state.mails.map(mail => {
       const rewards = Array.isArray(mail.items) ? mail.items : [];
       const hasItems = rewards.length > 0;
       const canClaim = hasItems && !mail.isClaimed;
@@ -4369,16 +4435,19 @@ const PlayerView = {
       const marked = await DB.markMailRead(mailId);
       if (marked) {
         mail.isRead = true;
+        this._mailCache.update(mails => mails.map(entry => (
+          String(entry.id) === String(mailId) ? { ...entry, isRead: true } : entry
+        )));
         this._renderMailAccordion(surface);
         UI._updateMailBadge();
       }
     }
   },
 
-  async _refreshMailSurface(surface, expandedId = null) {
+  async _refreshMailSurface(surface, expandedId = null, options = {}) {
     const state = this._mailSurfaces[surface];
     if (!state) return;
-    const mails = await DB.getMails();
+    const mails = await this._loadMails(options);
     state.mails = mails;
     state.expandedId = mails.some(mail => String(mail.id) === String(expandedId)) ? expandedId : null;
     this._renderMailAccordion(surface);
@@ -4412,7 +4481,7 @@ const PlayerView = {
         }
 
         await Game.refresh();
-        await this._refreshMailSurface(surface, mailId);
+        await this._refreshMailSurface(surface, mailId, { force: true });
         UI.showRewardBubble(entries);
         return true;
       },
@@ -4819,13 +4888,57 @@ const PlayerView = {
             UI.toast('删除未完成，请重试', 'error');
             return false;
           }
-          await this._refreshMailSurface(surface, null);
+          const mails = (this._mailCache.peek() || []).filter(mail => String(mail.id) !== String(mailId));
+          this._mailCache.set(mails);
+          Object.entries(this._mailSurfaces).forEach(([name, state]) => {
+            if (!state?.container?.isConnected) return;
+            state.mails = mails;
+            if (String(state.expandedId) === String(mailId)) state.expandedId = null;
+            this._renderMailAccordion(name);
+          });
+          UI._updateMailBadge();
           UI.toast('已删除', 'success');
           return true;
         },
       );
       return outcome.started && outcome.value;
-    });
+    }, { key: `mail-delete:${mailId}` });
+  },
+
+  async deleteReadMails(surface, button) {
+    UI.confirm('删除所有已读且已处理完奖励的邮件？', async () => {
+      const outcome = await UI.runLockedAction(
+        'mail-delete-read',
+        button,
+        '删除中...',
+        async () => {
+          const latest = await this._loadMails({ force: true });
+          const ids = this._getDeletableReadMails(latest).map(mail => mail.id);
+          if (ids.length === 0) {
+            UI.toast('没有可删除的已读邮件', 'warn');
+            return false;
+          }
+          const deleted = await DB.deleteMails(ids);
+          if (!deleted) {
+            UI.toast('删除未完成，请重试', 'error');
+            return false;
+          }
+          const idSet = new Set(ids.map(String));
+          const remaining = latest.filter(mail => !idSet.has(String(mail.id)));
+          this._mailCache.set(remaining);
+          Object.entries(this._mailSurfaces).forEach(([name, state]) => {
+            if (!state?.container?.isConnected) return;
+            state.mails = remaining;
+            if (state.expandedId && idSet.has(String(state.expandedId))) state.expandedId = null;
+            this._renderMailAccordion(name);
+          });
+          UI._updateMailBadge();
+          UI.toast(`已删除 ${ids.length} 封已读邮件`, 'success');
+          return true;
+        },
+      );
+      return outcome.started && outcome.value;
+    }, { key: 'mail-delete-read' });
   },
 
   // 提现记录

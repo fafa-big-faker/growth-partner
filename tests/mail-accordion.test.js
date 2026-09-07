@@ -22,12 +22,13 @@ test('opening mail no longer launches a second detail modal', () => {
   assert.match(app, /await DB\.markMailRead\(mailId\)/);
 });
 
-test('mail actions refresh only their active accordion surface', () => {
+test('mail actions update cached accordion surfaces without reopening modals', () => {
   const claim = app.match(/async claimMailReward\(mailId, surface, button\)[\s\S]*?\n  },/)?.[0] || '';
   assert.match(app, /async claimMailReward\(mailId, surface, button\)/);
-  assert.match(app, /_refreshMailSurface\(surface, mailId\)/);
+  assert.match(app, /_refreshMailSurface\(surface, mailId, \{ force: true \}\)/);
   assert.match(app, /async deleteMail\(mailId, surface, button\)/);
-  assert.match(app, /_refreshMailSurface\(surface, null\)/);
+  assert.match(app, /_mailCache\.set\(mails\)/);
+  assert.match(app, /Object\.entries\(this\._mailSurfaces\)/);
   assert.doesNotMatch(claim, /document\.querySelectorAll\('\.modal-overlay'\)/);
 });
 

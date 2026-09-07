@@ -1146,6 +1146,57 @@ body {
   gap: 8px;
 }
 
+.mail-toolbar {
+  min-height: 36px;
+  margin-bottom: 8px;
+  padding: 0 2px 7px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(75, 116, 102, 0.2);
+  color: var(--text-light);
+  font-size: 12px;
+}
+
+.mail-delete-read {
+  min-height: 30px;
+  padding: 4px 9px;
+  border: 1px solid rgba(171, 72, 64, 0.34);
+  border-radius: 6px;
+  background: rgba(255, 251, 246, 0.72);
+  color: #a84f48;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 650;
+}
+
+.mail-delete-read:hover:not(:disabled) { background: rgba(232, 95, 85, 0.1); }
+.mail-delete-read:disabled { opacity: 0.42; cursor: default; }
+
+.mail-toolbar-skeleton,
+.mail-skeleton {
+  overflow: hidden;
+  background: rgba(223, 231, 222, 0.58);
+}
+
+.mail-skeleton {
+  height: 62px;
+  margin-bottom: 8px;
+  padding: 14px;
+  border-radius: 7px;
+}
+
+.mail-skeleton span,
+.mail-skeleton i {
+  display: block;
+  height: 10px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.mail-skeleton span { width: 48%; margin-bottom: 10px; }
+.mail-skeleton i { width: 76%; height: 8px; }
+
 .mail-item {
   overflow: hidden;
   border: 1px solid var(--border);

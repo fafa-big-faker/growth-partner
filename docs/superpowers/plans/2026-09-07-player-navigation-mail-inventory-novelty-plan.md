@@ -187,7 +187,7 @@ git commit -m=feat-persistent-inventory-new-badges
 - Consumes: `PlayerDataCache.createResourceCache`, `UI.runLockedAction`, and current `_mailSurfaces`.
 - Produces: `DB.deleteMails(ids)`, `PlayerView._mailCache`, `PlayerView._loadMails({ force })`, `PlayerView.deleteReadMails(surface, button)`, and `UI.confirm(message, onConfirm, { key })`.
 
-- [ ] **Step 1: Write failing mail performance and action tests**
+- [x] **Step 1: Write failing mail performance and action tests**
 
 Assert that the mail modal is created before the awaited fetch, badge and surfaces share `_mailCache`, equal confirm keys return one overlay, bulk candidates exclude unclaimed attachments, and `DB.deleteMails` performs one role-scoped update with `.in('id', ids)` and `.eq('is_read', true)`.
 
@@ -197,21 +197,21 @@ assert.match(app, /mail\.isRead && \(!hasItems \|\| mail\.isClaimed\)/);
 assert.match(deleteMany, /\.in\('id', ids\)[\s\S]*\.eq\('user_role', this\.playerRole\)/);
 ```
 
-- [ ] **Step 2: Run focused test and verify failure**
+- [x] **Step 2: Run focused test and verify failure**
 
 Run: `node --test tests\mail-performance-actions.test.js`
 
 Expected: FAIL because cached loading and bulk deletion are absent.
 
-- [ ] **Step 3: Add shared mail cache and immediate surfaces**
+- [x] **Step 3: Add shared mail cache and immediate surfaces**
 
 Create `_mailCache` with a 10-second TTL. `showMailModal()` and `renderMail()` must create their container immediately, render cached data when available, otherwise render a stable mail skeleton, then await the shared loader. `_updateMailBadge()` uses the same loader instead of calling `DB.getMails()` directly.
 
-- [ ] **Step 4: Update mail cache locally for read state**
+- [x] **Step 4: Update mail cache locally for read state**
 
 After `markMailRead` succeeds, update the matching cached mail and compute the badge from cached data. Do not issue a second mail-list query merely to refresh the badge.
 
-- [ ] **Step 5: Add deduplicated confirmations**
+- [x] **Step 5: Add deduplicated confirmations**
 
 Extend `UI.confirm` with `{ key }`. Before creating an overlay, return the connected overlay whose `dataset.confirmKey` matches. Assign the key to the new overlay and keep existing call sites compatible when options are omitted.
 
@@ -221,11 +221,11 @@ const existing = Array.from(document.querySelectorAll('.modal-overlay'))
 if (existing) return existing;
 ```
 
-- [ ] **Step 6: Add one-request bulk deletion**
+- [x] **Step 6: Add one-request bulk deletion**
 
 Render a compact mail toolbar above the accordion. Compute eligible mail as read and either attachment-free or already claimed. On confirmation, force-refresh mail once, recompute eligible IDs, call `DB.deleteMails(ids)` once, invalidate the mail cache, and refresh only the active mail surface. Disable the toolbar button when the eligible count is zero.
 
-- [ ] **Step 7: Guard individual deletion and rerun tests**
+- [x] **Step 7: Guard individual deletion and rerun tests**
 
 Pass `{ key: `mail-delete:${mailId}` }` to the single-delete confirmation. Keep `UI.runLockedAction` around the actual mutation.
 
@@ -238,7 +238,7 @@ node --check app.js
 
 Expected: all checks pass.
 
-- [ ] **Step 8: Commit mail performance changes**
+- [x] **Step 8: Commit mail performance changes**
 
 ```bat
 git add app.js styles.css tests\mail-performance-actions.test.js
