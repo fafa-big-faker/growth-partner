@@ -114,7 +114,7 @@ git diff -- app.js styles.css tests\forge-reveal.test.js tests\cultivator-scene.
 
 Confirm `supabase/` remains untracked and unstaged and no credentials appear in the diff.
 
-- [ ] **Step 3: Commit and publish**
+- [x] **Step 3: Commit and publish**
 
 ```bat
 git add app.js styles.css tests\forge-reveal.test.js tests\cultivator-scene.test.js docs\superpowers\specs\2026-09-07-tree-layer-forge-timeline-correction-design.md docs\superpowers\plans\2026-09-07-tree-layer-forge-timeline-correction.md
@@ -122,6 +122,6 @@ git commit -m "fix-tree-layer-and-forge-timeline"
 git push origin main
 ```
 
-- [ ] **Step 4: Verify the published UI**
+- [x] **Step 4: Verify the published UI**
 
 Open the new build query on GitHub Pages, log into the test player, capture desktop and mobile cultivation scene screenshots, and observe one forge run to confirm the bar reaches 98 percent over 60 percent of the sampled duration and candidates continue until reveal.
