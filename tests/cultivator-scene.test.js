@@ -56,10 +56,13 @@ test('cultivation scene keeps the character and tree within striking distance', 
   assert.match(treeRule, /left:\s*calc\(50% \+ var\(--tree-left\)\)/);
   assert.match(characterRule, /position:\s*absolute/);
   assert.match(characterRule, /z-index:\s*3/);
+  assert.match(characterRule, /pointer-events:\s*none/, 'decorative character must not intercept tree clicks');
   assert.match(characterRule, /left:\s*calc\(50% \+ var\(--character-left\)\)/);
   assert.match(css, /\.cult-effect \{[\s\S]*?z-index:\s*4/);
   assert.match(css, /\.cult-tree \.tree-img \{[\s\S]*?object-position:\s*center bottom/);
   assert.match(css, /\.cult-char \.char-img \{[\s\S]*?transform:\s*scale\(1\.2\)/);
+  const spriteRule = css.match(/\.cult-char \.char-img\s*\{[^}]*\}/)?.[0] || '';
+  assert.match(spriteRule, /pointer-events:\s*none/, 'scaled transparent sprite must be click-through');
 });
 
 test('tree appearance is configuration-driven with a safe fallback', () => {

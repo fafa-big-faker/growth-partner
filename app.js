@@ -2814,8 +2814,8 @@ const PlayerView = {
           <button class="chop-circle-btn" id="chop-btn" onclick="PlayerView.doChop()" ${Game.state.choppingCount <= 0 ? 'disabled' : ''}>
             <span class="chop-ink-ripple" aria-hidden="true"></span>
             <span class="chop-axe-icon">${renderItemIcon(Game.state.axeId, axeDef.icon, 'chop-axe-img')}</span>
+            <span class="chop-count-badge">${Game.state.choppingCount}</span>
           </button>
-          <span class="chop-count-badge">${Game.state.choppingCount}</span>
           <label class="ten-toggle ${Game.state.choppingCount < 10 ? 'unavailable' : ''}">
             <input type="checkbox" id="ten-chop-toggle" ${this._tenChopMode ? 'checked' : ''} onchange="PlayerView.toggleTenChop(this.checked)" />
             <span class="ten-toggle-label">十连砍</span>

@@ -44,6 +44,18 @@ test('tree hint and forge entrance stay contextual and uncluttered', () => {
   assert.match(styles, /\.forge-btn[\s\S]*?overflow:\s*visible/);
 });
 
+test('chop counter is anchored inside the button, separate from the ten-chop toggle', () => {
+  const render = app.match(/\n  async renderCultivate\(\)\s*\{[\s\S]*?\n  },/)?.[0] || '';
+  const button = render.match(/<button class="chop-circle-btn"[^]*?<\/button>/)?.[0] || '';
+  assert.match(button, /class="chop-count-badge"/);
+  assert.doesNotMatch(render.replace(button, ''), /class="chop-count-badge"/);
+  assert.match(styles, /\.action-chop-area \{ gap: 20px; \}/);
+  const badge = [...styles.matchAll(/\.chop-count-badge \{[^}]*\}/g)].at(-1)?.[0] || '';
+  assert.match(badge, /bottom:\s*-7px/);
+  assert.match(badge, /pointer-events:\s*none/);
+  assert.match(badge, /white-space:\s*nowrap/);
+});
+
 test('new action artwork is included in the first-login preload', () => {
   const selector = app.match(/function getInitialGameImageAssets\([\s\S]*?\n\}/)?.[0] || '';
   assert.match(selector, /'chop-button-bg'/);

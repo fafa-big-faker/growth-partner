@@ -2262,6 +2262,7 @@ body {
   left: calc(50% + var(--character-left));
   bottom: var(--character-bottom);
   z-index: 3;
+  pointer-events: none;
 }
 
 .cult-char .char-img {
@@ -2274,6 +2275,7 @@ body {
   z-index: 2;
   transform: scale(1.2);
   transform-origin: center bottom;
+  pointer-events: none;
 }
 
 /* ② 状态栏：邮件 / 等级·仙阶 + 经验条 / 突破 */
@@ -3583,7 +3585,7 @@ body {
   50% { opacity: 0.92; transform: translate(-50%, -5px); }
 }
 
-.action-chop-area { gap: 12px; }
+.action-chop-area { gap: 20px; }
 
 .chop-circle-btn {
   width: 118px;
@@ -3706,6 +3708,8 @@ body {
   color: #f2f0df;
   font-size: 14px;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  pointer-events: none;
 }
 
 .equip-info-bar {
