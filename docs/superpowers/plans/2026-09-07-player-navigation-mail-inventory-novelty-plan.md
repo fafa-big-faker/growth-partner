@@ -32,7 +32,7 @@
 - Produces: `PlayerDataCache.createResourceCache({ ttlMs, now })`.
 - Cache methods: `peek()`, `isFresh()`, `get(loader, { force })`, `set(value)`, `update(updater)`, `invalidate()`, and `clear()`.
 
-- [ ] **Step 1: Write failing cache tests**
+- [x] **Step 1: Write failing cache tests**
 
 Cover a fresh cache hit, TTL expiry, forced refresh, in-flight request coalescing, invalidation, update, and a rejected refresh preserving the last successful value.
 
@@ -48,13 +48,13 @@ const pendingB = cache.get(loader, { force: true });
 assert.equal(pendingA, pendingB);
 ```
 
-- [ ] **Step 2: Run the focused test and verify failure**
+- [x] **Step 2: Run the focused test and verify failure**
 
 Run: `node --test tests\player-data-cache.test.js`
 
 Expected: FAIL because `player-data-cache.js` does not exist.
 
-- [ ] **Step 3: Implement the cache module**
+- [x] **Step 3: Implement the cache module**
 
 Use one pending Promise per resource and only replace the stored value after a successful load.
 
@@ -71,7 +71,7 @@ function get(loader, options = {}) {
 }
 ```
 
-- [ ] **Step 4: Load the module before `app.js` and rerun tests**
+- [x] **Step 4: Load the module before `app.js` and rerun tests**
 
 Add `<script src="player-data-cache.js"></script>` before `app.js`, then run:
 
@@ -82,7 +82,7 @@ node --check player-data-cache.js
 
 Expected: all checks pass.
 
-- [ ] **Step 5: Commit the cache module**
+- [x] **Step 5: Commit the cache module**
 
 ```bat
 git add player-data-cache.js tests\player-data-cache.test.js index.html
