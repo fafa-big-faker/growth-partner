@@ -212,6 +212,16 @@ function renderEmptyState(iconName, text) {
   return `<div class="empty-state" style="padding:24px"><img src="${V2_IMAGE_ROOT}/icons/${iconName}.webp" class="empty-state-art" alt="" /><p>${text}</p></div>`;
 }
 
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, char => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+  })[char]);
+}
+
 function getTreeImage(treeLevel) {
   if (treeLevel >= 13) return 'assets/runtime/v2/trees/divine.webp';
   if (treeLevel >= 6) return 'assets/runtime/v2/trees/spirit.webp';
@@ -1024,7 +1034,8 @@ const DB = {
     const { error } = await dbClient
       .from('mails')
       .update({ is_read: true })
-      .eq('id', id);
+      .eq('id', id)
+      .eq('user_role', this.playerRole);
     if (error) { console.error('DB markMailRead error:', error); return false; }
     return true;
   },
@@ -1034,6 +1045,7 @@ const DB = {
       .from('mails')
       .update({ is_claimed: true, is_read: true })
       .eq('id', id)
+      .eq('user_role', this.playerRole)
       .eq('is_claimed', false)
       .select('id')
       .maybeSingle();
@@ -1045,7 +1057,8 @@ const DB = {
     const { error } = await dbClient
       .from('mails')
       .update({ is_deleted: true })
-      .eq('id', id);
+      .eq('id', id)
+      .eq('user_role', this.playerRole);
     // 如果字段不存在（还没跑升级SQL），直接返回成功
     if (error && error.message && error.message.includes('does not exist')) return true;
     if (error) { console.error('DB deleteMail error:', error); return false; }
@@ -2547,6 +2560,10 @@ const ForgeReveal = {
 const PlayerView = {
   // --- 修仙主页 ---
   _tenChopMode: false,
+  _mailSurfaces: {
+    modal: { container: null, mails: [], expandedId: null },
+    page: { container: null, mails: [], expandedId: null },
+  },
 
   async renderCultivate() {
     const main = document.getElementById('player-main');
@@ -4117,44 +4134,17 @@ const PlayerView = {
 
   // --- 邮件 ---
   async showMailModal() {
-    // 关闭已有弹窗，防止堆叠
     document.querySelectorAll('.modal-overlay').forEach(el => el.remove());
-
     const mails = await DB.getMails();
-    let listHtml = '';
-    if (mails.length === 0) {
-      listHtml = renderEmptyState('icon-mail', '暂无邮件');
-    } else {
-      mails.forEach(mail => {
-        const hasItems = mail.items && mail.items.length > 0;
-        const canClaim = hasItems && !mail.isClaimed;
-        const unread = !mail.isRead || canClaim;
-        let itemsHtml = '';
-        if (hasItems) {
-          itemsHtml = '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">';
-          mail.items.forEach(ri => {
-            const def = ITEMS[ri.item_id];
-            if (def) itemsHtml += `<span style="display:inline-flex;align-items:center;gap:3px;font-size:13px;background:var(--bg-secondary);padding:2px 8px;border-radius:6px">${renderItemIcon(ri.item_id, def.icon, 'item-icon-xs')}×${ri.quantity}</span>`;
-          });
-          itemsHtml += '</div>';
-        }
-        const date = new Date(mail.createdAt).toLocaleDateString('zh-CN');
-        listHtml += `
-          <div onclick="PlayerView.openMail('${mail.id}')" style="padding:12px;border-radius:10px;background:${unread ? 'var(--bg-secondary)' : 'var(--card-solid)'};border:1px solid var(--border);margin-bottom:8px;cursor:pointer;transition:var(--transition)" onmouseover="this.style.borderColor='var(--primary-light)'" onmouseout="this.style.borderColor='var(--border)'">
-            <div style="display:flex;justify-content:space-between;align-items:center">
-              <span style="font-weight:${unread ? '700' : '500'};font-size:14px">${unread ? '<i class="unread-dot"></i>' : ''}${mail.title}</span>
-              <span style="font-size:11px;color:var(--text-light)">${date}</span>
-            </div>
-            <div style="font-size:12px;color:var(--text-secondary);margin-top:4px">${mail.content || ''}</div>
-            ${itemsHtml}
-            ${canClaim ? '<div style="margin-top:6px"><span style="font-size:11px;color:var(--accent);font-weight:600">可领取</span></div>' : ''}
-            ${mail.isClaimed && hasItems ? '<div style="margin-top:6px"><span style="font-size:11px;color:var(--text-light)">已领取</span></div>' : ''}
-          </div>
-        `;
-      });
-    }
-
-    UI.modal(listHtml, { title: `${renderFeatureIcon('icon-mail', '', 'section-title-icon')} 邮件` });
+    const overlay = UI.modal('<div id="mail-modal-list" class="mail-list"></div>', {
+      title: `${renderFeatureIcon('icon-mail', '', 'section-title-icon')} 邮件`,
+    });
+    this._mailSurfaces.modal = {
+      container: overlay.querySelector('#mail-modal-list'),
+      mails,
+      expandedId: null,
+    };
+    this._renderMailAccordion('modal');
     UI._updateMailBadge();
   },
 
@@ -4265,108 +4255,119 @@ const PlayerView = {
     main.innerHTML = `
       <div class="page-title page-title-art">${renderFeatureIcon('icon-mail', '', 'page-title-icon')}<span>邮件</span></div>
       <div class="page-subtitle">天道消息和奖励都在这里</div>
-      <div id="mail-list"></div>
+      <div id="mail-list" class="mail-list"></div>
     `;
-
-    const list = document.getElementById('mail-list');
-    if (mails.length === 0) {
-      list.innerHTML = renderEmptyState('icon-mail', '暂无邮件');
-      return;
-    }
-
-    let html = '';
-    mails.forEach(mail => {
-      const hasItems = mail.items && mail.items.length > 0;
-      const canClaim = hasItems && !mail.isClaimed;
-      const unread = !mail.isRead || canClaim;
-
-      let itemsHtml = '';
-      if (hasItems) {
-        itemsHtml = '<div class="mail-items">';
-        mail.items.forEach(ri => {
-          const def = ITEMS[ri.item_id];
-          if (def) itemsHtml += `<span class="mini-item" style="display:inline-flex;align-items:center;gap:3px">${renderItemIcon(ri.item_id, def.icon, 'item-icon-xs')}×${ri.quantity}</span>`;
-        });
-        itemsHtml += '</div>';
-      }
-
-      const date = new Date(mail.createdAt).toLocaleDateString('zh-CN');
-
-      html += `
-        <div class="mail-item ${unread ? 'unread' : ''}" onclick="PlayerView.openMail('${mail.id}')">
-          <div class="mail-header">
-            <div class="mail-title">${mail.title}</div>
-            <div class="mail-date">${date}</div>
-          </div>
-          <div class="mail-preview">${mail.content || ''}</div>
-          ${itemsHtml}
-          ${canClaim ? `<div style="margin-top:8px"><span class="tag tag-status-review">可领取</span></div>` : ''}
-        </div>
-      `;
-    });
-    list.innerHTML = html;
-
+    this._mailSurfaces.page = {
+      container: document.getElementById('mail-list'),
+      mails,
+      expandedId: null,
+    };
+    this._renderMailAccordion('page');
     UI._updateMailBadge();
   },
 
-  async openMail(mailId) {
-    // 先关闭邮件列表弹窗
-    document.querySelectorAll('.modal-overlay').forEach(el => el.remove());
-
-    const mails = await DB.getMails();
-    const mail = mails.find(m => m.id == mailId);
-    if (!mail) return;
-
-    await DB.markMailRead(mailId);
-
-    const hasItems = mail.items && mail.items.length > 0;
-    const canClaim = hasItems && !mail.isClaimed;
-
-    let itemsHtml = '';
-    if (hasItems) {
-      itemsHtml = '<div style="display:flex;gap:12px;justify-content:center;margin:16px 0;flex-wrap:wrap">';
-      mail.items.forEach(ri => {
-        const def = ITEMS[ri.item_id];
-        if (def) {
-          const q = QUALITY[def.quality] || QUALITY[1];
-          itemsHtml += `
-            <div style="text-align:center">
-              <div style="font-size:40px;display:flex;justify-content:center;align-items:center;height:56px">${renderItemIcon(ri.item_id, def.icon, 'item-icon-lg')}</div>
-              <div style="font-size:12px;color:${q.color}">${def.name} ×${ri.quantity}</div>
-            </div>
-          `;
-        }
-      });
-      itemsHtml += '</div>';
+  _renderMailAccordion(surface) {
+    const state = this._mailSurfaces[surface];
+    if (!state?.container?.isConnected) return;
+    if (state.mails.length === 0) {
+      state.container.innerHTML = renderEmptyState('icon-mail', '暂无邮件');
+      return;
     }
 
-    const footer = canClaim
-      ? `<div class="modal-footer">
-          <button class="btn btn-outline btn-sm" onclick="PlayerView.showMailModal()">关闭</button>
-          <button class="btn btn-outline btn-sm btn-danger" onclick="PlayerView.deleteMail('${mailId}')">删除</button>
-          <button class="btn btn-accent btn-sm" onclick="PlayerView.claimMailReward('${mailId}',this)">领取奖励</button>
-        </div>`
-      : `<div class="modal-footer">
-          <button class="btn btn-outline btn-sm btn-danger" onclick="PlayerView.deleteMail('${mailId}')">删除</button>
-          <button class="btn btn-primary btn-sm" onclick="PlayerView.showMailModal()">关闭</button>
-        </div>`;
+    state.container.innerHTML = state.mails.map(mail => {
+      const rewards = Array.isArray(mail.items) ? mail.items : [];
+      const hasItems = rewards.length > 0;
+      const canClaim = hasItems && !mail.isClaimed;
+      const unread = !mail.isRead || canClaim;
+      const expanded = String(state.expandedId) === String(mail.id);
+      const bodyId = `mail-body-${surface}-${mail.id}`;
+      const attachments = rewards.map(reward => {
+        const def = ITEMS[reward.item_id];
+        if (!def) return '';
+        const quality = QUALITY[def.quality] || QUALITY[1];
+        return `
+          <span class="mail-attachment">
+            ${renderItemIcon(reward.item_id, def.icon, 'item-icon-sm')}
+            <span class="mail-attachment-copy">
+              <b style="color:${quality.color}">${escapeHtml(def.name)}</b>
+              <span>×${Math.max(0, parseInt(reward.quantity) || 0)}</span>
+            </span>
+          </span>
+        `;
+      }).join('');
 
-    UI.modal(`
-      <p style="font-size:14px;line-height:1.8;color:var(--text-secondary)">${mail.content || ''}</p>
-      ${itemsHtml}
-      ${mail.isClaimed && hasItems ? '<div style="text-align:center;margin-top:12px"><span style="font-size:12px;color:var(--text-light)">奖励已领取</span></div>' : ''}
-    `, { title: mail.title, footer });
+      return `
+        <article class="mail-item ${unread ? 'unread' : ''} ${expanded ? 'is-expanded' : ''}">
+          <button type="button" class="mail-summary" aria-expanded="${expanded ? 'true' : 'false'}" aria-controls="${bodyId}" onclick="PlayerView.toggleMail('${mail.id}', '${surface}')">
+            <span class="mail-summary-main">
+              <span class="mail-title-line">
+                ${unread ? '<i class="unread-dot" aria-hidden="true"></i>' : ''}
+                <span class="mail-title">${escapeHtml(mail.title)}</span>
+                ${canClaim ? '<span class="mail-state mail-state-ready">可领取</span>' : ''}
+                ${mail.isClaimed && hasItems ? '<span class="mail-state">已领取</span>' : ''}
+              </span>
+              <span class="mail-preview">${escapeHtml(mail.content)}</span>
+            </span>
+            <span class="mail-summary-side">
+              <time class="mail-date">${GameDateTime.formatShanghaiDate(mail.createdAt)}</time>
+              <span class="mail-disclosure" aria-hidden="true"></span>
+            </span>
+          </button>
+          ${expanded ? `
+            <div class="mail-expanded" id="${bodyId}">
+              <div class="mail-content">${escapeHtml(mail.content)}</div>
+              ${attachments ? `<div class="mail-attachments" aria-label="邮件附件">${attachments}</div>` : ''}
+              <div class="mail-actions">
+                <button type="button" class="btn btn-outline btn-sm btn-danger" onclick="event.stopPropagation();PlayerView.deleteMail('${mail.id}', '${surface}', this)">删除</button>
+                ${canClaim
+                  ? `<button type="button" class="btn btn-accent btn-sm" onclick="event.stopPropagation();PlayerView.claimMailReward('${mail.id}', '${surface}', this)">领取奖励</button>`
+                  : ''}
+              </div>
+            </div>
+          ` : ''}
+        </article>
+      `;
+    }).join('');
   },
 
-  async claimMailReward(mailId, button) {
+  async toggleMail(mailId, surface) {
+    const state = this._mailSurfaces[surface];
+    if (!state) return;
+    const mail = state.mails.find(entry => String(entry.id) === String(mailId));
+    if (!mail) return;
+
+    state.expandedId = String(state.expandedId) === String(mailId) ? null : mailId;
+    this._renderMailAccordion(surface);
+    if (state.expandedId && !mail.isRead) {
+      const marked = await DB.markMailRead(mailId);
+      if (marked) {
+        mail.isRead = true;
+        this._renderMailAccordion(surface);
+        UI._updateMailBadge();
+      }
+    }
+  },
+
+  async _refreshMailSurface(surface, expandedId = null) {
+    const state = this._mailSurfaces[surface];
+    if (!state) return;
+    const mails = await DB.getMails();
+    state.mails = mails;
+    state.expandedId = mails.some(mail => String(mail.id) === String(expandedId)) ? expandedId : null;
+    this._renderMailAccordion(surface);
+    UI._updateMailBadge();
+  },
+
+  async claimMailReward(mailId, surface, button) {
     const outcome = await UI.runLockedAction(
       `mail-reward:${mailId}`,
       button,
       '领取中...',
       async () => {
-        const mails = await DB.getMails();
-        const mail = mails.find(m => m.id == mailId);
+        const state = this._mailSurfaces[surface];
+        const mail = state?.mails.find(entry => String(entry.id) === String(mailId));
         if (!mail || !mail.items || mail.items.length === 0) return false;
+        const entries = TaskRewards.getEntries({ rewardItems: mail.items }, ITEMS);
 
         const reserved = await DB.claimMail(mailId);
         if (!reserved) {
@@ -4384,9 +4385,8 @@ const PlayerView = {
         }
 
         await Game.refresh();
-        document.querySelectorAll('.modal-overlay').forEach(el => el.remove());
-        UI.toast('奖励已领取！', 'success');
-        this.showMailModal();
+        await this._refreshMailSurface(surface, mailId);
+        UI.showRewardBubble(entries);
         return true;
       },
     );
@@ -4780,13 +4780,24 @@ const PlayerView = {
   },
 
   // 删除邮件
-  async deleteMail(mailId) {
+  async deleteMail(mailId, surface, button) {
     UI.confirm('确定删除这封邮件吗？', async () => {
-      await DB.deleteMail(mailId);
-      UI.toast('已删除', 'success');
-      // 关闭所有弹窗并重新打开邮件列表
-      document.querySelectorAll('.modal-overlay').forEach(el => el.remove());
-      this.showMailModal();
+      const outcome = await UI.runLockedAction(
+        `mail-delete:${mailId}`,
+        button,
+        '删除中...',
+        async () => {
+          const deleted = await DB.deleteMail(mailId);
+          if (!deleted) {
+            UI.toast('删除未完成，请重试', 'error');
+            return false;
+          }
+          await this._refreshMailSurface(surface, null);
+          UI.toast('已删除', 'success');
+          return true;
+        },
+      );
+      return outcome.started && outcome.value;
     });
   },
 

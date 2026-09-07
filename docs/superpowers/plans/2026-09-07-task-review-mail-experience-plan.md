@@ -167,7 +167,7 @@ Expected: all tests pass.
 - Consumes: `DB.getMails()`, `DB.markMailRead(id)`, `DB.claimMail(id)`, `DB.deleteMail(id)`, `GameDateTime.formatShanghaiDate(value)`.
 - Produces: `PlayerView._mailSurfaces`, `PlayerView._renderMailAccordion(surface)`, `PlayerView.toggleMail(mailId, surface)`, and `PlayerView._refreshMailSurface(surface, expandedId)`.
 
-- [ ] **Step 1: Write failing accordion tests**
+- [x] **Step 1: Write failing accordion tests**
 
 Assert that both mail entry points call the shared renderer, row clicks call `toggleMail`, full content is rendered in an inline `.mail-expanded` region, only one expanded ID exists per surface, all dates use `GameDateTime`, and the removed `openMail` path no longer creates a detail modal.
 
@@ -178,29 +178,29 @@ assert.match(app, /class="mail-expanded"/);
 assert.doesNotMatch(app, /async openMail\(mailId\)/);
 ```
 
-- [ ] **Step 2: Run the focused test and verify failure**
+- [x] **Step 2: Run the focused test and verify failure**
 
 Run: `node --test tests\mail-accordion.test.js`
 
 Expected: FAIL because the mail list still opens a second modal.
 
-- [ ] **Step 3: Add shared surface state and rendering**
+- [x] **Step 3: Add shared surface state and rendering**
 
 Store each surface as `{ container, mails, expandedId }`. Render a button-like summary row and conditionally render the full body, attachments, status, claim action, and delete action beneath it. Use `aria-expanded` and keep the disclosure indicator decorative.
 
-- [ ] **Step 4: Toggle and mark read in place**
+- [x] **Step 4: Toggle and mark read in place**
 
 On row click, close the previously expanded row, expand the selected row, mark it read once, update the local model, rerender the same container, and refresh the unread badge without fetching a second detail view.
 
-- [ ] **Step 5: Keep claim and delete inside the accordion**
+- [x] **Step 5: Keep claim and delete inside the accordion**
 
 Pass the surface name through claim/delete handlers, stop event propagation on action buttons, check database results before success, and refresh the same surface with the current row expanded. Do not close every modal or call `showMailModal()` as a navigation mechanism.
 
-- [ ] **Step 6: Add polished accordion styles**
+- [x] **Step 6: Add polished accordion styles**
 
 Use stable spacing and dimensions, a subtle expanded background and border, multi-line content with `white-space: pre-wrap`, clear focus-visible states, and responsive attachment wrapping. Avoid nesting decorative cards inside each mail row.
 
-- [ ] **Step 7: Run focused tests**
+- [x] **Step 7: Run focused tests**
 
 Run: `node --test tests\mail-accordion.test.js tests\date-time.test.js tests\operation-guard.test.js`
 
