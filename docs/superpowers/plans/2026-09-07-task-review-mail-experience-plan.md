@@ -32,7 +32,7 @@
 - Consumes: `DB.playerRole`, `UI.runLockedAction(key, control, busyText, action)`.
 - Produces: `DB.reviewSubmissionOnce(id, status, note, rewardChopping, rewardItems, mailTitle, mailContent) -> Promise<{ok:boolean, code:string}>` and SQL RPC `review_task_submission(TEXT, UUID, TEXT, TEXT, INTEGER, JSONB, TEXT, TEXT) -> JSONB`.
 
-- [ ] **Step 1: Write the failing migration and integration tests**
+- [x] **Step 1: Write the failing migration and integration tests**
 
 Assert that `upgrade_v12.sql` performs an update constrained by `id`, `user_role`, and `status = 'pending'`, inserts mail only after a successful update, and grants the RPC to browser roles. Assert that all three review controls use `UI.runLockedAction` and call `DB.reviewSubmissionOnce` instead of separate update/mail calls.
 
@@ -44,13 +44,13 @@ assert.match(app, /DB\.reviewSubmissionOnce/);
 assert.doesNotMatch(reviewUi, /await DB\.reviewSubmission\([\s\S]*await DB\.sendMail/);
 ```
 
-- [ ] **Step 2: Run the focused test and verify failure**
+- [x] **Step 2: Run the focused test and verify failure**
 
 Run: `node --test tests\task-review-atomic.test.js`
 
 Expected: FAIL because `upgrade_v12.sql` and `DB.reviewSubmissionOnce` do not exist.
 
-- [ ] **Step 3: Add the idempotent review RPC**
+- [x] **Step 3: Add the idempotent review RPC**
 
 Create `upgrade_v12.sql` with input validation, a conditional update, exactly one notification insert, structured error codes, grants, schema reload, and an enclosing transaction.
 
@@ -74,11 +74,11 @@ INSERT INTO public.mails (user_role, title, content, items)
 VALUES (p_user_role, p_mail_title, p_mail_content, '[]'::JSONB);
 ```
 
-- [ ] **Step 4: Route all approve and reject actions through the RPC**
+- [x] **Step 4: Route all approve and reject actions through the RPC**
 
 Add `DB.reviewSubmissionOnce`, then wrap self-approval, fixed approval, and rejection controls with stable keys such as `task-review:${id}`. On `already_reviewed`, show `该任务已处理，请刷新查看`; on a network error, show `审核未完成，请重试`; close the dialog and refresh only after `ok: true`.
 
-- [ ] **Step 5: Run focused tests**
+- [x] **Step 5: Run focused tests**
 
 Run: `node --test tests\task-review-atomic.test.js tests\operation-guard.test.js tests\resource-operation-consistency.test.js`
 

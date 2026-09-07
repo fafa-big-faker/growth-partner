@@ -908,6 +908,32 @@ const DB = {
     return true;
   },
 
+  async reviewSubmissionOnce(
+    id,
+    status,
+    note = '',
+    rewardChopping = 0,
+    rewardItems = [],
+    mailTitle = '',
+    mailContent = '',
+  ) {
+    const { data, error } = await dbClient.rpc('review_task_submission', {
+      p_user_role: this.playerRole,
+      p_submission_id: id,
+      p_status: status,
+      p_note: note,
+      p_reward_chopping: rewardChopping,
+      p_reward_items: rewardItems,
+      p_mail_title: mailTitle,
+      p_mail_content: mailContent,
+    });
+    if (error) {
+      console.error('DB reviewSubmissionOnce error:', error);
+      return { ok: false, code: 'network_error' };
+    }
+    return data || { ok: false, code: 'empty_response' };
+  },
+
   async claimSubmission(id) {
     const { data, error } = await dbClient
       .from('task_submissions')
@@ -5092,7 +5118,59 @@ const AdminView = {
     list.innerHTML = html;
   },
 
+  async _runSubmissionReview({
+    sub,
+    status,
+    note,
+    rewardChopping,
+    rewardItems,
+    mailTitle,
+    mailContent,
+    button = null,
+    overlay = null,
+  }) {
+    if (!sub) {
+      UI.toast('未找到这条任务，请刷新查看', 'warn');
+      return false;
+    }
+
+    const outcome = await UI.runLockedAction(
+      `task-review:${sub.id}`,
+      button,
+      '处理中...',
+      async () => {
+        const result = await DB.reviewSubmissionOnce(
+          sub.id,
+          status,
+          note,
+          rewardChopping,
+          rewardItems,
+          mailTitle,
+          mailContent,
+        );
+        if (!result.ok) {
+          if (result.code === 'already_reviewed') {
+            UI.toast('该任务已处理，请刷新查看', 'warn');
+          } else if (result.code === 'not_found') {
+            UI.toast('未找到这条任务，请刷新查看', 'warn');
+          } else {
+            UI.toast('审核未完成，请重试', 'error');
+          }
+          await this.renderReview();
+          return false;
+        }
+
+        if (overlay) UI.closeModal(overlay);
+        UI.toast(status === 'approved' ? '已通过' : '已驳回', 'success');
+        await this.renderReview();
+        return true;
+      },
+    );
+    return outcome.started && outcome.value;
+  },
+
   approveSub(id, isSelf) {
+    const sub = this._submissions.find(s => s.id == id);
     if (isSelf) {
       // 自主任务需要配置奖励
       const overlay = UI.modal(`
@@ -5138,34 +5216,35 @@ const AdminView = {
           }).filter(i => i.item_id && ITEMS[i.item_id]);
         }
 
-        await DB.reviewSubmission(id, 'approved', note, chopping, rewardItems);
-        // 邮件只做通知，奖励物品在任务列表领取（防止双倍领取）
-        await DB.sendMail(
-          '任务审核通过',
-          `你的自主申报任务已通过！奖励：${chopping} 次砍树${note ? '\n\n评语：' + note : ''}\n\n请前往任务列表领取奖励。`,
-          []
-        );
-
-        UI.closeModal(overlay);
-        UI.toast('已通过', 'success');
-        this.renderReview();
+        const button = overlay.querySelector('#approve-ok');
+        await this._runSubmissionReview({
+          sub,
+          status: 'approved',
+          note,
+          rewardChopping: chopping,
+          rewardItems,
+          mailTitle: '任务审核通过',
+          mailContent: `你的自主申报任务已通过！奖励：${chopping} 次砍树${note ? '\n\n评语：' + note : ''}\n\n请前往任务列表领取奖励。`,
+          button,
+          overlay,
+        });
       });
     } else {
       // 固定任务直接通过
-      const sub = this._submissions.find(s => s.id == id);
       if (sub && (sub.status === 'approved' || sub.status === 'claimed')) {
         UI.toast('该任务已审核通过，请勿重复操作', 'warn');
         return;
       }
       UI.confirm('确定通过这个任务？', async () => {
-        await DB.reviewSubmission(id, 'approved', '任务完成得很好！', sub.rewardChopping, sub.rewardItems);
-        await DB.sendMail(
-          '任务审核通过',
-          `你的任务"${sub.taskTitle}"已通过审核，奖励已发放至任务列表，请前往领取。`,
-          []
-        );
-        UI.toast('已通过', 'success');
-        this.renderReview();
+        await this._runSubmissionReview({
+          sub,
+          status: 'approved',
+          note: '任务完成得很好！',
+          rewardChopping: sub.rewardChopping,
+          rewardItems: sub.rewardItems,
+          mailTitle: '任务审核通过',
+          mailContent: `你的任务"${sub.taskTitle}"已通过审核，奖励已发放至任务列表，请前往领取。`,
+        });
       });
     }
   },
@@ -5186,16 +5265,19 @@ const AdminView = {
 
     overlay.querySelector('#reject-ok').addEventListener('click', async () => {
       const note = document.getElementById('reject-note').value.trim() || '任务未完成，请继续努力';
-      await DB.reviewSubmission(id, 'rejected', note, 0, []);
       const sub = this._submissions.find(s => s.id == id);
-      await DB.sendMail(
-        '任务审核未通过',
-        `你的任务"${sub?.selfTitle || sub?.taskTitle || ''}"未通过审核。\n\n原因：${note}`,
-        []
-      );
-      UI.closeModal(overlay);
-      UI.toast('已驳回', 'success');
-      this.renderReview();
+      const button = overlay.querySelector('#reject-ok');
+      await this._runSubmissionReview({
+        sub,
+        status: 'rejected',
+        note,
+        rewardChopping: 0,
+        rewardItems: [],
+        mailTitle: '任务审核未通过',
+        mailContent: `你的任务"${sub?.selfTitle || sub?.taskTitle || ''}"未通过审核。\n\n原因：${note}`,
+        button,
+        overlay,
+      });
     });
   },
 
