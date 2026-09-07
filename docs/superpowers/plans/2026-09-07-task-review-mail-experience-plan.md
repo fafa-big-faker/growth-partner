@@ -215,13 +215,13 @@ Expected: all tests pass.
 - Consumes: tested `upgrade_v12.sql` and the linked Supabase CLI session.
 - Produces: deployed database RPC and GitHub Pages release.
 
-- [ ] **Step 1: Apply and verify the migration**
+- [x] **Step 1: Apply and verify the migration**
 
 Run: `npx --yes supabase db query --linked --file upgrade_v12.sql`
 
 Then use read-only REST/CLI queries to confirm the RPC is exposed and existing task submissions and mail counts remain intact.
 
-- [ ] **Step 2: Run the complete verification suite**
+- [x] **Step 2: Run the complete verification suite**
 
 Run:
 
@@ -238,7 +238,7 @@ git diff --check
 
 Expected: all tests and syntax checks pass with no diff errors.
 
-- [ ] **Step 3: Inspect and commit only scoped files**
+- [x] **Step 3: Inspect and commit only scoped files**
 
 Exclude the untracked `supabase/` CLI directory. Inspect for credentials and unrelated changes, then commit the implementation and completed plan.
 

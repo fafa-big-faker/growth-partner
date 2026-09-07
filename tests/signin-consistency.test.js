@@ -62,7 +62,9 @@ test('daily task card renders configured rewards instead of the legacy chopping 
   const render = app.match(/\n  _renderTaskCard\(task, status, type\)\s*\{[\s\S]*?\n  },/)?.[0] || '';
   assert.match(render, /type === 'daily'[\s\S]*?getDailySignInRewards\(\)/);
   assert.match(render, /dailyReward/);
-  assert.match(render, /type !== 'daily' && task\.rewardChopping > 0/);
+  assert.match(render, /rewardChopping:\s*0/);
+  assert.match(render, /rewardItems:\s*dailyRewards\.map/);
+  assert.match(render, /renderTaskRewardChips\(rewardSource/);
 });
 
 test('cumulative sign-in milestones use one icon with separate amount and claim state', () => {
