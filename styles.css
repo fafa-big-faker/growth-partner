@@ -3137,12 +3137,6 @@ body {
   text-align: center;
 }
 
-.forge-heading .forge-modal-icon {
-  width: 58px;
-  height: 58px;
-  object-fit: contain;
-}
-
 .forge-heading-title {
   color: var(--text);
   font-size: 18px;

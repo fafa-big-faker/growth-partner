@@ -3,7 +3,12 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const { isBonusChop, rollPackItem } = require('../gameplay-rules');
+const {
+  TEN_CHOP_UNLOCK_REALM,
+  canUseTenChop,
+  isBonusChop,
+  rollPackItem,
+} = require('../gameplay-rules');
 const app = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
 
 test('bonus chop cadence follows every persisted ten chops', () => {
@@ -12,6 +17,27 @@ test('bonus chop cadence follows every persisted ten chops', () => {
   assert.equal(isBonusChop(10), true);
   assert.equal(isBonusChop(11), false);
   assert.equal(isBonusChop(20), true);
+});
+
+test('ten chop unlocks from middle kalami realm', () => {
+  assert.equal(TEN_CHOP_UNLOCK_REALM, 2);
+  assert.equal(canUseTenChop(1), false);
+  assert.equal(canUseTenChop(2), true);
+  assert.equal(canUseTenChop(5), true);
+});
+
+test('all ten chop entry points enforce the realm requirement before work starts', () => {
+  const gameMethod = app.match(/\n  async chopTen\(\)\s*\{[\s\S]*?\n  },/)?.[0] || '';
+  const toggleMethod = app.match(/\n  toggleTenChop\(checked\)\s*\{[\s\S]*?\n  },/)?.[0] || '';
+  const playerMethod = app.match(/\n  async doChopTen\(\)\s*\{[\s\S]*?\n  },/)?.[0] || '';
+
+  assert.match(gameMethod, /if \(!GameplayRules\.canUseTenChop\(this\.state\.realmLevel\)\)/);
+  assert.ok(gameMethod.indexOf('canUseTenChop') < gameMethod.indexOf('choppingCount < 10'));
+  assert.match(toggleMethod, /if \(checked && !GameplayRules\.canUseTenChop\(Game\.state\.realmLevel\)\)/);
+  assert.match(toggleMethod, /突破至中卡拉米后解锁/);
+  assert.match(toggleMethod, /cb\.checked = false/);
+  assert.match(playerMethod, /if \(!GameplayRules\.canUseTenChop\(Game\.state\.realmLevel\)\)/);
+  assert.ok(playerMethod.indexOf('canUseTenChop') < playerMethod.indexOf("getElementById('chop-btn')"));
 });
 
 test('pack rolls select the configured item and its matching quantity', () => {

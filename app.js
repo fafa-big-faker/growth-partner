@@ -1974,6 +1974,10 @@ const Game = {
 
   // 十连砍：额外奖励由每一次 chop 的累计次数统一判定。
   async chopTen() {
+    if (!GameplayRules.canUseTenChop(this.state.realmLevel)) {
+      UI.toast('突破至中卡拉米后解锁', 'warn');
+      return null;
+    }
     if (this.state.choppingCount < 10) {
       UI.toast('砍树次数不足10次', 'warn');
       return null;
@@ -2568,14 +2572,25 @@ const ForgeReveal = {
   },
 
   async run(elements, resultPromise) {
+    const tracked = { settled: false, value: null, error: null };
+    Promise.resolve(resultPromise).then(
+      value => {
+        tracked.value = value;
+        tracked.settled = true;
+      },
+      error => {
+        tracked.error = error;
+        tracked.settled = true;
+      },
+    );
     const candidates = this.getCandidateItems();
     const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true;
     const delays = reducedMotion ? [90, 75, 60] : this.delays;
     const cycleDuration = delays.reduce((total, delay) => total + delay, 0);
     if (elements.status) elements.status.textContent = '灵火淬炼中';
     this.setProgress(elements, 0);
-    if (reducedMotion) this.setProgress(elements, 88);
-    else this.animateProgress(elements, 88, cycleDuration);
+    if (reducedMotion) this.setProgress(elements, 90);
+    else this.animateProgress(elements, 90, cycleDuration);
 
     for (let index = 0; index < delays.length; index += 1) {
       const item = candidates[index % candidates.length];
@@ -2584,15 +2599,30 @@ const ForgeReveal = {
       await new Promise(resolve => setTimeout(resolve, delays[index]));
     }
 
-    elements.art?.classList.remove('is-shaking');
-    if (elements.progressFill) {
-      elements.progressFill.style.transition = reducedMotion ? 'none' : 'width 140ms ease-out';
-    }
-    this.setProgress(elements, 94);
     if (elements.status) elements.status.textContent = '凝聚器灵';
-    const result = await resultPromise;
+    if (elements.progressFill) {
+      elements.progressFill.style.transition = reducedMotion ? 'none' : 'width 2400ms linear';
+    }
+    this.setProgress(elements, 98);
+
+    const fastDelay = 38;
+    let candidateIndex = delays.length;
+    while (!tracked.settled) {
+      if (!reducedMotion) {
+        this.showCandidate(elements, candidates[candidateIndex % candidates.length], true, 28);
+        candidateIndex += 1;
+      }
+      await new Promise(resolve => setTimeout(resolve, fastDelay));
+    }
+
+    elements.art?.classList.remove('is-shaking');
+    if (tracked.error) throw tracked.error;
+    const result = tracked.value;
     if (!result) return null;
 
+    if (elements.progressFill) {
+      elements.progressFill.style.transition = reducedMotion ? 'none' : 'width 180ms ease-out';
+    }
     this.reveal(elements, result);
     this.setProgress(elements, 100);
     return result;
@@ -2761,6 +2791,13 @@ const PlayerView = {
   },
 
   toggleTenChop(checked) {
+    if (checked && !GameplayRules.canUseTenChop(Game.state.realmLevel)) {
+      UI.toast('突破至中卡拉米后解锁', 'warn');
+      this._tenChopMode = false;
+      const cb = document.getElementById('ten-chop-toggle');
+      if (cb) cb.checked = false;
+      return;
+    }
     if (checked && Game.state.choppingCount < 10) {
       UI.toast('砍树次数不足10次，无法开启十连砍', 'warn');
       this._tenChopMode = false;
@@ -4750,7 +4787,6 @@ const PlayerView = {
 
     const overlay = UI.modal(`
       <div class="forge-heading">
-        ${renderFeatureIcon('icon-forge', '锻造', 'forge-modal-icon')}
         <div class="forge-heading-title">锻造仙斧</div>
         <div class="forge-heading-copy">引灵火淬锻，静候仙斧成形</div>
       </div>
@@ -4866,6 +4902,13 @@ const PlayerView = {
 
   // 十连砍
   async doChopTen() {
+    if (!GameplayRules.canUseTenChop(Game.state.realmLevel)) {
+      UI.toast('突破至中卡拉米后解锁', 'warn');
+      this._tenChopMode = false;
+      const cb = document.getElementById('ten-chop-toggle');
+      if (cb) cb.checked = false;
+      return false;
+    }
     if (Game.state.choppingCount < 10) {
       UI.toast('砍树次数不足10次，已自动取消十连砍', 'warn');
       this._tenChopMode = false;

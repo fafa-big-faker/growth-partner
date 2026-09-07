@@ -10,11 +10,16 @@ test('forge reveal accelerates configured candidates while waiting for the real 
   const controller = app.match(/const ForgeReveal = \{[\s\S]*?\n\};/)?.[0] || '';
   assert.match(controller, /FORGE_POOL\.flatMap/);
   assert.match(controller, /160,\s*150,\s*135,\s*120,\s*108,\s*95,\s*83,\s*73,\s*63,\s*55,\s*48,\s*42,\s*38/);
-  assert.match(controller, /animateProgress\(elements,\s*88,\s*cycleDuration\)/);
+  assert.match(controller, /Promise\.resolve\(resultPromise\)\.then/);
+  assert.match(controller, /settled:\s*false/);
+  assert.match(controller, /animateProgress\(elements,\s*90,\s*cycleDuration\)/);
   assert.match(controller, /transition\s*=\s*`width \$\{duration\}ms linear`/);
   assert.match(controller, /prefers-reduced-motion:\s*reduce/);
-  assert.match(controller, /setProgress\(elements,\s*94\)/);
-  assert.match(controller, /const result = await resultPromise/);
+  assert.match(controller, /while \(!tracked\.settled\)/);
+  assert.match(controller, /const fastDelay = 38/);
+  assert.match(controller, /showCandidate\(elements,[\s\S]*?fastDelay/);
+  assert.match(controller, /setProgress\(elements,\s*98\)/);
+  assert.match(controller, /if \(tracked\.error\) throw tracked\.error/);
   assert.match(controller, /if \(!result\)/);
   assert.match(controller, /setProgress\(elements,\s*100\)/);
   assert.match(controller, /result\.itemId/);
@@ -33,6 +38,7 @@ test('forge modal runs one guarded operation and reveals the result in place', (
   assert.match(showForge, /class="forge-material-cost"/);
   assert.match(showForge, /<b[^>]*>\$\{forgeQty\}<\/b><span[^>]*>\/\$\{forgeCost\}<\/span>/);
   assert.match(showForge, /id="forge-ok"[^\n]*>锻造<\/button>/);
+  assert.doesNotMatch(showForge, /forge-modal-icon/);
   assert.match(showForge, /btn\.textContent = '再锻造一次'/);
   assert.match(showForge, />立即装备<\/button>/);
   assert.doesNotMatch(showForge, />返回<\/button>/);

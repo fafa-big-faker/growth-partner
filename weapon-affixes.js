@@ -125,7 +125,11 @@
     for (const key of ['value1', 'value2', 'value3']) {
       if (!(key in (normalizedRoll.values || {}))) continue;
       const display = escapeHtml(formatValue(key, normalizedRoll.values[key], normalizedRoll, qualityTable));
-      const token = `<span class="buff-value buff-quality-${Number(normalizedRoll.buffQuality) || 1}">${display}</span>`;
+      const targetQuality = key === 'value1' && normalizedRoll.effectType === 'reward_multiplier'
+        ? Number(normalizedRoll.values[key])
+        : Number(normalizedRoll.buffQuality);
+      const colorQuality = Math.max(1, Math.min(5, targetQuality || 1));
+      const token = `<span class="buff-value buff-quality-${colorQuality}">${display}</span>`;
       template = template.replaceAll(`{${key}}`, token);
       if (key === 'value1') template = template.replaceAll('{vlaue1}', token);
     }

@@ -1,4 +1,10 @@
 (function initGameplayRules(root) {
+  const TEN_CHOP_UNLOCK_REALM = 2;
+
+  function canUseTenChop(realmLevel) {
+    return Number(realmLevel) >= TEN_CHOP_UNLOCK_REALM;
+  }
+
   function isBonusChop(totalChops, interval = 10) {
     const count = Number(totalChops);
     const cadence = Number(interval);
@@ -29,7 +35,7 @@
     };
   }
 
-  const api = { isBonusChop, rollPackItem };
+  const api = { TEN_CHOP_UNLOCK_REALM, canUseTenChop, isBonusChop, rollPackItem };
   root.GameplayRules = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(typeof globalThis !== 'undefined' ? globalThis : window);

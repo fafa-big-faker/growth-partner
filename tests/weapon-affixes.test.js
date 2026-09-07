@@ -60,7 +60,7 @@ test('two skills roll independently and freeze selected values', () => {
   assert.deepEqual(result[1].values, { value1: 4, value2: 1 });
 });
 
-test('formatted skill colors only dynamic values by BUFF quality', () => {
+test('reward multiplier colors target quality independently from BUFF quality', () => {
   const html = WeaponAffixes.formatSkill({
     buffId: 1,
     buffQuality: 5,
@@ -69,9 +69,20 @@ test('formatted skill colors only dynamic values by BUFF quality', () => {
   }, [{ id: 1, name: '凡品' }]);
 
   assert.match(html, /^每次砍树时若抽到/);
-  assert.match(html, /buff-value buff-quality-5[^>]*>凡品</);
-  assert.match(html, />3\.15%<\/span>/);
-  assert.match(html, />2<\/span>倍$/);
+  assert.match(html, /buff-value buff-quality-1[^>]*>凡品</);
+  assert.match(html, /buff-value buff-quality-5[^>]*>3\.15%<\/span>/);
+  assert.match(html, /buff-value buff-quality-5[^>]*>2<\/span>倍$/);
+});
+
+test('refund skill keeps all dynamic values colored by BUFF quality', () => {
+  const html = WeaponAffixes.formatSkill({
+    buffId: 6,
+    buffQuality: 4,
+    description: '每次砍树时有{value1}的概率返还{value2}次砍树次数',
+    values: { value1: 8.5, value2: 2 },
+  });
+
+  assert.equal((html.match(/buff-quality-4/g) || []).length, 2);
 });
 
 test('frozen multiplier and refund rolls evaluate without generating new values', () => {
