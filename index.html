@@ -12,14 +12,15 @@
     window.SUPABASE_URL = 'https://fczkdiakiykcgctrffur.supabase.co';
     window.SUPABASE_KEY = 'sb_publishable_ZBRpp9ITVRY0Ipj2haU09Q_fAB6S-hg';
   </script>
-  <link rel="stylesheet" href="styles.css?v=cc7329f-motion-fix">
+  <link rel="stylesheet" href="styles.css?v=xianlai-motion-20260907">
 </head>
 <body>
   <!-- 登录页 -->
   <div id="login-screen">
     <div class="login-bg"></div>
     <main class="login-shell">
-      <section class="login-card" id="login-form-panel">
+      <form class="login-card" id="login-form-panel" method="post" autocomplete="on" onsubmit="event.preventDefault()">
+      <input type="text" class="login-role-username" id="login-username" name="username" value="player" autocomplete="username" aria-label="登录身份" tabindex="-1" readonly>
       <div class="role-select">
         <button type="button" class="role-card active" data-role="player" onclick="Auth.selectRole('player')">
           <span class="role-mark"></span><span class="name">修炼者</span>
@@ -29,10 +30,10 @@
         </button>
       </div>
       <div class="login-input-wrap">
-        <input type="password" id="login-password" aria-label="道号密码" placeholder="请输入道号密码" autocomplete="current-password" onkeydown="if(event.key==='Enter')Auth.doLogin()">
+        <input type="password" id="login-password" name="password" aria-label="道号密码" placeholder="请输入道号密码" autocomplete="current-password" required>
       </div>
-      <button class="login-submit" id="login-submit" onclick="Auth.doLogin()">开始游戏</button>
-      </section>
+      <button type="submit" class="login-submit" id="login-submit">开始游戏</button>
+      </form>
       <section class="login-loading" id="login-loading" hidden aria-live="polite">
         <div class="loading-track"><span id="login-loading-bar"></span></div>
         <div class="loading-copy">入道中<span class="loading-dots"><i></i><i></i><i></i></span></div>
@@ -122,12 +123,13 @@
   <script src="ten-chop-timeline.js"></script>
   <script src="date-time.js"></script>
   <script src="account-session.js"></script>
+  <script src="login-credentials.js"></script>
   <script src="asset-preloader.js"></script>
   <script src="character-animator.js"></script>
   <script src="cultivation-effects.js"></script>
   <script src="audio-manager.js"></script>
   <script src="player-data-cache.js"></script>
   <script src="inventory-novelty.js"></script>
-  <script src="app.js?v=cc7329f-motion-fix"></script>
+  <script src="app.js?v=xianlai-motion-20260907"></script>
 </body>
 </html>

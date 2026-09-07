@@ -1,0 +1,27 @@
+{
+  "coordinate_space": "362x724 legacy split frame; positive x is right, positive y is down",
+  "anchor": "Keep frame 1 unchanged. X follows torso; Y follows the boot baseline. Clamp translations to retain every alpha >= 2 pixel with 2px padding.",
+  "boundary_adjustments": {"53001/frame-02": [-11, 3], "53001/frame-03": [-29, 1]},
+  "source_sha256": {
+    "51001": "ce08e129a18a119356341e9722e07ebd7d67acfa5f54f30333de115421e432a2",
+    "51002": "c25c209ebd50795de1faa33be903cbe73757c08b9173ca570ab601abbd78478d",
+    "52001": "9ddc067af5ac061140532812bdf82140a8173f923a91c7f960c0228d30f72df2",
+    "52002": "a433273473030b6b624c80b898a524803a0a332186ab9e5ce8c70a1bfe5df3dc",
+    "53001": "3577c34a80da4336598af6e0167652a23ed67e4a81d7b96064a5d8cb93c98cec",
+    "53002": "6659bee381177f33dfde2a511cdb9149ac3ecdde1f7aa2d4cf800f6a88de536f",
+    "54001": "f662ccb236d96d400ddf28beb3cb342739f2bfbd1642254d9fe2e143e42a2b4a",
+    "54002": "737393e9527d469f3dfd4adcf9ee63a0f4196717c2c282ee9d4fb330cbdc5f34",
+    "55001": "ce8dfa8f35a00932ce3a8409c8b13771c1ed77839324da902dda622d06be1fe8"
+  },
+  "offsets": {
+    "51001": [[0, 0], [-25, -5], [-23, 10], [-52, -10]],
+    "51002": [[0, 0], [-17, -9], [-22, 6], [-27, -19]],
+    "52001": [[0, 0], [3, 18], [3, 23], [-10, 22]],
+    "52002": [[0, 0], [-6, -6], [-17, 9], [-41, -27]],
+    "53001": [[0, 0], [-13, 3], [-37, 1], [-22, -2]],
+    "53002": [[0, 0], [16, -19], [19, -28], [17, -28]],
+    "54001": [[0, 0], [8, 26], [-9, 26], [-9, -10]],
+    "54002": [[0, 0], [-1, 10], [-31, -5], [-32, -31]],
+    "55001": [[0, 0], [-13, 45], [-38, 40], [-39, 10]]
+  }
+}

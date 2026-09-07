@@ -21,9 +21,14 @@ test('cultivation action uses the ink button and a digits-only count', () => {
   assert.match(styles, /\.chop-circle-btn:hover:not\(:disabled\):not\(\.is-striking\) \.chop-axe-img/);
   assert.match(styles, /\.chop-circle-btn\.is-striking \.chop-axe-img/);
   assert.match(styles, /\.chop-circle-btn\.is-striking \.chop-ink-ripple/);
-  assert.match(styles, /@media \(prefers-reduced-motion: reduce\) \{\s*\.tree-upgrade-hint \{\s*animation: none;\s*\}\s*\}\s*$/);
-  assert.match(html, /styles\.css\?v=cc7329f-motion-fix/);
-  assert.match(html, /app\.js\?v=cc7329f-motion-fix/);
+  assert.match(styles, /@media \(prefers-reduced-motion: reduce\) \{\s*\.tree-upgrade-hint \{\s*animation: none;\s*\}\s*\}/);
+  assert.match(styles, /chop-axe-strike var\(--chop-strike-duration, 320ms\)/);
+  assert.match(styles, /chop-ink-ripple var\(--chop-ripple-duration, 520ms\)/);
+  assert.match(styles, /\.chop-circle-btn\[aria-busy="true"\] \{\s*opacity: 1;/);
+  const cssVersion = html.match(/styles\.css\?v=([^"\s]+)/)?.[1];
+  const appVersion = html.match(/app\.js\?v=([^"\s]+)/)?.[1];
+  assert.ok(cssVersion);
+  assert.equal(cssVersion, appVersion);
 });
 
 test('tree hint and forge entrance stay contextual and uncluttered', () => {

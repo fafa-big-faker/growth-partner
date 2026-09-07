@@ -241,7 +241,7 @@ function getAxeIdleFrames(itemId) {
   const safeId = AXE_ANIMATION_IDS.includes(String(itemId)) ? String(itemId) : '51001';
   return Array.from(
     { length: 4 },
-    (_, index) => `assets/runtime/character/idle-axes/${safeId}/frame-${String(index + 1).padStart(2, '0')}.webp`,
+    (_, index) => `assets/runtime/character/idle-axes/${safeId}/frame-${String(index + 1).padStart(2, '0')}.webp?v=idle-anchor-20260907`,
   );
 }
 
@@ -2128,9 +2128,27 @@ const Game = {
 const Auth = {
   currentRole: 'player',
   _loggingIn: false,
+  _credentials: null,
+
+  init() {
+    this._credentials = LoginCredentials.create({
+      usernameInput: document.getElementById('login-username'),
+      passwordInput: document.getElementById('login-password'),
+      credentials: navigator.credentials,
+      PasswordCredential: window.PasswordCredential,
+      isSecureContext: window.isSecureContext,
+    });
+    void this._credentials.selectRole(this.currentRole);
+    document.getElementById('login-form-panel').addEventListener('submit', event => {
+      event.preventDefault();
+      void this.doLogin();
+    });
+  },
 
   selectRole(role) {
+    if (this._loggingIn || !['player', 'admin'].includes(role)) return;
     this.currentRole = role;
+    void this._credentials?.selectRole(role);
     document.querySelectorAll('.role-card').forEach(el => {
       el.classList.toggle('active', el.dataset.role === role);
     });
@@ -2138,20 +2156,24 @@ const Auth = {
 
   async doLogin() {
     if (this._loggingIn) return;
-    const password = document.getElementById('login-password').value;
-    const account = await AccountSession.verify(this.currentRole, password);
-    if (!account) {
-      UI.toast('道号密码错误', 'error');
-      return;
-    }
-
     this._loggingIn = true;
-    DB.setPlayerRole(account.playerRole);
-    PlayerView.clearDataCaches();
-    if (this.currentRole === 'player') void AudioManager.playBgm();
-    else AudioManager.pauseBgm();
-    this._setLoading(true, 0);
+    const submit = document.getElementById('login-submit');
+    if (submit) submit.disabled = true;
+    const role = this.currentRole;
+    const password = this._credentials
+      ? this._credentials.readPassword(role)
+      : document.getElementById('login-password').value;
     try {
+      const account = await AccountSession.verify(role, password);
+      if (!account) {
+        UI.toast('道号密码错误', 'error');
+        return;
+      }
+      DB.setPlayerRole(account.playerRole);
+      PlayerView.clearDataCaches();
+      if (role === 'player') void AudioManager.playBgm();
+      else AudioManager.pauseBgm();
+      this._setLoading(true, 0);
       const staticAssets = getInitialGameImageAssets();
       const audioPreload = AudioManager.preload();
       const staticPreload = AssetPreloader.preload(
@@ -2165,7 +2187,7 @@ const Auth = {
         Game.state.axeId,
         progress => this._setLoading(true, 85 + progress.percent * 0.15),
       );
-      if (this.currentRole === 'admin') {
+      if (role === 'admin') {
         document.getElementById('login-screen').style.display = 'none';
         document.getElementById('admin-dashboard').style.display = 'flex';
         Router.adminTab('task-manage');
@@ -2175,6 +2197,7 @@ const Auth = {
         UI.updateHeader();
         Router.playerTab('cultivate', { force: true });
       }
+      void this._credentials?.saveVerified(role, password);
     } catch (error) {
       console.error('login initialization failed:', error);
       AudioManager.pauseBgm();
@@ -2184,6 +2207,7 @@ const Auth = {
       UI.toast('入道未完成，请检查网络后重试', 'error');
     } finally {
       this._loggingIn = false;
+      if (submit) submit.disabled = false;
     }
   },
 
@@ -2204,7 +2228,8 @@ const Auth = {
     document.getElementById('player-dashboard').style.display = 'none';
     document.getElementById('admin-dashboard').style.display = 'none';
     document.getElementById('login-screen').style.display = 'flex';
-    document.getElementById('login-password').value = '';
+    if (this._credentials) this._credentials.clear();
+    else document.getElementById('login-password').value = '';
     this._setLoading(false, 0);
     AudioManager.pauseBgm();
     CultivatorAnimator.stop();
@@ -3360,12 +3385,21 @@ const PlayerView = {
     });
   },
 
-  _playChopButtonFeedback(button) {
+  _playChopButtonFeedback(button, speed = 1) {
     if (!button) return;
+    const playbackSpeed = Math.min(3, Math.max(1, Number(speed) || 1));
+    const strikeMs = Math.round(320 / playbackSpeed);
+    const rippleMs = Math.round(520 / playbackSpeed);
+    clearTimeout(button._chopFeedbackTimer);
+    button.style.setProperty('--chop-strike-duration', `${strikeMs}ms`);
+    button.style.setProperty('--chop-ripple-duration', `${rippleMs}ms`);
     button.classList.remove('is-striking');
     void button.offsetWidth;
     button.classList.add('is-striking');
-    setTimeout(() => button.classList.remove('is-striking'), 560);
+    button._chopFeedbackTimer = setTimeout(() => {
+      button.classList.remove('is-striking');
+      button._chopFeedbackTimer = null;
+    }, rippleMs + 40);
   },
 
   async doChop() {
@@ -3382,8 +3416,8 @@ const PlayerView = {
     const treeIcon = document.getElementById('tree-icon');
     const scene = document.getElementById('tree-area');
     const chopBtn = document.getElementById('chop-btn');
-    this._playChopButtonFeedback(chopBtn);
     const outcome = await UI.runLockedAction('chop', chopBtn, '', async () => {
+      this._playChopButtonFeedback(chopBtn);
       void AudioManager.playEffect('chopHit');
       const characterAnimation = CultivatorAnimator.playChop();
       CultivationEffects.playHit({ scene, tree: treeIcon, intensity: 1 });
@@ -4954,7 +4988,6 @@ const PlayerView = {
     const chopBtn = document.getElementById('chop-btn');
     const treeIcon = document.getElementById('tree-icon');
     const scene = document.getElementById('tree-area');
-    this._playChopButtonFeedback(chopBtn);
     const outcome = await UI.runLockedAction('chop', chopBtn, '', async () => {
 
     const results = [];
@@ -4966,6 +4999,7 @@ const PlayerView = {
       if (!chops) return false;
       for (let i = 0; i < 10; i++) {
         const timing = TenChopTimeline.getStep(i);
+        this._playChopButtonFeedback(chopBtn, timing.speed);
         void AudioManager.playEffect('chopHit');
         const characterAnimation = CultivatorAnimator.playChop({ resumeIdle: false, frameMs: timing.frameMs });
         CultivationEffects.playHit({ scene, tree: treeIcon, intensity: 1 });
@@ -6113,5 +6147,6 @@ const AdminView = {
 };
 
 // 初始化（登录时调用 Game.init()）
+Auth.init();
 AudioManager.bindControls();
 console.log('寻道大千 · 修仙系统加载完成 🎋');

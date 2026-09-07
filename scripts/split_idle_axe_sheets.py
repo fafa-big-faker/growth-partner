@@ -1,3 +1,5 @@
+import json
+import hashlib
 import re
 from pathlib import Path
 
@@ -11,13 +13,23 @@ BASELINE_MARGIN = 8
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SOURCE_DIR = REPO_ROOT.parent / "待机斧头对应帧"
 OUTPUT_ROOT = REPO_ROOT / "assets" / "images" / "character" / "idle-axes"
+ALIGNMENT_PATH = Path(__file__).with_name("idle_frame_offsets.json")
+ALIGNMENT = json.loads(ALIGNMENT_PATH.read_text(encoding="utf-8"))
+FRAME_OFFSETS = ALIGNMENT["offsets"]
 
 
-def split_atlas(source_path: Path) -> list[Path]:
+def validate_source(source_path: Path, item_id: str) -> None:
+    expected = ALIGNMENT["source_sha256"].get(item_id)
+    if not expected or hashlib.sha256(source_path.read_bytes()).hexdigest() != expected:
+        raise ValueError(f"Idle source changed for {item_id}; recalibrate idle_frame_offsets.json before splitting")
+
+
+def build_frames(source_path: Path) -> tuple[str, list[Image.Image]]:
     match = re.match(r"^(\d{5})-", source_path.name)
     if not match:
         raise ValueError(f"Missing item id prefix: {source_path.name}")
     item_id = match.group(1)
+    validate_source(source_path, item_id)
 
     with Image.open(source_path) as source:
         rgba = source.convert("RGBA")
@@ -40,9 +52,7 @@ def split_atlas(source_path: Path) -> list[Path]:
         safe_height / max(sprite.height for sprite in sprites),
     )
 
-    target_dir = OUTPUT_ROOT / item_id
-    target_dir.mkdir(parents=True, exist_ok=True)
-    outputs = []
+    frames = []
     for index, sprite in enumerate(sprites):
         if scale < 1:
             sprite = sprite.resize(
@@ -53,9 +63,39 @@ def split_atlas(source_path: Path) -> list[Path]:
         x = (FRAME_SIZE[0] - sprite.width) // 2
         y = FRAME_SIZE[1] - sprite.height - BASELINE_MARGIN
         frame.alpha_composite(sprite, (x, y))
+        frames.append(frame)
+    return item_id, frames
+
+
+def align_frame(frame: Image.Image, item_id: str, index: int) -> tuple[Image.Image, tuple[int, int]]:
+    dx, dy = FRAME_OFFSETS[item_id][index]
+    if index == 0:
+        return frame, (0, 0)
+
+    # Alpha=1 specks outside the artwork were moving the old bbox anchor.
+    # Keep all stronger alpha, including the entire antialiased skirt edge.
+    bounds = frame.getchannel("A").point(lambda alpha: 255 if alpha >= 2 else 0).getbbox()
+    if not bounds:
+        raise ValueError(f"Empty character artwork: {item_id} frame {index + 1}")
+    left, top, right, bottom = bounds
+    dx = min(max(dx, 2 - left), FRAME_SIZE[0] - 2 - right)
+    dy = min(max(dy, 2 - top), FRAME_SIZE[1] - 2 - bottom)
+    aligned = Image.new("RGBA", FRAME_SIZE, (0, 0, 0, 0))
+    aligned.alpha_composite(frame, (dx, dy))
+    return aligned, (dx, dy)
+
+
+def split_atlas(source_path: Path) -> list[Path]:
+    item_id, frames = build_frames(source_path)
+    target_dir = OUTPUT_ROOT / item_id
+    target_dir.mkdir(parents=True, exist_ok=True)
+    outputs = []
+    for index, frame in enumerate(frames):
+        aligned, offset = align_frame(frame, item_id, index)
         output = target_dir / f"frame-{index + 1:02d}.png"
-        frame.save(output, "PNG", optimize=True)
+        aligned.save(output, "PNG", optimize=True)
         outputs.append(output)
+        print(f"{item_id} frame {index + 1}: offset={offset}")
     return outputs
 
 
