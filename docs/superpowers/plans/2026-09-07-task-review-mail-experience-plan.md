@@ -98,7 +98,7 @@ Expected: all tests pass.
 - Consumes: `{rewardChopping:number, rewardItems:Array<{item_id:string, quantity:number}>}`, `ITEMS`, and `renderItemIcon`.
 - Produces: `TaskRewards.getEntries(source, itemDefinitions) -> Array<{itemId:string, quantity:number, name:string, icon:string}>`, `TaskRewards.formatText(entries) -> string`, `renderTaskRewardChips(source, className) -> string`, and `UI.showRewardBubble(entries)`.
 
-- [ ] **Step 1: Write failing reward tests**
+- [x] **Step 1: Write failing reward tests**
 
 Cover chopping count, game currency, regular items, invalid quantities, empty rewards, and a self-submission whose approved and claimed cards both retain reward markup.
 
@@ -113,13 +113,13 @@ assert.deepEqual(getEntries({
 ]);
 ```
 
-- [ ] **Step 2: Run the focused test and verify failure**
+- [x] **Step 2: Run the focused test and verify failure**
 
 Run: `node --test tests\task-rewards.test.js`
 
 Expected: FAIL because `task-rewards.js` is missing.
 
-- [ ] **Step 3: Implement the pure reward normalizer**
+- [x] **Step 3: Implement the pure reward normalizer**
 
 Normalize positive integer quantities, prepend chopping-count rewards as item ID `1`, preserve configured order, and omit unknown item IDs.
 
@@ -134,11 +134,11 @@ function getEntries(source, itemDefinitions) {
 }
 ```
 
-- [ ] **Step 4: Use one renderer on fixed and self-submission cards**
+- [x] **Step 4: Use one renderer on fixed and self-submission cards**
 
 Load `task-rewards.js` before `app.js`. Render labeled reward chips for fixed tasks and for approved/claimed self-submissions. Keep claimed rewards visible and render a disabled `已领取` button.
 
-- [ ] **Step 5: Add detailed post-claim feedback**
+- [x] **Step 5: Add detailed post-claim feedback**
 
 Add `UI.showRewardBubble(entries)` that creates one accessible, auto-dismissed bubble in `#toast-container`, with item art, name, and quantity. Call it only after every grant succeeds and `Game.refresh()` completes.
 
@@ -149,7 +149,7 @@ UI.showRewardBubble(entries);
 this._renderTaskList();
 ```
 
-- [ ] **Step 6: Run focused tests**
+- [x] **Step 6: Run focused tests**
 
 Run: `node --test tests\task-rewards.test.js tests\coin-icon-rendering.test.js tests\resource-operation-consistency.test.js`
 

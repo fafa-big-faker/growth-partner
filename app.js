@@ -179,6 +179,19 @@ function renderItemIcon(itemId, fallbackEmoji, cls = 'item-icon-img') {
   return fb;
 }
 
+function renderTaskRewardChips(source, className = 'task-reward-list') {
+  const entries = TaskRewards.getEntries(source, ITEMS);
+  if (entries.length === 0) return '';
+  const chips = entries.map(entry => `
+    <span class="task-reward-chip" title="${entry.name}">
+      ${renderItemIcon(entry.itemId, entry.icon, 'item-icon-xs')}
+      <span class="task-reward-name">${entry.name}</span>
+      <b>×${entry.quantity}</b>
+    </span>
+  `).join('');
+  return `<div class="${className}" aria-label="任务奖励"><span class="task-reward-label">奖励</span>${chips}</div>`;
+}
+
 function getWeaponSkillLines(weapon) {
   const rolls = Array.isArray(weapon?.skillRolls) ? weapon.skillRolls : [];
   return rolls.map(roll => WeaponAffixes.formatSkill(roll, GAME_CONFIG?.qualityTable || []));
@@ -2245,6 +2258,34 @@ const UI = {
     }, 2500);
   },
 
+  showRewardBubble(entries) {
+    if (!Array.isArray(entries) || entries.length === 0) {
+      this.toast('奖励已领取', 'success');
+      return;
+    }
+    const container = document.getElementById('toast-container');
+    container.querySelector('.reward-claim-toast')?.remove();
+    const el = document.createElement('div');
+    el.className = 'reward-claim-toast';
+    el.setAttribute('role', 'status');
+    el.innerHTML = `
+      <div class="reward-claim-title">领取成功</div>
+      <div class="reward-claim-items">
+        ${entries.map(entry => `
+          <span class="reward-claim-item">
+            ${renderItemIcon(entry.itemId, entry.icon, 'item-icon-sm')}
+            <span>${entry.name}</span><b>×${entry.quantity}</b>
+          </span>
+        `).join('')}
+      </div>
+    `;
+    container.appendChild(el);
+    setTimeout(() => {
+      el.classList.add('is-leaving');
+      setTimeout(() => el.remove(), 280);
+    }, 3600);
+  },
+
   async runLockedAction(key, control, busyText, action) {
     if (OperationGuard.isActive(key)) return { started: false, value: false };
 
@@ -3499,17 +3540,13 @@ const PlayerView = {
 
   _renderTaskCard(task, status, type) {
     const dailyRewards = type === 'daily' ? getDailySignInRewards() : [];
-    const rewardItems = type === 'daily'
-      ? dailyRewards.map(dailyReward => ({ item_id: dailyReward.itemId, quantity: dailyReward.count }))
-      : (task.rewardItems || []);
-    let rewardHtml = '';
-    if (type !== 'daily' && task.rewardChopping > 0) {
-      rewardHtml += `<span class="reward-chopping" style="display:inline-flex;align-items:center;gap:3px">${renderItemIcon('1', '🪓', 'item-icon-xs')} ×${task.rewardChopping}</span>`;
-    }
-    rewardItems.forEach(ri => {
-      const def = ITEMS[ri.item_id];
-      if (def) rewardHtml += `<span style="display:inline-flex;align-items:center;gap:2px;font-size:14px" title="${def.name}">${renderItemIcon(ri.item_id, def.icon, 'item-icon-xs')}×${ri.quantity}</span>`;
-    });
+    const rewardSource = type === 'daily'
+      ? {
+          rewardChopping: 0,
+          rewardItems: dailyRewards.map(reward => ({ item_id: reward.itemId, quantity: reward.count })),
+        }
+      : task;
+    const rewardHtml = renderTaskRewardChips(rewardSource, 'task-reward-list task-reward-list-inline');
 
     let actionBtn = '';
     if (type === 'daily') {
@@ -3559,7 +3596,13 @@ const PlayerView = {
       actionBtn = `<button class="btn btn-accent btn-sm" onclick="PlayerView.claimSubmissionReward('${sub.id}',this)">领取奖励</button>`;
     } else if (sub.status === 'rejected') {
       actionBtn = `<button class="btn btn-outline btn-sm" disabled>已驳回</button>`;
+    } else if (sub.status === 'claimed') {
+      actionBtn = `<button class="btn btn-outline btn-sm" disabled>已领取</button>`;
     }
+
+    const rewardHtml = (sub.status === 'approved' || sub.status === 'claimed')
+      ? renderTaskRewardChips(sub, 'task-reward-list task-reward-list-self')
+      : '';
 
     return `
       <div class="task-card">
@@ -3569,6 +3612,7 @@ const PlayerView = {
         </div>
         <div class="task-desc">${sub.selfDescription || sub.description || ''}</div>
         ${sub.reviewNote ? `<div class="task-desc" style="color:var(--accent)">审核备注：${sub.reviewNote}</div>` : ''}
+        ${rewardHtml}
         <div class="task-actions">${actionBtn}</div>
       </div>
     `;
@@ -3768,6 +3812,7 @@ const PlayerView = {
   },
 
   async _claimStoredSubmissionReward(sub, operationKey, button) {
+    const entries = TaskRewards.getEntries(sub, ITEMS);
     const outcome = await UI.runLockedAction(operationKey, button, '领取中...', async () => {
       const reserved = await DB.claimSubmission(sub.id);
       if (!reserved) {
@@ -3796,7 +3841,7 @@ const PlayerView = {
       }
 
       await Game.refresh();
-      UI.toast('奖励已领取！', 'success');
+      UI.showRewardBubble(entries);
       this._renderTaskList();
       return true;
     });
@@ -5216,6 +5261,11 @@ const AdminView = {
           }).filter(i => i.item_id && ITEMS[i.item_id]);
         }
 
+        const rewardText = TaskRewards.formatText(TaskRewards.getEntries({
+          rewardChopping: chopping,
+          rewardItems,
+        }, ITEMS));
+
         const button = overlay.querySelector('#approve-ok');
         await this._runSubmissionReview({
           sub,
@@ -5224,7 +5274,7 @@ const AdminView = {
           rewardChopping: chopping,
           rewardItems,
           mailTitle: '任务审核通过',
-          mailContent: `你的自主申报任务已通过！奖励：${chopping} 次砍树${note ? '\n\n评语：' + note : ''}\n\n请前往任务列表领取奖励。`,
+          mailContent: `你的自主申报任务已通过！\n\n奖励：${rewardText}${note ? '\n\n评语：' + note : ''}\n\n请前往任务列表领取奖励。`,
           button,
           overlay,
         });

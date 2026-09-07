@@ -1241,6 +1241,94 @@ body {
   align-items: center;
 }
 
+.task-reward-list {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.task-reward-list-inline {
+  display: inline-flex;
+  margin-top: 0;
+}
+
+.task-reward-list-self {
+  padding: 9px 10px;
+  border-top: 1px solid rgba(77, 128, 111, 0.16);
+  border-bottom: 1px solid rgba(77, 128, 111, 0.12);
+}
+
+.task-reward-label {
+  color: var(--text-light);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.task-reward-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  gap: 4px;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.task-reward-chip b {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.reward-claim-toast {
+  width: min(420px, calc(100vw - 32px));
+  padding: 14px 16px;
+  border: 1px solid rgba(77, 128, 111, 0.28);
+  border-radius: 8px;
+  background: rgba(249, 252, 250, 0.98);
+  box-shadow: 0 12px 30px rgba(41, 63, 55, 0.18);
+  color: var(--text-primary);
+  animation: rewardBubbleIn 220ms ease-out both;
+}
+
+.reward-claim-toast.is-leaving {
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 220ms ease, transform 220ms ease;
+}
+
+.reward-claim-title {
+  margin-bottom: 8px;
+  color: #315f53;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.reward-claim-items {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+}
+
+.reward-claim-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.reward-claim-item b {
+  color: var(--accent);
+}
+
+@keyframes rewardBubbleIn {
+  from { opacity: 0; transform: translateY(10px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
 .toast {
   background: var(--text);
   color: white;
