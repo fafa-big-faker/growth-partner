@@ -51,8 +51,25 @@ test('cultivation scene keeps the character and tree within striking distance', 
     /@media \(max-width:\s*380px\)[\s\S]*?\.cult-scene \{[^}]*gap:\s*6px;/,
     'narrow scene should use a compact gap',
   );
-  assert.match(css, /\.cult-tree \{[\s\S]*?margin-left:\s*-104px;/);
+  for (const appearance of ['sprout', 'spirit', 'divine']) {
+    assert.match(css, new RegExp(`\\.tree-appearance-${appearance}\\s*\\{[\\s\\S]*?--tree-overlap:`));
+  }
+  assert.match(css, /\.cult-tree \{[\s\S]*?z-index:\s*1/);
+  assert.match(css, /\.cult-char \{[\s\S]*?z-index:\s*2/);
+  assert.match(css, /\.cult-tree \.tree-img \{[\s\S]*?object-position:\s*center bottom/);
   assert.match(css, /\.cult-char \.char-img \{[\s\S]*?transform:\s*scale\(1\.2\)/);
+});
+
+test('tree appearance is configuration-driven with a safe fallback', () => {
+  const render = app.match(/async renderCultivate\(\)[\s\S]*?\n  },/)?.[0] || '';
+  const detail = app.match(/\n  showTreeDetail\(\) \{[\s\S]*?\n  },/)?.[0] || '';
+  assert.match(app, /const TREE_APPEARANCES = Object\.freeze/);
+  assert.match(app, /TREE_APPEARANCES\[requestedKey\] \? requestedKey : 'sprout'/);
+  assert.ok((app.match(/appearance:\s*tree\.appearance/g) || []).length >= 2);
+  assert.match(app, /const treeAppearance = getTreeAppearance\(treeRealm\)/);
+  assert.match(render, /tree-appearance-\$\{treeAppearance\.key\}/);
+  assert.match(detail, /const treeAppearance = getTreeAppearance\(treeRealm\)/);
+  assert.doesNotMatch(app, /treeLevel >= 13|treeLevel >= 6/);
 });
 
 

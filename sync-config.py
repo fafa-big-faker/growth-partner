@@ -206,25 +206,31 @@ print(f"    {len(exp_table)} 条")
 # 2. 角色仙阶表
 print("  → 角色仙阶表")
 rows = read_sheet(SHEETS["角色表"], "角色仙阶表", "A1:H50")
+realm_headers = header_indexes(
+    rows,
+    [
+        "level", "realm_id", "realm_name", "max_axe_quality",
+        "character_image", "reqItems", "req_item_count", "icon",
+    ],
+    "角色仙阶表",
+)
 realm_table = []
 for row in rows[2:]:
-    if not row[0] or not row[1]:
+    if not row_value(row, realm_headers, "level") or not row_value(row, realm_headers, "realm_id"):
         continue
-    req_items = []
-    if len(row) > 5 and row[5]:
-        ids = [to_int(x) for x in str(row[5]).split(",") if x.strip()]
-        counts = [to_int(x) for x in str(row[6]).split(",") if x.strip()] if len(row) > 6 and row[6] else []
-        for i, item_id in enumerate(ids):
-            count = counts[i] if i < len(counts) else 1
-            req_items.append({"itemId": str(item_id), "count": count})
+    req_items = parse_parallel_rewards(
+        row_value(row, realm_headers, "reqItems"),
+        row_value(row, realm_headers, "req_item_count"),
+        "count",
+    )
     realm_table.append({
-        "reqLevel": to_int(row[0]),
-        "realmId": to_int(row[1]),
-        "name": to_str(row[2]),
-        "maxAxeQuality": to_int(row[3], 1),
-        "characterImage": to_str(row[4]) if len(row) > 4 else "",
+        "reqLevel": to_int(row_value(row, realm_headers, "level")),
+        "realmId": to_int(row_value(row, realm_headers, "realm_id")),
+        "name": to_str(row_value(row, realm_headers, "realm_name")),
+        "maxAxeQuality": to_int(row_value(row, realm_headers, "max_axe_quality"), 1),
+        "characterImage": to_str(row_value(row, realm_headers, "character_image")),
         "reqItems": req_items,
-        "icon": to_str(row[7]) if len(row) > 7 else "⭐",
+        "icon": to_str(row_value(row, realm_headers, "icon")) or "⭐",
     })
 print(f"    {len(realm_table)} 条")
 
@@ -338,17 +344,22 @@ print(f"    {len(buff_table)} 条")
 # 8. 仙树灵阶表
 print("  → 仙树灵阶表")
 rows = read_sheet(SHEETS["仙树表"], "仙树灵阶表", "A1:F30")
+tree_headers = header_indexes(
+    rows,
+    ["tree_id", "tree_name", "tree_appearance", "pool_id", "req_items", "note"],
+    "仙树灵阶表",
+)
 tree_table = []
 for row in rows[2:]:
-    if not row[0]:
+    if not row_value(row, tree_headers, "tree_id"):
         continue
     tree_table.append({
-        "id": to_int(row[0]),
-        "name": to_str(row[1]),
-        "appearance": to_str(row[2]) if len(row) > 2 else "",
-        "poolId": to_int(row[3]),
-        "reqItems": parse_req_items(row[4] if len(row) > 4 else ""),
-        "note": to_str(row[5]) if len(row) > 5 else "",
+        "id": to_int(row_value(row, tree_headers, "tree_id")),
+        "name": to_str(row_value(row, tree_headers, "tree_name")),
+        "appearance": to_str(row_value(row, tree_headers, "tree_appearance")),
+        "poolId": to_int(row_value(row, tree_headers, "pool_id")),
+        "reqItems": parse_req_items(row_value(row, tree_headers, "req_items")),
+        "note": to_str(row_value(row, tree_headers, "note")),
     })
 print(f"    {len(tree_table)} 条")
 

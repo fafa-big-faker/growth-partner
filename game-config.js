@@ -1,6 +1,6 @@
 // ===== 游戏配置文件（由 sync-config.py 从飞书表格自动生成）=====
 // 修改飞书表格后运行同步脚本即可更新，请勿手动编辑此文件
-// 最后同步: 2026-09-07 01:14:33
+// 最后同步: 2026-09-07 16:16:18
 
 const GAME_CONFIG = {
   // 角色等级经验表（共 150 条）
@@ -622,7 +622,7 @@ const GAME_CONFIG = {
     "reqLevel": 10,
     "realmId": 2,
     "name": "中卡拉米",
-    "maxAxeQuality": 2,
+    "maxAxeQuality": 1,
     "characterImage": "",
     "reqItems": [
       {
@@ -644,7 +644,7 @@ const GAME_CONFIG = {
     "reqLevel": 20,
     "realmId": 3,
     "name": "大卡拉米",
-    "maxAxeQuality": 2,
+    "maxAxeQuality": 1,
     "characterImage": "",
     "reqItems": [
       {
@@ -666,7 +666,7 @@ const GAME_CONFIG = {
     "reqLevel": 30,
     "realmId": 4,
     "name": "小修士",
-    "maxAxeQuality": 3,
+    "maxAxeQuality": 2,
     "characterImage": "",
     "reqItems": [
       {
@@ -688,7 +688,7 @@ const GAME_CONFIG = {
     "reqLevel": 40,
     "realmId": 5,
     "name": "中修士",
-    "maxAxeQuality": 3,
+    "maxAxeQuality": 2,
     "characterImage": "",
     "reqItems": [
       {
@@ -710,7 +710,7 @@ const GAME_CONFIG = {
     "reqLevel": 50,
     "realmId": 6,
     "name": "大修士",
-    "maxAxeQuality": 3,
+    "maxAxeQuality": 2,
     "characterImage": "",
     "reqItems": [
       {
@@ -732,7 +732,7 @@ const GAME_CONFIG = {
     "reqLevel": 60,
     "realmId": 7,
     "name": "小飞升",
-    "maxAxeQuality": 4,
+    "maxAxeQuality": 3,
     "characterImage": "",
     "reqItems": [
       {
@@ -754,7 +754,7 @@ const GAME_CONFIG = {
     "reqLevel": 70,
     "realmId": 8,
     "name": "中飞升",
-    "maxAxeQuality": 4,
+    "maxAxeQuality": 3,
     "characterImage": "",
     "reqItems": [
       {
@@ -776,7 +776,7 @@ const GAME_CONFIG = {
     "reqLevel": 80,
     "realmId": 9,
     "name": "大飞升",
-    "maxAxeQuality": 4,
+    "maxAxeQuality": 3,
     "characterImage": "",
     "reqItems": [
       {
@@ -798,7 +798,7 @@ const GAME_CONFIG = {
     "reqLevel": 90,
     "realmId": 10,
     "name": "小神",
-    "maxAxeQuality": 5,
+    "maxAxeQuality": 4,
     "characterImage": "",
     "reqItems": [
       {
@@ -820,7 +820,7 @@ const GAME_CONFIG = {
     "reqLevel": 100,
     "realmId": 11,
     "name": "中神",
-    "maxAxeQuality": 5,
+    "maxAxeQuality": 4,
     "characterImage": "",
     "reqItems": [
       {
@@ -842,7 +842,7 @@ const GAME_CONFIG = {
     "reqLevel": 110,
     "realmId": 12,
     "name": "大神",
-    "maxAxeQuality": 5,
+    "maxAxeQuality": 4,
     "characterImage": "",
     "reqItems": [
       {
@@ -864,7 +864,7 @@ const GAME_CONFIG = {
     "reqLevel": 120,
     "realmId": 13,
     "name": "下仙",
-    "maxAxeQuality": 5,
+    "maxAxeQuality": 4,
     "characterImage": "",
     "reqItems": [
       {
@@ -886,7 +886,7 @@ const GAME_CONFIG = {
     "reqLevel": 130,
     "realmId": 14,
     "name": "中仙",
-    "maxAxeQuality": 5,
+    "maxAxeQuality": 4,
     "characterImage": "",
     "reqItems": [
       {
@@ -908,7 +908,7 @@ const GAME_CONFIG = {
     "reqLevel": 140,
     "realmId": 15,
     "name": "上仙",
-    "maxAxeQuality": 5,
+    "maxAxeQuality": 4,
     "characterImage": "",
     "reqItems": [
       {
@@ -1995,7 +1995,7 @@ const GAME_CONFIG = {
   {
     "id": 0,
     "name": "仙树",
-    "appearance": "",
+    "appearance": "sprout",
     "poolId": 1000,
     "reqItems": [],
     "note": ""
@@ -2003,7 +2003,7 @@ const GAME_CONFIG = {
   {
     "id": 1,
     "name": "仙树·灵阶1",
-    "appearance": "",
+    "appearance": "sprout",
     "poolId": 1001,
     "reqItems": [
       {
@@ -2016,7 +2016,7 @@ const GAME_CONFIG = {
   {
     "id": 2,
     "name": "仙树·灵阶2",
-    "appearance": "",
+    "appearance": "sprout",
     "poolId": 1002,
     "reqItems": [
       {
@@ -2029,7 +2029,7 @@ const GAME_CONFIG = {
   {
     "id": 3,
     "name": "仙树·灵阶3",
-    "appearance": "",
+    "appearance": "sprout",
     "poolId": 1003,
     "reqItems": [
       {
@@ -2042,7 +2042,7 @@ const GAME_CONFIG = {
   {
     "id": 4,
     "name": "仙树·灵阶4",
-    "appearance": "",
+    "appearance": "spirit",
     "poolId": 1004,
     "reqItems": [
       {
@@ -2055,7 +2055,7 @@ const GAME_CONFIG = {
   {
     "id": 5,
     "name": "仙树·灵阶5",
-    "appearance": "",
+    "appearance": "spirit",
     "poolId": 1005,
     "reqItems": [
       {
@@ -2068,7 +2068,7 @@ const GAME_CONFIG = {
   {
     "id": 6,
     "name": "仙树·灵阶6",
-    "appearance": "",
+    "appearance": "spirit",
     "poolId": 1006,
     "reqItems": [
       {
@@ -2081,7 +2081,7 @@ const GAME_CONFIG = {
   {
     "id": 7,
     "name": "仙树·灵阶7",
-    "appearance": "",
+    "appearance": "spirit",
     "poolId": 1007,
     "reqItems": [
       {
@@ -2094,7 +2094,7 @@ const GAME_CONFIG = {
   {
     "id": 8,
     "name": "仙树·灵阶8",
-    "appearance": "",
+    "appearance": "spirit",
     "poolId": 1008,
     "reqItems": [
       {
@@ -2107,7 +2107,7 @@ const GAME_CONFIG = {
   {
     "id": 9,
     "name": "仙树·灵阶9",
-    "appearance": "",
+    "appearance": "spirit",
     "poolId": 1009,
     "reqItems": [
       {
@@ -2120,7 +2120,7 @@ const GAME_CONFIG = {
   {
     "id": 10,
     "name": "仙树·灵阶10",
-    "appearance": "",
+    "appearance": "spirit",
     "poolId": 1010,
     "reqItems": [
       {
@@ -2133,7 +2133,7 @@ const GAME_CONFIG = {
   {
     "id": 11,
     "name": "仙树·灵阶11",
-    "appearance": "",
+    "appearance": "divine",
     "poolId": 1011,
     "reqItems": [
       {
@@ -2146,7 +2146,7 @@ const GAME_CONFIG = {
   {
     "id": 12,
     "name": "仙树·灵阶12",
-    "appearance": "",
+    "appearance": "divine",
     "poolId": 1012,
     "reqItems": [
       {
@@ -2159,7 +2159,7 @@ const GAME_CONFIG = {
   {
     "id": 13,
     "name": "仙树·灵阶13",
-    "appearance": "",
+    "appearance": "divine",
     "poolId": 1013,
     "reqItems": [
       {
@@ -2172,7 +2172,7 @@ const GAME_CONFIG = {
   {
     "id": 14,
     "name": "仙树·灵阶14",
-    "appearance": "",
+    "appearance": "divine",
     "poolId": 1014,
     "reqItems": [
       {
@@ -2185,7 +2185,7 @@ const GAME_CONFIG = {
   {
     "id": 15,
     "name": "仙树·灵阶15",
-    "appearance": "",
+    "appearance": "divine",
     "poolId": 1015,
     "reqItems": [
       {

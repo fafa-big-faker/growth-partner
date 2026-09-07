@@ -111,6 +111,7 @@ const TREE_LEVELS = {};
   TREE_LEVELS[tree.id] = {
     name: tree.name,
     icon: TREE_ICONS[idx] || '🌳',
+    appearance: tree.appearance,
     pools,
     qualityWeights,
   };
@@ -204,6 +205,18 @@ function renderWeaponSkills(weapon, emptyText = '此仙斧暂无特殊技能。'
 
 const V2_IMAGE_ROOT = 'assets/runtime/v2';
 
+const TREE_APPEARANCES = Object.freeze({
+  sprout: { src: `${V2_IMAGE_ROOT}/trees/sprout.webp` },
+  spirit: { src: `${V2_IMAGE_ROOT}/trees/spirit.webp` },
+  divine: { src: `${V2_IMAGE_ROOT}/trees/divine.webp` },
+});
+
+function getTreeAppearance(treeRealm) {
+  const requestedKey = String(treeRealm?.appearance || '').trim().toLowerCase();
+  const key = TREE_APPEARANCES[requestedKey] ? requestedKey : 'sprout';
+  return { key, ...TREE_APPEARANCES[key] };
+}
+
 function renderFeatureIcon(name, alt = '', cls = 'feature-icon') {
   return `<img src="${V2_IMAGE_ROOT}/icons/${name}.webp" class="${cls}" alt="${alt}" />`;
 }
@@ -220,12 +233,6 @@ function escapeHtml(value) {
     '"': '&quot;',
     "'": '&#39;',
   })[char]);
-}
-
-function getTreeImage(treeLevel) {
-  if (treeLevel >= 13) return 'assets/runtime/v2/trees/divine.webp';
-  if (treeLevel >= 6) return 'assets/runtime/v2/trees/spirit.webp';
-  return 'assets/runtime/v2/trees/sprout.webp';
 }
 
 const AXE_ANIMATION_IDS = ['51001', '51002', '52001', '52002', '53001', '53002', '54001', '54002', '55001'];
@@ -313,6 +320,7 @@ const TREE_REALMS = (GAME_CONFIG?.treeTable || []).map((tree, idx) => ({
   level: tree.id,
   name: tree.name,
   icon: TREE_ICONS[idx] || '🌳',
+  appearance: tree.appearance,
   treeLevel: tree.id,
   reqItems: (tree.reqItems || []).map(req => ({ ...req, itemId: String(req.itemId) })),
   desc: '',
@@ -346,6 +354,18 @@ function getMinRealmForAxeQuality(quality) {
 function canEquipAxeQuality(quality, realmLevel) {
   const realm = REALMS.find(r => r.level == realmLevel) || REALMS[0];
   return (realm.maxAxeQuality || 1) >= quality;
+}
+
+function renderAxeRealmRequirement(quality, realmLevel, { showStored = false } = {}) {
+  const minRealm = getMinRealmForAxeQuality(quality);
+  const locked = !canEquipAxeQuality(quality, realmLevel);
+  return `
+    <div class="axe-realm-requirement${locked ? ' is-locked' : ''}">
+      ${locked ? renderFeatureIcon('icon-lock', '', 'lock-inline-icon') : ''}
+      <span>适配仙阶：<b>${minRealm?.name || '?'}</b>及以上</span>
+      ${showStored ? '<small>已放入背包</small>' : ''}
+    </div>
+  `;
 }
 
 // 难度颜色映射
@@ -2533,6 +2553,11 @@ const UI = {
 const ForgeReveal = {
   delays: [160, 150, 135, 120, 108, 95, 83, 73, 63, 55, 48, 42, 38],
 
+  getMinimumDuration(random = Math.random) {
+    const sample = Math.max(0, Math.min(1, Number(random()) || 0));
+    return 2000 + Math.min(1000, Math.floor(sample * 1001));
+  },
+
   getCandidateItems() {
     const ids = FORGE_POOL.flatMap(pool => pool.items.map(String));
     return [...new Set(ids)].map(itemId => ITEMS[itemId]).filter(Boolean);
@@ -2572,6 +2597,8 @@ const ForgeReveal = {
   },
 
   async run(elements, resultPromise) {
+    const minimumDuration = this.getMinimumDuration();
+    const minimumDeadline = Date.now() + minimumDuration;
     const tracked = { settled: false, value: null, error: null };
     Promise.resolve(resultPromise).then(
       value => {
@@ -2586,11 +2613,10 @@ const ForgeReveal = {
     const candidates = this.getCandidateItems();
     const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true;
     const delays = reducedMotion ? [90, 75, 60] : this.delays;
-    const cycleDuration = delays.reduce((total, delay) => total + delay, 0);
     if (elements.status) elements.status.textContent = '灵火淬炼中';
     this.setProgress(elements, 0);
-    if (reducedMotion) this.setProgress(elements, 90);
-    else this.animateProgress(elements, 90, cycleDuration);
+    if (reducedMotion) this.setProgress(elements, 98);
+    else this.animateProgress(elements, 98, minimumDuration);
 
     for (let index = 0; index < delays.length; index += 1) {
       const item = candidates[index % candidates.length];
@@ -2600,14 +2626,10 @@ const ForgeReveal = {
     }
 
     if (elements.status) elements.status.textContent = '凝聚器灵';
-    if (elements.progressFill) {
-      elements.progressFill.style.transition = reducedMotion ? 'none' : 'width 2400ms linear';
-    }
-    this.setProgress(elements, 98);
 
     const fastDelay = 38;
     let candidateIndex = delays.length;
-    while (!tracked.settled) {
+    while (!tracked.settled || Date.now() < minimumDeadline) {
       if (!reducedMotion) {
         this.showCandidate(elements, candidates[candidateIndex % candidates.length], true, 28);
         candidateIndex += 1;
@@ -2691,8 +2713,7 @@ const PlayerView = {
     const forgeStoneQty = Game.inventory.find(i => i.itemId == '40001')?.quantity || 0;
     const expMax = getExpForLevel(Game.state.level);
 
-    // 仙树插画映射（按树等级分3档）
-    const treeImg = getTreeImage(Game.state.treeLevel);
+    const treeAppearance = getTreeAppearance(treeRealm);
 
     main.innerHTML = `
       <!-- ⓪ 顶栏：邮件 / 成就 / 金币 -->
@@ -2720,8 +2741,8 @@ const PlayerView = {
         <div class="cult-char">
           <img id="cultivator-sprite" src="${getAxeIdleFrames(Game.state.axeId)[0]}" class="char-img" alt="装备${axeDef.name}的修炼者" />
         </div>
-        <div class="cult-tree" id="tree-icon" onclick="PlayerView.showTreeDetail()">
-          <img src="${treeImg}" class="tree-img" alt="${treeConfig.name}" />
+        <div class="cult-tree tree-appearance-${treeAppearance.key}" id="tree-icon" onclick="PlayerView.showTreeDetail()">
+          <img src="${treeAppearance.src}" class="tree-img" alt="${treeConfig.name}" />
           <div class="tree-label">${treeConfig.name}</div>
         </div>
       </div>
@@ -2810,8 +2831,8 @@ const PlayerView = {
 
   showTreeDetail() {
     const treeConfig = TREE_LEVELS[Game.state.treeLevel] || TREE_LEVELS[1];
-    const treeImg = getTreeImage(Game.state.treeLevel);
     const treeRealm = TREE_REALMS.find(r => r.level == Game.state.treeRealm) || TREE_REALMS[0];
+    const treeAppearance = getTreeAppearance(treeRealm);
     const nextTreeRealm = TREE_REALMS.find(r => r.level == Game.state.treeRealm + 1);
     const nextTreeConfig = nextTreeRealm ? (TREE_LEVELS[nextTreeRealm.treeLevel] || null) : null;
 
@@ -2874,7 +2895,7 @@ const PlayerView = {
 
     UI.modal(`
       <div style="text-align:center;margin-bottom:20px">
-        <img src="${treeImg}" class="tree-detail-img" alt="${treeConfig.name}" />
+        <img src="${treeAppearance.src}" class="tree-detail-img" alt="${treeConfig.name}" />
         <div style="font-size:20px;font-weight:700">${treeConfig.name}</div>
       </div>
       <div style="display:flex;margin-bottom:8px">
@@ -3017,19 +3038,9 @@ const PlayerView = {
     let axeRealmHtml = '';
     let axeLocked = false;
     if (def.type === 5) {
-      const minRealm = getMinRealmForAxeQuality(def.quality);
       const canEquip = canEquipAxeQuality(def.quality, Game.state.realmLevel);
       axeLocked = !canEquip;
-      const curRealm = REALMS.find(r => r.level == Game.state.realmLevel) || REALMS[0];
-      axeRealmHtml = `
-        <div style="background:${canEquip ? 'var(--success)' : 'var(--error)'}15;border:1px solid ${canEquip ? 'var(--success)' : 'var(--error)'}40;border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:13px;display:flex;align-items:center;gap:8px;justify-content:center">
-          <span>${canEquip ? '✓' : renderFeatureIcon('icon-lock', '仙阶未解锁', 'lock-inline-icon')}</span>
-          <span style="color:${canEquip ? 'var(--success)' : 'var(--error)'}">
-            适配仙阶：<b>${minRealm?.name || '?'}</b>及以上
-            ${canEquip ? '' : `（当前：${curRealm.name}）`}
-          </span>
-        </div>
-      `;
+      axeRealmHtml = renderAxeRealmRequirement(def.quality, Game.state.realmLevel);
     }
 
     let actionBtn = '';
@@ -3065,7 +3076,6 @@ const PlayerView = {
               <h2 style="color:${q.color}">${def.name}</h2>
               <div class="weapon-detail-meta">
                 <span class="tag" style="background:${q.color}20;color:${q.color};border-color:${q.color}55">${q.name}</span>
-                <span>${axeLocked ? '尚未满足穿戴要求' : '可穿戴'}</span>
               </div>
             </div>
           </header>
@@ -4855,16 +4865,14 @@ const PlayerView = {
         if (stage) stage.dataset.state = 'result';
         const q = QUALITY[result.quality] || QUALITY[1];
         const canEquip = canEquipAxeQuality(result.quality, Game.state.realmLevel);
-        const minRealm = getMinRealmForAxeQuality(result.quality);
         const resultSkillHtml = renderWeaponSkills(result.weapon, '');
         const resultAction = canEquip ? `
+          ${renderAxeRealmRequirement(result.quality, Game.state.realmLevel)}
           <div class="forge-result-equip">
             <button class="btn btn-outline btn-sm" onclick="PlayerView._equipFromForge('${result.weapon.id}',this)">立即装备</button>
           </div>
         ` : `
-          <div class="forge-result-lock">
-            仙阶限制：需达到【${minRealm?.name || '?'}】才能装备，已放入背包
-          </div>
+          ${renderAxeRealmRequirement(result.quality, Game.state.realmLevel, { showStored: true })}
         `;
         if (detail) {
           detail.hidden = false;

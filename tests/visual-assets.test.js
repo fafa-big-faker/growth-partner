@@ -35,9 +35,10 @@ test('player pages consume optimized runtime backgrounds, trees, navigation, and
   assert.match(html, /assets\/runtime\/v2\/icons\/icon-tasks\.webp/);
   assert.match(html, /assets\/runtime\/v2\/icons\/icon-reward\.webp/);
 
-  assert.match(app, /assets\/runtime\/v2\/trees\/sprout\.webp/);
-  assert.match(app, /assets\/runtime\/v2\/trees\/spirit\.webp/);
-  assert.match(app, /assets\/runtime\/v2\/trees\/divine\.webp/);
+  assert.match(app, /\/trees\/sprout\.webp/);
+  assert.match(app, /\/trees\/spirit\.webp/);
+  assert.match(app, /\/trees\/divine\.webp/);
+  assert.match(app, /TREE_APPEARANCES\[requestedKey\] \? requestedKey : 'sprout'/);
   assert.match(app, /dashboard\.dataset\.playerScene\s*=\s*tab/);
 
   assert.match(styles, /backgrounds\/login-main\.webp/);

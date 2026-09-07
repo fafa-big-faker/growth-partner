@@ -2,6 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const vm = require('node:vm');
 
 const app = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
 const styles = fs.readFileSync(path.join(__dirname, '..', 'styles.css'), 'utf8');
@@ -12,10 +13,10 @@ test('forge reveal accelerates configured candidates while waiting for the real 
   assert.match(controller, /160,\s*150,\s*135,\s*120,\s*108,\s*95,\s*83,\s*73,\s*63,\s*55,\s*48,\s*42,\s*38/);
   assert.match(controller, /Promise\.resolve\(resultPromise\)\.then/);
   assert.match(controller, /settled:\s*false/);
-  assert.match(controller, /animateProgress\(elements,\s*90,\s*cycleDuration\)/);
+  assert.match(controller, /animateProgress\(elements,\s*98,\s*minimumDuration\)/);
   assert.match(controller, /transition\s*=\s*`width \$\{duration\}ms linear`/);
   assert.match(controller, /prefers-reduced-motion:\s*reduce/);
-  assert.match(controller, /while \(!tracked\.settled\)/);
+  assert.match(controller, /while \(!tracked\.settled \|\| Date\.now\(\) < minimumDeadline\)/);
   assert.match(controller, /const fastDelay = 38/);
   assert.match(controller, /showCandidate\(elements,[\s\S]*?fastDelay/);
   assert.match(controller, /setProgress\(elements,\s*98\)/);
@@ -23,6 +24,16 @@ test('forge reveal accelerates configured candidates while waiting for the real 
   assert.match(controller, /if \(!result\)/);
   assert.match(controller, /setProgress\(elements,\s*100\)/);
   assert.match(controller, /result\.itemId/);
+});
+
+test('forge reveal samples an inclusive two-to-three-second presentation floor', () => {
+  const controller = app.match(/const ForgeReveal = \{[\s\S]*?\n\};/)?.[0] || '';
+  const sandbox = {};
+  vm.runInNewContext(`${controller}\n;globalThis.__forgeReveal = ForgeReveal;`, sandbox);
+  assert.equal(sandbox.__forgeReveal.getMinimumDuration(() => 0), 2000);
+  assert.equal(sandbox.__forgeReveal.getMinimumDuration(() => 1), 3000);
+  assert.match(controller, /const minimumDuration = this\.getMinimumDuration\(\)/);
+  assert.match(controller, /const minimumDeadline = Date\.now\(\) \+ minimumDuration/);
 });
 
 test('forge modal runs one guarded operation and reveals the result in place', () => {

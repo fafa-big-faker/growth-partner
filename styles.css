@@ -2065,6 +2065,31 @@ body {
   color: var(--text-secondary);
   font-size: 12px;
 }
+.axe-realm-requirement {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 36px;
+  margin: 0 0 12px;
+  padding: 7px 11px;
+  border: 1px solid rgba(59, 125, 98, 0.24);
+  border-radius: 6px;
+  color: var(--success);
+  background: rgba(59, 125, 98, 0.07);
+  font-size: 13px;
+  line-height: 1.45;
+}
+.axe-realm-requirement.is-locked {
+  border-color: rgba(194, 73, 65, 0.28);
+  color: var(--error);
+  background: rgba(194, 73, 65, 0.07);
+}
+.axe-realm-requirement small {
+  margin-left: auto;
+  color: var(--text-secondary);
+  font-size: 11px;
+}
 .weapon-skill-panel {
   margin: 12px 0;
   padding: 14px 15px;
@@ -2157,25 +2182,57 @@ body {
 }
 
 .cult-tree {
+  --tree-width: 148px;
+  --tree-height: 174px;
+  --tree-box-width: 148px;
+  --tree-overlap: -104px;
+  --tree-shift-y: 8px;
   display: flex;
   flex-direction: column;
   align-items: center;
+  width: var(--tree-box-width);
+  flex: 0 0 var(--tree-box-width);
   cursor: pointer;
   transition: var(--transition);
   position: relative;
   z-index: 1;
   user-select: none;
-  margin-left: -104px;
-  top: 8px;
+  margin-left: var(--tree-overlap);
+  top: var(--tree-shift-y);
+}
+
+.tree-appearance-sprout {
+  --tree-width: 148px;
+  --tree-height: 174px;
+  --tree-box-width: 148px;
+  --tree-overlap: -104px;
+  --tree-shift-y: 8px;
+}
+
+.tree-appearance-spirit {
+  --tree-width: 184px;
+  --tree-height: 202px;
+  --tree-box-width: 176px;
+  --tree-overlap: -122px;
+  --tree-shift-y: 4px;
+}
+
+.tree-appearance-divine {
+  --tree-width: 198px;
+  --tree-height: 220px;
+  --tree-box-width: 184px;
+  --tree-overlap: -132px;
+  --tree-shift-y: 2px;
 }
 
 .cult-tree:hover { transform: scale(1.05); }
 .cult-tree:active { transform: scale(0.97); }
 
 .cult-tree .tree-img {
-  width: 100px;
-  height: 100px;
+  width: var(--tree-width);
+  height: var(--tree-height);
   object-fit: contain;
+  object-position: center bottom;
   filter: drop-shadow(0 4px 8px rgba(0,0,0,0.12));
   animation: tree-sway 4s ease-in-out infinite;
 }
@@ -2218,7 +2275,7 @@ body {
   object-position: center bottom;
   filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));
   position: relative;
-  z-index: 1;
+  z-index: 2;
   transform: scale(1.2);
   transform-origin: center bottom;
 }
@@ -2652,7 +2709,6 @@ body {
 /* 响应式微调 */
 @media (max-width: 380px) {
   .cult-scene { gap: 16px; min-height: 160px; }
-  .cult-tree .tree-img { width: 80px; height: 80px; }
   .cult-char { width: 96px; height: 144px; flex-basis: 96px; }
   .chop-circle-btn { width: 76px; height: 76px; }
   .chop-axe-icon { font-size: 30px; }
@@ -2889,8 +2945,6 @@ body {
 }
 
 .cult-tree .tree-img {
-  width: 148px;
-  height: 174px;
   image-rendering: auto;
   filter: drop-shadow(0 7px 8px rgba(28, 50, 39, 0.28));
 }
@@ -2958,7 +3012,6 @@ body {
 
 @media (max-width: 380px) {
   .cult-scene { min-height: 196px; gap: 10px; padding-inline: 8px; }
-  .cult-tree .tree-img { width: 118px; height: 138px; }
   .page-title-icon { width: 36px; height: 36px; }
 }
 
@@ -3461,7 +3514,24 @@ body {
   #player-dashboard .cult-inventory .inventory-grid.weapons-grid { grid-template-columns: repeat(6, 1fr); }
   #player-dashboard .cult-char { width: 162px; height: 232px; flex-basis: 162px; }
   #player-dashboard .cult-scene { min-height: 274px; gap: 24px; }
-  #player-dashboard .cult-tree .tree-img { width: 176px; height: 204px; }
+  #player-dashboard .tree-appearance-sprout {
+    --tree-width: 176px;
+    --tree-height: 204px;
+    --tree-box-width: 176px;
+    --tree-overlap: -104px;
+  }
+  #player-dashboard .tree-appearance-spirit {
+    --tree-width: 202px;
+    --tree-height: 224px;
+    --tree-box-width: 192px;
+    --tree-overlap: -128px;
+  }
+  #player-dashboard .tree-appearance-divine {
+    --tree-width: 216px;
+    --tree-height: 240px;
+    --tree-box-width: 202px;
+    --tree-overlap: -140px;
+  }
 }
 
 @media (max-width: 519px) {
@@ -3470,6 +3540,26 @@ body {
 
 @media (max-width: 380px) {
   #player-dashboard .cult-scene { gap: 6px; }
-  #player-dashboard .cult-tree { margin-left: -68px; top: 5px; }
+  #player-dashboard .tree-appearance-sprout {
+    --tree-width: 118px;
+    --tree-height: 138px;
+    --tree-box-width: 118px;
+    --tree-overlap: -68px;
+    --tree-shift-y: 5px;
+  }
+  #player-dashboard .tree-appearance-spirit {
+    --tree-width: 140px;
+    --tree-height: 154px;
+    --tree-box-width: 132px;
+    --tree-overlap: -82px;
+    --tree-shift-y: 3px;
+  }
+  #player-dashboard .tree-appearance-divine {
+    --tree-width: 150px;
+    --tree-height: 166px;
+    --tree-box-width: 140px;
+    --tree-overlap: -90px;
+    --tree-shift-y: 1px;
+  }
 }
 

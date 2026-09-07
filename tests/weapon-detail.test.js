@@ -14,5 +14,18 @@ test('weapon details prioritize requirements, skills, and lore without quantity'
   assert.match(weaponBranch, /weapon-lore/);
   assert.match(weaponBranch, /getWeaponSkillLines\(weapon\)/);
   assert.doesNotMatch(weaponBranch, /数量：|拥有数量/);
+  assert.match(app, /function renderAxeRealmRequirement\(quality, realmLevel/);
+  assert.match(weaponBranch, /renderAxeRealmRequirement\(def\.quality, Game\.state\.realmLevel\)/);
+  assert.doesNotMatch(weaponBranch, /尚未满足穿戴要求|可穿戴|（当前：/);
+  assert.match(css, /\.axe-realm-requirement\s*\{/);
+  assert.match(css, /\.axe-realm-requirement\.is-locked\s*\{/);
   assert.match(css, /\.weapon-skill-panel\s*\{/);
+});
+
+test('forge results reuse the concise axe realm requirement', () => {
+  const showForge = app.match(/\r?\n  showForge\(\) \{[\s\S]*?\r?\n  },\r?\n\r?\n  \/\/ 十连砍/)?.[0] || '';
+  assert.match(showForge, /renderAxeRealmRequirement\(result\.quality, Game\.state\.realmLevel/);
+  assert.match(showForge, /showStored:\s*true/);
+  assert.match(app, /showStored \? '<small>已放入背包<\/small>'/);
+  assert.doesNotMatch(showForge, /仙阶限制：需达到/);
 });

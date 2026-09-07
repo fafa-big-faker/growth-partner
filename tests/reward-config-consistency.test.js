@@ -50,6 +50,28 @@ test('skill and BUFF configuration use stable English headers and grouped lookup
   assert.match(gameConfig, /buffTable:\s*\[/);
 });
 
+test('realm and tree configuration use stable headers and latest progression values', () => {
+  assert.match(sync, /realm_headers\s*=\s*header_indexes/);
+  assert.match(sync, /"max_axe_quality"/);
+  assert.match(sync, /tree_headers\s*=\s*header_indexes/);
+  assert.match(sync, /"tree_appearance"/);
+
+  const sandbox = {};
+  vm.runInNewContext(`${gameConfig}\n;globalThis.__config = GAME_CONFIG;`, sandbox);
+  const config = sandbox.__config;
+  const firstRealmForQuality = quality => config.realmTable.find(row => row.maxAxeQuality >= quality)?.name;
+  assert.deepEqual(
+    [1, 2, 3, 4, 5].map(firstRealmForQuality),
+    ['小卡拉米', '小修士', '小飞升', '小神', '大罗金仙'],
+  );
+  assert.deepEqual(
+    Array.from(config.treeTable, row => row.appearance),
+    ['sprout', 'sprout', 'sprout', 'sprout',
+      'spirit', 'spirit', 'spirit', 'spirit', 'spirit', 'spirit', 'spirit',
+      'divine', 'divine', 'divine', 'divine', 'divine'],
+  );
+});
+
 test('every configured skill has a complete 1000-weight BUFF group', () => {
   const sandbox = {};
   vm.runInNewContext(`${gameConfig}\n;globalThis.__config = GAME_CONFIG;`, sandbox);
