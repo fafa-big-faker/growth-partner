@@ -104,7 +104,7 @@ git commit -m=feat-player-data-cache
 - Tracker methods: `setRole(role)`, `sync(inventory, weapons)`, `isItemNew(itemId)`, `isWeaponNew(instanceId)`, `clearItem(itemId)`, `clearWeapon(instanceId)`, and `resetMemory()`.
 - Consumes: `DB.playerRole`, `Game.inventory`, and `Game.weapons`.
 
-- [ ] **Step 1: Write failing novelty unit tests**
+- [x] **Step 1: Write failing novelty unit tests**
 
 Cover first-use baselining, a later quantity increase, quantity decrease followed by another increase, independent weapon instances, role isolation, reload persistence, and an unavailable-storage fallback.
 
@@ -118,13 +118,13 @@ tracker.clearItem('40001');
 assert.equal(tracker.isItemNew('40001'), false);
 ```
 
-- [ ] **Step 2: Run the focused test and verify failure**
+- [x] **Step 2: Run the focused test and verify failure**
 
 Run: `node --test tests\inventory-novelty.test.js`
 
 Expected: FAIL because `inventory-novelty.js` does not exist.
 
-- [ ] **Step 3: Implement persistent snapshots and pending sets**
+- [x] **Step 3: Implement persistent snapshots and pending sets**
 
 Store one JSON object per role:
 
@@ -140,7 +140,7 @@ Store one JSON object per role:
 
 On first sync, establish the snapshot without marking existing inventory. On later syncs, mark quantities that increased and weapon IDs that did not exist in the previous snapshot. Always replace the snapshot after comparing.
 
-- [ ] **Step 4: Integrate successful inventory mutations**
+- [x] **Step 4: Integrate successful inventory mutations**
 
 Create one tracker instance and call `setRole(DB.playerRole)` during `Game.init()`. Call `sync()` after `Game.init()` and `Game.refresh()`, after successful normal-item and weapon branches of `Game.grantItem()`, and after successful compose, forge, ten-chop, cash-out, equip, and sell updates. Failed or rolled-back operations must not sync a new state.
 
@@ -151,15 +151,15 @@ InventoryNewState.setRole(DB.playerRole);
 InventoryNewState.sync(this.inventory, this.weapons);
 ```
 
-- [ ] **Step 5: Render and clear badges**
+- [x] **Step 5: Render and clear badges**
 
 Render `<span class="item-new-badge">新</span>` at the top right of matching item and weapon slots. At the beginning of `showItemDetail(itemId, instanceId)`, clear the matching entry and rerender only the current inventory grid before opening the modal. Clear a weapon on direct equip or sell as well.
 
-- [ ] **Step 6: Add integration assertions and styles**
+- [x] **Step 6: Add integration assertions and styles**
 
 Assert that every bypass path calls the shared sync helper and that badge markup uses item IDs versus instance IDs correctly. Style a compact coral badge that does not overlap the existing bottom-right quantity.
 
-- [ ] **Step 7: Run focused tests and commit**
+- [x] **Step 7: Run focused tests and commit**
 
 Run:
 

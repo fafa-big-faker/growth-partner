@@ -671,6 +671,31 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+.item-new-badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  z-index: 3;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: 7px;
+  background: #e85f55;
+  box-shadow: 0 2px 5px rgba(72, 24, 20, 0.28);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.item-slot.item-locked .item-new-badge {
+  right: 25px;
+}
+
 .item-slot.empty {
   border-style: dashed;
   opacity: 0.4;

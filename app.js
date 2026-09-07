@@ -1151,6 +1151,8 @@ function achievementGoalText(typeId, value) {
   }
 }
 
+const InventoryNewState = InventoryNovelty.create({ storage: window.localStorage });
+
 const Game = {
   state: null,
   inventory: [],
@@ -1158,9 +1160,11 @@ const Game = {
   equippedWeapon: null,
 
   async init() {
+    InventoryNewState.setRole(DB.playerRole);
     this.state = await DB.initPlayerState();
     this.inventory = await DB.getInventory();
     if (this.state) await this._loadWeapons();
+    this._syncInventoryNovelty();
     if (!this.state) {
       console.error('玩家状态初始化失败');
       UI.toast('初始化失败，请刷新重试', 'error');
@@ -1171,7 +1175,13 @@ const Game = {
     this.state = await DB.getPlayerState();
     this.inventory = await DB.getInventory();
     if (this.state) await this._loadWeapons();
+    this._syncInventoryNovelty();
     UI.updateHeader();
+  },
+
+  _syncInventoryNovelty() {
+    InventoryNewState.setRole(DB.playerRole);
+    InventoryNewState.sync(this.inventory, this.weapons);
   },
 
   async _loadWeapons() {
@@ -1267,6 +1277,7 @@ const Game = {
         created.push(weapon);
       }
       this.weapons.unshift(...created);
+      this._syncInventoryNovelty();
       return { kind: 'weapon', id, quantity: qty, def, weapons: created };
     }
     // 普通道具 → 背包（本地 + DB）
@@ -1279,6 +1290,7 @@ const Game = {
       else this.inventory = this.inventory.filter(item => item.itemId != id);
       return null;
     }
+    this._syncInventoryNovelty();
     return { kind: 'item', id, quantity: qty, def };
   },
 
@@ -1648,6 +1660,7 @@ const Game = {
 
     this._setInventoryQuantity(itemId, result.sourceQuantity);
     this._setInventoryQuantity(itemDef.composeTo, result.targetQuantity);
+    this._syncInventoryNovelty();
 
     const targetItem = ITEMS[itemDef.composeTo];
     UI.toast(`合成成功！获得 ${targetItem.name} ×${composeQty}`, 'success');
@@ -1667,6 +1680,8 @@ const Game = {
     this.weapons = this.weapons.filter(entry => entry.id !== instanceId);
     this.state.coin = Number(result.coin) || 0;
     this.state.totalCoinEarned = (this.state.totalCoinEarned || 0) + itemDef.sellPrice;
+    InventoryNewState.clearWeapon(instanceId);
+    this._syncInventoryNovelty();
     UI.updateHeader();
     UI.toast(`出售成功！获得 ${itemDef.sellPrice} 游戏币`, 'success');
     return true;
@@ -1703,6 +1718,8 @@ const Game = {
     this.state.axeId = weapon.itemId;
     this.state.axeInstanceId = weapon.id;
     this.equippedWeapon = weapon;
+    InventoryNewState.clearWeapon(instanceId);
+    this._syncInventoryNovelty();
     UI.toast(`装备了 ${itemDef.name}`, 'success');
     return true;
   },
@@ -1948,6 +1965,7 @@ const Game = {
     this._setInventoryQuantity(costItemId, Number(result.remainingMaterial) || 0);
     const weapon = result.weapon;
     this.weapons.unshift(weapon);
+    this._syncInventoryNovelty();
     return { itemId, quality: selectedPool.quality, item: axeDef, weapon };
   },
 
@@ -2046,6 +2064,7 @@ const Game = {
     if (this.state.level > startingLevel) {
       UI.toast(`恭喜！升级到 Lv.${this.state.level}`, 'success');
     }
+    this._syncInventoryNovelty();
     UI._updateCultivateStats();
     UI.updateHeader();
     return results;
@@ -2829,16 +2848,20 @@ const PlayerView = {
       if (!def) return;
       if (isWeapons) {
         const axeLocked = !canEquipAxeQuality(def.quality, Game.state.realmLevel);
+        const isNew = InventoryNewState.isWeaponNew(inv.id);
         html += `
           <div class="item-slot weapon-slot quality-${def.quality} ${axeLocked ? 'item-locked' : ''}" onclick="PlayerView.showItemDetail('${inv.itemId}','${inv.id}')">
             <div class="item-icon">${renderItemIcon(inv.itemId, def.icon)}</div>
+            ${isNew ? '<span class="item-new-badge">新</span>' : ''}
             ${axeLocked ? `<div class="item-lock-badge">${renderFeatureIcon('icon-lock', '仙阶未解锁', 'lock-badge-icon')}</div>` : ''}
           </div>
         `;
       } else {
+        const isNew = InventoryNewState.isItemNew(inv.itemId);
         html += `
           <div class="item-slot quality-${def.quality}" onclick="PlayerView.showItemDetail('${inv.itemId}')">
             <div class="item-icon">${renderItemIcon(inv.itemId, def.icon)}</div>
+            ${isNew ? '<span class="item-new-badge">新</span>' : ''}
             <div class="item-count">×${inv.quantity > 999 ? '999+' : inv.quantity}</div>
           </div>
         `;
@@ -2856,6 +2879,9 @@ const PlayerView = {
   showItemDetail(itemId, instanceId = null) {
     const def = ITEMS[itemId];
     if (!def) return;
+    if (instanceId) InventoryNewState.clearWeapon(instanceId);
+    else InventoryNewState.clearItem(itemId);
+    this.renderInventory(this.currentInvTab);
     const qty = Game._getItemQty(itemId);
     const q = QUALITY[def.quality];
     const weapon = instanceId ? Game.weapons.find(entry => entry.id === instanceId) : null;
@@ -3078,6 +3104,7 @@ const PlayerView = {
         }
 
         Game._setInventoryQuantity(itemId, Game._getItemQty(itemId) - cashQty);
+        Game._syncInventoryNovelty();
         this.renderInventory(this.currentInvTab);
         UI.toast(`到账 ¥${total.toFixed(2)}`, 'success');
         document.querySelector('.modal-overlay')?.remove();
