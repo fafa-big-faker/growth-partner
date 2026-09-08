@@ -77,7 +77,9 @@ test('navigation persists across routes, switches to a return icon and fully cle
   assert.match(source, /observer\.disconnect\(\)/);
   assert.match(source, /state\.dual\.remove\(\)/);
   assert.match(source, /state\.stage\.replaceWith\(\.\.\.state\.stage\.childNodes\)/);
-  assert.match(source, /assets\/runtime\/ui\/arrow-left\.svg/);
+  assert.match(source, /assets\/runtime\/ui\/undo-2\.svg/);
+  assert.match(source, /classList\.toggle\('mobile-return-button', mobile && !cultivation\)/);
+  assert.match(source, /classList\.remove\('mobile-return-button'\)/);
   assert.match(source, /navigation\.centerText\.textContent = navigation\.originalText/);
   assert.match(source, /state\.onModeChange\?\.\(\)/);
   assert.doesNotMatch(source, /env\.PlayerView|env\.Router/);

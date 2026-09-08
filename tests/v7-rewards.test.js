@@ -149,3 +149,15 @@ test('both chop result surfaces share the renderer and keep close callbacks', ()
   assert.match(ten, /remove\(\);PlayerView\.renderCultivate\(\)/);
   assert.doesNotMatch(ten, /const itemsHtml = results\.map/);
 });
+
+test('reward dialogs keep a compact single result and a fixed footer outside the scroll body', () => {
+  const css = fs.readFileSync(path.join(root, 'reward-presentation.css'), 'utf8');
+  const app = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
+  const single = app.slice(app.indexOf('  _showRewardModal(item)'), app.indexOf('  // --- 任务页 ---'));
+  assert.match(css, /\.modal\.reward-dialog\s*\{[^}]*display:\s*flex;[^}]*flex-direction:\s*column;[^}]*overflow:\s*hidden/s);
+  assert.match(css, /\.reward-dialog > \.modal-body\s*\{[^}]*min-height:\s*0;[^}]*overflow-y:\s*auto/s);
+  assert.match(css, /\.reward-dialog > \.modal-footer\s*\{[^}]*flex-shrink:\s*0/s);
+  assert.match(css, /\.reward-item--large \.reward-art\s*\{\s*max-width:\s*104px;/);
+  assert.match(single, /footer:\s*`<div class="modal-footer">/);
+  assert.doesNotMatch(single, /\$\{extraHtml\}\s*<button/);
+});

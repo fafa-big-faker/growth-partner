@@ -46,6 +46,7 @@ test('button feedback shortens strike and ripple with shared speed and cancels o
 
 async function simulateTenChops(chops, started = true) {
   const events = [];
+  const modalClasses = { overlay: [], dialog: [] };
   let writes = 0;
   const button = makeButton();
   const tree = makeButton();
@@ -70,7 +71,13 @@ async function simulateTenChops(chops, started = true) {
     UI: {
       runLockedAction: async (_key, _button, _label, action) => ({ started, value: started ? await action() : false }),
       playScatterAnimation: (_item, _tree, _index, ms) => { events.push(['drop', ms]); return null; },
-      modal: () => {},
+      modal: () => ({
+        classList: { add: (...names) => modalClasses.overlay.push(...names) },
+        querySelector: selector => {
+          assert.equal(selector, '.modal');
+          return { classList: { add: (...names) => modalClasses.dialog.push(...names) } };
+        },
+      }),
     },
     setTimeout: callback => { callback(); return 0; },
     renderItemIcon: () => '', renderFeatureIcon: () => '',
@@ -81,11 +88,11 @@ async function simulateTenChops(chops, started = true) {
   view.renderCultivate = () => {};
   let error;
   try { await view.doChopTen(); } catch (caught) { error = caught; }
-  return { events, writes, error };
+  return { events, writes, error, modalClasses };
 }
 
 test('ten chops play exactly ten synchronized accelerating button strokes after one write', async () => {
-  const { events, writes, error } = await simulateTenChops(Array.from({ length: 10 }, () => ({ kind: 'coin', quantity: 1 })));
+  const { events, writes, error, modalClasses } = await simulateTenChops(Array.from({ length: 10 }, () => ({ kind: 'coin', quantity: 1 })));
   assert.equal(error, undefined);
   assert.equal(writes, 1);
   for (let index = 0; index < 10; index++) {
@@ -96,6 +103,7 @@ test('ten chops play exactly ten synchronized accelerating button strokes after 
   }
   assert.deepEqual(events[30], ['idle']);
   assert.equal(events.length, 31);
+  assert.deepEqual(modalClasses, { overlay: ['reward-dialog-overlay'], dialog: ['reward-dialog', 'reward-dialog--ten'] });
 });
 
 test('locked, failed or empty ten-chop requests never play a spurious button stroke', async () => {

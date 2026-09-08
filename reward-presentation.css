@@ -4,6 +4,51 @@
 .quality-item-name.quality-4 { color: #b13563; }
 .quality-item-name.quality-5 { color: #835d09; }
 
+.modal-overlay.reward-dialog-overlay {
+  padding: 12px;
+}
+
+.modal.reward-dialog {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 24px);
+  max-height: min(620px, calc(100dvh - 24px));
+  padding: 18px 20px 18px 26px;
+  overflow: hidden;
+  border-image-width: 28px 18px 18px 32px;
+}
+
+.modal.reward-dialog--single { max-width: 320px; }
+
+.reward-dialog > .modal-header {
+  flex-shrink: 0;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+}
+
+.reward-dialog .modal-title { font-size: 16px; }
+
+.reward-dialog > .modal-body {
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+.reward-dialog > .modal-footer {
+  flex-shrink: 0;
+  justify-content: center;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(82, 101, 85, 0.2);
+}
+
+.reward-dialog > .modal-footer > .btn {
+  min-width: 112px;
+  min-height: 44px;
+}
+
 .reward-results {
   padding: 2px 0 4px;
   color: #4e5751;
@@ -133,15 +178,15 @@
 
 .reward-item--small { width: 84px; }
 .reward-item--large { width: 100%; }
-.reward-item--large .reward-art { max-width: 168px; }
-.reward-item--large .reward-item-name { font-size: 20px; }
-.reward-item--large .reward-item-quantity { margin-top: 6px; font-size: 14px; }
+.reward-item--large .reward-art { max-width: 104px; }
+.reward-item--large .reward-item-name { font-size: 17px; }
+.reward-item--large .reward-item-quantity { margin-top: 4px; font-size: 13px; }
 .reward-item--large .reward-item-quality { display: inline; }
 .reward-item--large .reward-item-buff,
-.reward-item--large .reward-item-refund { margin-top: 9px; font-size: 13px; }
+.reward-item--large .reward-item-refund { margin-top: 6px; font-size: 12px; }
 
-.reward-modal-v7 .reward-results-extra { margin-top: 16px; }
-.reward-modal-v7 > .btn { margin-top: 20px; }
+.reward-modal-v7 .reward-results-extra { margin-top: 12px; padding-top: 8px; }
+.reward-modal-v7 .reward-item--small { width: 64px; }
 
 @media (max-width: 380px) {
   .reward-results-regular { gap: 15px 4px; }

@@ -38,20 +38,23 @@
     display: grid;
     width: 100%; min-width: 0; min-height: 0; height: 100%; max-height: none; flex: 1 1 0;
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 4px; align-content: start;
+    gap: 4px; align-content: start; align-items: start; grid-auto-rows: max-content;
     overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain;
     padding: 1px 1px 5px;
     scrollbar-width: thin; scrollbar-color: #799085 transparent;
   }
   #player-dashboard.mobile-cultivation #mobile-weapon-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  #player-dashboard.mobile-cultivation .mobile-inventory-columns .item-slot { min-width: 0; min-height: 44px; padding: 0; }
+  #player-dashboard.mobile-cultivation .mobile-inventory-columns .item-slot { width: 100%; height: auto; min-width: 0; min-height: 44px; padding: 0; }
   #player-dashboard.mobile-cultivation #inventory-grid .item-icon { width: 100%; height: 100%; padding: 5px; }
   #player-dashboard.mobile-cultivation #inventory-grid .item-icon-img { width: 100%; height: 100%; object-fit: contain; }
-  #player-dashboard.mobile-cultivation #mobile-weapon-grid .item-icon { width: 100%; height: 100%; padding: 5px 4px 12px; }
+  /* Keep image intrinsic height out of the implicit grid-row calculation. */
+  #player-dashboard.mobile-cultivation #mobile-weapon-grid .item-slot { aspect-ratio: 3 / 4; overflow: hidden; }
+  #player-dashboard.mobile-cultivation #mobile-weapon-grid .item-icon { position: absolute; inset: 0; width: 100%; height: 100%; padding: 5px 4px 12px; }
   #player-dashboard.mobile-cultivation #mobile-weapon-grid .item-icon-img { width: auto; height: 100%; max-width: 100%; object-fit: contain; }
   #player-dashboard.mobile-cultivation .mobile-inventory-columns .item-slot::after { left: 4px; top: 5px; width: 8px; height: 18px; }
-  #player-dashboard.mobile-cultivation .mobile-inventory-columns .item-count { right: 3px; bottom: 3px; min-width: 18px; min-height: 15px; padding: 1px 3px; font-size: 10px; }
-  #player-dashboard.mobile-cultivation .mobile-inventory-columns .item-new-badge { right: 3px; top: 3px; min-width: 16px; height: 16px; padding: 0 3px; font-size: 10px; }
+  #player-dashboard.mobile-cultivation .mobile-inventory-columns :is(.item-count, .item-new-badge) { min-width: 0; min-height: 0; padding: 0; background: none; border: 0; border-radius: 0; box-shadow: none; text-shadow: 0 1px 2px #fff, 1px 0 1px #fff, -1px 0 1px #fff; pointer-events: none; }
+  #player-dashboard.mobile-cultivation .mobile-inventory-columns .item-count { right: 4px; bottom: 3px; height: 12px; color: #273c36; font: 700 10px/12px Arial, sans-serif; font-variant-numeric: tabular-nums; }
+  #player-dashboard.mobile-cultivation .mobile-inventory-columns .item-new-badge { right: 4px; top: 4px; height: 11px; color: #a72e38; font-size: 9px; font-weight: 700; line-height: 11px; }
   #player-dashboard.mobile-cultivation .mobile-inventory-columns .item-lock-badge { right: 3px; top: 3px; width: 16px; height: 16px; }
   #player-dashboard.mobile-cultivation .mobile-inventory-columns .item-locked .item-new-badge { right: 21px; }
   .mobile-current-badge { position: absolute; z-index: 3; bottom: 4px; left: 50%; transform: translateX(-50%); white-space: nowrap; padding: 1px 4px; color: #fff; background: #4c705e; border-radius: 3px; font-size: 10px; line-height: 16px; }
@@ -61,14 +64,16 @@
   .mobile-equipped-image { display: block; width: auto; height: 100%; max-width: 100%; object-fit: contain; }
   .mobile-equipped-title { font-size: 13px; line-height: 1.5; font-weight: 700; overflow-wrap: anywhere; }
   .mobile-equipped-quality { font-size: 12px; line-height: 1.7; }
+  .mobile-equipped-quality .tag { padding: 2px 7px; font-size: 10px; line-height: 16px; border-radius: 3px; }
   .mobile-equipped-skills { padding-top: 5px; margin-top: 5px; border-top: 1px solid rgb(75 100 85 / 18%); text-align: left; color: #3f4d45; font-size: 12px; line-height: 1.7; overflow-wrap: anywhere; }
   .mobile-equipped-skills .weapon-skill { margin: 0 0 6px; }
   .mobile-library-empty { grid-column: 1 / -1; color: #66796c; font-size: 12px; text-align: center; }
-  .mobile-weapon-toggle { min-width: 0; min-height: 44px; padding: 4px; background: transparent; border: 0; border-top: 1px solid rgb(75 100 85 / 20%); color: #345c47; font: 700 13px/1.4 'Noto Serif SC', SimSun, serif; cursor: pointer; touch-action: manipulation; }
-  .mobile-weapon-toggle:active { background: rgb(104 137 113 / 12%); }
+  .mobile-weapon-toggle { min-width: 0; min-height: 44px; width: 100%; max-width: 132px; justify-self: center; padding: 6px 12px; background: transparent; border: 0 solid transparent; border-image: url('assets/runtime/v3/ui/button-primary.webp') 36 48 36 48 fill / 10px 14px / 0 stretch; color: #263f33; font: 700 13px/1.4 'Noto Serif SC', SimSun, serif; cursor: pointer; touch-action: manipulation; transition: filter 150ms ease, transform 150ms ease; }
+  .mobile-weapon-toggle:active { filter: brightness(.93); transform: scale(.97); }
   .mobile-inventory-columns :is(button, [tabindex]):focus-visible,
   .mobile-player-navigation .nav-item:focus-visible { outline: 2px solid #427e69; outline-offset: -2px; }
   #player-dashboard.mobile-player-navigation .bottom-nav {
+    --mobile-circle-size: 106px;
     position: relative; display: grid;
     grid-template-columns: minmax(74px, 1fr) 112px minmax(74px, 1fr);
     grid-template-rows: 48px 60px;
@@ -77,12 +82,13 @@
     height: calc(124px + env(safe-area-inset-bottom)); min-height: 124px;
     margin: 0 auto; padding: 6px 12px calc(10px + env(safe-area-inset-bottom)); overflow: visible;
   }
+  #player-dashboard.mobile-player-navigation .bottom-nav::before { top: auto; bottom: 0; height: calc(72px + env(safe-area-inset-bottom)); }
   #player-dashboard.mobile-player-navigation .bottom-nav .nav-item { min-height: 52px; min-width: 44px; width: 100%; padding: 2px 0; justify-content: center; gap: 0; }
   #player-dashboard.mobile-player-navigation .bottom-nav .nav-item[data-tab="tasks"] { grid-column: 1; grid-row: 2; }
   #player-dashboard.mobile-player-navigation .bottom-nav .nav-item[data-tab="reward"] { grid-column: 3; grid-row: 2; }
   #player-dashboard.mobile-player-navigation .bottom-nav .nav-item[data-tab="cultivate"] { grid-column: 2; grid-row: 1 / 3; min-height: 80px; }
   #player-dashboard.mobile-player-navigation .bottom-nav .nav-text { font-size: 11px; line-height: 17px; white-space: nowrap; }
-  #player-dashboard.mobile-player-navigation .bottom-nav .chop-circle-btn { grid-column: 2; grid-row: 1 / 3; justify-self: center; align-self: center; width: 106px; height: 106px; margin: 0; }
+  #player-dashboard.mobile-player-navigation .bottom-nav .chop-circle-btn { grid-column: 2; grid-row: 1 / 3; justify-self: center; align-self: center; width: var(--mobile-circle-size); height: var(--mobile-circle-size); margin: 0; }
   #player-dashboard.mobile-player-navigation .bottom-nav .chop-axe-icon { width: 88px; height: 94px; }
   #player-dashboard.mobile-player-navigation .bottom-nav .chop-axe-img { height: 94px; max-width: 88px; }
   #player-dashboard.mobile-player-navigation .bottom-nav .ten-toggle { grid-column: 1; grid-row: 1; justify-self: center; min-width: 74px; min-height: 44px; margin: 0; padding: 4px; border: 0; border-radius: 0; background: none; gap: 5px; }
@@ -90,9 +96,12 @@
   #player-dashboard.mobile-player-navigation .bottom-nav .forge-btn { grid-column: 3; grid-row: 1; justify-self: center; width: 64px; height: 48px; margin: 0; padding: 0; }
   #player-dashboard.mobile-player-navigation .bottom-nav .forge-btn-icon,
   #player-dashboard.mobile-player-navigation .bottom-nav .forge-feature-icon { width: 50px; height: 48px; }
-  #player-dashboard.mobile-player-navigation:not(.mobile-cultivation) .bottom-nav { grid-template-rows: 60px; height: calc(76px + env(safe-area-inset-bottom)); min-height: 76px; }
-  #player-dashboard.mobile-player-navigation:not(.mobile-cultivation) .bottom-nav .nav-item { grid-row: 1; min-height: 56px; }
-  #player-dashboard.mobile-player-navigation:not(.mobile-cultivation) .bottom-nav .nav-item[data-tab="cultivate"] .nav-icon-img { width: 26px; height: 26px; filter: none; animation: none; }
+  #player-dashboard.mobile-player-navigation .bottom-nav :is(.ten-toggle, .forge-btn) { position: relative; top: -4px; }
+  #player-dashboard.mobile-player-navigation .bottom-nav .nav-item.mobile-return-button { width: var(--mobile-circle-size); height: var(--mobile-circle-size); min-height: 0; justify-self: center; align-self: center; padding: 0; border: 0; background: transparent url('assets/runtime/v2/ui/chop-button-bg.webp') center / contain no-repeat; box-shadow: none; filter: drop-shadow(0 5px 8px rgb(31 46 40 / 20%)); transition: filter 160ms ease, transform 160ms ease; }
+  #player-dashboard.mobile-player-navigation .bottom-nav .mobile-return-button .nav-icon { display: grid; place-items: center; width: 100%; height: 100%; margin: 0; }
+  #player-dashboard.mobile-player-navigation .bottom-nav .mobile-return-button .nav-icon-img { width: 52px; height: 52px; filter: none; animation: none; transform: none; }
+  #player-dashboard.mobile-player-navigation .bottom-nav .mobile-return-button .nav-text { display: none; }
+  #player-dashboard.mobile-player-navigation .bottom-nav .mobile-return-button:active { transform: scale(.95); }
 }
 
 @media (max-width: 374px) {
@@ -111,15 +120,22 @@
   #player-dashboard.mobile-cultivation #player-main { grid-template-rows: 40px minmax(140px, 1fr) 44px minmax(146px, .9fr); gap: 4px; padding-top: calc(4px + env(safe-area-inset-top)); }
   #player-dashboard.mobile-cultivation .mobile-scene-stage { transform: scale(0.8); }
   #player-dashboard.mobile-cultivation .cult-status { padding-block: 0; }
-  #player-dashboard.mobile-player-navigation .bottom-nav { grid-template-columns: minmax(74px, 1fr) 100px minmax(74px, 1fr); grid-template-rows: 44px 52px; height: calc(112px + env(safe-area-inset-bottom)); min-height: 112px; }
-  #player-dashboard.mobile-player-navigation .bottom-nav .chop-circle-btn { width: 96px; height: 96px; }
+  #player-dashboard.mobile-player-navigation .bottom-nav { --mobile-circle-size: 96px; grid-template-columns: minmax(74px, 1fr) 100px minmax(74px, 1fr); grid-template-rows: 44px 52px; height: calc(112px + env(safe-area-inset-bottom)); min-height: 112px; }
+  #player-dashboard.mobile-player-navigation .bottom-nav::before { height: calc(64px + env(safe-area-inset-bottom)); }
   #player-dashboard.mobile-player-navigation .bottom-nav .chop-axe-icon { width: 82px; height: 88px; }
   #player-dashboard.mobile-player-navigation .bottom-nav .chop-axe-img { height: 86px; max-width: 82px; }
 }
 
 /* Short and landscape viewports scroll above the persistent controls. */
-@media (max-height: 479px) and (max-width: 950px), (max-height: 609px) and (orientation: landscape) and (max-width: 950px) {
+@media (max-height: 519px) and (max-width: 719px), (max-height: 609px) and (orientation: landscape) and (max-width: 950px) {
   #player-dashboard.mobile-cultivation #player-main { flex: 1 1 0; overflow-y: auto; grid-template-rows: 44px 210px 50px 240px; }
 }
 
-@media (prefers-reduced-motion: reduce) { .mobile-weapon-toggle { transition: none; } }
+@media (hover: hover) {
+  .mobile-weapon-toggle:hover { filter: brightness(1.08); }
+  #player-dashboard.mobile-player-navigation .bottom-nav .mobile-return-button:hover { filter: drop-shadow(0 6px 10px rgb(31 46 40 / 32%)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mobile-weapon-toggle,
+  #player-dashboard.mobile-player-navigation .bottom-nav .mobile-return-button { transition: none; }
+}

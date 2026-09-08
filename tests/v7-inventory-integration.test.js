@@ -14,6 +14,7 @@ function fixture() {
       equippedWeapon: { id: 'equipped', itemId: '51001' } },
     ITEMS: { 51001: { name: 'Test Axe', type: 5, quality: 1, icon: '', sellPrice: 2 } },
     QUALITY: { 1: { name: 'Common', color: '#999' } },
+    UI: { qualityTag: quality => `<span class="tag" data-quality="${quality}">Common</span>` },
     InventoryNewState: { isWeaponNew: id => id === 'spare' },
     canEquipAxeQuality: () => true,
     renderItemIcon: id => `<img data-item="${id}" alt="">`,
@@ -35,6 +36,7 @@ test('mobile library includes current UUID first without merging duplicate axes'
   assert.match(presentation.weaponsHtml, /当前/);
   assert.match(presentation.html, /Skill value/);
   assert.match(presentation.html, /quality-item-name quality-1/);
+  assert.match(presentation.html, /mobile-equipped-quality"><span class="tag" data-quality="1"/);
 });
 
 test('equipped weapon cannot enter the sale confirmation', () => {

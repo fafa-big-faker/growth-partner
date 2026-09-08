@@ -47,10 +47,11 @@
       navigation.dashboard.classList.toggle('mobile-player-navigation', mobile);
       navigation.dashboard.dataset.mobilePage = navigation.page;
       navigation.center.hidden = mobile && cultivation;
+      navigation.center.classList.toggle('mobile-return-button', mobile && !cultivation);
       navigation.center.setAttribute('aria-label', mobile && !cultivation ? '返回修仙' : '修仙');
       navigation.centerText.textContent = mobile && !cultivation ? '返回' : navigation.originalText;
       if (navigation.centerImage) {
-        const src = mobile && !cultivation ? 'assets/runtime/ui/arrow-left.svg' : navigation.originalSource;
+        const src = mobile && !cultivation ? 'assets/runtime/ui/undo-2.svg' : navigation.originalSource;
         if (navigation.centerImage.getAttribute('src') !== src) navigation.centerImage.setAttribute('src', src);
       }
     }
@@ -324,6 +325,7 @@
         navigation.dashboard.classList.remove('mobile-player-navigation');
         delete navigation.dashboard.dataset.mobilePage;
         navigation.center.hidden = false;
+        navigation.center.classList.remove('mobile-return-button');
         navigation.center.removeAttribute('aria-label');
         navigation.centerText.textContent = navigation.originalText;
         if (navigation.centerImage) navigation.centerImage.setAttribute('src', navigation.originalSource);

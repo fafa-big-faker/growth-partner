@@ -307,7 +307,7 @@ function getInitialGameImageAssets(axeId = null) {
   const currentAxeFrames = axeId
     ? [...getAxeIdleFrames(axeId), ...getAxeChopFrames(axeId)]
     : [];
-  const feedbackFiles = ['assets/runtime/ui/close.svg', 'assets/runtime/ui/arrow-left.svg', 'assets/runtime/effects/leaf-ink.webp?v=ink-feedback-20260908'];
+  const feedbackFiles = ['assets/runtime/ui/close.svg', 'assets/runtime/ui/undo-2.svg', 'assets/runtime/effects/leaf-ink.webp?v=ink-feedback-20260908'];
   const v5Files = ['assets/runtime/v5/ui/task-paper.webp', 'assets/runtime/v5/ui/shop-paper.webp'];
   const v6QualityFiles = [1, 2, 3, 4, 5].map(quality => `assets/runtime/v6/quality/quality-${quality}.webp?v=xianlai-v6-20260908`);
   const v7Files = ['ui/inventory-paper.webp', ...[1, 2, 3, 4, 5].map(quality => `rewards/quality-${quality}.webp`)]
@@ -3154,7 +3154,6 @@ const PlayerView = {
   getMobileEquipmentPresentation() {
     const current = Game.equippedWeapon;
     const def = ITEMS[current?.itemId || Game.state.axeId] || ITEMS['51001'];
-    const quality = QUALITY[def.quality] || QUALITY[1];
     const skillHtml = renderWeaponSkills(current, '');
     const detailAction = current ? `onclick="PlayerView.showItemDetail('${current.itemId}','${current.id}')"` : '';
     const html = `
@@ -3162,7 +3161,7 @@ const PlayerView = {
         ${renderItemIcon(current?.itemId || Game.state.axeId, def.icon, 'mobile-equipped-image')}
       </button>
       <div class="mobile-equipped-title quality-item-name quality-${def.quality}">${escapeHtml(def.name)}</div>
-      <div class="mobile-equipped-quality quality-item-name quality-${def.quality}">${escapeHtml(quality.name)}</div>
+      <div class="mobile-equipped-quality">${UI.qualityTag(def.quality)}</div>
       <div class="mobile-equipped-skills">${skillHtml || '暂无特殊技能'}</div>`;
     const weapons = [...Game.weapons].sort((a, b) => Number(b.id === Game.state.axeInstanceId) - Number(a.id === Game.state.axeInstanceId));
     const weaponsHtml = weapons.map(weapon => {
@@ -3579,13 +3578,19 @@ const PlayerView = {
     const extraHtml = item.extraDrop
       ? rewards.renderResults([{ ...item.extraDrop, isExtra: true }]) : '';
 
-    UI.modal(`
+    const overlay = UI.modal(`
       <div class="reward-modal reward-modal-v7">
         ${rewards.renderItem(item, { size: 'large' })}
         ${extraHtml}
-        <button class="btn btn-primary btn-block" onclick="this.closest('.modal-overlay').remove()">收下</button>
       </div>
-    `, { title: `${renderFeatureIcon('icon-reward', '', 'section-title-icon')} 获得物品` });
+    `, {
+      title: `${renderFeatureIcon('icon-reward', '', 'section-title-icon')} 获得物品`,
+      footer: `<div class="modal-footer">
+        <button class="btn btn-primary btn-sm" onclick="this.closest('.modal-overlay').remove()">收下</button>
+      </div>`
+    });
+    overlay.classList.add('reward-dialog-overlay');
+    overlay.querySelector('.modal').classList.add('reward-dialog', 'reward-dialog--single');
   },
 
   // --- 任务页 ---
@@ -5149,12 +5154,14 @@ const PlayerView = {
     // 显示结果弹窗
     const rewards = RewardPresentation.createRenderer({ items: ITEMS, quality: QUALITY, renderItemIcon, escapeHtml });
 
-    UI.modal(rewards.renderResults(results), {
+    const overlay = UI.modal(rewards.renderResults(results), {
       title: `${renderFeatureIcon('icon-reward', '', 'section-title-icon')} 十连砍结果（共 ${results.length} 件）`,
       footer: `<div class="modal-footer">
         <button class="btn btn-primary btn-sm" onclick="this.closest('.modal-overlay').remove();PlayerView.renderCultivate()">确定</button>
       </div>`
     });
+    overlay.classList.add('reward-dialog-overlay');
+    overlay.querySelector('.modal').classList.add('reward-dialog', 'reward-dialog--ten');
 
     PlayerView.renderCultivate();
     return true;

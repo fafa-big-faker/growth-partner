@@ -181,6 +181,7 @@ node scripts\normalize_audio.js
 ## 11. 小型水墨反馈资源
 
 - 关闭图标为本地 `assets/runtime/ui/close.svg`，来自Lucide Static 0.468.0的X，使用ISC许可；同目录保留许可文本。仅修改墨色，不需要生成位图。
+- 手机底栏返回使用同版本Lucide的`assets/runtime/ui/undo-2.svg`，墨色#263c35、3px笔画，仍铺现有`v2/ui/chop-button-bg.webp`圆底；普通返回符号不需要重新生图。
 - 落叶从原 `assets/images/v2/effects/effect-leaf-green.png`确定性提取，不覆盖原图。运行 `python scripts/extract_ink_leaf.py`，输出 `assets/images/effects/leaf-ink.png`、来源记录及 `assets/runtime/effects/leaf-ink.webp`。
 - 小叶48x64、无损透明WebP、当前1400字节。脚本使用实测轮廓去掉外圈，并转换为青灰色保留像素叶脉；源图尺寸变动时必须重新测量。
 - 运行 `python scripts/extract_ink_leaf.py --check`验证来源指纹、生成结果一致性、透明度和4KiB上限。此文件不依赖V2批量构建，更新叶片单独跑此脚本即可。
