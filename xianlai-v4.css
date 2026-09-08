@@ -169,12 +169,12 @@
   border-image-width: 10px 40px 15px 28px;
   border-image-repeat: stretch;
   border-radius: 0;
-  color: #263c34;
+  color: #f4f6ee;
   box-shadow: none;
   font-size: 18px;
   font-weight: 700;
   letter-spacing: 0;
-  text-shadow: 0 1px rgb(255 255 255 / 80%);
+  text-shadow: 0 1px rgb(12 25 23 / 35%);
   transition: transform 150ms ease, filter 150ms ease, opacity 150ms ease;
 }
 

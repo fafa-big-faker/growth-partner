@@ -97,6 +97,8 @@ test('V4 modal and forge surfaces use measured nine-slice values and local asset
   assert.match(css, /\.modal\s*\{[^}]*background:\s*transparent[^}]*border-image-source:[^}]*modal-paper\.webp/s);
   assert.match(css, /\.forge-primary-actions #forge-ok:disabled\s*\{/);
   assert.match(css, /\.forge-primary-actions #forge-ok:focus-visible\s*\{/);
+  assert.match(css, /\.forge-primary-actions #forge-ok\s*\{[^}]*color:\s*#f4f6ee/s);
+  assert.doesNotMatch(css, /text-shadow:\s*0 1px rgb\(255 255 255/);
   assert.doesNotMatch(css, /modal-crest|slot-gold|slot-purple|slot-blue|slot-rose/);
 });
 
