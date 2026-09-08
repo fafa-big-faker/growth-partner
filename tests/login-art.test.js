@@ -36,7 +36,7 @@ function element() {
   });
 }
 
-function setup({ cached = false, reduced = false, contextAvailable = true } = {}) {
+function setup({ cached = false, reduced = false, contextAvailable = true, width = 960, height = 720 } = {}) {
   const elements = new Map();
   const get = id => { if (!elements.has(id)) elements.set(id, element()); return elements.get(id); };
   const logo = get('login-brand-image');
@@ -46,16 +46,31 @@ function setup({ cached = false, reduced = false, contextAvailable = true } = {}
   fallback.hidden = true;
   const inkCalls = [];
   const context = { clearRect: (...args) => inkCalls.push(['clear', ...args]),
-    beginPath() {}, moveTo() {}, bezierCurveTo() {}, stroke: () => inkCalls.push(['stroke']) };
+    setTransform: (...args) => inkCalls.push(['transform', ...args]),
+    save() {}, restore() {}, beginPath() {}, closePath() {},
+    moveTo: (...args) => inkCalls.push(['move', ...args]),
+    lineTo: (...args) => inkCalls.push(['line', ...args]),
+    rect: (...args) => inkCalls.push(['rect', ...args]),
+    clip: (...args) => inkCalls.push(['clip', ...args]),
+    ellipse: (...args) => inkCalls.push(['ellipse', ...args]),
+    bezierCurveTo() {}, stroke: () => inkCalls.push(['stroke']) };
+  let bounds = { left: 0, top: 0, width, height };
+  get('login-screen').getBoundingClientRect = () => bounds;
+  get('login-loading-track').style.setProperty = function (name, value) { this[name] = value; };
   Object.assign(get('login-ink-canvas'), { width: 960, height: 720, getContext: () => contextAvailable ? context : null });
   const doc = eventTarget({ hidden: false, getElementById: get });
   const media = eventTarget({ matches: reduced });
   let observe;
-  const host = { matchMedia: () => media, IntersectionObserver: class {
+  let resize;
+  const host = eventTarget({ devicePixelRatio: 2, matchMedia: () => media, ResizeObserver: class {
+    constructor(callback) { resize = callback; }
+    observe() {}
+    disconnect() {}
+  }, IntersectionObserver: class {
     constructor(callback) { observe = callback; }
     observe() {}
     disconnect() {}
-  } };
+  } });
   let timestamp = 0;
   let nextId = 0;
   const frames = new Map();
@@ -73,6 +88,7 @@ function setup({ cached = false, reduced = false, contextAvailable = true } = {}
   }
   const shown = () => Number(get('login-loading-bar').style.transform.match(/scaleX\(([^)]+)\)/)[1]) * 100;
   return { controller, get, doc, media, logo, fallback, frames, inkCalls, step, shown,
+    resize(width, height) { bounds = { ...bounds, width, height }; resize(); },
     intersect(value) { observe([{ isIntersecting: value }]); },
     load() { logo.naturalWidth = 949; logo.emit('load'); },
   };
@@ -196,7 +212,78 @@ test('changing reduced-motion preference cancels running effects and can restore
   assert.equal(state.logo.animations[0].state, 'cancelled');
   state.media.emit('change', { matches: false });
   assert.equal(state.frames.size, 1);
+  assert.equal(state.logo.animations.length, 2);
+  assert.equal(state.logo.animations[1].options.iterations, Infinity);
+});
+
+test('logo floats only after the entrance, and float pauses or cancels with lifecycle', () => {
+  const state = setup({ cached: true });
+  const reveal = state.logo.animations[0];
   assert.equal(state.logo.animations.length, 1);
+  reveal.onfinish();
+  const floating = state.logo.animations[1];
+  assert.equal(reveal.state, 'cancelled');
+  assert.equal(floating.options.iterations, Infinity);
+  assert.ok(floating.options.duration >= 6000 && floating.options.duration <= 8000);
+  assert.ok(floating.keyframes.some(keyframe => keyframe.transform === 'translateY(-4px)'));
+  assert.ok(floating.keyframes.every(keyframe => !/scale|rotate/.test(keyframe.transform)));
+  state.controller.setVisible(false);
+  assert.equal(floating.state, 'paused');
+  state.controller.setVisible(true);
+  assert.equal(floating.state, 'running');
+  state.controller.destroy();
+  assert.equal(floating.state, 'cancelled');
+});
+
+test('lake mask follows the centered cover crop and mobile backing size stays bounded', () => {
+  const state = setup({ width: 1448, height: 1086 });
+  state.step(40);
+  const firstPoint = state.inkCalls.find(call => call[0] === 'move');
+  assert.ok(Math.abs(firstPoint[1] - 1448 * .34) < .01);
+  assert.ok(Math.abs(firstPoint[2] - 1086 * .60) < .01);
+  assert.ok(state.inkCalls.some(call => call[0] === 'clip'));
+  state.inkCalls.length = 0;
+  state.resize(390, 844);
+  state.step(120);
+  const mobilePoint = state.inkCalls.find(call => call[0] === 'move');
+  const scale = 844 / 1086;
+  assert.ok(Math.abs(mobilePoint[1] - ((390 - 1448 * scale) / 2 + 1448 * .34 * scale)) < .01);
+  assert.ok(Math.abs(mobilePoint[2] - 844 * .60) < .01);
+  assert.equal(state.get('login-ink-canvas').width, 390);
+  assert.equal(state.get('login-ink-canvas').height, 844);
+});
+
+test('ambient water keeps drawing after reveal with only two flattened ripple groups', () => {
+  const state = setup({ cached: true });
+  state.logo.animations[0].onfinish();
+  state.step(5000);
+  const rings = state.inkCalls.filter(call => call[0] === 'ellipse');
+  assert.ok(rings.length > 0 && rings.length <= 4);
+  assert.ok(rings.every(call => call[4] < call[3] * .2));
+  state.inkCalls.length = 0;
+  state.step(6000);
+  assert.ok(state.inkCalls.some(call => call[0] === 'stroke'));
+  assert.equal(state.frames.size, 1);
+});
+
+test('mobile water rendering is capped below desktop frame rate', () => {
+  const state = setup({ width: 390, height: 844 });
+  state.step(0);
+  state.inkCalls.length = 0;
+  state.step(40);
+  assert.equal(state.inkCalls.length, 0);
+  state.step(55);
+  assert.ok(state.inkCalls.some(call => call[0] === 'stroke'));
+});
+
+test('loading keeps its ink edge tied to real progress and places status on one baseline', () => {
+  const state = setup({ reduced: true });
+  state.controller.setLoading(true, 45);
+  assert.equal(state.get('login-loading-track').style['--login-progress'], '45%');
+  const css = fs.readFileSync(path.join(__dirname, '..', 'login-art.css'), 'utf8');
+  assert.match(css, /grid-template-columns:\s*minmax\(0,\s*1fr\) auto/);
+  assert.match(css, /left:\s*var\(--login-progress/);
+  assert.match(css, /login-ink-edge/);
 });
 
 test('pointer and submit share one short pulse; keyboard submit also works', () => {

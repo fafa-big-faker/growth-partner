@@ -40,7 +40,8 @@ test('all new runtime artwork is included in preload and old login art is no lon
 
 test('login and UI art resources load before the application starts', () => {
   for (const file of ['xianlai-ui.css', 'login-art.css', 'login-art.js']) {
-    assert.ok(html.includes(`${file}?v=xianlai-art-v3-20260908`));
+    const version = file === 'xianlai-ui.css' ? 'xianlai-art-v3-20260908' : 'ink-motion-pages-20260908';
+    assert.ok(html.includes(`${file}?v=${version}`));
     assert.ok(html.indexOf(file) < html.indexOf('src="app.js'));
   }
   assert.match(html, /<title>仙来/);

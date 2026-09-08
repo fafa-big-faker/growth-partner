@@ -2197,8 +2197,11 @@ const Auth = {
       : document.getElementById('login-password').value;
     let attemptActive = true;
     try {
+      this._setLoading(true, 0, '正在核验道号');
       const account = await AccountSession.verify(role, password);
       if (!account) {
+        attemptActive = false;
+        this._setLoading(false, 0);
         UI.toast('道号密码错误', 'error');
         return;
       }
@@ -2206,16 +2209,29 @@ const Auth = {
       PlayerView.clearDataCaches();
       if (role === 'player') void AudioManager.playBgm();
       else AudioManager.pauseBgm();
-      this._setLoading(true, 0);
+      this._setLoading(true, 0, '正在载入画卷');
       const staticAssets = getInitialGameImageAssets();
       const audioPreload = AudioManager.preload();
+      let playerReady = false;
+      let staticReady = false;
       const staticPreload = AssetPreloader.preload(
         staticAssets,
-        progress => { if (attemptActive) this._setLoading(true, progress.percent * 0.85); },
+        progress => {
+          if (!attemptActive) return;
+          staticReady = progress.percent >= 100;
+          const status = progress.percent >= 100
+            ? (playerReady ? '正在准备入境' : '正在读取修行记录')
+            : '正在载入画卷';
+          this._setLoading(true, progress.percent * 0.85, status);
+        },
       );
-      await Promise.all([staticPreload, audioPreload, Game.init()]);
+      await Promise.all([staticPreload, audioPreload, Game.init().then(() => {
+        playerReady = true;
+        if (attemptActive && staticReady) this._setLoading(true, 85, '正在准备入境');
+      })]);
 
       if (!Game.state) throw new Error('player initialization failed');
+      this._setLoading(true, 85, '正在准备角色');
       await preloadAxeAnimation(
         Game.state.axeId,
         progress => { if (attemptActive) this._setLoading(true, 85 + progress.percent * 0.15); },
@@ -2251,15 +2267,17 @@ const Auth = {
     }
   },
 
-  _setLoading(loading, percent = 0) {
+  _setLoading(loading, percent = 0, status) {
     const form = document.getElementById('login-form-panel');
     const panel = document.getElementById('login-loading');
     const submit = document.getElementById('login-submit');
     const bar = document.getElementById('login-loading-bar');
     const label = document.getElementById('login-loading-percent');
+    const statusLabel = document.getElementById('login-loading-status');
     if (form) form.hidden = loading;
     if (panel) panel.hidden = !loading;
     if (submit) submit.disabled = loading;
+    if (statusLabel && (!loading || status)) statusLabel.textContent = loading ? status : '正在入境';
     if (typeof LoginArt !== 'undefined') LoginArt.setLoading(loading, percent);
     else {
       if (bar) bar.style.width = `${Math.min(100, Math.max(0, percent))}%`;
@@ -3548,27 +3566,29 @@ const PlayerView = {
   // --- 任务页 ---
   async renderTasks(version = Router._playerRenderVersion) {
     const main = document.getElementById('player-main');
+    const refreshing = Boolean(main.querySelector('.ink-task-page'));
+    const previousScroll = refreshing ? main.scrollTop : 0;
+    const previousPageScroll = refreshing ? document.scrollingElement?.scrollTop || 0 : 0;
     main.innerHTML = `
-      <div class="page-title page-title-art">${renderFeatureIcon('icon-tasks', '', 'page-title-icon')}<span>任务</span></div>
-      <div class="page-subtitle">完成任务获得砍树次数，砍树掉落奖励</div>
+      <section class="ink-task-page">
+      <header class="ink-page-heading">
+        <div class="page-title page-title-art">${renderFeatureIcon('icon-tasks', '', 'page-title-icon')}<span>任务</span></div>
+        <button class="btn btn-outline task-self-submit" onclick="PlayerView.showSelfSubmit()">自主申报</button>
+      </header>
 
       <div id="theme-section"></div>
 
       <div class="filter-bar">
-        <div class="filter-chip active" data-filter="all" onclick="PlayerView.filterTasks('all')">全部</div>
-        <div class="filter-chip" data-filter="daily" onclick="PlayerView.filterTasks('daily')">每日</div>
-        <div class="filter-chip" data-filter="weekly" onclick="PlayerView.filterTasks('weekly')">每周</div>
-        <div class="filter-chip" data-filter="self" onclick="PlayerView.filterTasks('self')">自主申报</div>
+        ${[['all', '全部'], ['daily', '每日'], ['weekly', '每周'], ['self', '自主申报']].map(([filter, label]) => `
+          <button class="filter-chip ${this.currentTaskFilter === filter ? 'active' : ''}" data-filter="${filter}" aria-pressed="${this.currentTaskFilter === filter}" onclick="PlayerView.filterTasks('${filter}')">${label}</button>
+        `).join('')}
       </div>
 
       <div id="task-list"></div>
 
-      <button class="btn btn-outline btn-block" style="margin-top:16px" onclick="PlayerView.showSelfSubmit()">
-        ${renderFeatureIcon('icon-tasks', '', 'button-feature-icon')}自主申报任务
-      </button>
+      </section>
     `;
 
-    this.currentTaskFilter = 'all';
     const cached = this._taskCache.peek();
     if (cached) {
       this._applyTaskData(cached);
@@ -3581,6 +3601,8 @@ const PlayerView = {
       ).join('');
     }
 
+    main.scrollTop = previousScroll;
+    if (document.scrollingElement) document.scrollingElement.scrollTop = previousPageScroll;
     const data = await this._loadTaskData();
     if (!Router.isCurrentPlayerRender('tasks', version)) return;
     this._applyTaskData(data);
@@ -3639,18 +3661,12 @@ const PlayerView = {
     return active;
   },
 
-  // 主题活动区：进行中 → 活动卡片（含系列任务）；否则 → 尽情期待占位
+  // 主题仅做分组，不再给任务条目套第二层卡片。
   _themeSectionHtml() {
     const theme = this._getActiveTheme();
     if (!theme) {
       return `
-        <div class="theme-card">
-          <div class="theme-soon">
-            ${renderFeatureIcon('icon-tasks', '', 'empty-state-art')}
-            <div class="soon-title">主题活动 · 尽情期待</div>
-            <div class="soon-sub">下一期主题活动正在筹备中，敬请期待～</div>
-          </div>
-        </div>
+        <div class="theme-idle"><span>主题活动</span><span>待开启</span></div>
       `;
     }
 
@@ -3679,15 +3695,15 @@ const PlayerView = {
     const total = theme.tasks.length;
 
     return `
-      <div class="theme-card">
+      <section class="theme-section-active">
         <div class="theme-head">
           <span class="theme-badge">主题活动</span>
-          <span class="theme-name">${theme.name}</span>
+          <span class="theme-name">${escapeHtml(theme.name)}</span>
           <span class="theme-countdown">${countdown}</span>
         </div>
         <div class="theme-meta">${rangeText} · 共 ${total} 个系列任务 · 已完成 ${doneCount}/${total}</div>
-        <div class="theme-tasks">${tasksHtml || '<div style="font-size:13px;color:#8a6bb0;text-align:center;padding:8px">活动任务陆续上架中～</div>'}</div>
-      </div>
+        <div class="theme-tasks">${tasksHtml || '<p class="theme-empty">暂无活动任务</p>'}</div>
+      </section>
     `;
   },
 
@@ -3695,6 +3711,7 @@ const PlayerView = {
     this.currentTaskFilter = filter;
     document.querySelectorAll('.filter-chip').forEach(el => {
       el.classList.toggle('active', el.dataset.filter === filter);
+      el.setAttribute('aria-pressed', String(el.dataset.filter === filter));
     });
     this._renderTaskList();
   },
@@ -3737,6 +3754,9 @@ const PlayerView = {
   _renderTaskList() {
     const list = document.getElementById('task-list');
     if (!list) return;
+    const main = document.getElementById('player-main');
+    const scrollTop = main?.scrollTop || 0;
+    const pageScroll = document.scrollingElement?.scrollTop || 0;
     const submissions = this._submissions;
 
     // 主题活动区随提交状态一起刷新（领取/审核状态变化）
@@ -3778,21 +3798,21 @@ const PlayerView = {
         if (extraReward.length > 0) {
           extraReward.forEach(ri => {
             const def = ITEMS[ri.item_id];
-            if (def) extraRewardHtml += `<span style="display:inline-flex;align-items:center;gap:2px;margin:0 6px;font-size:14px">${renderItemIcon(ri.item_id, def.icon, 'item-icon-xs')}×${ri.quantity}</span>`;
+            if (def) extraRewardHtml += `<span class="theme-reward-item">${renderItemIcon(ri.item_id, def.icon, 'item-icon-xs')}×${ri.quantity}</span>`;
           });
         }
         const allDone = completedCount >= totalCount && totalCount > 0;
         const themeClaimed = (Game.state.themeRewardClaims || []).includes(themeName);
         html += `
-          <div style="margin-top:16px;padding:12px;background:linear-gradient(135deg,#f3e5f5,#e1bee7);border-radius:12px">
+          <div class="theme-extra-reward">
             <div class="theme-reward-title">${renderFeatureIcon('icon-reward', '', 'section-label-icon')}<span>主题额外奖励</span></div>
-            <div style="font-size:12px;color:#7b1fa2;margin-bottom:8px">完成全部 ${totalCount} 个主题任务即可领取</div>
-            <div style="margin-bottom:8px">${extraRewardHtml || '<span style="color:#9e9e9e">暂无额外奖励</span>'}</div>
-            <div style="display:flex;align-items:center;gap:8px">
-              <div style="flex:1;height:6px;background:#fff;border-radius:3px;overflow:hidden">
-                <div style="height:100%;width:${(completedCount/totalCount*100)||0}%;background:#9c27b0;border-radius:3px;transition:width 0.3s"></div>
+            <div class="theme-reward-caption">完成全部 ${totalCount} 个主题任务即可领取</div>
+            <div class="theme-reward-items">${extraRewardHtml || '<span>暂无额外奖励</span>'}</div>
+            <div class="theme-reward-progress">
+              <div class="theme-reward-track">
+                <div style="width:${(completedCount/totalCount*100)||0}%"></div>
               </div>
-              <span style="font-size:12px;color:#7b1fa2;font-weight:600">${completedCount}/${totalCount}</span>
+              <span>${completedCount}/${totalCount}</span>
             </div>
             <button class="btn btn-primary btn-sm btn-block" style="margin-top:10px" ${(allDone && !themeClaimed) ? '' : 'disabled'} onclick="PlayerView.claimThemeExtraReward('${themeName}',this)">
               ${themeClaimed ? '已领取' : (allDone ? '领取额外奖励' : '完成全部任务后解锁')}
@@ -3801,6 +3821,8 @@ const PlayerView = {
         `;
       }
       list.innerHTML = html;
+      if (main) main.scrollTop = scrollTop;
+      if (document.scrollingElement) document.scrollingElement.scrollTop = pageScroll;
       return;
     }
 
@@ -3839,6 +3861,8 @@ const PlayerView = {
     }
 
     list.innerHTML = html;
+    if (main) main.scrollTop = scrollTop;
+    if (document.scrollingElement) document.scrollingElement.scrollTop = pageScroll;
   },
 
   _renderTaskCard(task, status, type) {
@@ -3875,18 +3899,18 @@ const PlayerView = {
     return `
       <div class="task-card">
         <div class="task-card-header">
-          <div class="task-title">${task.title}</div>
-          <div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end">
-            ${task.themeName ? `<span class="tag theme-task-tag">${task.themeName}</span>` : ''}
+          <div class="task-title">${escapeHtml(task.title)}</div>
+          <div class="task-labels">
+            ${task.themeName && type !== 'theme' ? `<span class="tag theme-task-tag">${escapeHtml(task.themeName)}</span>` : ''}
             ${task.difficulty ? UI.difficultyTag(task.difficulty) : ''}
+            ${UI.taskTypeTag(type)}
           </div>
         </div>
-        <div class="task-desc">${task.description || ''}</div>
-        <div class="task-meta">
-          ${UI.taskTypeTag(type)}
+        <div class="task-desc">${escapeHtml(task.description || '')}</div>
+        <div class="task-note-footer">
           ${rewardHtml}
+          <div class="task-actions">${actionBtn}</div>
         </div>
-        <div class="task-actions">${actionBtn}</div>
       </div>
     `;
   },
@@ -3910,13 +3934,15 @@ const PlayerView = {
     return `
       <div class="task-card">
         <div class="task-card-header">
-          <div class="task-title">${sub.selfTitle || sub.taskTitle}</div>
+          <div class="task-title">${escapeHtml(sub.selfTitle || sub.taskTitle || '')}</div>
           ${UI.statusTag(sub.status)}
         </div>
-        <div class="task-desc">${sub.selfDescription || sub.description || ''}</div>
-        ${sub.reviewNote ? `<div class="task-desc" style="color:var(--accent)">审核备注：${sub.reviewNote}</div>` : ''}
-        ${rewardHtml}
-        <div class="task-actions">${actionBtn}</div>
+        <div class="task-desc">${escapeHtml(sub.selfDescription || sub.description || '')}</div>
+        ${sub.reviewNote ? `<div class="task-review-note">审核备注：${escapeHtml(sub.reviewNote)}</div>` : ''}
+        <div class="task-note-footer">
+          ${rewardHtml}
+          <div class="task-actions">${actionBtn}</div>
+        </div>
       </div>
     `;
   },
@@ -4237,58 +4263,55 @@ const PlayerView = {
   async renderReward(version = Router._playerRenderVersion) {
     const main = document.getElementById('player-main');
     main.innerHTML = `
-      <div class="page-title page-title-art">${renderFeatureIcon('icon-reward', '', 'page-title-icon')}<span>天道酬勤</span></div>
-      <div class="page-subtitle">努力修仙，天道自会酬勤</div>
+      <section class="ink-reward-page">
+      <header class="ink-page-heading">
+        <div class="page-title page-title-art">${renderFeatureIcon('icon-reward', '', 'page-title-icon')}<span>天道酬勤</span></div>
+      </header>
 
-      <div class="balance-card">
-        <div class="balance-label">当前余额</div>
-        <div class="balance-value"><small>¥</small>${Game.state.balance.toFixed(2)}</div>
-        <div class="total-withdrawn">累计提现：¥${Game.state.totalWithdrawn.toFixed(2)}</div>
-        <div class="withdraw-controls">
-          <button class="withdraw-btn-round" onclick="PlayerView.adjustWithdraw(-100)" id="withdraw-minus">−</button>
-          <div class="withdraw-amount" id="withdraw-amount">100</div>
-          <button class="withdraw-btn-round" onclick="PlayerView.adjustWithdraw(100)" id="withdraw-plus">+</button>
+      <section class="reward-account" aria-label="人民币账户">
+        <div class="reward-account-overview">
+          <div>
+            <div class="balance-label">可提现余额 <span>人民币</span></div>
+            <div class="balance-value"><small>¥</small>${Game.state.balance.toFixed(2)}</div>
+          </div>
+          <div class="reward-account-history">
+            <div class="total-withdrawn">累计提现 ¥${Game.state.totalWithdrawn.toFixed(2)}</div>
+            <button class="reward-records-link" onclick="PlayerView.showWithdrawRecords()">提现记录 <span aria-hidden="true">›</span></button>
+          </div>
         </div>
-        <button class="btn btn-primary btn-block" onclick="PlayerView.doWithdraw(this)">申请提现</button>
-        <button class="btn btn-outline btn-block" style="margin-top:8px" onclick="PlayerView.showWithdrawRecords()">${renderFeatureIcon('icon-wallet', '', 'button-feature-icon')}提现记录</button>
-      </div>
+        <div class="reward-withdraw-row">
+          <div class="withdraw-controls" aria-label="提现金额">
+            <button class="withdraw-btn-round" onclick="PlayerView.adjustWithdraw(-100)" id="withdraw-minus" aria-label="减少100元" title="减少100元">−</button>
+            <div class="withdraw-amount"><small>¥</small><span id="withdraw-amount">100</span></div>
+            <button class="withdraw-btn-round" onclick="PlayerView.adjustWithdraw(100)" id="withdraw-plus" aria-label="增加100元" title="增加100元">+</button>
+          </div>
+          <button class="btn btn-primary reward-withdraw-submit" onclick="PlayerView.doWithdraw(this)">申请提现</button>
+        </div>
+      </section>
 
       <!-- 天道酬勤商店（游戏币购买） -->
       <div class="shop-section">
-        <div class="section-header" style="align-items:center">
+        <div class="section-header shop-heading">
           <div class="section-title section-title-art">${renderFeatureIcon('icon-shop', '', 'section-title-icon')}<span>天道酬勤商店</span></div>
           <div class="res-pill res-coin" title="${escapeHtml(ITEMS['0']?.name || '游戏币')}余额">
             <span class="res-icon">${renderItemIcon('0', '🪙', 'res-coin-img')}</span><span class="res-val" id="shop-coin-balance">${Game.state.coin || 0}</span>
           </div>
         </div>
-        <div class="shop-tip">${escapeHtml(ITEMS['0']?.name || '游戏币')} · 游戏内货币</div>
+        <div class="shop-tip">${escapeHtml(ITEMS['0']?.name || '游戏币')}兑换</div>
         <div class="shop-grid" id="shop-grid"></div>
       </div>
 
-      <!-- 提现记录 -->
-      <div style="margin-top:20px">
-        <div class="section-header">
-          <div class="section-title section-title-art">${renderFeatureIcon('icon-wallet', '', 'section-title-icon')}<span>提现记录</span></div>
-        </div>
-        <div id="withdraw-list" class="withdraw-list-skeleton"></div>
-      </div>
+      </section>
     `;
 
     this._withdrawAmount = 100;
     this._renderShop();
-    const cached = this._withdrawalCache.peek();
-    if (cached) this._renderWithdrawList(cached);
-    else this._renderWithdrawSkeleton();
-
-    const withdrawals = await this._loadWithdrawals();
-    if (!Router.isCurrentPlayerRender('reward', version)) return;
-    this._renderWithdrawList(withdrawals);
   },
 
   _withdrawAmount: 100,
 
-  _renderWithdrawSkeleton() {
-    const el = document.getElementById('withdraw-list');
+  _renderWithdrawSkeleton(container) {
+    const el = container || document.getElementById('withdraw-list');
     if (!el) return;
     el.classList.add('withdraw-list-skeleton');
     el.innerHTML = Array.from(
@@ -4341,7 +4364,6 @@ const PlayerView = {
 
     let html = '';
     items.forEach(item => {
-      const qColor = QUALITY_COLORS[item.quality] || '#9e9e9e';
       const limitType = parseInt(item.limitType);
       let badge = '';
       let disabled = false;
@@ -4377,10 +4399,12 @@ const PlayerView = {
         : (afford ? '兑换' : '余额不足');
       html += `
         <div class="shop-item ${disabled || !afford ? 'shop-disabled' : ''}">
-          <div class="shop-badge-slot">${badge}</div>
-          <div class="shop-icon" style="box-shadow:inset 0 0 0 2px ${qColor}66;border-radius:12px">${renderItemIcon(item.itemId, item.icon)}</div>
-          <div class="shop-name">${item.name}${countText}</div>
-          <div class="shop-description">${item.description || ''}</div>
+          <div class="shop-icon">${renderItemIcon(item.itemId, item.icon)}</div>
+          <div class="shop-copy">
+            <div class="shop-name">${escapeHtml(item.name)}${countText}</div>
+            <div class="shop-description">${escapeHtml(item.description || '')}</div>
+            <div class="shop-badge-slot">${badge}</div>
+          </div>
           <button class="shop-action ${afford ? '' : 'shop-cost-no'}" ${disabled || !afford ? 'disabled' : ''} onclick="PlayerView.buyShopItem(${item.shopId},this)">
             <span>${renderItemIcon('0', '🪙', 'item-icon-xs')} ${item.price}</span>
             <strong>${actionLabel}</strong>
@@ -4409,8 +4433,8 @@ const PlayerView = {
     });
   },
 
-  _renderWithdrawList(list) {
-    const el = document.getElementById('withdraw-list');
+  _renderWithdrawList(list, container) {
+    const el = container || document.getElementById('withdraw-list');
     if (!el) return;
     el.classList.remove('withdraw-list-skeleton');
     if (list.length === 0) {
@@ -4418,16 +4442,15 @@ const PlayerView = {
       return;
     }
     let html = '';
-    list.slice(0, 10).forEach(w => {
-      const statusMap = { pending: '审核中', approved: '已通过', rejected: '已驳回' };
+    list.forEach(w => {
       const date = GameDateTime.formatShanghaiDate(w.createdAt);
       html += `
-        <div class="task-card" style="padding:12px">
+        <div class="withdraw-record-row">
           <div class="task-card-header">
-            <div class="task-title" style="font-size:14px">提现 ¥${w.amount.toFixed(2)}</div>
+            <div class="task-title">¥${w.amount.toFixed(2)}</div>
             ${UI.statusTag(w.status)}
           </div>
-          <div class="task-desc" style="font-size:12px;margin-bottom:0">${date}</div>
+          <div class="task-desc">${date}</div>
         </div>
       `;
     });
@@ -5201,23 +5224,23 @@ const PlayerView = {
   },
 
   // 提现记录
-  showWithdrawRecords() {
-    this._loadWithdrawals().then(records => {
-      if (records.length === 0) {
-        UI.modal('<p style="text-align:center;padding:24px;color:var(--text-secondary)">暂无提现记录</p>', { title: '提现记录' });
-        return;
-      }
-      const html = records.map(r => `
-        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border-light)">
-          <div>
-            <div style="font-weight:600">¥${r.amount.toFixed(2)}</div>
-            <div style="font-size:11px;color:var(--text-light)">${r.createdAt?.split('T')[0] || ''}</div>
-          </div>
-          ${UI.statusTag(r.status)}
-        </div>
-      `).join('');
-      UI.modal(html, { title: '提现记录' });
-    });
+  async showWithdrawRecords() {
+    if (this._withdrawRecordsOverlay?.isConnected) return;
+    const overlay = UI.modal('<div id="withdraw-list" class="ink-withdraw-records"></div>', { title: '提现记录' });
+    this._withdrawRecordsOverlay = overlay;
+    const container = overlay.querySelector('#withdraw-list');
+    const cached = this._withdrawalCache.peek();
+    if (cached) this._renderWithdrawList(cached, container);
+    else this._renderWithdrawSkeleton(container);
+    try {
+      const records = await this._loadWithdrawals();
+      if (!overlay.isConnected) return;
+      this._renderWithdrawList(records, container);
+    } catch (error) {
+      if (!overlay.isConnected) return;
+      if (!cached) container.innerHTML = '<p class="withdraw-records-error">暂时无法读取提现记录，请稍后重试。</p>';
+      UI.toast('提现记录加载失败', 'warn');
+    }
   },
 };
 

@@ -39,12 +39,15 @@ test('task page paints before loading and uses one task query plus one submissio
   assert.doesNotMatch(list, /DB\.getSubmissions/);
 });
 
-test('reward page paints immediately and loads withdrawals independently', () => {
+test('reward page paints immediately and loads withdrawal records only when opened', () => {
   assert.match(app, /_withdrawalCache:\s*PlayerDataCache\.createResourceCache/);
   const reward = slice('async renderReward(version', '\n  _withdrawAmount:');
-  assert.ok(reward.indexOf('main.innerHTML') < reward.indexOf('await this._loadWithdrawals'), 'reward shell must paint first');
-  assert.match(reward, /Router\.isCurrentPlayerRender\('reward', version\)/);
-  assert.match(reward, /withdraw-list-skeleton/);
+  assert.match(reward, /main\.innerHTML/);
+  assert.doesNotMatch(reward, /await this\._loadWithdrawals|id="withdraw-list"/);
+  const records = slice('async showWithdrawRecords()', '\n};');
+  assert.ok(records.indexOf('UI.modal') < records.indexOf('await this._loadWithdrawals'));
+  assert.match(records, /if \(!overlay\.isConnected\) return/);
+  assert.match(records, /this\._renderWithdrawSkeleton\(container\)/);
 });
 
 test('player caches are isolated by login and route transitions are short', () => {

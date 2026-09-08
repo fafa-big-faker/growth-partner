@@ -1,0 +1,147 @@
+/* Scoped page surfaces leave the cultivation scene and admin tools intact. */
+.ink-task-page,
+.ink-reward-page {
+  --page-ink: #35453e;
+  --page-muted: #69756f;
+  --page-line: rgba(69, 89, 79, 0.2);
+  --page-paper: rgba(249, 252, 250, 0.94);
+  color: var(--page-ink);
+  letter-spacing: 0;
+}
+
+.ink-page-heading { display: flex; justify-content: space-between; align-items: center; gap: 12px; min-height: 50px; margin-bottom: 14px; }
+.ink-page-heading .page-title { margin: 0; color: var(--page-ink); }
+.ink-page-heading .page-title-icon { width: 38px; height: 38px; }
+.ink-page-heading .task-self-submit { flex: none; min-height: 38px; }
+
+#player-dashboard .ink-task-page .filter-bar { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; border-bottom: 1px solid var(--page-line); margin: 12px 0 16px; }
+#player-dashboard .ink-task-page .filter-chip { min-height: 42px; padding: 7px 3px; border: 0; border-bottom: 2px solid transparent; border-radius: 0; background: transparent; color: var(--page-muted); font: inherit; font-size: 13px; box-shadow: none; }
+#player-dashboard .ink-task-page .filter-chip.active { background: rgba(65, 102, 83, 0.07); border-bottom-color: #486c58; color: #2f553e; font-weight: 700; }
+.ink-task-page .theme-idle { display: flex; align-items: center; gap: 10px; min-height: 28px; font-size: 12px; color: var(--page-muted); }
+.ink-task-page .theme-idle span + span { color: #7b847e; }
+.ink-task-page .theme-section-active { margin: 8px 0 22px; }
+.ink-task-page .theme-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 7px; }
+#player-dashboard .ink-task-page .theme-badge { background: transparent; color: #64786a; padding: 0; border-radius: 0; }
+#player-dashboard .ink-task-page .theme-name { color: #324b3c; font-size: 16px; font-weight: 700; }
+#player-dashboard .ink-task-page .theme-countdown { margin-left: auto; background: transparent; color: #936146; padding: 0; }
+#player-dashboard .ink-task-page .theme-meta { margin: 7px 0 12px; color: var(--page-muted); font-size: 12px; }
+.ink-task-page .theme-tasks { padding: 0; background: transparent; }
+.ink-task-page .theme-empty { color: var(--page-muted); font-size: 13px; }
+.ink-task-page .task-section-label { margin: 20px 0 10px; color: #4f6457; }
+.ink-task-page .task-section-label:first-child { margin-top: 0; }
+
+#player-dashboard .ink-task-page .task-card { padding: 14px 16px; border: 1px solid var(--page-line); border-radius: 3px; background: var(--page-paper); box-shadow: 0 1px 0 rgba(62, 81, 70, 0.05); transform: none; }
+#player-dashboard .ink-task-page .task-card:hover { box-shadow: 0 1px 0 rgba(62, 81, 70, 0.05); transform: none; }
+.ink-task-page .task-card-header { gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.ink-task-page .task-title { min-width: 0; color: #34493c; font-size: 15px; line-height: 1.5; overflow-wrap: anywhere; }
+.ink-task-page .task-desc { margin: 7px 0 12px; color: #637168; line-height: 1.65; white-space: pre-line; overflow-wrap: anywhere; }
+.ink-task-page .task-desc:empty { display: none; }
+.ink-task-page .task-labels { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 6px; }
+.ink-task-page .tag { padding: 1px 0; border: 0; border-radius: 0; background: transparent; color: #778279; white-space: nowrap; font-size: 11px; }
+.ink-task-page .tag-status-approved { color: #426951; }
+.ink-task-page .tag-status-rejected { color: #a05b52; }
+.ink-task-page .tag-status-pending { color: #8a704f; }
+.ink-task-page .task-note-footer { display: flex; align-items: flex-end; flex-wrap: wrap; gap: 12px; }
+.ink-task-page .task-reward-list { flex: 1 1 160px; min-width: 0; margin: 0; padding: 0; border: 0; gap: 5px 12px; }
+.ink-task-page .task-reward-chip { color: #516358; }
+.ink-task-page .task-reward-chip b { color: #3c5e4b; }
+.ink-task-page .task-actions { flex: 0 0 auto; margin-left: auto; }
+.ink-task-page .task-actions .btn { min-width: 88px; min-height: 36px; margin: 0; border-radius: 3px; }
+.ink-task-page .task-review-note { margin: 0 0 12px; padding-left: 9px; border-left: 2px solid #ba9887; color: #826759; font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; }
+
+#player-dashboard .ink-task-page .signin-card { padding: 14px 0; border: 0; border-bottom: 1px solid var(--page-line); border-radius: 0; background: transparent; box-shadow: none; }
+.ink-task-page .theme-extra-reward { margin: 16px 0; padding: 14px 0; border-top: 1px solid var(--page-line); }
+.ink-task-page .theme-reward-caption { margin: 7px 0 10px; font-size: 12px; color: var(--page-muted); }
+.ink-task-page .theme-reward-items { display: flex; flex-wrap: wrap; gap: 8px 14px; margin-bottom: 10px; font-size: 13px; }
+.ink-task-page .theme-reward-item { display: inline-flex; align-items: center; gap: 4px; }
+.ink-task-page .theme-reward-progress { display: flex; align-items: center; gap: 10px; font-size: 12px; color: #5b7363; }
+.ink-task-page .theme-reward-track { height: 5px; flex: 1; overflow: hidden; background: rgba(68, 94, 77, 0.12); }
+.ink-task-page .theme-reward-track > div { height: 100%; background: #6d8a72; transition: width 180ms ease; }
+
+.ink-task-page .btn-primary,
+.ink-task-page .btn-accent,
+.ink-reward-page .btn-primary { position: relative; isolation: isolate; border-color: transparent; background: transparent; color: #2e4d3b; box-shadow: none; }
+.ink-task-page .btn-primary::before,
+.ink-task-page .btn-accent::before,
+.ink-reward-page .btn-primary::before { content: ''; position: absolute; inset: -1px -2px; z-index: -1; border: 0 solid transparent; border-image: url('assets/runtime/v3/ui/button-primary.webp') 36 48 36 48 fill / 12px 16px / 0 stretch; pointer-events: none; }
+.ink-task-page .btn-accent { font-weight: 800; }
+.ink-task-page .btn-outline { color: #526759; border-color: rgba(76, 105, 85, 0.3); background: rgba(249, 252, 250, 0.52); box-shadow: none; }
+.ink-task-page .btn:disabled { color: #7c857d; background: transparent; opacity: 0.7; }
+
+.ink-reward-page .reward-account { padding: 0 0 18px; border-bottom: 1px solid var(--page-line); }
+.ink-reward-page .reward-account-overview { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px 16px; }
+.ink-reward-page .balance-label { color: #5a6c60; font-size: 12px; }
+.ink-reward-page .balance-label span { margin-left: 7px; color: #798279; font-size: 11px; }
+.ink-reward-page .balance-value { display: flex; align-items: baseline; gap: 3px; margin: 2px 0 0; color: #354b3b; font-size: 28px; font-weight: 700; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.ink-reward-page .balance-value small { font-size: 15px; }
+.ink-reward-page .reward-account-history { text-align: right; }
+.ink-reward-page .total-withdrawn { margin: 0; color: var(--page-muted); font-size: 11px; }
+.ink-reward-page .reward-records-link { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; border: 0; background: transparent; color: #526e5d; font: inherit; font-size: 12px; cursor: pointer; }
+.ink-reward-page .reward-records-link span { font-size: 20px; }
+.ink-reward-page .reward-withdraw-row { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
+.ink-reward-page .withdraw-controls { display: flex; flex: 1; align-items: center; gap: 5px; min-width: 0; margin: 0; border: 1px solid var(--page-line); border-radius: 3px; background: rgba(250, 252, 250, 0.75); }
+.ink-reward-page .withdraw-btn-round { width: 36px; height: 38px; flex: none; border: 0; border-radius: 0; color: #53735d; background: transparent; font-size: 21px; font-weight: 400; }
+.ink-reward-page .withdraw-amount { display: flex; flex: 1; align-items: baseline; justify-content: center; gap: 3px; min-width: 0; color: #405849; font-size: 18px; font-variant-numeric: tabular-nums; }
+.ink-reward-page .withdraw-amount small { font-size: 11px; }
+.ink-reward-page .reward-withdraw-submit { flex: none; min-height: 40px; padding: 8px 16px; font-size: 13px; }
+.ink-reward-page .shop-section { margin-top: 22px; }
+.ink-reward-page .shop-heading { align-items: center; gap: 10px; margin-bottom: 2px; }
+.ink-reward-page .shop-heading .section-title { color: #3b5745; font-size: 15px; }
+.ink-reward-page .shop-heading .res-coin { flex: none; border-color: transparent; color: #48624e; background: rgba(249, 252, 250, 0.8); box-shadow: none; }
+.ink-reward-page .shop-tip { margin: 3px 0 12px 34px; color: #748071; font-size: 11px; }
+#player-dashboard .ink-reward-page .shop-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+
+#player-dashboard .ink-reward-page .shop-item { display: grid; grid-template-columns: 66px minmax(0, 1fr); grid-template-rows: auto 1fr auto; align-items: start; gap: 10px 12px; padding: 14px; border: 1px solid var(--page-line); border-radius: 3px; background: var(--page-paper); color: var(--page-ink); box-shadow: 0 1px 0 rgba(62, 81, 70, 0.05); text-align: left; transform: none; }
+#player-dashboard .ink-reward-page .shop-item:hover { border-color: rgba(73, 107, 83, 0.36); box-shadow: none; transform: none; }
+#player-dashboard .ink-reward-page .shop-item.shop-disabled { opacity: 1; }
+#player-dashboard .ink-reward-page .shop-icon { width: 66px; height: 66px; margin: 0; display: flex; align-items: center; justify-content: center; border-radius: 0; background: transparent; }
+.ink-reward-page .shop-icon .item-icon-img { width: 100%; height: 100%; max-width: 100%; max-height: 100%; object-fit: contain; }
+.ink-reward-page .shop-copy { min-width: 0; }
+.ink-reward-page .shop-name { margin: 0; color: #3c5242; font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
+.ink-reward-page .shop-description { display: block; min-height: 0; margin: 5px 0 7px; overflow: visible; -webkit-line-clamp: unset; white-space: pre-line; color: #67746a; font-size: 12px; line-height: 1.65; overflow-wrap: anywhere; }
+.ink-reward-page .shop-description:empty { display: none; }
+.ink-reward-page .shop-badge-slot { height: auto; }
+.ink-reward-page .shop-tag { position: static; display: inline-flex; align-items: center; flex-wrap: wrap; gap: 3px; transform: none; padding: 0; border: 0; border-radius: 0; background: transparent; color: #7b816f; white-space: normal; line-height: 1.5; }
+.ink-reward-page .shop-tag.shop-lock { color: #95615a; background: transparent; }
+.ink-reward-page .shop-tag.shop-monthly,
+.ink-reward-page .shop-tag.shop-soldout { color: #777f74; background: transparent; }
+.ink-reward-page .shop-action { grid-column: 1 / -1; grid-row: 3; min-height: 38px; margin: 0; border-color: rgba(83, 112, 91, 0.24); border-radius: 3px; background: rgba(84, 116, 93, 0.06); color: #426349; }
+.ink-reward-page .shop-action span { color: #536d51; font-variant-numeric: tabular-nums; }
+.ink-reward-page .shop-action:disabled { color: #82877e; background: rgba(104, 114, 102, 0.035); }
+.ink-reward-page .shop-action.shop-cost-no span { color: #977266; }
+
+.ink-withdraw-records .withdraw-record-row { padding: 12px 0; border-bottom: 1px solid rgba(69, 89, 79, 0.18); }
+.ink-withdraw-records .withdraw-record-row:last-child { border-bottom: 0; }
+.ink-withdraw-records .task-title { color: #405548; font-size: 16px; font-variant-numeric: tabular-nums; }
+.ink-withdraw-records .task-desc { margin: 4px 0 0; color: #758074; font-size: 12px; }
+.ink-withdraw-records .tag { border-radius: 2px; background: transparent; padding-right: 0; }
+.withdraw-records-error { padding: 16px 0; color: #856357; font-size: 13px; text-align: center; }
+.ink-task-page button:focus-visible,
+.ink-reward-page button:focus-visible { outline: 2px solid #547b60; outline-offset: 3px; }
+
+@media (hover: hover) and (pointer: fine) {
+  #player-dashboard .ink-task-page .filter-chip:hover { color: #315a3e; background: rgba(70, 101, 79, 0.055); }
+  .ink-reward-page .reward-records-link:hover { color: #304f39; text-decoration: underline; }
+  .ink-reward-page .withdraw-btn-round:hover { background: rgba(70, 101, 79, 0.1); color: #315a3e; }
+}
+@media (max-width: 640px) {
+  .ink-page-heading { margin-bottom: 12px; }
+  #player-dashboard .ink-reward-page .shop-grid { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  #player-dashboard .ink-reward-page .shop-item { grid-template-columns: 68px minmax(0, 1fr); grid-template-rows: auto auto; column-gap: 12px; padding: 12px; }
+  #player-dashboard .ink-reward-page .shop-icon { grid-row: 1 / 3; width: 68px; height: 76px; align-self: start; }
+  .ink-reward-page .shop-action { grid-column: 2; grid-row: 2; }
+  #player-dashboard .ink-task-page .task-card { padding: 12px; }
+  .ink-task-page .task-note-footer { gap: 8px; }
+  .ink-task-page .task-reward-list { flex-basis: 140px; }
+  .ink-task-page .task-actions .btn { min-width: 82px; padding-inline: 10px; }
+}
+@media (max-width: 380px) {
+  .ink-page-heading .page-title { font-size: 21px; }
+  .ink-page-heading .task-self-submit { padding-inline: 10px; font-size: 12px; }
+  .ink-reward-page .reward-withdraw-row { gap: 9px; }
+  .ink-reward-page .reward-withdraw-submit { padding-inline: 12px; }
+  .ink-reward-page .shop-heading .section-title { font-size: 14px; gap: 4px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ink-task-page .theme-reward-track > div { transition: none; }
+}
