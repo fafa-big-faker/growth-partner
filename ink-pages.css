@@ -266,13 +266,12 @@
 /* Back only reading bands; the page and its sections retain open scenery. */
 #player-dashboard .ink-task-page .ink-page-heading .page-title,
 #player-dashboard .ink-reward-page .ink-page-heading .page-title {
-  background: var(--page-paper);
-  padding: 2px 6px 2px 2px;
+  background: transparent;
+  padding: 0;
 }
 
 #player-dashboard .ink-task-page .filter-bar,
 #player-dashboard .ink-task-page .theme-idle,
-#player-dashboard .ink-task-page .theme-head,
 #player-dashboard .ink-task-page .theme-meta,
 #player-dashboard .ink-task-page .signin-card,
 #player-dashboard .ink-reward-page .reward-account {
@@ -282,15 +281,15 @@
 }
 
 #player-dashboard .ink-task-page .theme-idle { padding: 6px 10px; }
-#player-dashboard .ink-task-page .theme-head { margin-bottom: 0; padding: 8px 10px 0; }
+#player-dashboard .ink-task-page .theme-head { margin-bottom: 0; padding: 8px 0 0; background: transparent; }
 #player-dashboard .ink-task-page .theme-meta { margin: 0 0 12px; padding: 7px 10px 10px; }
 #player-dashboard .ink-task-page .signin-card { padding-inline: 10px; }
 #player-dashboard .ink-task-page .signin-hint { background: transparent; }
-#player-dashboard .ink-task-page .task-section-label { padding: 4px 8px; background: var(--page-paper); }
+#player-dashboard .ink-task-page .task-section-label { padding: 4px 0; background: transparent; }
 #player-dashboard .ink-task-page .theme-extra-reward { background: var(--page-paper); padding-inline: 10px; }
 #player-dashboard .ink-reward-page .reward-account { padding: 12px 12px 18px; }
 #player-dashboard .ink-reward-page .shop-heading .section-title,
-#player-dashboard .ink-reward-page .shop-tip { background: var(--page-paper); }
+#player-dashboard .ink-reward-page .shop-tip { background: transparent; }
 #player-dashboard .ink-reward-page .shop-heading .res-coin {
   color: var(--page-ink);
   background: var(--page-paper);

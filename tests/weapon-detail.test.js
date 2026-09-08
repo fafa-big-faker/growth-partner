@@ -22,10 +22,12 @@ test('weapon details prioritize requirements, skills, and lore without quantity'
   assert.match(css, /\.weapon-skill-panel\s*\{/);
 });
 
-test('forge results reuse the concise axe realm requirement', () => {
+test('forge results use the fixed equip slot without changing inventory detail requirements', () => {
   const showForge = app.match(/\r?\n  showForge\(\) \{[\s\S]*?\r?\n  },\r?\n\r?\n  \/\/ 十连砍/)?.[0] || '';
-  assert.match(showForge, /renderAxeRealmRequirement\(result\.quality, Game\.state\.realmLevel/);
-  assert.match(showForge, /showStored:\s*true/);
-  assert.match(app, /showStored \? '<small>已放入背包<\/small>'/);
-  assert.doesNotMatch(showForge, /仙阶限制：需达到/);
+  assert.match(showForge, /id="forge-result-action"/);
+  assert.match(showForge, /getMinRealmForAxeQuality\(result\.quality\)/);
+  assert.match(showForge, /resultAction\.innerHTML = canEquip \?/);
+  assert.match(showForge, /forge-result-equip[\s\S]*?>立即装备<\/button>/);
+  assert.match(showForge, /forge-result-locked[\s\S]*?及以上可装备/);
+  assert.doesNotMatch(showForge, /renderAxeRealmRequirement|showStored|仙阶限制：需达到/);
 });

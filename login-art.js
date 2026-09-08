@@ -1,6 +1,7 @@
 (function initLoginArt(root) {
   const IMAGE_ASSETS = Object.freeze(Array.from({ length: 6 }, (_, index) =>
     `assets/runtime/v5/effects/ink-0${index + 1}.webp?v=xianlai-v5-20260908`));
+  const BACKDROP_ASSET = 'assets/runtime/v3/backgrounds/login.webp';
 
   function create(options = {}) {
     const doc = options.document || root.document;
@@ -8,6 +9,8 @@
     const requestFrame = options.requestAnimationFrame || host.requestAnimationFrame.bind(host);
     const cancelFrame = options.cancelAnimationFrame || host.cancelAnimationFrame.bind(host);
     const now = options.now || (() => host.performance.now());
+    const setTimer = options.setTimeout || host.setTimeout?.bind(host) || root.setTimeout.bind(root);
+    const clearTimer = options.clearTimeout || host.clearTimeout?.bind(host) || root.clearTimeout.bind(root);
     const screen = doc.getElementById('login-screen');
     const logo = doc.getElementById('login-brand-image');
     const fallback = doc.getElementById('login-brand-fallback');
@@ -29,6 +32,11 @@
     let logoReady = false;
     let revealed = false;
     let revealComplete = false;
+    let backdropReady = false;
+    let backdropImage = null;
+    let backdropTimer = null;
+    let settlingTimer = null;
+    let settlingVersion = 0;
     let logoAnimation = null;
     let floatAnimation = null;
     let rippleAnimation = null;
@@ -97,15 +105,65 @@
       };
     }
 
+    function cancelSettling() {
+      settlingVersion++;
+      if (settlingTimer !== null) clearTimer(settlingTimer);
+      settlingTimer = null;
+    }
+
+    function requestLogoReveal() {
+      if (!logoReady || revealed || !active()) return;
+      if (reduced || typeof logo.animate !== 'function') {
+        cancelSettling();
+        revealLogo();
+        return;
+      }
+      if (!backdropReady || settlingTimer !== null) return;
+      const version = ++settlingVersion;
+      // Only the decorative entrance waits; form controls and authentication stay independent.
+      settlingTimer = setTimer(() => {
+        if (version !== settlingVersion || !active()) return;
+        settlingTimer = null;
+        if (logoReady && backdropReady && !revealed) revealLogo();
+      }, 500);
+    }
+
+    function loadBackdrop() {
+      if (typeof host.Image !== 'function') {
+        backdropReady = true;
+        requestLogoReveal();
+        return;
+      }
+      backdropImage = new host.Image();
+      backdropImage.decoding = 'async';
+      const settled = () => {
+        if (destroyed || backdropReady) return;
+        cancelBackdropDeadline();
+        backdropReady = true;
+        requestLogoReveal();
+      };
+      backdropImage.onload = settled;
+      backdropImage.onerror = settled;
+      if (!reduced) backdropTimer = setTimer(settled, 2500);
+      backdropImage.src = BACKDROP_ASSET;
+      if (backdropImage.complete && backdropImage.naturalWidth > 0) settled();
+    }
+
+    function cancelBackdropDeadline() {
+      if (backdropTimer !== null) clearTimer(backdropTimer);
+      backdropTimer = null;
+    }
+
     function onLogoLoad() {
       logoReady = true;
       geometryDirty = true;
       if (fallback) fallback.hidden = true;
-      revealLogo();
+      requestLogoReveal();
     }
 
     function onLogoError() {
       logoReady = false;
+      cancelSettling();
       logoAnimation?.cancel();
       logoAnimation = null;
       floatAnimation?.cancel();
@@ -280,6 +338,8 @@
       screen?.classList.toggle('login-art-paused', !active());
       screen?.classList.toggle('login-art-reduced', reduced);
       if (reduced) {
+        cancelBackdropDeadline();
+        backdropReady = true;
         logoAnimation?.cancel();
         logoAnimation = null;
         if (revealed) revealComplete = true;
@@ -291,12 +351,12 @@
         displayed = target;
         paintProgress();
       }
-      if (!active() || reduced) stopFrame();
+      if (!active() || reduced) { stopFrame(); cancelSettling(); }
       else { loadTextures(); schedule(); }
       if (active()) {
         logoAnimation?.play();
         floatAnimation?.play();
-        revealLogo();
+        requestLogoReveal();
         floatLogo();
       } else {
         logoAnimation?.pause();
@@ -321,7 +381,11 @@
     const onPointer = event => { if (!button.disabled && (event.button === undefined || event.button === 0)) pulse(); };
     const onMedia = event => { reduced = event.matches; syncActivity(); };
     const onVisibility = () => syncActivity();
-    const onResize = () => { geometryDirty = true; schedule(); };
+    const onResize = () => {
+      geometryDirty = true;
+      if (!revealed) { cancelSettling(); requestLogoReveal(); }
+      schedule();
+    };
 
     function init() {
       if (started || destroyed || !screen) return;
@@ -336,6 +400,7 @@
           else onLogoError();
         }
       }
+      loadBackdrop();
       button?.addEventListener('pointerdown', onPointer);
       form?.addEventListener('submit', pulse);
       doc.addEventListener('visibilitychange', onVisibility);
@@ -384,6 +449,9 @@
     function destroy() {
       destroyed = true;
       stopFrame();
+      cancelSettling();
+      cancelBackdropDeadline();
+      if (backdropImage) { backdropImage.onload = null; backdropImage.onerror = null; }
       logoAnimation?.cancel();
       floatAnimation?.cancel();
       rippleAnimation?.cancel();

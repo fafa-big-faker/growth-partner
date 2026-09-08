@@ -4942,19 +4942,17 @@ const PlayerView = {
       </div>
       <div id="forge-reveal-stage" class="forge-reveal-stage" data-state="idle">
         <div class="forge-reveal-flash" aria-hidden="true"></div>
-        <div id="forge-reveal-art" class="forge-reveal-art" aria-live="off"><span class="forge-reveal-placeholder">?</span></div>
+        <div class="forge-reveal-frame">
+          <div id="forge-reveal-art" class="forge-reveal-art" aria-live="off"><span class="forge-reveal-placeholder">?</span></div>
+          <div id="forge-result-action" class="forge-result-action" aria-live="polite"></div>
+        </div>
         <div id="forge-reveal-name" class="forge-reveal-name">器灵待启</div>
         <div id="forge-reveal-status" class="forge-reveal-status">准备锻造</div>
         <div class="forge-reveal-progress" role="progressbar" aria-label="锻造进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
           <div class="forge-reveal-progress-fill"></div>
         </div>
-        <div id="forge-result-detail" class="forge-result-detail" hidden></div>
       </div>
       <div class="forge-lower-panel">
-        <details class="forge-probability-details">
-          <summary>查看概率详情</summary>
-          <div class="forge-probability-list">${poolHtml}</div>
-        </details>
         <div class="forge-material-cost" title="每次消耗 ${forgeCost} 个${forgeCostItem?.name || '锻造材料'}">
           ${renderItemIcon(forgeCostItemId, forgeCostItem?.icon || '', 'item-icon-xs')}<b>${forgeQty}</b><span>/${forgeCost}</span>
         </div>
@@ -4962,7 +4960,13 @@ const PlayerView = {
           <button class="btn btn-primary btn-sm" id="forge-ok" ${forgeQty >= forgeCost ? '' : 'disabled'}>锻造</button>
         </div>
       </div>
+      <div id="forge-result-detail" class="forge-result-detail" hidden></div>
+      <details class="forge-probability-details">
+        <summary>查看概率详情</summary>
+        <div class="forge-probability-list">${poolHtml}</div>
+      </details>
     `, { title: '锻造' });
+    overlay.classList.add('forge-modal-overlay');
     overlay.querySelector('.modal')?.classList.add('forge-modal');
 
     const btn = document.getElementById('forge-ok');
@@ -4971,6 +4975,7 @@ const PlayerView = {
       const closeControls = overlay.querySelectorAll('.modal-close');
       const probabilityDetails = overlay.querySelector('.forge-probability-details');
       const detail = overlay.querySelector('#forge-result-detail');
+      const resultAction = overlay.querySelector('#forge-result-action');
       const elements = {
         art: overlay.querySelector('#forge-reveal-art'),
         name: overlay.querySelector('#forge-reveal-name'),
@@ -4984,6 +4989,7 @@ const PlayerView = {
       closeControls.forEach(control => { control.disabled = true; });
       if (probabilityDetails) probabilityDetails.open = false;
       if (stage) stage.dataset.state = 'running';
+      if (resultAction) resultAction.innerHTML = '';
       if (detail) {
         detail.hidden = true;
         detail.innerHTML = '';
@@ -5006,21 +5012,18 @@ const PlayerView = {
         const q = QUALITY[result.quality] || QUALITY[1];
         const canEquip = canEquipAxeQuality(result.quality, Game.state.realmLevel);
         const resultSkillHtml = renderWeaponSkills(result.weapon, '');
-        const resultAction = canEquip ? `
-          ${renderAxeRealmRequirement(result.quality, Game.state.realmLevel)}
-          <div class="forge-result-equip">
-            <button class="btn btn-outline btn-sm" onclick="PlayerView._equipFromForge('${result.weapon.id}',this)">立即装备</button>
-          </div>
-        ` : `
-          ${renderAxeRealmRequirement(result.quality, Game.state.realmLevel, { showStored: true })}
-        `;
+        if (resultAction) {
+          const requiredRealm = getMinRealmForAxeQuality(result.quality);
+          resultAction.innerHTML = canEquip ? `
+            <button type="button" class="btn btn-outline btn-sm forge-result-equip" onclick="PlayerView._equipFromForge('${result.weapon.id}',this)">立即装备</button>
+          ` : `<span class="forge-result-locked">${escapeHtml(requiredRealm?.name || '更高仙阶')}及以上可装备</span>`;
+        }
         if (detail) {
           detail.hidden = false;
           detail.innerHTML = `
             <div class="forge-result-quality" style="color:${q.color}">${q.name}</div>
             ${resultSkillHtml ? `<div class="forge-result-skill">斧技 · ${resultSkillHtml}</div>` : ''}
             <div class="forge-result-copy">${result.item.desc || ''}</div>
-            ${resultAction}
           `;
         }
       } else if (outcome.started) {

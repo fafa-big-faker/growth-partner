@@ -65,14 +65,28 @@ async function main() {
         await leaf.decode();
         CultivationEffects.clear();
         const count = CultivationEffects.playHit({ scene, tree, speed: 1 });
-        const effectStyles = Array.from(scene.querySelectorAll('.cult-effect')).map(el => {
+        const effects = Array.from(scene.querySelectorAll('.cult-effect'));
+        const effectStyles = effects.map(el => {
           const style = getComputedStyle(el);
           return { name: style.animationName, delay: parseFloat(style.animationDelay), pointer: style.pointerEvents };
         });
-        await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-        await new Promise(resolve => setTimeout(resolve, 300));
-        const visible = Array.from(scene.querySelectorAll('.cult-effect')).filter(el => Number(getComputedStyle(el).opacity) > .2).length;
-        const animationState = Array.from(scene.querySelectorAll('.cult-effect')).map(el => ({ opacity: getComputedStyle(el).opacity, time: el.getAnimations().map(animation => animation.currentTime) }));
+        const animations = effects.flatMap(el => el.getAnimations());
+        await Promise.all(animations.map(animation => animation.ready));
+        // Sample the real CSS animation timeline instead of assuming headless frame timing.
+        for (const animation of animations) {
+          const timing = animation.effect.getTiming();
+          animation.pause();
+          animation.currentTime = timing.delay + timing.duration * .35;
+        }
+        const visible = effects.filter(el => Number(getComputedStyle(el).opacity) > .2).length;
+        const animationState = effects.map(el => ({
+          opacity: getComputedStyle(el).opacity,
+          animations: el.getAnimations().map(animation => ({
+            time: animation.currentTime,
+            delay: animation.effect.getTiming().delay,
+            duration: animation.effect.getTiming().duration,
+          })),
+        }));
         const connected = scene.isConnected;
         CultivationEffects.clear();
         return { count, effectStyles, visible, animationState, connected, remaining: scene.querySelectorAll('.cult-effect').length, loaded: leaf.naturalWidth > 0 };
@@ -80,6 +94,7 @@ async function main() {
       assert.equal(effectsCheck.count, 5);
       assert.equal(effectsCheck.loaded, true);
       assert.ok(effectsCheck.visible > 0, 'hit effects become visible after the swing delay: ' + JSON.stringify(effectsCheck));
+      assert.ok(effectsCheck.animationState.every(effect => effect.animations.length > 0 && effect.animations.every(animation => Number.isFinite(animation.duration) && animation.time > animation.delay && animation.time < animation.delay + animation.duration)), 'effects are sampled within their active animation interval');
       assert.ok(effectsCheck.effectStyles.every(style => style.pointer === 'none' && style.delay >= .18));
       assert.equal(effectsCheck.remaining, 0);
       const geometry = await page.evaluate(() => {

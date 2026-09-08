@@ -36,7 +36,7 @@ function element() {
   });
 }
 
-function setup({ cached = false, reduced = false, contextAvailable = true, texturesReady = true, width = 960, height = 720 } = {}) {
+function setup({ cached = false, reduced = false, contextAvailable = true, texturesReady = true, backdropReady = true, width = 960, height = 720 } = {}) {
   const elements = new Map();
   const get = id => { if (!elements.has(id)) elements.set(id, element()); return elements.get(id); };
   const logo = get('login-brand-image');
@@ -70,7 +70,7 @@ function setup({ cached = false, reduced = false, contextAvailable = true, textu
     constructor() { images.push(this); }
     set src(value) {
       this.url = value;
-      if (texturesReady) {
+      if (value.includes('/backgrounds/') ? backdropReady : texturesReady) {
         this.naturalWidth = this.naturalHeight = 512;
         this.onload?.();
       }
@@ -88,22 +88,31 @@ function setup({ cached = false, reduced = false, contextAvailable = true, textu
   let timestamp = 0;
   let nextId = 0;
   const frames = new Map();
+  const timers = new Map();
   const controller = create({ document: doc, window: host,
     now: () => timestamp,
     requestAnimationFrame: callback => { const id = ++nextId; frames.set(id, callback); return id; },
     cancelAnimationFrame: id => frames.delete(id),
+    setTimeout: (callback, delay) => { const id = ++nextId; timers.set(id, { callback, at: timestamp + delay }); return id; },
+    clearTimeout: id => timers.delete(id),
   });
   controller.init();
   function step(time) {
     timestamp = time;
+    for (const [id, timer] of [...timers]) {
+      if (timer.at <= time) { timers.delete(id); timer.callback(); }
+    }
     const callbacks = [...frames.values()];
     frames.clear();
     callbacks.forEach(callback => callback(time));
   }
   const shown = () => Number(get('login-loading-bar').style.transform.match(/scaleX\(([^)]+)\)/)[1]) * 100;
-  return { controller, get, doc, media, logo, fallback, frames, inkCalls, step, shown, images,
-    loadTexture(index) { images[index].naturalWidth = images[index].naturalHeight = 512; images[index].onload?.(); },
-    failTextures() { images.forEach(image => image.onerror?.()); },
+  const textureImages = () => images.filter(image => image.src.includes('/effects/'));
+  const backdrop = () => images.find(image => image.src.includes('/backgrounds/'));
+  return { controller, get, doc, media, logo, fallback, frames, inkCalls, step, shown, images, timers, textureImages, backdrop,
+    loadBackdrop() { const image = backdrop(); image.naturalWidth = 1448; image.naturalHeight = 1086; image.onload?.(); },
+    loadTexture(index) { const image = textureImages()[index]; image.naturalWidth = image.naturalHeight = 512; image.onload?.(); },
+    failTextures() { textureImages().forEach(image => image.onerror?.()); },
     resize(width, height) { bounds = { ...bounds, width, height }; resize(); },
     intersect(value) { observe([{ isIntersecting: value }]); },
     load() { logo.naturalWidth = 949; logo.emit('load'); },
@@ -116,6 +125,10 @@ test('logo reveal waits for its real bitmap and runs only once without blocking 
   assert.equal(state.logo.style.visibility, 'hidden');
   assert.notEqual(state.get('login-submit').disabled, true);
   state.load();
+  assert.equal(state.logo.style.visibility, 'hidden');
+  state.step(499);
+  assert.equal(state.logo.animations.length, 0);
+  state.step(500);
   assert.equal(state.logo.style.visibility, 'visible');
   assert.equal(state.logo.animations.length, 1);
   assert.equal(state.logo.animations[0].options.duration, 1500);
@@ -125,8 +138,10 @@ test('logo reveal waits for its real bitmap and runs only once without blocking 
   assert.equal(state.logo.animations.length, 1);
 });
 
-test('cached bitmap reveals immediately; a failed bitmap has a readable fallback', () => {
+test('cached backdrop and logo still settle before entrance; failed logo has a readable fallback', () => {
   const cached = setup({ cached: true });
+  assert.equal(cached.logo.animations.length, 0);
+  cached.step(500);
   assert.equal(cached.logo.animations.length, 1);
   const failed = setup();
   failed.logo.emit('error');
@@ -140,11 +155,115 @@ test('logo loaded on a hidden login screen waits and resumes on return', () => {
   state.load();
   assert.equal(state.logo.animations.length, 0);
   state.controller.setVisible(true);
+  assert.equal(state.logo.animations.length, 0);
+  state.step(500);
   assert.equal(state.logo.animations.length, 1);
   state.controller.setVisible(false);
   assert.equal(state.logo.animations[0].state, 'paused');
   state.controller.setVisible(true);
   assert.equal(state.logo.animations[0].state, 'running');
+});
+
+test('entrance waits for late backdrop readiness and then an uninterrupted 500ms visible settle', () => {
+  const state = setup({ cached: true, backdropReady: false });
+  state.step(1200);
+  assert.equal(state.logo.animations.length, 0);
+  assert.equal(state.timers.size, 1, 'only the bounded backdrop deadline is pending');
+  assert.notEqual(state.get('login-submit').disabled, true);
+  state.loadBackdrop();
+  state.step(1699);
+  assert.equal(state.logo.animations.length, 0);
+  state.step(1700);
+  assert.equal(state.logo.animations.length, 1);
+});
+
+test('backdrop failure falls back to the existing scene without indefinitely hiding logo', () => {
+  const state = setup({ cached: true, backdropReady: false });
+  state.backdrop().onerror();
+  state.step(500);
+  assert.equal(state.logo.style.visibility, 'visible');
+  assert.equal(state.logo.animations.length, 1);
+});
+
+test('pending backdrop falls back after 2500ms then uses the normal visible settle', () => {
+  const state = setup({ cached: true, backdropReady: false });
+  state.step(2499);
+  assert.equal(state.logo.style.visibility, 'hidden');
+  state.step(2500);
+  assert.equal(state.logo.animations.length, 0);
+  assert.notEqual(state.get('login-submit').disabled, true);
+  state.step(2999);
+  assert.equal(state.logo.animations.length, 0);
+  state.step(3000);
+  assert.equal(state.logo.animations.length, 1);
+  assert.equal(state.timers.size, 0);
+});
+
+test('successful backdrop load cancels its deadline instead of postponing entrance', () => {
+  const state = setup({ cached: true, backdropReady: false });
+  state.step(100);
+  state.loadBackdrop();
+  assert.deepEqual([...state.timers.values()].map(timer => timer.at), [600]);
+  state.step(600);
+  assert.equal(state.logo.animations.length, 1);
+  assert.equal(state.timers.size, 0);
+  state.step(3000);
+  assert.equal(state.logo.animations.length, 1);
+});
+
+test('destroy removes a pending backdrop deadline and ignores its late callback', () => {
+  const state = setup({ cached: true, backdropReady: false });
+  const late = [...state.timers.values()][0].callback;
+  state.controller.destroy();
+  assert.equal(state.timers.size, 0);
+  late();
+  state.step(3000);
+  assert.equal(state.logo.animations.length, 0);
+  assert.equal(state.timers.size, 0);
+});
+
+test('hiding during settling cancels the timer and restarts a full visible settling period', () => {
+  const state = setup({ cached: true });
+  state.step(300);
+  state.controller.setVisible(false);
+  assert.equal(state.timers.size, 0);
+  state.step(1000);
+  assert.equal(state.logo.animations.length, 0);
+  state.controller.setVisible(true);
+  state.step(1499);
+  assert.equal(state.logo.animations.length, 0);
+  state.step(1500);
+  assert.equal(state.logo.animations.length, 1);
+});
+
+test('destroy cancels settling and ignores an already queued timer callback', () => {
+  const state = setup({ cached: true });
+  const late = [...state.timers.values()][0].callback;
+  state.controller.destroy();
+  assert.equal(state.timers.size, 0);
+  late();
+  state.step(600);
+  assert.equal(state.logo.animations.length, 0);
+  assert.equal(state.backdrop().onload, null);
+  assert.equal(state.backdrop().onerror, null);
+});
+
+test('reduced motion skips both backdrop waiting and settling without delaying controls', () => {
+  const state = setup({ cached: true, backdropReady: false });
+  state.media.emit('change', { matches: true });
+  assert.equal(state.logo.style.visibility, 'visible');
+  assert.equal(state.logo.animations.length, 0);
+  assert.equal(state.timers.size, 0);
+  assert.notEqual(state.get('login-submit').disabled, true);
+});
+
+test('restoring motion before logo loads does not strand a cancelled backdrop wait', () => {
+  const state = setup({ backdropReady: false });
+  state.media.emit('change', { matches: true });
+  state.media.emit('change', { matches: false });
+  state.load();
+  state.step(500);
+  assert.equal(state.logo.animations.length, 1);
 });
 
 test('progress interpolates actual progress, stays bounded and resets for a new attempt', () => {
@@ -195,11 +314,14 @@ test('offscreen, document hiding and explicit hiding cancel all scheduled drawin
   assert.ok(state.inkCalls.some(call => call[0] === 'image'));
   state.intersect(false);
   assert.equal(state.frames.size, 0);
+  assert.equal(state.timers.size, 0);
   state.intersect(true);
   assert.equal(state.frames.size, 1);
+  assert.equal(state.timers.size, 1);
   state.doc.hidden = true;
   state.doc.emit('visibilitychange');
   assert.equal(state.frames.size, 0);
+  assert.equal(state.timers.size, 0);
   state.doc.hidden = false;
   state.doc.emit('visibilitychange');
   assert.equal(state.frames.size, 1);
@@ -223,6 +345,7 @@ test('reduced motion renders static logo and actual progress with no animation l
 
 test('changing reduced-motion preference cancels running effects and can restore ambient motion', () => {
   const state = setup({ cached: true });
+  state.step(500);
   state.media.emit('change', { matches: true });
   assert.equal(state.frames.size, 0);
   assert.equal(state.logo.animations[0].state, 'cancelled');
@@ -234,6 +357,7 @@ test('changing reduced-motion preference cancels running effects and can restore
 
 test('logo floats only after the entrance, and float pauses or cancels with lifecycle', () => {
   const state = setup({ cached: true });
+  state.step(500);
   const reveal = state.logo.animations[0];
   assert.equal(state.logo.animations.length, 1);
   reveal.onfinish();
@@ -256,18 +380,20 @@ test('optional ink assets use exact versioned URLs and mobile backing stays boun
   assert.ok(getImageAssets().every(url => /assets\/runtime\/v5\/effects\/ink-0[1-6]\.webp\?v=xianlai-v5-20260908$/.test(url)));
   const state = setup({ width: 1448, height: 1086 });
   state.step(40);
-  assert.deepEqual(state.images.map(image => image.src), getImageAssets());
+  assert.deepEqual(state.textureImages().map(image => image.src), getImageAssets());
   state.inkCalls.length = 0;
   state.resize(390, 844);
   state.step(120);
   assert.equal(state.get('login-ink-canvas').width, 390);
   assert.equal(state.get('login-ink-canvas').height, 844);
-  assert.equal(state.images.length, 6, 'resize does not reload decorations');
+  assert.equal(state.textureImages().length, 6, 'resize does not reload decorations');
 });
 
 test('ink textures deform locally and keep moving after reveal with bounded drawing', () => {
   const state = setup({ cached: true });
+  state.step(500);
   state.logo.animations[0].onfinish();
+  state.inkCalls.length = 0;
   state.step(5000);
   const first = state.inkCalls.filter(call => call[0] === 'image' && call[1] !== 'logo');
   assert.ok(first.length > 8 && first.length < 100);
@@ -331,7 +457,7 @@ test('late image callbacks cannot restart a hidden or destroyed login controller
   hidden.controller.setVisible(true);
   assert.equal(hidden.frames.size, 1);
   const destroyed = setup({ texturesReady: false });
-  const late = destroyed.images[0].onload;
+  const late = destroyed.textureImages()[0].onload;
   destroyed.controller.destroy();
   late();
   assert.equal(destroyed.frames.size, 0);

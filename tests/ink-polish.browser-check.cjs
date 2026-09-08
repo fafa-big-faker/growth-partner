@@ -34,6 +34,7 @@ async function main() {
     for (const viewport of [{ width: 360, height: 640 }, { width: 390, height: 844 }, { width: 844, height: 390 }, { width: 1440, height: 900 }]) {
       await page.setViewportSize(viewport);
       await page.goto('http://ink.local');
+      assert.equal(await page.title(), '仙来');
       await page.waitForFunction(() => document.getElementById('login-brand-image').naturalWidth > 0);
       await page.waitForFunction(() => document.getElementById('login-brand-image').getAnimations().some(animation => animation.effect.getTiming().iterations === Infinity));
       await page.evaluate(async () => {
@@ -162,12 +163,16 @@ async function main() {
         }));
         const frame = getComputedStyle(document.querySelector('.task-card'), '::before');
         const desc = getComputedStyle(document.querySelector('.task-desc'));
-        return { images, taskFrame: frame.borderImageSource, taskColor: desc.color, taskSize: parseFloat(desc.fontSize) };
+        const headings = Array.from(document.querySelectorAll('.ink-task-page .ink-page-heading .page-title, .ink-task-page .task-section-label, .ink-task-page .theme-head'))
+          .map(element => getComputedStyle(element).backgroundColor);
+        return { images, taskFrame: frame.borderImageSource, taskColor: desc.color, taskSize: parseFloat(desc.fontSize), headings };
       });
       assert.deepEqual(paperCheck.images, [960, 960]);
       assert.ok(paperCheck.taskFrame.includes('v5/ui/task-paper.webp'));
       assert.equal(paperCheck.taskColor, 'rgb(70, 76, 73)');
       assert.ok(paperCheck.taskSize >= 14);
+      assert.ok(paperCheck.headings.length >= 2);
+      assert.ok(paperCheck.headings.every(color => color === 'rgba(0, 0, 0, 0)'), 'task heading backing stays transparent');
 
       await page.evaluate(() => PlayerView.filterTasks('daily'));
       const hintContrast = await page.evaluate(() => {
@@ -221,6 +226,8 @@ async function main() {
         frame: getComputedStyle(document.querySelector('.shop-item'), '::before').borderImageSource,
         bodyColor: getComputedStyle(document.querySelector('.shop-description')).color,
         bodySize: parseFloat(getComputedStyle(document.querySelector('.shop-description')).fontSize),
+        headings: Array.from(document.querySelectorAll('.ink-reward-page .ink-page-heading .page-title, .ink-reward-page .shop-heading .section-title, .ink-reward-page .shop-tip'))
+          .map(element => getComputedStyle(element).backgroundColor),
       }));
       assert.equal(shopGeometry.overflow, false);
       assert.equal(shopGeometry.columns, viewport.width <= 640 ? 1 : 2);
@@ -230,6 +237,8 @@ async function main() {
       assert.ok(shopGeometry.frame.includes('v5/ui/shop-paper.webp'));
       assert.equal(shopGeometry.bodyColor, 'rgb(70, 76, 73)');
       assert.ok(shopGeometry.bodySize >= 14);
+      assert.ok(shopGeometry.headings.length >= 2);
+      assert.ok(shopGeometry.headings.every(color => color === 'rgba(0, 0, 0, 0)'), 'shop heading backing stays transparent');
       results.push({ viewport, motion, loading, taskGeometry, shopGeometry, hintContrast, closeGeometry, paperCheck });
     }
     assert.deepEqual(errors, []);

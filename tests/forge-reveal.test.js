@@ -138,6 +138,30 @@ test('forge modal runs one guarded operation and reveals the result in place', (
   assert.equal((showForge.match(/UI\.modal\(/g) || []).length, 1, 'forge should not stack a second result modal');
 });
 
+test('forge frame keeps its action slot outside the swapping art and before the repeated draw control', () => {
+  const showForge = app.match(/\r?\n  showForge\(\) \{[\s\S]*?\r?\n  },\r?\n\r?\n  \/\/ 十连砍/)?.[0] || '';
+  assert.match(showForge, /class="forge-reveal-frame"[\s\S]*?id="forge-reveal-art"[\s\S]*?<\/div>\s*<div id="forge-result-action"/);
+  assert.match(showForge, /art:\s*overlay\.querySelector\('#forge-reveal-art'\)/);
+  assert.match(showForge, /const resultAction = overlay\.querySelector\('#forge-result-action'\)/);
+  assert.match(showForge, /resultAction\.innerHTML = ''/);
+  assert.ok(showForge.indexOf('id="forge-result-action"') < showForge.indexOf('id="forge-ok"'));
+  assert.ok(showForge.indexOf('id="forge-result-detail"') > showForge.indexOf('id="forge-ok"'));
+  assert.ok(showForge.indexOf('class="forge-probability-details"') > showForge.indexOf('id="forge-ok"'));
+  assert.match(showForge, /overlay\.classList\.add\('forge-modal-overlay'\)/);
+});
+
+test('forge eligibility renders an equip action or configured red requirement, never redundant copy', () => {
+  const showForge = app.match(/\r?\n  showForge\(\) \{[\s\S]*?\r?\n  },\r?\n\r?\n  \/\/ 十连砍/)?.[0] || '';
+  assert.doesNotMatch(showForge, /renderAxeRealmRequirement/);
+  assert.match(showForge, /getMinRealmForAxeQuality\(result\.quality\)/);
+  assert.match(showForge, /resultAction\.innerHTML = canEquip \?/);
+  assert.match(showForge, /forge-result-equip[\s\S]*?>立即装备<\/button>/);
+  assert.match(showForge, /forge-result-locked[\s\S]*?及以上可装备/);
+  assert.match(styles, /\.forge-result-action\s*\{[^}]*height:\s*44px/);
+  assert.match(styles, /\.forge-result-locked\s*\{[^}]*color:\s*#9d3836/);
+  assert.match(styles, /\.modal-overlay\.forge-modal-overlay\s*\{[^}]*align-items:\s*flex-start/);
+});
+
 test('forge reveal styling is restrained and has reduced-motion support', () => {
   assert.match(styles, /\.forge-reveal-art\.is-shaking/);
   assert.match(styles, /\.forge-reveal-flash\.is-active/);
