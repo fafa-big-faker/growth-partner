@@ -143,3 +143,13 @@ git push origin main
 - 相对按钮定位的次数/状态角标必须放在按钮或专用按钮容器内，不能挂到还包含其他操作的整组容器。覆盖装饰角标不接收指针，邻近控制预留明确间距。
 - 替换角色图片后，必须同步更新实际运行资源 URL 的缓存版本，不只更新 JS 文件版本。
 - 美术提示词与动效方向先交付，临时示意不得直接冒充用户生成的正式资源。当前四组生成提示词在仓库同级 `仙来-美术生成提示词.md`。
+
+## 10. V4 手机修仙与背包
+
+- `mobile-cultivation.js/css`只负责手机修仙布局：场景、操作与底导航同屏，完整背包以抽屉打开。电脑、任务和商店不套用此布局。短竖屏先压缩摘要和信息区；极矮横屏保留安全滚动。
+- 抽屉移动唯一的背包DOM，不复制`inventory-grid`；页签和各自滚动位置保留。当前装备、锻造入口在响应式切换时恢复原位置。
+- 抽屉使用独立`.mobile-inventory-overlay`，不能混入会被物品操作删除的`.modal-overlay`集合。道具详情仍在上层，Escape先关闭详情，下一次再收起背包；底层页面不可误触。
+- 整页修仙刷新前`MobileCultivation.unmount({ preserve: true })`，刷新后`mount(snapshot)`；背包重绘前后调用`beforeInventoryRender(tab)`与`refreshInventory(tab)`。离开修仙或退出登录时必须清理监听、观察器、inert和body滚动锁。
+- 短屏人物与树通过同一场景容器整体缩放，不分别改变锚点。新布局不得破坏十连时间轴、点击区域或砍树次数相对按钮的位置。
+- `node tests/mobile-cultivation.browser-check.cjs`是无截图、无真实账号的本地事件/几何检查，覆盖360x540、360x640、390x844、844x390及1440x900。依赖路径可由`PLAYWRIGHT_MODULE`和`BROWSER_EXECUTABLE`指定。
+- 角色突破展示读取配置名称与要求，不再渲染仙阶emoji；保留icon配置兼容。修改名称只在飞书执行，再同步生成配置。

@@ -17,7 +17,7 @@ test('feature icons resolve the new atlas while keeping unmodified icons intact'
     assert.equal(context.resolveIcon(`icon-${name}`), `assets/runtime/v3/icons/icon-${name}.webp`);
   }
   assert.equal(context.resolveIcon('icon-reward'), 'assets/runtime/v3/icons/icon-shop.webp');
-  assert.equal(context.resolveIcon('icon-forge'), 'assets/runtime/v2/icons/icon-forge.webp');
+  assert.equal(context.resolveIcon('icon-forge'), 'assets/runtime/v4/icons/icon-forge.webp');
 });
 
 test('all new runtime artwork is included in preload and old login art is no longer requested', () => {
@@ -25,6 +25,7 @@ test('all new runtime artwork is included in preload and old login art is no lon
   const context = {
     V2_IMAGE_ROOT: 'assets/runtime/v2', V3_IMAGE_ROOT: 'assets/runtime/v3',
     GAME_CONFIG: { itemTable: [] }, ITEM_IMAGES: {}, AssetPreloader,
+    getItemIconPath: () => '',
   };
   vm.runInNewContext(`${source}\nglobalThis.assets = getInitialGameImageAssets();`, context);
   const manifest = JSON.parse(fs.readFileSync(path.join(root, 'assets/runtime/v3/manifest.json'), 'utf8'));

@@ -138,6 +138,12 @@ def parse_req_items(s):
 # ===== 道具图标（飞书单元格内嵌图片）=====
 ICONS_DIR_REL = "assets/images/icons"  # 相对 WORKSPACE 的图标目录
 
+
+def approved_item_art(item_id):
+    """Use locally approved atlas art without re-downloading legacy sheet images."""
+    rel_path = f"assets/runtime/v4/items/{item_id}.webp"
+    return rel_path if os.path.isfile(os.path.join(WORKSPACE, rel_path)) else ""
+
 def read_sheet_cells(token, sheet_name, range_str):
     """读取工作表，返回原始 cell 对象二维数组（含 value / rich_text 等结构）"""
     d = lark_cli("sheets", "+cells-get",
@@ -248,14 +254,15 @@ for row in cells[2:]:  # 跳过表头2行
         continue
     item_id = to_int(cv(0))
     # icon 列（第 I 列，index 8）：优先取内嵌图片，下载到本地
-    icon_image = ""
+    icon_image = approved_item_art(item_id)
     icon_cell = row[8] if len(row) > 8 else None
     img_token = cell_image_token(icon_cell)
-    if img_token:
+    if img_token and not icon_image:
         rel_path = f"{ICONS_DIR_REL}/{item_id}.png"
         if download_sheet_image(img_token, SHEETS["道具表"], rel_path):
             icon_image = rel_path
-            icon_count += 1
+    if icon_image:
+        icon_count += 1
     item_table.append({
         "id": item_id,
         "name": to_str(cv(1)),

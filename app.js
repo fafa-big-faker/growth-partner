@@ -165,12 +165,18 @@ function itemEmoji(itemId) {
   return ITEM_EMOJI[id] || '❓';
 }
 
-// 统一道具图标渲染：优先飞书配置的PNG(iconImage) → 本地内置映射(ITEM_IMAGES) → emoji
+function getItemIconPath(itemId, configuredImage) {
+  const id = String(itemId);
+  if (Object.hasOwn(ITEM_IMAGES, id)) return `assets/runtime/v4/items/${id}.webp`;
+  return configuredImage || '';
+}
+
+// Approved V4 art overrides legacy sheet images; future item IDs retain configured art.
 // 斧头(type5)自动追加竖长 class item-icon-axe
 function renderItemIcon(itemId, fallbackEmoji, cls = 'item-icon-img') {
   const id = String(itemId);
   const def = (typeof ITEMS !== 'undefined') ? ITEMS[id] : null;
-  const img = (def && def.iconImage) || ITEM_IMAGES[id];
+  const img = getItemIconPath(id, def?.iconImage);
   const fb = (fallbackEmoji && fallbackEmoji !== '❓') ? fallbackEmoji : (ITEM_EMOJI[id] || '❓');
   if (img) {
     const isAxe = def && def.type === 5;
@@ -229,6 +235,7 @@ const FEATURE_ICON_OVERRIDES = Object.freeze({
 });
 
 function getFeatureIconPath(name) {
+  if (name === 'icon-forge') return 'assets/runtime/v4/icons/icon-forge.webp';
   const replacement = FEATURE_ICON_OVERRIDES[name];
   return replacement ? `${V3_IMAGE_ROOT}/icons/${replacement}.webp` : `${V2_IMAGE_ROOT}/icons/${name}.webp`;
 }
@@ -283,10 +290,10 @@ function getInitialGameImageAssets(axeId = null) {
     'backgrounds/reward.webp', 'trees/sprout.webp', 'trees/spirit.webp', 'trees/divine.webp',
     'effects/effect-drop-glow.webp', 'effects/effect-hit-spark.webp',
     'effects/effect-leaf-gold.webp', 'effects/effect-leaf-green.webp',
-    ...['breakthrough', 'close', 'forge', 'lock', 'tree-info', 'wallet']
+    ...['breakthrough', 'close', 'lock', 'tree-info', 'wallet']
       .map(name => `icons/icon-${name}.webp`),
-    ...['button-primary', 'button-secondary', 'checkbox-off', 'checkbox-on', 'chop-button-bg', 'modal-crest', 'panel-corner',
-      'panel-divider', 'scroll-thumb', 'slot-blue', 'slot-gold', 'slot-neutral', 'slot-purple', 'slot-rose',
+    ...['button-primary', 'button-secondary', 'checkbox-off', 'checkbox-on', 'chop-button-bg', 'panel-corner',
+      'panel-divider', 'scroll-thumb',
       'status-pill', 'tab-active', 'tab-inactive'].map(name => `ui/${name}.webp`),
   ].map(path => `${V2_IMAGE_ROOT}/${path}`);
   const v3Files = [
@@ -294,11 +301,14 @@ function getInitialGameImageAssets(axeId = null) {
     ...['topbar', 'status', 'inventory', 'equip', 'nav'].map(name => `ui/frame-${name}.webp`),
     ...['cultivate', 'tasks', 'shop', 'mail', 'achievement', 'sound'].map(name => `icons/icon-${name}.webp`),
   ].map(path => `${V3_IMAGE_ROOT}/${path}`);
-  const configuredImages = (GAME_CONFIG?.itemTable || []).map(item => item.iconImage).filter(Boolean);
+  const configuredImages = (GAME_CONFIG?.itemTable || []).map(item => getItemIconPath(item.id, item.iconImage)).filter(Boolean);
+  const itemImages = Object.keys(ITEM_IMAGES).map(id => getItemIconPath(id));
+  const v4Files = ['icons/icon-forge.webp', ...['slot-item', 'slot-weapon', 'modal-paper', 'button-forge'].map(name => `ui/${name}.webp`)]
+    .map(path => `assets/runtime/v4/${path}`);
   const currentAxeFrames = axeId
     ? [...getAxeIdleFrames(axeId), ...getAxeChopFrames(axeId)]
     : [];
-  return AssetPreloader.collect([Object.values(ITEM_IMAGES), configuredImages, currentAxeFrames, v2Files, v3Files]);
+  return AssetPreloader.collect([itemImages, configuredImages, currentAxeFrames, v2Files, v3Files, v4Files]);
 }
 
 function preloadAxeAnimation(itemId, onProgress = () => {}) {
@@ -1175,7 +1185,7 @@ function achievementGoalText(typeId, value) {
   switch (typeId) {
     case 3: return `仙树灵阶达到 ${value} 阶`;
     case 4: return `累计砍树 ${value} 次`;
-    case 5: return `累计获得 ${value} 游戏币`;
+    case 5: return `累计获得 ${value} ${ITEMS['0']?.name || '游戏币'}`;
     case 6: return `累计提现 ¥${value}`;
     default: return `达成成就 ${value}`;
   }
@@ -1726,7 +1736,7 @@ const Game = {
     InventoryNewState.clearWeapon(instanceId);
     this._syncInventoryNovelty();
     UI.updateHeader();
-    UI.toast(`出售成功！获得 ${itemDef.sellPrice} 游戏币`, 'success');
+    UI.toast(`出售成功！获得 ${itemDef.sellPrice} ${ITEMS['0']?.name || '游戏币'}`, 'success');
     return true;
   },
 
@@ -1834,7 +1844,7 @@ const Game = {
 
     // 游戏币校验
     if ((this.state.coin || 0) < price) {
-      UI.toast('游戏币不足，砍树掉落/出售仙斧可获得游戏币', 'warn');
+      UI.toast(`${ITEMS['0']?.name || '游戏币'}不足，砍树或出售仙斧可获得`, 'warn');
       return false;
     }
 
@@ -2284,6 +2294,8 @@ const Router = {
   playerTab(tab, options = {}) {
     const main = document.getElementById('player-main');
     if (this.currentPlayerTab === tab && main?.dataset.renderedTab === tab && !options.force) return;
+
+    if (tab !== 'cultivate' && typeof MobileCultivation !== 'undefined') MobileCultivation.unmount();
 
     void AudioManager.playEffect('uiOpen');
     this.currentPlayerTab = tab;
@@ -2774,6 +2786,7 @@ const PlayerView = {
 
   async renderCultivate() {
     const main = document.getElementById('player-main');
+    const mobileState = typeof MobileCultivation !== 'undefined' ? MobileCultivation.unmount({ preserve: true }) : null;
     const treeConfig = TREE_LEVELS[Game.state.treeLevel] || TREE_LEVELS[1];
     const treeRealm = TREE_REALMS.find(r => r.level == Game.state.treeRealm) || TREE_REALMS[0];
     const realm = REALMS.find(r => r.level == Game.state.realmLevel) || REALMS[0];
@@ -2802,7 +2815,7 @@ const PlayerView = {
             <span class="audio-toggle-icon" aria-hidden="true">${renderFeatureIcon('icon-sound', '', 'audio-toggle-image')}</span>
           </button>
         </div>
-        <div class="res-pill res-coin" id="coin-pill" title="游戏币 · 可在「天道酬勤」商店购买道具，砍树/出售仙斧可获得">
+        <div class="res-pill res-coin" id="coin-pill" title="${escapeHtml(ITEMS['0']?.name || '游戏币')} · 游戏内货币，可在天道酬勤商店使用">
           <span class="res-icon">${renderItemIcon('0', '🪙', 'res-coin-img')}</span><span class="res-val" id="coin-count">${Game.state.coin || 0}</span>
         </div>
       </div>
@@ -2837,8 +2850,8 @@ const PlayerView = {
       <div class="cult-inventory">
         <div class="inventory-grid" id="inventory-grid"></div>
         <div class="inv-tabs-v">
-          <div class="inv-tab-v ${this.currentInvTab === 'items' ? 'active' : ''}" data-tab="items" onclick="PlayerView.switchInvTab('items')">道具</div>
-          <div class="inv-tab-v ${this.currentInvTab === 'weapons' ? 'active' : ''}" data-tab="weapons" onclick="PlayerView.switchInvTab('weapons')">武器</div>
+          <button type="button" class="inv-tab-v ${this.currentInvTab === 'items' ? 'active' : ''}" data-tab="items" onclick="PlayerView.switchInvTab('items')">道具</button>
+          <button type="button" class="inv-tab-v ${this.currentInvTab === 'weapons' ? 'active' : ''}" data-tab="weapons" onclick="PlayerView.switchInvTab('weapons')">武器</button>
         </div>
       </div>
 
@@ -2879,6 +2892,7 @@ const PlayerView = {
     CultivatorAnimator.attach(document.getElementById('cultivator-sprite'));
     AudioManager.syncControls();
     this.renderInventory(this.currentInvTab);
+    if (typeof MobileCultivation !== 'undefined') MobileCultivation.mount(mobileState || {});
     UI._updateMailBadge();
     UI._updateAchBadge();
   },
@@ -3052,6 +3066,7 @@ const PlayerView = {
   renderInventory(tab) {
     const grid = document.getElementById('inventory-grid');
     if (!grid) return;
+    if (typeof MobileCultivation !== 'undefined') MobileCultivation.beforeInventoryRender(tab);
 
     const isWeapons = tab === 'weapons';
     // 武器 tab 整个 grid 进入竖格模式（含空槽位），道具 tab 保持方格
@@ -3101,6 +3116,7 @@ const PlayerView = {
     }
 
     grid.innerHTML = html;
+    if (typeof MobileCultivation !== 'undefined') MobileCultivation.refreshInventory(tab);
   },
 
   showItemDetail(itemId, instanceId = null) {
@@ -3390,7 +3406,7 @@ const PlayerView = {
     const weapon = Game.weapons.find(entry => entry.id === instanceId);
     const def = ITEMS[weapon?.itemId];
     if (!weapon || !def) return;
-    UI.confirm(`确定出售 ${def.name}，获得 ${def.sellPrice} 游戏币？`, async () => {
+    UI.confirm(`确定出售 ${def.name}，获得 ${def.sellPrice} ${ITEMS['0']?.name || '游戏币'}？`, async () => {
       const operationKey = `sell-axe:${instanceId}`;
       if (OperationGuard.isActive(operationKey)) return;
       const originalHtml = button?.innerHTML;
@@ -3503,7 +3519,7 @@ const PlayerView = {
     // 特殊道具（游戏币/砍树次数）单独展示
     let icon, name, color, label;
     if (item.kind === 'coin') {
-      icon = renderItemIcon('0', '🪙', 'item-icon-lg'); name = '游戏币'; color = '#d4af37';
+      icon = renderItemIcon('0', '🪙', 'item-icon-lg'); name = ITEMS['0']?.name || '游戏币'; color = '#526f61';
       label = `货币 · 获得 ×${item.quantity}`;
     } else if (item.kind === 'chopping') {
       icon = renderItemIcon('1', '🪓', 'item-icon-lg'); name = '砍树次数'; color = '#4a90d9';
@@ -4241,11 +4257,11 @@ const PlayerView = {
       <div class="shop-section">
         <div class="section-header" style="align-items:center">
           <div class="section-title section-title-art">${renderFeatureIcon('icon-shop', '', 'section-title-icon')}<span>天道酬勤商店</span></div>
-          <div class="res-pill res-coin" title="游戏币余额">
+          <div class="res-pill res-coin" title="${escapeHtml(ITEMS['0']?.name || '游戏币')}余额">
             <span class="res-icon">${renderItemIcon('0', '🪙', 'res-coin-img')}</span><span class="res-val" id="shop-coin-balance">${Game.state.coin || 0}</span>
           </div>
         </div>
-        <div class="shop-tip">砍树掉落、出售仙斧可获得游戏币，用于在此兑换道具</div>
+        <div class="shop-tip">${escapeHtml(ITEMS['0']?.name || '游戏币')} · 游戏内货币</div>
         <div class="shop-grid" id="shop-grid"></div>
       </div>
 
@@ -4382,7 +4398,7 @@ const PlayerView = {
     const item = getShopItems().find(s => s.shopId === parseInt(shopId));
     if (!item) return;
     const countText = item.itemCount > 1 ? ` ×${item.itemCount}` : '';
-    UI.confirm(`确定花费 ${item.price} 游戏币购买 ${item.name}${countText}？`, async () => {
+    UI.confirm(`确定花费 ${item.price} ${ITEMS['0']?.name || '游戏币'}购买 ${item.name}${countText}？`, async () => {
       const outcome = await UI.runLockedAction(
         `shop:${shopId}`,
         control,
@@ -4739,11 +4755,10 @@ const PlayerView = {
       const ok = have >= req.count;
       const icon = renderItemIcon(req.itemId, def?.icon, 'item-icon-sm');
       const name = def?.name || `道具${req.itemId}`;
-      return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0">
-        <span style="display:inline-flex;align-items:center">${icon}</span>
-        <span style="flex:1">${name}</span>
-        <span style="color:${ok ? 'var(--success)' : 'var(--error)'}">${have}/${req.count}</span>
-      </div>`;
+      return `<li class="breakthrough-requirement ${ok ? 'is-met' : 'is-unmet'}">
+        <span class="breakthrough-requirement-label">${icon}<span>${escapeHtml(name)}</span></span>
+        <span class="breakthrough-requirement-value"><b>${escapeHtml(have)}/${escapeHtml(req.count)}</b><small>${ok ? '已满足' : '材料不足'}</small></span>
+      </li>`;
     }).join('');
 
     // 突破后解锁的仙斧品质
@@ -4755,33 +4770,39 @@ const PlayerView = {
       for (let q = curMaxQ + 1; q <= nextMaxQ; q++) {
         const qInfo = QUALITY[q];
         if (qInfo) {
-          newQualities.push(`<span style="display:inline-block;padding:2px 10px;border-radius:10px;font-size:12px;font-weight:600;background:${qInfo.color}20;color:${qInfo.color};margin:2px">${qInfo.name}仙斧</span>`);
+          newQualities.push(`<span class="breakthrough-unlock buff-quality-${q}">${escapeHtml(qInfo.name)}仙斧</span>`);
         }
       }
       if (newQualities.length > 0) {
         unlockHtml = `
-          <div style="background:var(--accent)12;border:1px solid var(--accent)30;border-radius:8px;padding:10px 12px;margin:12px 0">
-            <div class="theme-reward-title">${renderFeatureIcon('icon-breakthrough', '', 'section-label-icon')}<span>突破解锁</span></div>
-            <div style="font-size:12px;color:var(--text-secondary);margin-bottom:6px">可装备更高品质仙斧：</div>
-            <div>${newQualities.join('')}</div>
-          </div>
+          <section class="breakthrough-unlocks" aria-label="突破解锁">
+            <h3 class="breakthrough-section-title">突破解锁</h3>
+            <div>可装备</div>
+            <div class="breakthrough-unlock-list">${newQualities.join('')}</div>
+          </section>
         `;
       }
     }
 
     UI.modal(`
-      <div style="text-align:center;margin-bottom:16px">
-        <div style="font-size:48px;margin-bottom:8px">${currentRealm.icon} → ${nextRealm.icon}</div>
-        <div style="font-size:18px;font-weight:700">${currentRealm.name} → ${nextRealm.name}</div>
-        <div style="font-size:12px;color:var(--text-secondary);margin-top:4px">${nextRealm.desc}</div>
-      </div>
+      <section class="breakthrough-summary" aria-label="目标仙阶">
+        <p class="breakthrough-current">当前 · ${escapeHtml(currentRealm.name)}</p>
+        <h2 class="breakthrough-target">${escapeHtml(nextRealm.name)}</h2>
+        <span class="breakthrough-ink-line" aria-hidden="true"></span>
+        ${nextRealm.desc ? `<p class="breakthrough-description">${escapeHtml(nextRealm.desc)}</p>` : ''}
+      </section>
+      <h3 class="breakthrough-section-title">突破条件</h3>
+      <ul class="breakthrough-requirements">
+        <li class="breakthrough-requirement ${Game.state.level >= nextRealm.reqLevel ? 'is-met' : 'is-unmet'}">
+          <span class="breakthrough-requirement-label">修炼等级</span>
+          <span class="breakthrough-requirement-value"><b>${escapeHtml(Game.state.level)}/${escapeHtml(nextRealm.reqLevel)}</b><small>${Game.state.level >= nextRealm.reqLevel ? '已满足' : '等级不足'}</small></span>
+        </li>
+        ${reqItemsHtml}
+      </ul>
       ${unlockHtml}
-      <div style="margin-bottom:12px;font-weight:600">突破条件</div>
-      <div style="font-size:13px;margin-bottom:8px">等级要求：${Game.state.level}/${nextRealm.reqLevel} · ${Game.state.level >= nextRealm.reqLevel ? '已满足' : '未满足'}</div>
-      ${reqItemsHtml}
     `, {
       title: '仙阶突破',
-      footer: `<div class="modal-footer">
+      footer: `<div class="modal-footer breakthrough-footer">
         <button class="btn btn-outline btn-sm" onclick="this.closest('.modal-overlay').remove()">取消</button>
         <button class="btn btn-accent btn-sm" id="breakthrough-ok" ${canBreak ? '' : 'disabled'}>突破</button>
       </div>`
@@ -5079,7 +5100,7 @@ const PlayerView = {
       const extraTag = r.isExtra ? '<div style="font-size:10px;color:var(--warning);font-weight:600">额外掉落</div>' : '';
       const buffTag = r.buffText ? `<div style="font-size:10px;color:var(--quality-4)">${r.buffText}</div>` : '';
       let icon, name, color;
-      if (r.kind === 'coin') { icon = renderItemIcon('0', '🪙', 'item-icon-sm'); name = '游戏币'; color = '#d4af37'; }
+      if (r.kind === 'coin') { icon = renderItemIcon('0', '🪙', 'item-icon-sm'); name = ITEMS['0']?.name || '游戏币'; color = '#526f61'; }
       else if (r.kind === 'chopping') { icon = renderItemIcon('1', '🪓', 'item-icon-sm'); name = '砍树次数'; color = '#4a90d9'; }
       else {
         const q = QUALITY[r.quality] || QUALITY[1];

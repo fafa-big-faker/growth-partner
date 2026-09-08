@@ -49,6 +49,7 @@ async function simulateTenChops(chops, started = true) {
   const button = makeButton();
   const tree = makeButton();
   const context = {
+    ITEMS: { '0': { name: '小钱钱' } },
     Game: { state: { realmLevel: 99, choppingCount: 10 }, chopTen: async () => {
       writes++;
       if (chops instanceof Error) throw chops;

@@ -1,0 +1,263 @@
+{
+  "items": {
+    "0": {
+      "path": "assets/runtime/v4/items/0.webp",
+      "size": [
+        160,
+        160
+      ]
+    },
+    "1": {
+      "path": "assets/runtime/v4/items/1.webp",
+      "size": [
+        160,
+        160
+      ]
+    },
+    "30001": {
+      "path": "assets/runtime/v4/items/30001.webp",
+      "size": [
+        160,
+        160
+      ]
+    },
+    "30101": {
+      "path": "assets/runtime/v4/items/30101.webp",
+      "size": [
+        160,
+        160
+      ]
+    },
+    "30201": {
+      "path": "assets/runtime/v4/items/30201.webp",
+      "size": [
+        160,
+        160
+      ]
+    },
+    "40001": {
+      "path": "assets/runtime/v4/items/40001.webp",
+      "size": [
+        160,
+        160
+      ]
+    },
+    "40002": {
+      "path": "assets/runtime/v4/items/40002.webp",
+      "size": [
+        160,
+        160
+      ]
+    },
+    "10001": {
+      "path": "assets/runtime/v4/items/10001.webp",
+      "size": [
+        160,
+        160
+      ]
+    },
+    "10101": {
+      "path": "assets/runtime/v4/items/10101.webp",
+      "size": [
+        160,
+        160
+      ]
+    },
+    "10201": {
+      "path": "assets/runtime/v4/items/10201.webp",
+      "size": [
+        160,
+        160
+      ]
+    },
+    "10301": {
+      "path": "assets/runtime/v4/items/10301.webp",
+      "size": [
+        160,
+        160
+      ]
+    },
+    "10002": {
+      "path": "assets/runtime/v4/items/10002.webp",
+      "size": [
+        160,
+        160
+      ]
+    },
+    "10102": {
+      "path": "assets/runtime/v4/items/10102.webp",
+      "size": [
+        160,
+        160
+      ]
+    },
+    "10202": {
+      "path": "assets/runtime/v4/items/10202.webp",
+      "size": [
+        160,
+        160
+      ]
+    },
+    "10302": {
+      "path": "assets/runtime/v4/items/10302.webp",
+      "size": [
+        160,
+        160
+      ]
+    },
+    "20001": {
+      "path": "assets/runtime/v4/items/20001.webp",
+      "size": [
+        160,
+        160
+      ]
+    },
+    "20101": {
+      "path": "assets/runtime/v4/items/20101.webp",
+      "size": [
+        160,
+        160
+      ]
+    },
+    "20201": {
+      "path": "assets/runtime/v4/items/20201.webp",
+      "size": [
+        160,
+        160
+      ]
+    },
+    "20301": {
+      "path": "assets/runtime/v4/items/20301.webp",
+      "size": [
+        160,
+        160
+      ]
+    },
+    "51001": {
+      "path": "assets/runtime/v4/items/51001.webp",
+      "size": [
+        192,
+        256
+      ]
+    },
+    "51002": {
+      "path": "assets/runtime/v4/items/51002.webp",
+      "size": [
+        192,
+        256
+      ]
+    },
+    "52001": {
+      "path": "assets/runtime/v4/items/52001.webp",
+      "size": [
+        192,
+        256
+      ]
+    },
+    "52002": {
+      "path": "assets/runtime/v4/items/52002.webp",
+      "size": [
+        192,
+        256
+      ]
+    },
+    "53001": {
+      "path": "assets/runtime/v4/items/53001.webp",
+      "size": [
+        192,
+        256
+      ]
+    },
+    "53002": {
+      "path": "assets/runtime/v4/items/53002.webp",
+      "size": [
+        192,
+        256
+      ]
+    },
+    "54001": {
+      "path": "assets/runtime/v4/items/54001.webp",
+      "size": [
+        192,
+        256
+      ]
+    },
+    "54002": {
+      "path": "assets/runtime/v4/items/54002.webp",
+      "size": [
+        192,
+        256
+      ]
+    },
+    "55001": {
+      "path": "assets/runtime/v4/items/55001.webp",
+      "size": [
+        192,
+        256
+      ]
+    }
+  },
+  "ui": {
+    "slot-item": {
+      "path": "assets/runtime/v4/ui/slot-item.webp",
+      "size": [
+        256,
+        252
+      ],
+      "slice": [
+        33,
+        33,
+        33,
+        33
+      ]
+    },
+    "slot-weapon": {
+      "path": "assets/runtime/v4/ui/slot-weapon.webp",
+      "size": [
+        183,
+        256
+      ],
+      "slice": [
+        33,
+        33,
+        33,
+        33
+      ]
+    },
+    "modal-paper": {
+      "path": "assets/runtime/v4/ui/modal-paper.webp",
+      "size": [
+        768,
+        935
+      ],
+      "slice": [
+        134,
+        78,
+        81,
+        153
+      ]
+    },
+    "button-forge": {
+      "path": "assets/runtime/v4/ui/button-forge.webp",
+      "size": [
+        632,
+        192
+      ],
+      "slice": [
+        32,
+        128,
+        48,
+        89
+      ]
+    }
+  },
+  "icons": {
+    "icon-forge": {
+      "path": "assets/runtime/v4/icons/icon-forge.webp",
+      "size": [
+        160,
+        160
+      ]
+    }
+  }
+}

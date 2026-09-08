@@ -1,0 +1,777 @@
+{
+  "sources": {
+    "basic": {
+      "file": "基础与成长道具.png",
+      "size": [
+        1254,
+        1254
+      ],
+      "sha256": "e76b90f328fe08d6d37b159a89269f1dbe0223a1677338f8f17ecbe49e0176ba"
+    },
+    "exchange": {
+      "file": "仙来V4-合成兑换图集.png",
+      "size": [
+        1448,
+        1086
+      ],
+      "sha256": "a63dabdcda2548bfe422c75eddaf1a4f3f1cecedbc700abe654bae501ba563dc"
+    },
+    "axes": {
+      "file": "仙来V4-斧头图集.png",
+      "size": [
+        1254,
+        1254
+      ],
+      "sha256": "9b89a7a01acaf87a250427930c2cf58f7517e8245d7fca4c4b73cbd74ab394b8"
+    },
+    "slots": {
+      "file": "仙来V4-物品框图集.png",
+      "size": [
+        1448,
+        1086
+      ],
+      "sha256": "3ac59d791fd49a4a9d8f13f43b2d25b3bf37b6e8d704196e524e9f655768920c"
+    },
+    "modal": {
+      "file": "仙来V4-通用弹窗.png",
+      "size": [
+        1122,
+        1402
+      ],
+      "sha256": "801da29a5fb4ea7f9ad8e50be51f07bc0d7eb48258910fa8c91fd856c4d38ca7"
+    },
+    "forge": {
+      "file": "仙来V4-锻造图集.png",
+      "size": [
+        1774,
+        887
+      ],
+      "sha256": "cf1d9bd23258f353ab44820b4ff53d507b1f095cecf48da7870c89352e6f124e"
+    }
+  },
+  "assets": {
+    "items": {
+      "0": {
+        "path": "assets/images/v4/items/0.png",
+        "size": [
+          361,
+          361
+        ],
+        "source": "basic",
+        "cell": [
+          0,
+          0,
+          442,
+          473
+        ],
+        "contentBounds": [
+          66,
+          124,
+          388,
+          453
+        ],
+        "padding": 16
+      },
+      "1": {
+        "path": "assets/images/v4/items/1.png",
+        "size": [
+          348,
+          348
+        ],
+        "source": "basic",
+        "cell": [
+          442,
+          0,
+          847,
+          473
+        ],
+        "contentBounds": [
+          492,
+          115,
+          800,
+          431
+        ],
+        "padding": 16
+      },
+      "30001": {
+        "path": "assets/images/v4/items/30001.png",
+        "size": [
+          308,
+          308
+        ],
+        "source": "basic",
+        "cell": [
+          847,
+          0,
+          1254,
+          473
+        ],
+        "contentBounds": [
+          900,
+          133,
+          1176,
+          407
+        ],
+        "padding": 16
+      },
+      "30101": {
+        "path": "assets/images/v4/items/30101.png",
+        "size": [
+          332,
+          332
+        ],
+        "source": "basic",
+        "cell": [
+          0,
+          473,
+          442,
+          827
+        ],
+        "contentBounds": [
+          74,
+          516,
+          374,
+          773
+        ],
+        "padding": 16
+      },
+      "30201": {
+        "path": "assets/images/v4/items/30201.png",
+        "size": [
+          353,
+          353
+        ],
+        "source": "basic",
+        "cell": [
+          442,
+          473,
+          847,
+          827
+        ],
+        "contentBounds": [
+          482,
+          521,
+          803,
+          786
+        ],
+        "padding": 16
+      },
+      "40001": {
+        "path": "assets/images/v4/items/40001.png",
+        "size": [
+          331,
+          331
+        ],
+        "source": "basic",
+        "cell": [
+          847,
+          473,
+          1254,
+          827
+        ],
+        "contentBounds": [
+          891,
+          491,
+          1190,
+          784
+        ],
+        "padding": 16
+      },
+      "40002": {
+        "path": "assets/images/v4/items/40002.png",
+        "size": [
+          374,
+          374
+        ],
+        "source": "basic",
+        "cell": [
+          0,
+          827,
+          442,
+          1254
+        ],
+        "contentBounds": [
+          57,
+          870,
+          399,
+          1152
+        ],
+        "padding": 16
+      },
+      "10001": {
+        "path": "assets/images/v4/items/10001.png",
+        "size": [
+          288,
+          288
+        ],
+        "source": "exchange",
+        "cell": [
+          0,
+          0,
+          377,
+          373
+        ],
+        "contentBounds": [
+          65,
+          85,
+          321,
+          328
+        ],
+        "padding": 16
+      },
+      "10101": {
+        "path": "assets/images/v4/items/10101.png",
+        "size": [
+          318,
+          318
+        ],
+        "source": "exchange",
+        "cell": [
+          377,
+          0,
+          729,
+          373
+        ],
+        "contentBounds": [
+          404,
+          121,
+          690,
+          311
+        ],
+        "padding": 16
+      },
+      "10201": {
+        "path": "assets/images/v4/items/10201.png",
+        "size": [
+          303,
+          303
+        ],
+        "source": "exchange",
+        "cell": [
+          729,
+          0,
+          1075,
+          373
+        ],
+        "contentBounds": [
+          766,
+          93,
+          1037,
+          330
+        ],
+        "padding": 16
+      },
+      "10301": {
+        "path": "assets/images/v4/items/10301.png",
+        "size": [
+          310,
+          310
+        ],
+        "source": "exchange",
+        "cell": [
+          1075,
+          0,
+          1448,
+          373
+        ],
+        "contentBounds": [
+          1116,
+          76,
+          1394,
+          337
+        ],
+        "padding": 16
+      },
+      "10002": {
+        "path": "assets/images/v4/items/10002.png",
+        "size": [
+          285,
+          285
+        ],
+        "source": "exchange",
+        "cell": [
+          0,
+          373,
+          377,
+          708
+        ],
+        "contentBounds": [
+          68,
+          424,
+          321,
+          672
+        ],
+        "padding": 16
+      },
+      "10102": {
+        "path": "assets/images/v4/items/10102.png",
+        "size": [
+          310,
+          310
+        ],
+        "source": "exchange",
+        "cell": [
+          377,
+          373,
+          729,
+          708
+        ],
+        "contentBounds": [
+          421,
+          407,
+          673,
+          685
+        ],
+        "padding": 16
+      },
+      "10202": {
+        "path": "assets/images/v4/items/10202.png",
+        "size": [
+          305,
+          305
+        ],
+        "source": "exchange",
+        "cell": [
+          729,
+          373,
+          1075,
+          708
+        ],
+        "contentBounds": [
+          808,
+          407,
+          1027,
+          680
+        ],
+        "padding": 16
+      },
+      "10302": {
+        "path": "assets/images/v4/items/10302.png",
+        "size": [
+          304,
+          304
+        ],
+        "source": "exchange",
+        "cell": [
+          1075,
+          373,
+          1448,
+          708
+        ],
+        "contentBounds": [
+          1123,
+          413,
+          1395,
+          680
+        ],
+        "padding": 16
+      },
+      "20001": {
+        "path": "assets/images/v4/items/20001.png",
+        "size": [
+          319,
+          319
+        ],
+        "source": "exchange",
+        "cell": [
+          0,
+          708,
+          377,
+          1086
+        ],
+        "contentBounds": [
+          80,
+          732,
+          350,
+          1019
+        ],
+        "padding": 16
+      },
+      "20101": {
+        "path": "assets/images/v4/items/20101.png",
+        "size": [
+          316,
+          316
+        ],
+        "source": "exchange",
+        "cell": [
+          377,
+          708,
+          729,
+          1086
+        ],
+        "contentBounds": [
+          438,
+          732,
+          682,
+          1016
+        ],
+        "padding": 16
+      },
+      "20201": {
+        "path": "assets/images/v4/items/20201.png",
+        "size": [
+          320,
+          320
+        ],
+        "source": "exchange",
+        "cell": [
+          729,
+          708,
+          1075,
+          1086
+        ],
+        "contentBounds": [
+          803,
+          733,
+          1038,
+          1021
+        ],
+        "padding": 16
+      },
+      "20301": {
+        "path": "assets/images/v4/items/20301.png",
+        "size": [
+          332,
+          332
+        ],
+        "source": "exchange",
+        "cell": [
+          1075,
+          708,
+          1448,
+          1086
+        ],
+        "contentBounds": [
+          1112,
+          738,
+          1412,
+          1018
+        ],
+        "padding": 16
+      },
+      "51001": {
+        "path": "assets/images/v4/items/51001.png",
+        "size": [
+          276,
+          368
+        ],
+        "source": "axes",
+        "cell": [
+          0,
+          0,
+          436,
+          434
+        ],
+        "contentBounds": [
+          107,
+          75,
+          343,
+          408
+        ],
+        "padding": 16
+      },
+      "51002": {
+        "path": "assets/images/v4/items/51002.png",
+        "size": [
+          276,
+          368
+        ],
+        "source": "axes",
+        "cell": [
+          436,
+          0,
+          856,
+          434
+        ],
+        "contentBounds": [
+          528,
+          75,
+          763,
+          408
+        ],
+        "padding": 16
+      },
+      "52001": {
+        "path": "assets/images/v4/items/52001.png",
+        "size": [
+          288,
+          384
+        ],
+        "source": "axes",
+        "cell": [
+          856,
+          0,
+          1254,
+          434
+        ],
+        "contentBounds": [
+          946,
+          64,
+          1179,
+          414
+        ],
+        "padding": 16
+      },
+      "52002": {
+        "path": "assets/images/v4/items/52002.png",
+        "size": [
+          285,
+          380
+        ],
+        "source": "axes",
+        "cell": [
+          0,
+          434,
+          436,
+          825
+        ],
+        "contentBounds": [
+          112,
+          456,
+          345,
+          801
+        ],
+        "padding": 16
+      },
+      "53001": {
+        "path": "assets/images/v4/items/53001.png",
+        "size": [
+          291,
+          388
+        ],
+        "source": "axes",
+        "cell": [
+          436,
+          434,
+          856,
+          825
+        ],
+        "contentBounds": [
+          532,
+          453,
+          767,
+          807
+        ],
+        "padding": 16
+      },
+      "53002": {
+        "path": "assets/images/v4/items/53002.png",
+        "size": [
+          288,
+          384
+        ],
+        "source": "axes",
+        "cell": [
+          856,
+          434,
+          1254,
+          825
+        ],
+        "contentBounds": [
+          976,
+          464,
+          1156,
+          814
+        ],
+        "padding": 16
+      },
+      "54001": {
+        "path": "assets/images/v4/items/54001.png",
+        "size": [
+          309,
+          412
+        ],
+        "source": "axes",
+        "cell": [
+          0,
+          825,
+          436,
+          1254
+        ],
+        "contentBounds": [
+          124,
+          831,
+          335,
+          1210
+        ],
+        "padding": 16
+      },
+      "54002": {
+        "path": "assets/images/v4/items/54002.png",
+        "size": [
+          285,
+          380
+        ],
+        "source": "axes",
+        "cell": [
+          436,
+          825,
+          856,
+          1254
+        ],
+        "contentBounds": [
+          543,
+          853,
+          736,
+          1200
+        ],
+        "padding": 16
+      },
+      "55001": {
+        "path": "assets/images/v4/items/55001.png",
+        "size": [
+          309,
+          412
+        ],
+        "source": "axes",
+        "cell": [
+          856,
+          825,
+          1254,
+          1254
+        ],
+        "contentBounds": [
+          949,
+          839,
+          1188,
+          1219
+        ],
+        "padding": 16
+      }
+    },
+    "ui": {
+      "slot-item": {
+        "path": "assets/images/v4/ui/slot-item.png",
+        "size": [
+          676,
+          665
+        ],
+        "source": "slots",
+        "cell": [
+          0,
+          0,
+          824,
+          1086
+        ],
+        "contentBounds": [
+          84,
+          213,
+          744,
+          862
+        ],
+        "padding": 8,
+        "slice": [
+          86,
+          86,
+          86,
+          86
+        ]
+      },
+      "slot-weapon": {
+        "path": "assets/images/v4/ui/slot-weapon.png",
+        "size": [
+          476,
+          665
+        ],
+        "source": "slots",
+        "cell": [
+          824,
+          0,
+          1448,
+          1086
+        ],
+        "contentBounds": [
+          903,
+          213,
+          1363,
+          862
+        ],
+        "padding": 8,
+        "slice": [
+          86,
+          86,
+          86,
+          86
+        ]
+      },
+      "modal-paper": {
+        "path": "assets/images/v4/ui/modal-paper.png",
+        "size": [
+          987,
+          1201
+        ],
+        "source": "modal",
+        "cell": [
+          0,
+          0,
+          1122,
+          1402
+        ],
+        "contentBounds": [
+          69,
+          107,
+          1040,
+          1292
+        ],
+        "padding": 8,
+        "slice": [
+          172,
+          100,
+          104,
+          196
+        ]
+      },
+      "button-forge": {
+        "path": "assets/images/v4/ui/button-forge.png",
+        "size": [
+          876,
+          266
+        ],
+        "source": "forge",
+        "cell": [
+          844,
+          0,
+          1774,
+          887
+        ],
+        "contentBounds": [
+          895,
+          333,
+          1739,
+          567
+        ],
+        "padding": 16,
+        "slice": [
+          44,
+          178,
+          66,
+          124
+        ]
+      }
+    },
+    "icons": {
+      "icon-forge": {
+        "path": "assets/images/v4/icons/icon-forge.png",
+        "size": [
+          747,
+          747
+        ],
+        "source": "forge",
+        "cell": [
+          0,
+          0,
+          844,
+          887
+        ],
+        "contentBounds": [
+          76,
+          212,
+          791,
+          687
+        ],
+        "padding": 16
+      }
+    }
+  }
+}

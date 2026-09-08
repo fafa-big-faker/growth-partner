@@ -26,6 +26,12 @@ GROUP_LIMITS = {
 }
 IMAGE_SUFFIXES = {".png", ".webp", ".jpg", ".jpeg"}
 V3_GROUP_LIMITS = {"backgrounds": (1600, 1200), "ui": (960, 512), "icons": (160, 160)}
+V4_UI_LIMITS = {
+    "slot-item": (256, 256),
+    "slot-weapon": (256, 256),
+    "modal-paper": (768, 960),
+    "button-forge": (640, 192),
+}
 
 
 def save_webp(image: Image.Image, destination: Path, quality: int) -> None:
@@ -125,16 +131,53 @@ def build_v3_assets() -> tuple[dict, int, int, int]:
     return manifest, count, source_bytes, runtime_bytes
 
 
+def build_v4_assets() -> tuple[dict, int, int, int]:
+    source_manifest = SOURCE_ROOT / "v4/source-manifest.json"
+    if not source_manifest.exists():
+        return {}, 0, 0, 0
+    specs = json.loads(source_manifest.read_text(encoding="utf-8"))["assets"]
+    manifest = {}
+    count = source_bytes = runtime_bytes = 0
+    for group, assets in specs.items():
+        manifest[group] = {}
+        for name, spec in assets.items():
+            source = ROOT / spec["path"]
+            destination = RUNTIME_ROOT / "v4" / group / f"{name}.webp"
+            if group == "ui":
+                limit = V4_UI_LIMITS[name]
+            else:
+                limit = (192, 256) if group == "items" and name in AXE_IDS else (160, 160)
+            with Image.open(source) as image:
+                optimized = fit_within(image, limit)
+                save_webp(optimized, destination, quality=92 if group == "ui" else 90)
+                runtime_spec = {"path": destination.relative_to(ROOT).as_posix(), "size": list(optimized.size)}
+                if "slice" in spec:
+                    scale_x = optimized.width / image.width
+                    scale_y = optimized.height / image.height
+                    runtime_spec["slice"] = [round(value * (scale_y if index % 2 == 0 else scale_x))
+                                             for index, value in enumerate(spec["slice"])]
+                manifest[group][name] = runtime_spec
+            source_bytes += source.stat().st_size
+            runtime_bytes += destination.stat().st_size
+            count += 1
+    destination = RUNTIME_ROOT / "v4/manifest.json"
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    destination.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    return manifest, count, source_bytes, runtime_bytes
+
+
 def main() -> None:
     character_count, character_source, character_runtime = build_character_frames()
     _, v2_count, v2_source, v2_runtime = build_v2_assets()
     _, v3_count, v3_source, v3_runtime = build_v3_assets()
-    source_total = character_source + v2_source + v3_source
-    runtime_total = character_runtime + v2_runtime + v3_runtime
+    _, v4_count, v4_source, v4_runtime = build_v4_assets()
+    source_total = character_source + v2_source + v3_source + v4_source
+    runtime_total = character_runtime + v2_runtime + v3_runtime + v4_runtime
     reduction = 100 * (1 - runtime_total / source_total) if source_total else 0
     print(f"Character frames: {character_count} ({mib(character_source):.2f} MiB -> {mib(character_runtime):.2f} MiB)")
     print(f"V2 assets: {v2_count} ({mib(v2_source):.2f} MiB -> {mib(v2_runtime):.2f} MiB)")
     print(f"V3 assets: {v3_count} ({mib(v3_source):.2f} MiB -> {mib(v3_runtime):.2f} MiB)")
+    print(f"V4 assets: {v4_count} ({mib(v4_source):.2f} MiB -> {mib(v4_runtime):.2f} MiB)")
     print(f"Total: {mib(source_total):.2f} MiB -> {mib(runtime_total):.2f} MiB ({reduction:.1f}% smaller)")
 
 
