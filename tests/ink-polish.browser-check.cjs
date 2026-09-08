@@ -36,6 +36,12 @@ async function main() {
       await page.goto('http://ink.local');
       await page.waitForFunction(() => document.getElementById('login-brand-image').naturalWidth > 0);
       await page.waitForFunction(() => document.getElementById('login-brand-image').getAnimations().some(animation => animation.effect.getTiming().iterations === Infinity));
+      await page.evaluate(async () => {
+        await Promise.all(LoginArt.getImageAssets().map(async url => {
+          const image = new Image(); image.src = url; await image.decode();
+          if (image.naturalWidth !== 512) throw new Error('Unexpected ink texture size');
+        }));
+      });
       const motion = await page.evaluate(async () => {
         const canvas = document.getElementById('login-ink-canvas');
         const hash = () => {
@@ -55,13 +61,26 @@ async function main() {
         const first = hash();
         await new Promise(resolve => setTimeout(resolve, 240));
         const float = document.getElementById('login-brand-image').getAnimations().find(animation => animation.effect.getTiming().iterations === Infinity);
+        const access = document.querySelector('.login-access').getBoundingClientRect();
+        const screen = document.getElementById('login-screen').getBoundingClientRect();
+        const sx = canvas.width / screen.width, sy = canvas.height / screen.height;
+        const x = Math.max(0, Math.floor((access.x - screen.x) * sx));
+        const y = Math.max(0, Math.floor((access.y - screen.y) * sy));
+        const area = canvas.getContext('2d').getImageData(x, y,
+          Math.min(canvas.width - x, Math.floor(access.width * sx)),
+          Math.min(canvas.height - y, Math.floor(access.height * sy))).data;
+        let accessInk = 0;
+        for (let i = 3; i < area.length; i += 4) if (area[i]) accessInk++;
         return { first, second: hash(), width: canvas.width, height: canvas.height,
+          accessInk, pointer: getComputedStyle(canvas).pointerEvents,
           float: { frames: float.effect.getKeyframes().map(frame => frame.transform), duration: float.effect.getTiming().duration } };
       });
-      assert.ok(motion.first.visible > 0 && motion.second.visible > 0, 'water canvas is nonblank');
-      assert.notEqual(motion.first.sum, motion.second.sum, 'water continues moving after the entrance');
-      assert.ok(motion.second.visible >= viewport.width * 2, 'water has a meaningful visible span');
-      assert.ok(motion.second.strong >= viewport.width * .15 && motion.second.peak >= 65, 'water has visible ink contrast, not merely nonzero alpha');
+      assert.ok(motion.first.visible > 0 && motion.second.visible > 0, 'bitmap ink canvas is nonblank');
+      assert.notEqual(motion.first.sum, motion.second.sum, 'ink textures continue moving after the entrance');
+      assert.ok(motion.second.visible >= viewport.width * 2, 'real ink has a meaningful visible span');
+      assert.ok(motion.second.strong >= viewport.width * .15 && motion.second.peak >= 65, 'real ink has visible contrast, not merely nonzero alpha');
+      assert.equal(motion.accessInk, 0, 'form area remains free from ink');
+      assert.equal(motion.pointer, 'none');
       assert.deepEqual(motion.float, { frames: ['translateY(0px)', 'translateY(-10px)', 'translateY(0px)'], duration: 6400 });
 
       await page.evaluate(() => {
@@ -136,6 +155,19 @@ async function main() {
       assert.equal(taskGeometry.clipped, false);
       assert.ok(taskGeometry.inactiveHeight < 70, 'inactive activity occupies a compact line');
       assert.ok(Math.abs(taskGeometry.after - taskGeometry.before) < 2, 'task refresh preserves scroll: ' + JSON.stringify(taskGeometry));
+      const paperCheck = await page.evaluate(async () => {
+        const images = await Promise.all(['task', 'shop'].map(async kind => {
+          const image = new Image(); image.src = `assets/runtime/v5/ui/${kind}-paper.webp`;
+          await image.decode(); return image.naturalWidth;
+        }));
+        const frame = getComputedStyle(document.querySelector('.task-card'), '::before');
+        const desc = getComputedStyle(document.querySelector('.task-desc'));
+        return { images, taskFrame: frame.borderImageSource, taskColor: desc.color, taskSize: parseFloat(desc.fontSize) };
+      });
+      assert.deepEqual(paperCheck.images, [960, 960]);
+      assert.ok(paperCheck.taskFrame.includes('v5/ui/task-paper.webp'));
+      assert.equal(paperCheck.taskColor, 'rgb(70, 76, 73)');
+      assert.ok(paperCheck.taskSize >= 14);
 
       await page.evaluate(() => PlayerView.filterTasks('daily'));
       const hintContrast = await page.evaluate(() => {
@@ -144,7 +176,9 @@ async function main() {
         const luminance = color => color.match(/[\d.]+/g).slice(0, 3).map(Number).map(value => value / 255)
           .map(value => value <= .04045 ? value / 12.92 : ((value + .055) / 1.055) ** 2.4)
           .reduce((sum, value, index) => sum + value * [.2126, .7152, .0722][index], 0);
-        const contrast = color => (luminance(style.backgroundColor) + .05) / (luminance(color) + .05);
+        let backing = hint;
+        while (backing.parentElement && getComputedStyle(backing).backgroundColor === 'rgba(0, 0, 0, 0)') backing = backing.parentElement;
+        const contrast = color => (luminance(getComputedStyle(backing).backgroundColor) + .05) / (luminance(color) + .05);
         return { main: contrast(style.color), reset: contrast(getComputedStyle(hint.querySelector('.signin-reset')).color),
           size: parseFloat(style.fontSize), overflow: hint.scrollWidth > hint.clientWidth + 1 };
       });
@@ -184,13 +218,19 @@ async function main() {
         records: document.querySelectorAll('[onclick*="showWithdrawRecords"]').length,
         clipped: Array.from(document.querySelectorAll('.shop-description, .shop-name')).some(el => el.scrollHeight > el.clientHeight + 1 || el.scrollWidth > el.clientWidth + 1),
         actionOverflow: Array.from(document.querySelectorAll('.shop-action')).some(el => el.scrollWidth > el.clientWidth + 1),
+        frame: getComputedStyle(document.querySelector('.shop-item'), '::before').borderImageSource,
+        bodyColor: getComputedStyle(document.querySelector('.shop-description')).color,
+        bodySize: parseFloat(getComputedStyle(document.querySelector('.shop-description')).fontSize),
       }));
       assert.equal(shopGeometry.overflow, false);
       assert.equal(shopGeometry.columns, viewport.width <= 640 ? 1 : 2);
       assert.equal(shopGeometry.records, 1);
       assert.equal(shopGeometry.clipped, false);
       assert.equal(shopGeometry.actionOverflow, false);
-      results.push({ viewport, motion, loading, taskGeometry, shopGeometry, hintContrast, closeGeometry });
+      assert.ok(shopGeometry.frame.includes('v5/ui/shop-paper.webp'));
+      assert.equal(shopGeometry.bodyColor, 'rgb(70, 76, 73)');
+      assert.ok(shopGeometry.bodySize >= 14);
+      results.push({ viewport, motion, loading, taskGeometry, shopGeometry, hintContrast, closeGeometry, paperCheck });
     }
     assert.deepEqual(errors, []);
     console.log(JSON.stringify({ ok: true, pageErrors: errors, results }, null, 2));

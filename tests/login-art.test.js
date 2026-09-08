@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { create } = require('../login-art');
+const { create, getImageAssets } = require('../login-art');
 
 function eventTarget(values = {}) {
   const listeners = new Map();
@@ -36,7 +36,7 @@ function element() {
   });
 }
 
-function setup({ cached = false, reduced = false, contextAvailable = true, width = 960, height = 720 } = {}) {
+function setup({ cached = false, reduced = false, contextAvailable = true, texturesReady = true, width = 960, height = 720 } = {}) {
   const elements = new Map();
   const get = id => { if (!elements.has(id)) elements.set(id, element()); return elements.get(id); };
   const logo = get('login-brand-image');
@@ -52,8 +52,11 @@ function setup({ cached = false, reduced = false, contextAvailable = true, width
     lineTo: (...args) => inkCalls.push(['line', ...args]),
     rect: (...args) => inkCalls.push(['rect', ...args]),
     clip: (...args) => inkCalls.push(['clip', ...args]),
-    ellipse: (...args) => inkCalls.push(['ellipse', ...args]),
-    bezierCurveTo() {}, stroke() { inkCalls.push(['stroke', this.globalAlpha, this.lineWidth]); } };
+    translate: (...args) => inkCalls.push(['translate', ...args]),
+    rotate: (...args) => inkCalls.push(['rotate', ...args]),
+    scale: (...args) => inkCalls.push(['scale', ...args]),
+    drawImage(image, ...args) { inkCalls.push(['image', image.src || 'logo', this.globalAlpha, this.globalCompositeOperation, ...args]); },
+  };
   let bounds = { left: 0, top: 0, width, height };
   get('login-screen').getBoundingClientRect = () => bounds;
   get('login-loading-track').style.setProperty = function (name, value) { this[name] = value; };
@@ -62,7 +65,18 @@ function setup({ cached = false, reduced = false, contextAvailable = true, width
   const media = eventTarget({ matches: reduced });
   let observe;
   let resize;
-  const host = eventTarget({ devicePixelRatio: 2, matchMedia: () => media, ResizeObserver: class {
+  const images = [];
+  const host = eventTarget({ devicePixelRatio: 2, Image: class {
+    constructor() { images.push(this); }
+    set src(value) {
+      this.url = value;
+      if (texturesReady) {
+        this.naturalWidth = this.naturalHeight = 512;
+        this.onload?.();
+      }
+    }
+    get src() { return this.url; }
+  }, matchMedia: () => media, ResizeObserver: class {
     constructor(callback) { resize = callback; }
     observe() {}
     disconnect() {}
@@ -87,7 +101,9 @@ function setup({ cached = false, reduced = false, contextAvailable = true, width
     callbacks.forEach(callback => callback(time));
   }
   const shown = () => Number(get('login-loading-bar').style.transform.match(/scaleX\(([^)]+)\)/)[1]) * 100;
-  return { controller, get, doc, media, logo, fallback, frames, inkCalls, step, shown,
+  return { controller, get, doc, media, logo, fallback, frames, inkCalls, step, shown, images,
+    loadTexture(index) { images[index].naturalWidth = images[index].naturalHeight = 512; images[index].onload?.(); },
+    failTextures() { images.forEach(image => image.onerror?.()); },
     resize(width, height) { bounds = { ...bounds, width, height }; resize(); },
     intersect(value) { observe([{ isIntersecting: value }]); },
     load() { logo.naturalWidth = 949; logo.emit('load'); },
@@ -176,7 +192,7 @@ test('duplicate progress notifications do not postpone an already running tween'
 test('offscreen, document hiding and explicit hiding cancel all scheduled drawing', () => {
   const state = setup({ cached: true });
   state.step(40);
-  assert.ok(state.inkCalls.some(call => call[0] === 'stroke'));
+  assert.ok(state.inkCalls.some(call => call[0] === 'image'));
   state.intersect(false);
   assert.equal(state.frames.size, 0);
   state.intersect(true);
@@ -235,71 +251,91 @@ test('logo floats only after the entrance, and float pauses or cancels with life
   assert.equal(floating.state, 'cancelled');
 });
 
-test('lake mask follows the centered cover crop and mobile backing size stays bounded', () => {
+test('optional ink assets use exact versioned URLs and mobile backing stays bounded', () => {
+  assert.equal(getImageAssets().length, 6);
+  assert.ok(getImageAssets().every(url => /assets\/runtime\/v5\/effects\/ink-0[1-6]\.webp\?v=xianlai-v5-20260908$/.test(url)));
   const state = setup({ width: 1448, height: 1086 });
   state.step(40);
-  const firstPoint = state.inkCalls.find(call => call[0] === 'move');
-  assert.ok(Math.abs(firstPoint[1] - 1448 * .34) < .01);
-  assert.ok(Math.abs(firstPoint[2] - 1086 * .60) < .01);
-  assert.ok(state.inkCalls.some(call => call[0] === 'clip'));
+  assert.deepEqual(state.images.map(image => image.src), getImageAssets());
   state.inkCalls.length = 0;
   state.resize(390, 844);
   state.step(120);
-  const mobilePoint = state.inkCalls.find(call => call[0] === 'move');
-  const scale = 844 / 1086;
-  assert.ok(Math.abs(mobilePoint[1] - ((390 - 1448 * scale) / 2 + 1448 * .34 * scale)) < .01);
-  assert.ok(Math.abs(mobilePoint[2] - 844 * .60) < .01);
   assert.equal(state.get('login-ink-canvas').width, 390);
   assert.equal(state.get('login-ink-canvas').height, 844);
+  assert.equal(state.images.length, 6, 'resize does not reload decorations');
 });
 
-test('ambient water keeps drawing after reveal with only two flattened ripple groups', () => {
+test('ink textures deform locally and keep moving after reveal with bounded drawing', () => {
   const state = setup({ cached: true });
   state.logo.animations[0].onfinish();
   state.step(5000);
-  const rings = state.inkCalls.filter(call => call[0] === 'ellipse');
-  assert.ok(rings.length > 0 && rings.length <= 4);
-  assert.ok(rings.every(call => call[4] < call[3] * .2));
+  const first = state.inkCalls.filter(call => call[0] === 'image' && call[1] !== 'logo');
+  assert.ok(first.length > 8 && first.length < 100);
+  assert.ok(first.some(call => call.length > 10), 'source strips, not a uniformly rotated full-image sticker');
   state.inkCalls.length = 0;
   state.step(6000);
-  assert.ok(state.inkCalls.some(call => call[0] === 'stroke'));
+  const second = state.inkCalls.filter(call => call[0] === 'image' && call[1] !== 'logo');
+  assert.notDeepEqual(second, first);
   assert.equal(state.frames.size, 1);
+  const source = fs.readFileSync(path.join(__dirname, '..', 'login-art.js'), 'utf8');
+  assert.doesNotMatch(source, /visibleLakeSegments|context\.ellipse\(|context\.stroke\(/);
 });
 
-test('mobile ripple centers use visible lake space outside the login form', () => {
+test('mobile ink excludes the entire stable form area', () => {
   const state = setup({ width: 360, height: 640 });
   state.get('login-form-panel').parentElement = {
     getBoundingClientRect: () => ({ left: 24, top: 340, width: 312, height: 230 }),
   };
   state.step(1000);
-  const rings = state.inkCalls.filter(call => call[0] === 'ellipse');
-  assert.ok(rings.length > 0 && rings.length <= 4);
-  assert.ok(rings.every(([, x, y, radiusX, radiusY]) =>
-    x - radiusX >= 0 && x + radiusX <= 360 && y - radiusY > 582 && y + radiusY < 640));
-  const strokes = state.inkCalls.filter(call => call[0] === 'stroke');
-  assert.ok(strokes.some(([, alpha, width]) => alpha >= .23 && width >= 1.5));
+  assert.ok(state.inkCalls.some(call => call[0] === 'rect' && call[1] === 12 && call[2] === 328
+    && call[3] === 336 && call[4] === 254));
+  assert.ok(state.inkCalls.some(call => call[0] === 'clip' && call[1] === 'evenodd'));
+  assert.ok(state.inkCalls.filter(call => call[0] === 'image').length < 70);
 });
 
-test('water is already present at entry and logo float envelope stays excluded', () => {
-  const state = setup({ width: 390, height: 844 });
-  state.logo.getBoundingClientRect = () => ({ left: 45, top: 530, width: 300, height: 80 });
+test('loaded logo silhouette is protected and stable layout avoids canvas resizing each frame', () => {
+  const state = setup({ cached: true, width: 390, height: 844 });
   state.step(0);
-  assert.ok(state.inkCalls.some(call => call[0] === 'ellipse'));
-  assert.ok(state.inkCalls.some(call => call[0] === 'rect' && call[1] === 21 && call[2] === 506
-    && call[3] === 348 && call[4] === 128));
+  assert.ok(state.inkCalls.some(call => call[0] === 'image' && call[1] === 'logo' && call[3] === 'destination-out'));
   state.inkCalls.length = 0;
   state.step(100);
   assert.ok(!state.inkCalls.some(call => call[0] === 'transform'), 'stable layout does not resize canvas each frame');
 });
 
-test('mobile water rendering is capped below desktop frame rate', () => {
+test('mobile ink rendering is capped below desktop frame rate', () => {
   const state = setup({ width: 390, height: 844 });
   state.step(0);
   state.inkCalls.length = 0;
   state.step(40);
   assert.equal(state.inkCalls.length, 0);
   state.step(55);
-  assert.ok(state.inkCalls.some(call => call[0] === 'stroke'));
+  assert.ok(state.inkCalls.some(call => call[0] === 'image'));
+});
+
+test('failed or pending optional textures never create an empty endless animation loop', () => {
+  const state = setup({ texturesReady: false });
+  assert.equal(state.frames.size, 0);
+  state.failTextures();
+  assert.equal(state.frames.size, 0);
+  state.controller.setLoading(true, 60);
+  state.step(220);
+  assert.equal(state.shown(), 60);
+  assert.equal(state.frames.size, 0);
+});
+
+test('late image callbacks cannot restart a hidden or destroyed login controller', () => {
+  const hidden = setup({ texturesReady: false });
+  hidden.controller.setVisible(false);
+  hidden.loadTexture(0);
+  assert.equal(hidden.frames.size, 0);
+  hidden.controller.setVisible(true);
+  assert.equal(hidden.frames.size, 1);
+  const destroyed = setup({ texturesReady: false });
+  const late = destroyed.images[0].onload;
+  destroyed.controller.destroy();
+  late();
+  assert.equal(destroyed.frames.size, 0);
+  assert.ok(destroyed.images.every(image => !image.onload && !image.onerror));
 });
 
 test('loading keeps its ink edge tied to real progress and places status on one baseline', () => {

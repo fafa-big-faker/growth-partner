@@ -69,14 +69,17 @@ async function main() {
           const style = getComputedStyle(el);
           return { name: style.animationName, delay: parseFloat(style.animationDelay), pointer: style.pointerEvents };
         });
+        await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
         await new Promise(resolve => setTimeout(resolve, 300));
         const visible = Array.from(scene.querySelectorAll('.cult-effect')).filter(el => Number(getComputedStyle(el).opacity) > .2).length;
+        const animationState = Array.from(scene.querySelectorAll('.cult-effect')).map(el => ({ opacity: getComputedStyle(el).opacity, time: el.getAnimations().map(animation => animation.currentTime) }));
+        const connected = scene.isConnected;
         CultivationEffects.clear();
-        return { count, effectStyles, visible, remaining: scene.querySelectorAll('.cult-effect').length, loaded: leaf.naturalWidth > 0 };
+        return { count, effectStyles, visible, animationState, connected, remaining: scene.querySelectorAll('.cult-effect').length, loaded: leaf.naturalWidth > 0 };
       });
       assert.equal(effectsCheck.count, 5);
       assert.equal(effectsCheck.loaded, true);
-      assert.ok(effectsCheck.visible > 0, 'hit effects become visible after the swing delay');
+      assert.ok(effectsCheck.visible > 0, 'hit effects become visible after the swing delay: ' + JSON.stringify(effectsCheck));
       assert.ok(effectsCheck.effectStyles.every(style => style.pointer === 'none' && style.delay >= .18));
       assert.equal(effectsCheck.remaining, 0);
       const geometry = await page.evaluate(() => {
@@ -104,6 +107,23 @@ async function main() {
         assert.deepEqual(await page.evaluate(() => probe), { chop: 1, forge: 1, tree: 3 });
         await page.locator('.mobile-inventory-trigger').click();
         await page.waitForFunction(() => document.querySelector('.mobile-inventory-panel').getBoundingClientRect().bottom <= innerHeight + 1);
+        const paper = await page.evaluate(() => {
+          const style = selector => getComputedStyle(document.querySelector(selector));
+          return {
+            trigger: getComputedStyle(document.querySelector('.mobile-inventory-trigger'), '::before').borderImageSource,
+            outer: style('.mobile-inventory-panel').borderImageSource,
+            inside: style('.mobile-inventory-body .cult-inventory').backgroundColor,
+            innerBlur: style('.mobile-inventory-body .cult-inventory').backdropFilter,
+            equipBlur: style('.mobile-inventory-body .equip-info-bar').backdropFilter,
+            title: style('.mobile-inventory-header h2').color,
+          };
+        });
+        assert.ok(paper.trigger.includes('v3/ui/frame-topbar.webp'));
+        assert.ok(paper.outer.includes('v4/ui/modal-paper.webp'));
+        assert.equal(paper.inside, 'rgba(0, 0, 0, 0)');
+        assert.equal(paper.innerBlur, 'none');
+        assert.equal(paper.equipBlur, 'none');
+        assert.equal(paper.title, 'rgb(37, 43, 41)');
         await page.locator('[data-tab="weapons"].inv-tab-v').click();
         await page.evaluate(() => { document.getElementById('inventory-grid').scrollTop = 150; });
         await page.locator('[data-tab="items"].inv-tab-v').click();

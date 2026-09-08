@@ -6,6 +6,7 @@ under assets/runtime and can be recreated whenever source artwork changes.
 
 from __future__ import annotations
 
+import argparse
 import json
 from pathlib import Path
 
@@ -166,18 +167,65 @@ def build_v4_assets() -> tuple[dict, int, int, int]:
     return manifest, count, source_bytes, runtime_bytes
 
 
+def build_v5_assets() -> tuple[dict, int, int, int]:
+    source_manifest = SOURCE_ROOT / "v5/source-manifest.json"
+    if not source_manifest.exists():
+        return {}, 0, 0, 0
+    specs = json.loads(source_manifest.read_text(encoding="utf-8"))["assets"]
+    manifest = {}
+    count = source_bytes = runtime_bytes = 0
+    for group, assets in specs.items():
+        manifest[group] = {}
+        for name, spec in assets.items():
+            source = ROOT / spec["path"]
+            destination = RUNTIME_ROOT / "v5" / group / f"{name}.webp"
+            with Image.open(source) as image:
+                optimized = fit_within(image, (960, 960) if group == "ui" else (512, 512))
+                save_webp(optimized, destination, quality=91 if group == "ui" else 88)
+                runtime_spec = {
+                    "path": destination.relative_to(ROOT).as_posix(),
+                    "size": list(optimized.size),
+                    "alphaRange": list(optimized.getchannel("A").getextrema()),
+                    "bytes": destination.stat().st_size,
+                }
+                if "slice" in spec:
+                    scale_x = optimized.width / image.width
+                    scale_y = optimized.height / image.height
+                    runtime_spec["slice"] = [round(value * (scale_y if index % 2 == 0 else scale_x))
+                                             for index, value in enumerate(spec["slice"])]
+                manifest[group][name] = runtime_spec
+            source_bytes += source.stat().st_size
+            runtime_bytes += destination.stat().st_size
+            count += 1
+    destination = RUNTIME_ROOT / "v5/manifest.json"
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    destination.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    return manifest, count, source_bytes, runtime_bytes
+
+
 def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--v5-only", action="store_true", help="Build only imported V5 assets, leaving existing runtime artwork untouched.")
+    args = parser.parse_args()
+    if args.v5_only:
+        _, count, source_bytes, runtime_bytes = build_v5_assets()
+        if not count:
+            raise FileNotFoundError("Import V5 artwork before building its runtime assets")
+        print(f"V5 assets: {count} ({mib(source_bytes):.2f} MiB -> {mib(runtime_bytes):.2f} MiB)")
+        return
     character_count, character_source, character_runtime = build_character_frames()
     _, v2_count, v2_source, v2_runtime = build_v2_assets()
     _, v3_count, v3_source, v3_runtime = build_v3_assets()
     _, v4_count, v4_source, v4_runtime = build_v4_assets()
-    source_total = character_source + v2_source + v3_source + v4_source
-    runtime_total = character_runtime + v2_runtime + v3_runtime + v4_runtime
+    _, v5_count, v5_source, v5_runtime = build_v5_assets()
+    source_total = character_source + v2_source + v3_source + v4_source + v5_source
+    runtime_total = character_runtime + v2_runtime + v3_runtime + v4_runtime + v5_runtime
     reduction = 100 * (1 - runtime_total / source_total) if source_total else 0
     print(f"Character frames: {character_count} ({mib(character_source):.2f} MiB -> {mib(character_runtime):.2f} MiB)")
     print(f"V2 assets: {v2_count} ({mib(v2_source):.2f} MiB -> {mib(v2_runtime):.2f} MiB)")
     print(f"V3 assets: {v3_count} ({mib(v3_source):.2f} MiB -> {mib(v3_runtime):.2f} MiB)")
     print(f"V4 assets: {v4_count} ({mib(v4_source):.2f} MiB -> {mib(v4_runtime):.2f} MiB)")
+    print(f"V5 assets: {v5_count} ({mib(v5_source):.2f} MiB -> {mib(v5_runtime):.2f} MiB)")
     print(f"Total: {mib(source_total):.2f} MiB -> {mib(runtime_total):.2f} MiB ({reduction:.1f}% smaller)")
 
 

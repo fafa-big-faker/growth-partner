@@ -1,4 +1,7 @@
 (function initLoginArt(root) {
+  const IMAGE_ASSETS = Object.freeze(Array.from({ length: 6 }, (_, index) =>
+    `assets/runtime/v5/effects/ink-0${index + 1}.webp?v=xianlai-v5-20260908`));
+
   function create(options = {}) {
     const doc = options.document || root.document;
     const host = options.window || root;
@@ -35,14 +38,20 @@
     let geometry = null;
     let frame = null;
     let lastDraw = -Infinity;
+    let lastMotionTick = null;
+    let motionTime = 0;
     let lastPulse = -Infinity;
     let loading = false;
     let target = 0;
     let displayed = 0;
     let progressFrom = 0;
     let progressStart = 0;
+    let texturesStarted = false;
+    const textures = [];
+    const imageRequests = [];
 
     const active = () => !destroyed && visible && intersecting && !doc.hidden;
+    const hasTextures = () => textures.some(Boolean);
 
     function paintProgress() {
       if (bar) {
@@ -90,6 +99,7 @@
 
     function onLogoLoad() {
       logoReady = true;
+      geometryDirty = true;
       if (fallback) fallback.hidden = true;
       revealLogo();
     }
@@ -104,38 +114,24 @@
       if (fallback) fallback.hidden = false;
     }
 
-    function visibleLakeSegments(lake, exclusions, width, y, padding) {
-      let segments = [[12, width - 12]];
-      // Intersect three horizontal cuts so each ripple fits wholly inside the visible water.
-      for (const scanY of [y - padding, y, y + padding]) {
-        const crossings = [];
-        lake.forEach(([x1, y1], index) => {
-          const [x2, y2] = lake[(index + 1) % lake.length];
-          if ((y1 > scanY) !== (y2 > scanY)) crossings.push(x1 + (scanY - y1) * (x2 - x1) / (y2 - y1));
-        });
-        crossings.sort((a, b) => a - b);
-        const next = [];
-        for (let index = 0; index + 1 < crossings.length; index += 2) {
-          for (const [left, right] of segments) {
-            const start = Math.max(left, crossings[index] + 4);
-            const end = Math.min(right, crossings[index + 1] - 4);
-            if (end - start >= 48) next.push([start, end]);
-          }
-        }
-        segments = next;
-      }
-      for (const [x, top, exclusionWidth, exclusionHeight] of exclusions) {
-        if (y + padding < top || y - padding > top + exclusionHeight) continue;
-        segments = segments.flatMap(([left, right]) => {
-          if (right <= x || left >= x + exclusionWidth) return [[left, right]];
-          return [[left, Math.min(right, x)], [Math.max(left, x + exclusionWidth), right]]
-            .filter(([start, end]) => end - start >= 48);
-        });
-      }
-      return segments;
+    function loadTextures() {
+      if (texturesStarted || destroyed || !context || reduced || typeof host.Image !== 'function') return;
+      texturesStarted = true;
+      IMAGE_ASSETS.forEach((url, index) => {
+        const image = new host.Image();
+        image.decoding = 'async';
+        image.onload = () => {
+          if (destroyed || !image.naturalWidth) return;
+          textures[index] = image;
+          schedule();
+        };
+        image.onerror = () => { image.onload = null; image.onerror = null; };
+        imageRequests.push(image);
+        image.src = url;
+      });
     }
 
-    function measureLake() {
+    function measureScene() {
       const bounds = screen?.getBoundingClientRect?.();
       const width = Math.max(1, bounds?.width || canvas.width || 960);
       const height = Math.max(1, bounds?.height || canvas.height || 720);
@@ -144,104 +140,108 @@
       canvas.width = Math.round(width * resolution);
       canvas.height = Math.round(height * resolution);
       context.setTransform(canvas.width / width, 0, 0, canvas.height / height, 0, 0);
-      // The lake mask is authored against the 1448 x 1086 bitmap, then cover-cropped with it.
-      const scale = Math.max(width / 1448, height / 1086);
-      const offsetX = (width - 1448 * scale) / 2;
-      const offsetY = (height - 1086 * scale) / 2;
-      const point = (x, y) => [offsetX + x * 1448 * scale, offsetY + y * 1086 * scale];
-      const lake = [
-        [.34, .60], [.66, .58], [.78, .62], [.85, .64], [.73, .68],
-        [.83, .72], [.87, .76], [.84, .98], [.18, .98], [.37, .89],
-        [.32, .86], [.17, .78], [.19, .68],
-      ].map(([x, y]) => point(x, y));
-      const exclusions = [logo, form?.parentElement || form].map(element => {
+      const localRect = element => {
         const rect = element?.getBoundingClientRect?.();
         if (!rect?.width || !rect?.height) return null;
-        const margin = element === logo ? 24 : 12;
-        return [rect.left - (bounds?.left || 0) - margin, rect.top - (bounds?.top || 0) - margin,
-          rect.width + margin * 2, rect.height + margin * 2];
-      }).filter(Boolean);
-      const waterTop = Math.max(12, Math.min(...lake.map(position => position[1])) + 14);
-      const waterBottom = Math.min(height - 12, Math.max(...lake.map(position => position[1])) - 14);
-      const bands = [];
-      const rippleCandidates = [];
-      const bandCount = Math.max(2, Math.floor((waterBottom - waterTop) / 22));
-      for (let band = 0; band <= bandCount; band++) {
-        const y = waterTop + (waterBottom - waterTop) * band / bandCount;
-        for (const [left, right] of visibleLakeSegments(lake, exclusions, width, y, 5)) {
-          bands.push({ x: left + 10, y, length: Math.min(right - left - 20, mobile ? 178 : 235) });
-        }
-        for (const [left, right] of visibleLakeSegments(lake, exclusions, width, y, 12)) {
-          const span = right - left;
-          if (span < 90) continue;
-          const positions = span > 260 ? [.25, .75] : [.5];
-          const radius = Math.min(mobile ? 76 : 96, span * (positions.length > 1 ? .22 : .42));
-          positions.forEach(position => rippleCandidates.push({ x: left + span * position, y, radius, span }));
-        }
-      }
-      const strokeCount = Math.min(bands.length, mobile ? 9 : 12);
-      const strokes = Array.from({ length: strokeCount }, (_, index) =>
-        bands[Math.floor(index * bands.length / strokeCount)]);
-      rippleCandidates.sort((a, b) => b.span - a.span);
-      const ripples = [];
-      for (const candidate of rippleCandidates) {
-        if (ripples.every(existing => Math.abs(existing.y - candidate.y) > 35
-            || Math.abs(existing.x - candidate.x) > existing.radius + candidate.radius + 8)) {
-          ripples.push(candidate);
-          if (ripples.length === 2) break;
-        }
-      }
-      geometry = { width, height, mobile, lake, exclusions, strokes, ripples };
+        return { x: rect.left - (bounds?.left || 0), y: rect.top - (bounds?.top || 0), width: rect.width, height: rect.height };
+      };
+      const brandWidth = Math.min(380, width * .85);
+      const brand = localRect(logo?.parentElement) || localRect(logo) || {
+        x: (width - brandWidth) / 2, y: height * .14, width: brandWidth, height: brandWidth * 512 / 949,
+      };
+      const access = localRect(form?.parentElement || form);
+      const centerX = brand.x + brand.width / 2;
+      const centerY = brand.y + brand.height / 2;
+      const size = Math.min(mobile ? 290 : 395, width * (mobile ? .78 : .35));
+      const traces = mobile ? [
+        { texture: 2, x: centerX - brand.width * .29, y: centerY - brand.height * .20, size, angle: -.25, phase: .15, axis: 'y' },
+        { texture: 4, x: centerX + brand.width * .10, y: centerY + brand.height * .64, size: size * 1.08, angle: -.15, phase: .65, axis: 'x' },
+      ] : [
+        { texture: 0, x: centerX - brand.width * .65, y: centerY, size, angle: -.20, phase: .10, axis: 'y' },
+        { texture: 1, x: centerX + brand.width * .38, y: centerY - brand.height * .32, size: size * .90, angle: .45, phase: .46, axis: 'y' },
+        { texture: 4, x: centerX + brand.width * .35, y: centerY + brand.height * .69, size: size * 1.08, angle: -.15, phase: .76, axis: 'x' },
+      ];
+      geometry = { width, height, mobile, brand, access, traces };
       geometryDirty = false;
     }
 
-    function drawInk(timestamp) {
-      if (!context || !canvas) return;
-      if (geometryDirty || !geometry) measureLake();
-      const { width, height, lake, exclusions, strokes, ripples } = geometry;
-      const phase = timestamp / 2400;
+    function drawTrace(trace, time) {
+      const image = textures[trace.texture] || textures.find(Boolean);
+      if (!image) return;
+      const phase = (time / 12800 + trace.phase) % 1;
+      const theta = phase * Math.PI * 2;
+      const visibility = .36 + Math.sin(Math.PI * phase) ** 2 * .24;
+      context.save();
+      context.translate(trace.x + Math.sin(theta) * 16, trace.y + Math.cos(theta + .7) * 9);
+      context.rotate(trace.angle + Math.sin(theta + .4) * .07);
+      context.globalAlpha = visibility;
+      const size = trace.size * (1 + Math.sin(theta + .9) * .035);
+      const strips = geometry.mobile ? 16 : 20;
+      const sourceSize = image.naturalWidth;
+      // Each narrow strip follows the same travelling bend, preserving the supplied ink detail.
+      for (let strip = 0; strip < strips; strip++) {
+        const fraction = strip / strips;
+        const bend = Math.sin(fraction * Math.PI * 2 - theta) * 5 * Math.sin(fraction * Math.PI);
+        const source = fraction * sourceSize;
+        const sourceStep = sourceSize / strips;
+        const destination = (fraction - .5) * size;
+        const destinationStep = size / strips;
+        if (trace.axis === 'x') {
+          context.drawImage(image, source, 0, sourceStep, sourceSize,
+            destination, -size / 2 + bend, destinationStep + .35, size);
+        } else {
+          context.drawImage(image, 0, source, sourceSize, sourceStep,
+            -size / 2 + bend, destination, size, destinationStep + .35);
+        }
+      }
+      context.restore();
+    }
+
+    function drawFragments(time) {
+      const image = textures[5];
+      if (!image) return;
+      const { brand, mobile } = geometry;
+      const crops = [[190, 24, 290, 226], [34, 180, 242, 220], [210, 218, 280, 278]];
+      const count = mobile ? 3 : 5;
+      for (let index = 0; index < count; index++) {
+        const phase = (time / 9600 + index / count) % 1;
+        const opacity = Math.sin(phase * Math.PI) ** 2 * .44;
+        const side = index % 2 ? 1 : -1;
+        const x = brand.x + brand.width / 2 + side * brand.width * (.35 + phase * .18);
+        const y = brand.y + brand.height * (.8 - phase) + Math.sin(phase * Math.PI) * 16;
+        const crop = crops[index % crops.length];
+        const size = mobile ? 24 + index * 4 : 29 + index * 5;
+        context.save();
+        context.globalAlpha = opacity;
+        context.translate(x, y);
+        context.rotate(side * .25 + phase * .2);
+        context.drawImage(image, ...crop, -size / 2, -size * crop[3] / crop[2] / 2, size, size * crop[3] / crop[2]);
+        context.restore();
+      }
+    }
+
+    function drawInk(time) {
+      if (!context || !canvas || !hasTextures()) return;
+      if (geometryDirty || !geometry) measureScene();
+      const { width, height, access, brand, traces } = geometry;
       context.clearRect(0, 0, width, height);
       context.save();
-      context.beginPath();
-      context.moveTo(...lake[0]);
-      lake.slice(1).forEach(position => context.lineTo(...position));
-      context.closePath();
-      context.clip();
+      context.globalCompositeOperation = 'source-over';
       context.beginPath();
       context.rect(0, 0, width, height);
-      exclusions.forEach(rect => context.rect(...rect));
+      if (access) context.rect(access.x - 12, access.y - 12, access.width + 24, access.height + 24);
+      if (!logoReady) context.rect(brand.x - 12, brand.y - 14, brand.width + 24, brand.height + 28);
       context.clip('evenodd');
-      context.strokeStyle = '#42656b';
-      context.lineCap = 'round';
-
-      strokes.forEach(({ x, y, length }, band) => {
-        const drift = Math.sin(phase + band * 1.8) * 7;
-        for (let strand = 0; strand < 2; strand++) {
-          const baseline = y + strand * 3 + Math.sin(phase * .8 + band) * 1.5;
-          context.globalAlpha = (strand ? .18 : .29) + Math.sin(phase + band) * .045;
-          context.lineWidth = strand ? 1.15 : 1.7;
-          context.beginPath();
-          context.moveTo(x + drift, baseline);
-          context.bezierCurveTo(x + length * .3 + drift, baseline - 1.5,
-            x + length * .7 + drift, baseline + 1.5, x + length + drift, baseline);
-          context.stroke();
-        }
-      });
-
-      ripples.forEach(({ x, y, radius: maximumRadius }, index) => {
-        const age = ((timestamp + 1100 + index * 3100) % 6200) / 5200;
-        if (age >= 1) return;
-        for (let ring = 0; ring < 2; ring++) {
-          const expansion = age - ring * .17;
-          if (expansion <= 0) continue;
-          const radius = 8 + (maximumRadius - 8) * expansion;
-          context.globalAlpha = Math.sin(Math.PI * expansion) * .36;
-          context.lineWidth = 1.55;
-          context.beginPath();
-          context.ellipse(x, y, radius, radius * .115, 0, 0, Math.PI * 2);
-          context.stroke();
-        }
-      });
+      traces.forEach(trace => drawTrace(trace, time));
+      drawFragments(time);
+      if (logoReady) {
+        // Protect actual letter shapes, including their floating envelope, rather than cutting a hard box through the ink.
+        context.globalCompositeOperation = 'destination-out';
+        context.globalAlpha = 1;
+        context.shadowColor = '#000';
+        context.shadowBlur = 5;
+        for (const offset of [-10, -4, 3]) context.drawImage(logo, brand.x, brand.y + offset, brand.width, brand.height);
+      }
       context.restore();
       context.globalAlpha = 1;
     }
@@ -249,10 +249,11 @@
     function stopFrame() {
       if (frame !== null) cancelFrame(frame);
       frame = null;
+      lastMotionTick = null;
     }
 
     function schedule() {
-      if (frame === null && active() && !reduced && (context || (loading && displayed < target))) {
+      if (frame === null && active() && !reduced && (hasTextures() || (loading && displayed < target))) {
         frame = requestFrame(tick);
       }
     }
@@ -260,6 +261,8 @@
     function tick(timestamp) {
       frame = null;
       if (!active() || reduced) return;
+      if (lastMotionTick !== null) motionTime += Math.min(100, Math.max(0, timestamp - lastMotionTick));
+      lastMotionTick = timestamp;
       if (loading && displayed < target) {
         const fraction = Math.min(1, Math.max(0, (timestamp - progressStart) / 220));
         displayed = progressFrom + (target - progressFrom) * (1 - (1 - fraction) ** 3);
@@ -267,7 +270,7 @@
         paintProgress();
       }
       if (geometryDirty || timestamp - lastDraw >= 1000 / (geometry?.mobile ? 20 : 30)) {
-        drawInk(timestamp);
+        drawInk(motionTime);
         lastDraw = timestamp;
       }
       schedule();
@@ -289,7 +292,7 @@
         paintProgress();
       }
       if (!active() || reduced) stopFrame();
-      else schedule();
+      else { loadTextures(); schedule(); }
       if (active()) {
         logoAnimation?.play();
         floatAnimation?.play();
@@ -386,6 +389,8 @@
       rippleAnimation?.cancel();
       observer?.disconnect();
       resizeObserver?.disconnect();
+      imageRequests.forEach(image => { image.onload = null; image.onerror = null; });
+      textures.length = 0;
       logo?.removeEventListener('load', onLogoLoad);
       logo?.removeEventListener('error', onLogoError);
       button?.removeEventListener('pointerdown', onPointer);
@@ -401,6 +406,7 @@
   let instance;
   const api = {
     create,
+    getImageAssets() { return [...IMAGE_ASSETS]; },
     init(options) { instance?.destroy(); instance = create(options); instance.init(); return instance; },
     setLoading(loading, percent) { instance?.setLoading(loading, percent); },
     setVisible(visible) { instance?.setVisible(visible); },

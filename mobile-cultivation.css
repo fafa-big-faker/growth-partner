@@ -17,7 +17,8 @@
   max-width: 620px;
   max-height: calc(100dvh - 24px);
   margin: 0;
-  padding: 18px 18px calc(16px + env(safe-area-inset-bottom));
+  padding: 24px 22px calc(16px + env(safe-area-inset-bottom));
+  border-image-width: 26px 20px 20px 26px;
   border-radius: 8px 8px 0 0;
   display: flex;
   flex-direction: column;
@@ -33,23 +34,24 @@
   gap: 12px;
   margin-bottom: 8px;
 }
-.mobile-inventory-header h2 { margin: 0; font: 700 21px/1.4 'Noto Serif SC', 'SimSun', serif; color: #2e5145; }
+.mobile-inventory-header h2 { margin: 0; font: 700 21px/1.4 'Noto Serif SC', 'SimSun', serif; color: #252b29; }
 .mobile-inventory-close { width: 44px; height: 44px; padding: 0; border: 0; background: none; color: #3d554d; font: 28px/1 sans-serif; cursor: pointer; }
 .mobile-inventory-close:hover { color: #9d564c; }
 .mobile-inventory-close:focus-visible,
 .mobile-inventory-trigger:focus-visible { outline: 2px solid #427e69; outline-offset: 3px; }
 .mobile-inventory-body { min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
-.mobile-inventory-body .cult-inventory { flex-direction: column-reverse; gap: 12px; margin: 0 0 16px; }
+.mobile-inventory-body .cult-inventory { flex-direction: column-reverse; gap: 12px; margin: 0 0 16px; padding: 0; background: none; backdrop-filter: none; border: 0; box-shadow: none; }
 .mobile-inventory-body .inv-tabs-v { width: 100%; flex-direction: row; gap: 12px; }
 .mobile-inventory-body .inv-tab-v { min-height: 42px; padding: 8px; writing-mode: horizontal-tb; letter-spacing: 0; font-family: inherit; }
-.mobile-inventory-body .inv-tab-v.active { color: #315f4f; border-color: #688e7d; background: rgba(223, 237, 230, 0.64); }
+#mobile-inventory-dialog .inv-tab-v { flex: 1; color: #464c49; background: transparent; border: 0; border-bottom: 2px solid transparent; border-radius: 0; box-shadow: none; font-size: 14px; }
+#mobile-inventory-dialog .inv-tab-v.active { color: #252b29; border-bottom-color: #587562; background: transparent; font-weight: 700; box-shadow: none; }
 .mobile-inventory-body .inventory-grid,
 .mobile-inventory-body .inventory-grid.weapons-grid { width: 100%; flex: none; max-height: min(52dvh, 420px); grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; padding: 2px 4px 6px 2px; }
 .mobile-inventory-body .inventory-grid.weapons-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .mobile-inventory-body .item-slot:focus-visible { outline: 2px solid #427e69; outline-offset: -3px; }
-.mobile-inventory-body .equip-info-bar { margin: 0; padding: 10px 4px; border: 0; border-top: 1px solid rgba(76, 111, 94, 0.2); border-radius: 0; background: none; box-shadow: none; }
+.mobile-inventory-body .equip-info-bar { margin: 0; padding: 10px 4px; border: 0; border-top: 1px solid rgba(76, 111, 94, 0.2); border-radius: 0; background: none; backdrop-filter: none; box-shadow: none; color: #464c49; }
 .mobile-inventory-body .equip-name { overflow-wrap: anywhere; }
-.mobile-inventory-body .equip-skill { line-height: 1.8; overflow-wrap: anywhere; }
+.mobile-inventory-body .equip-skill { line-height: 1.8; overflow-wrap: anywhere; color: #464c49; font-size: 13px; }
 
 @media (max-width: 719px), (max-height: 500px) and (max-width: 950px) {
   #player-dashboard.mobile-cultivation { height: 100dvh; min-height: 100dvh; padding-bottom: 0; overflow: hidden; }
@@ -71,6 +73,8 @@
   #player-dashboard.mobile-cultivation .status-exp-text { font-size: 10px; }
   #player-dashboard.mobile-cultivation .cult-status .btn { min-height: 40px; padding: 6px 9px; }
   #player-dashboard.mobile-cultivation .mobile-inventory-trigger {
+    position: relative;
+    isolation: isolate;
     display: grid;
     grid-template-columns: minmax(70px, 1fr) auto 18px 16px;
     grid-template-rows: 28px 16px;
@@ -78,25 +82,33 @@
     align-items: center;
     gap: 0 7px;
     width: 100%; min-width: 0; height: 58px;
-    padding: 5px 12px;
-    color: #304d41;
-    background: rgba(240, 247, 242, 0.74);
+    padding: 5px 16px;
+    color: #252b29;
+    background: transparent;
     border: 0;
-    border-top: 1px solid rgba(61, 105, 83, 0.22);
-    border-bottom: 1px solid rgba(61, 105, 83, 0.22);
     border-radius: 0;
     text-align: left;
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
   }
-  .mobile-inventory-trigger:active { background: rgba(218, 235, 224, 0.85); }
+  .mobile-inventory-trigger::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border: 0 solid transparent;
+    border-image: url('assets/runtime/v3/ui/frame-topbar.webp') 16 48 16 48 fill / 8px 20px / 0 stretch;
+    pointer-events: none;
+    transition: filter 140ms ease;
+  }
+  .mobile-inventory-trigger:active::before { filter: brightness(.94); }
   .mobile-inventory-label { display: flex; align-items: baseline; gap: 9px; font-size: 14px; font-weight: 700; }
-  .mobile-inventory-count { font-size: 11px; font-weight: 400; color: #62746b; white-space: nowrap; }
+  .mobile-inventory-count { font-size: 12px; font-weight: 400; color: #626762; white-space: nowrap; }
   .mobile-inventory-preview { display: flex; gap: 5px; height: 28px; }
   .mobile-inventory-preview img { width: 28px; height: 28px; object-fit: contain; }
   .mobile-inventory-new { color: #a55048; font-size: 11px; font-weight: 700; }
   .mobile-inventory-chevron { font: 22px/1 sans-serif; text-align: center; }
-  .mobile-equipped-name { grid-column: 1 / -1; min-width: 0; font-size: 11px; line-height: 16px; color: #63746a; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+  .mobile-equipped-name { grid-column: 1 / -1; min-width: 0; font-size: 12px; line-height: 16px; color: #464c49; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
   #player-dashboard.mobile-cultivation .cult-action { position: relative; min-width: 0; padding: 4px 0 14px; margin: 0; display: grid; grid-template-columns: minmax(74px, 1fr) 118px minmax(74px, 1fr); align-items: center; gap: 4px; }
   #player-dashboard.mobile-cultivation .action-chop-area { display: contents; }
   #player-dashboard.mobile-cultivation .chop-circle-btn { grid-column: 2; grid-row: 1; width: 112px; height: 112px; justify-self: center; align-self: start; }
@@ -128,4 +140,7 @@
 }
 
 @keyframes mobile-inventory-in { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
-@media (prefers-reduced-motion: reduce) { .mobile-inventory-panel.modal { animation: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .mobile-inventory-panel.modal { animation: none; }
+  .mobile-inventory-trigger::before { transition: none; }
+}

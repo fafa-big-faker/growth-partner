@@ -308,7 +308,8 @@ function getInitialGameImageAssets(axeId = null) {
     ? [...getAxeIdleFrames(axeId), ...getAxeChopFrames(axeId)]
     : [];
   const feedbackFiles = ['assets/runtime/ui/close.svg', 'assets/runtime/effects/leaf-ink.webp?v=ink-feedback-20260908'];
-  return AssetPreloader.collect([itemImages, configuredImages, currentAxeFrames, v2Files, v3Files, v4Files, feedbackFiles]);
+  const v5Files = ['assets/runtime/v5/ui/task-paper.webp', 'assets/runtime/v5/ui/shop-paper.webp'];
+  return AssetPreloader.collect([itemImages, configuredImages, currentAxeFrames, v2Files, v3Files, v4Files, feedbackFiles, v5Files]);
 }
 
 function preloadAxeAnimation(itemId, onProgress = () => {}) {

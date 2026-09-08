@@ -1,0 +1,114 @@
+{
+  "ui": {
+    "task-paper": {
+      "path": "assets/runtime/v5/ui/task-paper.webp",
+      "size": [
+        960,
+        200
+      ],
+      "alphaRange": [
+        0,
+        255
+      ],
+      "bytes": 27774,
+      "slice": [
+        86,
+        61,
+        51,
+        122
+      ]
+    },
+    "shop-paper": {
+      "path": "assets/runtime/v5/ui/shop-paper.webp",
+      "size": [
+        960,
+        199
+      ],
+      "alphaRange": [
+        0,
+        255
+      ],
+      "bytes": 28432,
+      "slice": [
+        56,
+        130,
+        122,
+        61
+      ]
+    }
+  },
+  "effects": {
+    "ink-01": {
+      "path": "assets/runtime/v5/effects/ink-01.webp",
+      "size": [
+        512,
+        512
+      ],
+      "alphaRange": [
+        0,
+        252
+      ],
+      "bytes": 26164
+    },
+    "ink-02": {
+      "path": "assets/runtime/v5/effects/ink-02.webp",
+      "size": [
+        512,
+        512
+      ],
+      "alphaRange": [
+        0,
+        253
+      ],
+      "bytes": 26424
+    },
+    "ink-03": {
+      "path": "assets/runtime/v5/effects/ink-03.webp",
+      "size": [
+        512,
+        512
+      ],
+      "alphaRange": [
+        0,
+        250
+      ],
+      "bytes": 17860
+    },
+    "ink-04": {
+      "path": "assets/runtime/v5/effects/ink-04.webp",
+      "size": [
+        512,
+        512
+      ],
+      "alphaRange": [
+        0,
+        255
+      ],
+      "bytes": 22304
+    },
+    "ink-05": {
+      "path": "assets/runtime/v5/effects/ink-05.webp",
+      "size": [
+        512,
+        512
+      ],
+      "alphaRange": [
+        0,
+        242
+      ],
+      "bytes": 16270
+    },
+    "ink-06": {
+      "path": "assets/runtime/v5/effects/ink-06.webp",
+      "size": [
+        512,
+        512
+      ],
+      "alphaRange": [
+        0,
+        253
+      ],
+      "bytes": 20690
+    }
+  }
+}

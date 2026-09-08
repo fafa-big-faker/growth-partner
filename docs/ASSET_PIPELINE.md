@@ -185,3 +185,13 @@ node scripts\normalize_audio.js
 - 小叶48x64、无损透明WebP、当前1400字节。脚本使用实测轮廓去掉外圈，并转换为青灰色保留像素叶脉；源图尺寸变动时必须重新测量。
 - 运行 `python scripts/extract_ink_leaf.py --check`验证来源指纹、生成结果一致性、透明度和4KiB上限。此文件不依赖V2批量构建，更新叶片单独跑此脚本即可。
 - 使用中资源URL必须与首屏预载相同，包含缓存版本。旧V2光效保留在资源目录中备查，但不再预载或参与每刀命中。
+
+## 12. V5 墨影与任务商品纸笺
+
+- 原图目录为仓库同级`美术风格参考V５`，末位是全角5。两张1536x1024原图保持不变，来源指纹记录在`assets/images/v5/source-manifest.json`。
+- 导入运行`python scripts/import_xianlai_v5_art.py`，然后`python scripts/build_runtime_images.py --v5-only`。后者只处理V5，避免重建旧图；常规全量构建也已包含V5。
+- 纸图是RGBA，透明区虽然保存了灰黑RGB但alpha为0，不可误判成黑色背景。按alpha>=5实测边界裁切，加12px安全边；两框不是用整张半幅直接拉伸。
+- 墨图是RGB近白底，按亮度转透明度并清掉近白噪点，不做粗暴去白。输出六张512x512透明墨纹，保留浓淡与飞白，色值统一为墨灰；这不是序列帧动画。
+- 运行图共8张，总计185,918字节。task-paper为960x200，slice上右下左86/61/51/122；shop-paper为960x199，slice56/130/122/61。两框都保留完整边角，内容区随文案延展。
+- 两张纸框进入游戏必需预载。六张墨纹使用`?v=xianlai-v5-20260908`，由LoginArt独立后台加载，不阻塞登录；首次载入缺图时不回退到程序水纹。
+- 校验`python tests/xianlai-v5-assets.test.py`、`node --test tests/v5-*.test.js`，再跑既有图片和功能测试。原图替换后重新量alpha范围、边界与slice，不能盲沿用当前常量。

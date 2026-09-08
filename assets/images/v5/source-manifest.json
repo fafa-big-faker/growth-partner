@@ -1,0 +1,249 @@
+{
+  "sources": {
+    "paper": {
+      "file": "仙来V5-任务商品纸笺图集.png",
+      "size": [
+        1536,
+        1024
+      ],
+      "mode": "RGBA",
+      "sha256": "fa061d52d9315dcec3cb4f3cc87ea3335a46ca7a235c92e5fa32f1ecc695b04b"
+    },
+    "ink": {
+      "file": "仙来V5-墨影图集.png",
+      "size": [
+        1536,
+        1024
+      ],
+      "mode": "RGB",
+      "sha256": "5213a31f9940bf3d09ef9963181dcce48e40c7163c3460b09adc3b12ec58cd08"
+    }
+  },
+  "assets": {
+    "ui": {
+      "task-paper": {
+        "path": "assets/images/v5/ui/task-paper.png",
+        "size": [
+          1512,
+          315
+        ],
+        "source": "paper",
+        "cell": [
+          0,
+          0,
+          1536,
+          512
+        ],
+        "contentBounds": [
+          25,
+          163,
+          1513,
+          454
+        ],
+        "padding": 12,
+        "alphaRange": [
+          0,
+          254
+        ],
+        "slice": [
+          136,
+          96,
+          80,
+          192
+        ]
+      },
+      "shop-paper": {
+        "path": "assets/images/v5/ui/shop-paper.png",
+        "size": [
+          1512,
+          313
+        ],
+        "source": "paper",
+        "cell": [
+          0,
+          512,
+          1536,
+          1024
+        ],
+        "contentBounds": [
+          25,
+          572,
+          1513,
+          861
+        ],
+        "padding": 12,
+        "alphaRange": [
+          0,
+          254
+        ],
+        "slice": [
+          88,
+          204,
+          192,
+          96
+        ]
+      }
+    },
+    "effects": {
+      "ink-01": {
+        "path": "assets/images/v5/effects/ink-01.png",
+        "size": [
+          512,
+          512
+        ],
+        "source": "ink",
+        "cell": [
+          0,
+          0,
+          512,
+          512
+        ],
+        "contentBounds": [
+          176,
+          26,
+          373,
+          499
+        ],
+        "padding": 0,
+        "alphaRange": [
+          0,
+          252
+        ]
+      },
+      "ink-02": {
+        "path": "assets/images/v5/effects/ink-02.png",
+        "size": [
+          512,
+          512
+        ],
+        "source": "ink",
+        "cell": [
+          512,
+          0,
+          1024,
+          512
+        ],
+        "contentBounds": [
+          575,
+          106,
+          987,
+          421
+        ],
+        "padding": 0,
+        "alphaRange": [
+          0,
+          253
+        ]
+      },
+      "ink-03": {
+        "path": "assets/images/v5/effects/ink-03.png",
+        "size": [
+          512,
+          512
+        ],
+        "source": "ink",
+        "cell": [
+          1024,
+          0,
+          1536,
+          512
+        ],
+        "contentBounds": [
+          1089,
+          59,
+          1475,
+          464
+        ],
+        "padding": 0,
+        "alphaRange": [
+          0,
+          250
+        ]
+      },
+      "ink-04": {
+        "path": "assets/images/v5/effects/ink-04.png",
+        "size": [
+          512,
+          512
+        ],
+        "source": "ink",
+        "cell": [
+          0,
+          512,
+          512,
+          1024
+        ],
+        "contentBounds": [
+          39,
+          679,
+          492,
+          820
+        ],
+        "padding": 0,
+        "alphaRange": [
+          0,
+          255
+        ]
+      },
+      "ink-05": {
+        "path": "assets/images/v5/effects/ink-05.png",
+        "size": [
+          512,
+          512
+        ],
+        "source": "ink",
+        "cell": [
+          512,
+          512,
+          1024,
+          1024
+        ],
+        "contentBounds": [
+          538,
+          678,
+          1002,
+          815
+        ],
+        "padding": 0,
+        "alphaRange": [
+          0,
+          242
+        ]
+      },
+      "ink-06": {
+        "path": "assets/images/v5/effects/ink-06.png",
+        "size": [
+          512,
+          512
+        ],
+        "source": "ink",
+        "cell": [
+          1024,
+          512,
+          1536,
+          1024
+        ],
+        "contentBounds": [
+          1060,
+          572,
+          1467,
+          940
+        ],
+        "padding": 0,
+        "alphaRange": [
+          0,
+          253
+        ]
+      }
+    }
+  },
+  "inkConversion": {
+    "whiteLevel": 246,
+    "colour": [
+      39,
+      44,
+      42
+    ],
+    "minimumAlpha": 4
+  }
+}
