@@ -61,9 +61,9 @@
           || typeof logo?.animate !== 'function') return;
       floatAnimation = logo.animate([
         { transform: 'translateY(0)' },
-        { transform: 'translateY(-4px)' },
+        { transform: 'translateY(-10px)' },
         { transform: 'translateY(0)' },
-      ], { duration: 7200, iterations: Infinity, easing: 'ease-in-out' });
+      ], { duration: 6400, iterations: Infinity, easing: 'ease-in-out' });
     }
 
     function revealLogo() {
@@ -104,6 +104,37 @@
       if (fallback) fallback.hidden = false;
     }
 
+    function visibleLakeSegments(lake, exclusions, width, y, padding) {
+      let segments = [[12, width - 12]];
+      // Intersect three horizontal cuts so each ripple fits wholly inside the visible water.
+      for (const scanY of [y - padding, y, y + padding]) {
+        const crossings = [];
+        lake.forEach(([x1, y1], index) => {
+          const [x2, y2] = lake[(index + 1) % lake.length];
+          if ((y1 > scanY) !== (y2 > scanY)) crossings.push(x1 + (scanY - y1) * (x2 - x1) / (y2 - y1));
+        });
+        crossings.sort((a, b) => a - b);
+        const next = [];
+        for (let index = 0; index + 1 < crossings.length; index += 2) {
+          for (const [left, right] of segments) {
+            const start = Math.max(left, crossings[index] + 4);
+            const end = Math.min(right, crossings[index + 1] - 4);
+            if (end - start >= 48) next.push([start, end]);
+          }
+        }
+        segments = next;
+      }
+      for (const [x, top, exclusionWidth, exclusionHeight] of exclusions) {
+        if (y + padding < top || y - padding > top + exclusionHeight) continue;
+        segments = segments.flatMap(([left, right]) => {
+          if (right <= x || left >= x + exclusionWidth) return [[left, right]];
+          return [[left, Math.min(right, x)], [Math.max(left, x + exclusionWidth), right]]
+            .filter(([start, end]) => end - start >= 48);
+        });
+      }
+      return segments;
+    }
+
     function measureLake() {
       const bounds = screen?.getBoundingClientRect?.();
       const width = Math.max(1, bounds?.width || canvas.width || 960);
@@ -126,18 +157,49 @@
       const exclusions = [logo, form?.parentElement || form].map(element => {
         const rect = element?.getBoundingClientRect?.();
         if (!rect?.width || !rect?.height) return null;
-        return [rect.left - (bounds?.left || 0) - 12, rect.top - (bounds?.top || 0) - 12,
-          rect.width + 24, rect.height + 24];
+        const margin = element === logo ? 24 : 12;
+        return [rect.left - (bounds?.left || 0) - margin, rect.top - (bounds?.top || 0) - margin,
+          rect.width + margin * 2, rect.height + margin * 2];
       }).filter(Boolean);
-      geometry = { width, height, mobile, point, lake, exclusions, scale };
+      const waterTop = Math.max(12, Math.min(...lake.map(position => position[1])) + 14);
+      const waterBottom = Math.min(height - 12, Math.max(...lake.map(position => position[1])) - 14);
+      const bands = [];
+      const rippleCandidates = [];
+      const bandCount = Math.max(2, Math.floor((waterBottom - waterTop) / 22));
+      for (let band = 0; band <= bandCount; band++) {
+        const y = waterTop + (waterBottom - waterTop) * band / bandCount;
+        for (const [left, right] of visibleLakeSegments(lake, exclusions, width, y, 5)) {
+          bands.push({ x: left + 10, y, length: Math.min(right - left - 20, mobile ? 178 : 235) });
+        }
+        for (const [left, right] of visibleLakeSegments(lake, exclusions, width, y, 12)) {
+          const span = right - left;
+          if (span < 90) continue;
+          const positions = span > 260 ? [.25, .75] : [.5];
+          const radius = Math.min(mobile ? 76 : 96, span * (positions.length > 1 ? .22 : .42));
+          positions.forEach(position => rippleCandidates.push({ x: left + span * position, y, radius, span }));
+        }
+      }
+      const strokeCount = Math.min(bands.length, mobile ? 9 : 12);
+      const strokes = Array.from({ length: strokeCount }, (_, index) =>
+        bands[Math.floor(index * bands.length / strokeCount)]);
+      rippleCandidates.sort((a, b) => b.span - a.span);
+      const ripples = [];
+      for (const candidate of rippleCandidates) {
+        if (ripples.every(existing => Math.abs(existing.y - candidate.y) > 35
+            || Math.abs(existing.x - candidate.x) > existing.radius + candidate.radius + 8)) {
+          ripples.push(candidate);
+          if (ripples.length === 2) break;
+        }
+      }
+      geometry = { width, height, mobile, lake, exclusions, strokes, ripples };
       geometryDirty = false;
     }
 
     function drawInk(timestamp) {
       if (!context || !canvas) return;
       if (geometryDirty || !geometry) measureLake();
-      const { width, height, point, lake, exclusions, scale } = geometry;
-      const phase = timestamp / 5300;
+      const { width, height, lake, exclusions, strokes, ripples } = geometry;
+      const phase = timestamp / 2400;
       context.clearRect(0, 0, width, height);
       context.save();
       context.beginPath();
@@ -149,37 +211,32 @@
       context.rect(0, 0, width, height);
       exclusions.forEach(rect => context.rect(...rect));
       context.clip('evenodd');
-      context.strokeStyle = '#567b7b';
+      context.strokeStyle = '#42656b';
       context.lineCap = 'round';
 
-      const strokes = [[.34, .64, .11], [.58, .67, .12], [.23, .73, .16],
-        [.63, .78, .13], [.40, .85, .20], [.59, .93, .15], [.30, .96, .14]];
-      strokes.forEach(([sourceX, sourceY, lengthRatio], band) => {
-        const [x, y] = point(sourceX, sourceY);
-        const length = 1448 * scale * lengthRatio;
-        const drift = Math.sin(phase + band * 1.8) * 6 * scale;
+      strokes.forEach(({ x, y, length }, band) => {
+        const drift = Math.sin(phase + band * 1.8) * 7;
         for (let strand = 0; strand < 2; strand++) {
-          const baseline = y + strand * 3 * scale + Math.sin(phase * .8 + band) * 1.3 * scale;
-          context.globalAlpha = (strand ? .08 : .14) + Math.sin(phase + band) * .025;
-          context.lineWidth = strand ? .65 : 1.05;
+          const baseline = y + strand * 3 + Math.sin(phase * .8 + band) * 1.5;
+          context.globalAlpha = (strand ? .18 : .29) + Math.sin(phase + band) * .045;
+          context.lineWidth = strand ? 1.15 : 1.7;
           context.beginPath();
           context.moveTo(x + drift, baseline);
-          context.bezierCurveTo(x + length * .3 + drift, baseline - 1.4 * scale,
-            x + length * .7 + drift, baseline + 1.4 * scale, x + length + drift, baseline);
+          context.bezierCurveTo(x + length * .3 + drift, baseline - 1.5,
+            x + length * .7 + drift, baseline + 1.5, x + length + drift, baseline);
           context.stroke();
         }
       });
 
-      [[.38, .76, 0], [.68, .87, 6400]].forEach(([sourceX, sourceY, delay]) => {
-        const age = ((timestamp + delay) % 16000) / 6600;
+      ripples.forEach(({ x, y, radius: maximumRadius }, index) => {
+        const age = ((timestamp + 1100 + index * 3100) % 6200) / 5200;
         if (age >= 1) return;
-        const [x, y] = point(sourceX, sourceY);
         for (let ring = 0; ring < 2; ring++) {
           const expansion = age - ring * .17;
           if (expansion <= 0) continue;
-          const radius = (10 + 61 * expansion) * scale;
-          context.globalAlpha = Math.sin(Math.PI * expansion) * .18;
-          context.lineWidth = .8;
+          const radius = 8 + (maximumRadius - 8) * expansion;
+          context.globalAlpha = Math.sin(Math.PI * expansion) * .36;
+          context.lineWidth = 1.55;
           context.beginPath();
           context.ellipse(x, y, radius, radius * .115, 0, 0, Math.PI * 2);
           context.stroke();

@@ -177,3 +177,11 @@ node scripts\normalize_audio.js
 - `getItemIconPath()`统一解析V4图标；`sync-config.py`优先引用已存在的V4运行图，未接入V4的新道具仍使用飞书图片。飞书内旧缩略图不会覆盖已批准的新画法。新名字仍以飞书为准，不在前端维护另一份显示名表。
 - `xianlai-v4.css`负责中性品质框、角标、统一弹窗和锻造按钮，按基础样式/V3/V4/手机布局的顺序加载。文字、数量、新标记、锁定、品质色标不烘焙进图片。
 - 校验 `tests/xianlai-v4-assets.test.py`、`tests/xianlai-v4-integration.test.js`、`tests/xianlai-v4-ui.test.js`，连同既有V3/运行资源/角色锚点测试。浏览器图片与几何检查不截图、不登录真实账号。
+
+## 11. 小型水墨反馈资源
+
+- 关闭图标为本地 `assets/runtime/ui/close.svg`，来自Lucide Static 0.468.0的X，使用ISC许可；同目录保留许可文本。仅修改墨色，不需要生成位图。
+- 落叶从原 `assets/images/v2/effects/effect-leaf-green.png`确定性提取，不覆盖原图。运行 `python scripts/extract_ink_leaf.py`，输出 `assets/images/effects/leaf-ink.png`、来源记录及 `assets/runtime/effects/leaf-ink.webp`。
+- 小叶48x64、无损透明WebP、当前1400字节。脚本使用实测轮廓去掉外圈，并转换为青灰色保留像素叶脉；源图尺寸变动时必须重新测量。
+- 运行 `python scripts/extract_ink_leaf.py --check`验证来源指纹、生成结果一致性、透明度和4KiB上限。此文件不依赖V2批量构建，更新叶片单独跑此脚本即可。
+- 使用中资源URL必须与首屏预载相同，包含缓存版本。旧V2光效保留在资源目录中备查，但不再预载或参与每刀命中。

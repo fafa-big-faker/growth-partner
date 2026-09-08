@@ -24,7 +24,7 @@ async function main() {
       try {
         const data = await fs.readFile(file);
         const extension = path.extname(file);
-        const contentType = { '.css': 'text/css', '.js': 'application/javascript', '.html': 'text/html', '.webp': 'image/webp' }[extension] || 'application/octet-stream';
+        const contentType = { '.css': 'text/css', '.js': 'application/javascript', '.html': 'text/html', '.webp': 'image/webp', '.svg': 'image/svg+xml' }[extension] || 'application/octet-stream';
         await route.fulfill({ status: 200, body: data, contentType });
       } catch {
         await route.fulfill({ status: 404, body: '' });
@@ -42,18 +42,27 @@ async function main() {
           const pixels = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data;
           let sum = 0;
           let visible = 0;
+          let strong = 0;
+          let peak = 0;
           for (let index = 3; index < pixels.length; index += 4) {
             sum = (Math.imul(sum, 31) + pixels[index]) >>> 0;
             if (pixels[index]) visible++;
+            if (pixels[index] >= 60) strong++;
+            peak = Math.max(peak, pixels[index]);
           }
-          return { sum, visible };
+          return { sum, visible, strong, peak };
         };
         const first = hash();
         await new Promise(resolve => setTimeout(resolve, 240));
-        return { first, second: hash(), width: canvas.width, height: canvas.height };
+        const float = document.getElementById('login-brand-image').getAnimations().find(animation => animation.effect.getTiming().iterations === Infinity);
+        return { first, second: hash(), width: canvas.width, height: canvas.height,
+          float: { frames: float.effect.getKeyframes().map(frame => frame.transform), duration: float.effect.getTiming().duration } };
       });
       assert.ok(motion.first.visible > 0 && motion.second.visible > 0, 'water canvas is nonblank');
       assert.notEqual(motion.first.sum, motion.second.sum, 'water continues moving after the entrance');
+      assert.ok(motion.second.visible >= viewport.width * 2, 'water has a meaningful visible span');
+      assert.ok(motion.second.strong >= viewport.width * .15 && motion.second.peak >= 65, 'water has visible ink contrast, not merely nonzero alpha');
+      assert.deepEqual(motion.float, { frames: ['translateY(0px)', 'translateY(-10px)', 'translateY(0px)'], duration: 6400 });
 
       await page.evaluate(() => {
         AccountSession.verify = () => new Promise(resolve => { window.finishVerification = resolve; });
@@ -128,6 +137,34 @@ async function main() {
       assert.ok(taskGeometry.inactiveHeight < 70, 'inactive activity occupies a compact line');
       assert.ok(Math.abs(taskGeometry.after - taskGeometry.before) < 2, 'task refresh preserves scroll: ' + JSON.stringify(taskGeometry));
 
+      await page.evaluate(() => PlayerView.filterTasks('daily'));
+      const hintContrast = await page.evaluate(() => {
+        const hint = document.querySelector('.signin-hint');
+        const style = getComputedStyle(hint);
+        const luminance = color => color.match(/[\d.]+/g).slice(0, 3).map(Number).map(value => value / 255)
+          .map(value => value <= .04045 ? value / 12.92 : ((value + .055) / 1.055) ** 2.4)
+          .reduce((sum, value, index) => sum + value * [.2126, .7152, .0722][index], 0);
+        const contrast = color => (luminance(style.backgroundColor) + .05) / (luminance(color) + .05);
+        return { main: contrast(style.color), reset: contrast(getComputedStyle(hint.querySelector('.signin-reset')).color),
+          size: parseFloat(style.fontSize), overflow: hint.scrollWidth > hint.clientWidth + 1 };
+      });
+      assert.ok(hintContrast.main >= 4.5 && hintContrast.reset >= 4.5);
+      assert.ok(hintContrast.size >= 12 && !hintContrast.overflow);
+
+      await page.evaluate(() => { window.closeFixture = UI.modal('本地检查', { title: '奖励详情' }); });
+      await page.waitForFunction(() => document.querySelector('.modal-close-icon').naturalWidth > 0);
+      const close = page.locator('.modal-close');
+      const closeGeometry = await close.evaluate(el => ({ width: el.offsetWidth, height: el.offsetHeight, label: el.getAttribute('aria-label') }));
+      assert.deepEqual(closeGeometry, { width: 44, height: 44, label: '关闭' });
+      await close.hover();
+      await page.waitForFunction(() => getComputedStyle(document.querySelector('.modal-close')).backgroundColor === 'rgb(237, 242, 238)');
+      await page.evaluate(() => { closeFixture.classList.add('modal-locked'); closeFixture.querySelector('.modal-close').click(); });
+      assert.equal(await page.locator('.modal-overlay').count(), 1);
+      await page.evaluate(() => closeFixture.classList.remove('modal-locked'));
+      await close.focus();
+      await page.keyboard.press('Enter');
+      assert.equal(await page.locator('.modal-overlay').count(), 0);
+
       await page.evaluate(() => {
         const sample = getShopItems()[0];
         getShopItems = () => Array.from({ length: 4 }, (_, index) => ({
@@ -153,7 +190,7 @@ async function main() {
       assert.equal(shopGeometry.records, 1);
       assert.equal(shopGeometry.clipped, false);
       assert.equal(shopGeometry.actionOverflow, false);
-      results.push({ viewport, motion, loading, taskGeometry, shopGeometry });
+      results.push({ viewport, motion, loading, taskGeometry, shopGeometry, hintContrast, closeGeometry });
     }
     assert.deepEqual(errors, []);
     console.log(JSON.stringify({ ok: true, pageErrors: errors, results }, null, 2));

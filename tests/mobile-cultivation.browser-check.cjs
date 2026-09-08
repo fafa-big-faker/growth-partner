@@ -30,7 +30,7 @@ async function main() {
           if (!html.includes('src="mobile-cultivation.js')) html = html.replace('<script src="app.js', '<script src="mobile-cultivation.js"></script><script src="app.js');
           data = Buffer.from(html);
         }
-        await route.fulfill({ status: 200, body: data, contentType: relative.endsWith('.css') ? 'text/css' : relative.endsWith('.js') ? 'application/javascript' : relative.endsWith('.html') ? 'text/html' : relative.endsWith('.webp') ? 'image/webp' : 'application/octet-stream' });
+        await route.fulfill({ status: 200, body: data, contentType: relative.endsWith('.css') ? 'text/css' : relative.endsWith('.js') ? 'application/javascript' : relative.endsWith('.html') ? 'text/html' : relative.endsWith('.webp') ? 'image/webp' : relative.endsWith('.svg') ? 'image/svg+xml' : 'application/octet-stream' });
       } catch {
         await route.fulfill({ status: 404, body: '' });
       }
@@ -57,6 +57,28 @@ async function main() {
       });
       await page.waitForFunction(() => Array.from(document.images).every(image => image.complete && image.naturalWidth > 0), null, { timeout: 7000 });
       const loadedImages = await page.evaluate(() => document.images.length);
+      const effectsCheck = await page.evaluate(async () => {
+        const scene = document.getElementById('tree-area');
+        const tree = document.getElementById('tree-icon');
+        const leaf = new Image();
+        leaf.src = 'assets/runtime/effects/leaf-ink.webp?v=ink-feedback-20260908';
+        await leaf.decode();
+        CultivationEffects.clear();
+        const count = CultivationEffects.playHit({ scene, tree, speed: 1 });
+        const effectStyles = Array.from(scene.querySelectorAll('.cult-effect')).map(el => {
+          const style = getComputedStyle(el);
+          return { name: style.animationName, delay: parseFloat(style.animationDelay), pointer: style.pointerEvents };
+        });
+        await new Promise(resolve => setTimeout(resolve, 300));
+        const visible = Array.from(scene.querySelectorAll('.cult-effect')).filter(el => Number(getComputedStyle(el).opacity) > .2).length;
+        CultivationEffects.clear();
+        return { count, effectStyles, visible, remaining: scene.querySelectorAll('.cult-effect').length, loaded: leaf.naturalWidth > 0 };
+      });
+      assert.equal(effectsCheck.count, 5);
+      assert.equal(effectsCheck.loaded, true);
+      assert.ok(effectsCheck.visible > 0, 'hit effects become visible after the swing delay');
+      assert.ok(effectsCheck.effectStyles.every(style => style.pointer === 'none' && style.delay >= .18));
+      assert.equal(effectsCheck.remaining, 0);
       const geometry = await page.evaluate(() => {
         const box = selector => {
           const rect = document.querySelector(selector).getBoundingClientRect();
@@ -113,7 +135,7 @@ async function main() {
         assert.equal(await page.evaluate(() => document.body.style.overflow), '');
         assert.equal(await page.evaluate(() => document.getElementById('player-dashboard').inert), false);
       }
-      results.push({ viewport, mobile, loadedImages, geometry });
+      results.push({ viewport, mobile, loadedImages, geometry, effectsCheck });
     }
     assert.deepEqual(errors, []);
     console.log(JSON.stringify({ ok: true, pageErrors: errors, results }, null, 2));

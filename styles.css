@@ -2152,32 +2152,51 @@ body {
   pointer-events: none;
   background: center / contain no-repeat;
   image-rendering: pixelated;
-  animation-delay: var(--effect-delay);
+  opacity: 0;
+  user-select: none;
   will-change: transform, opacity;
 }
 
 .cult-effect-leaf {
-  width: 22px;
-  height: 22px;
-  animation: leaf-burst 950ms ease-out forwards;
+  width: 15px;
+  height: 20px;
+  animation: ink-leaf-fall var(--effect-duration) cubic-bezier(0.2, 0.55, 0.45, 1) var(--effect-delay) both;
 }
 
-.cult-effect-spark {
-  width: 38px;
-  height: 38px;
-  animation: hit-flash 620ms ease-out forwards;
+.cult-effect-cut {
+  width: 50px;
+  height: 8px;
+  background: #293f3a;
+  clip-path: polygon(0 57%, 24% 24%, 65% 8%, 100% 0, 73% 52%, 31% 85%, 10% 100%, 19% 60%);
+  transform-origin: center;
+  animation: ink-hit-cut var(--effect-duration) ease-out var(--effect-delay) both;
 }
 
-@keyframes leaf-burst {
-  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.4) rotate(0deg); }
-  14% { opacity: 1; }
-  100% { opacity: 0; transform: translate(calc(-50% + var(--effect-x)), calc(-50% + var(--effect-y))) scale(var(--effect-scale)) rotate(var(--effect-rotate)); }
+@keyframes ink-leaf-fall {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(var(--effect-scale)) rotate(-12deg); }
+  14% { opacity: 0.95; transform: translate(calc(-50% + var(--effect-x) * 0.18), calc(-50% + var(--effect-lift))) scale(var(--effect-scale)) rotate(12deg); }
+  65% { opacity: 0.85; }
+  100% { opacity: 0; transform: translate(calc(-50% + var(--effect-x)), calc(-50% + var(--effect-y))) rotate(var(--effect-rotate)) scale(var(--effect-scale)); }
 }
 
-@keyframes hit-flash {
-  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.35); }
-  18% { opacity: 1; transform: translate(-50%, -50%) scale(var(--effect-scale)); }
-  100% { opacity: 0; transform: translate(calc(-50% + var(--effect-x)), calc(-50% + var(--effect-y))) scale(1.45); }
+@keyframes ink-hit-cut {
+  0% { opacity: 0; transform: translate(-70%, -70%) rotate(29deg) scale(0.35, 0.6); }
+  24% { opacity: 0.9; transform: translate(-50%, -50%) rotate(29deg) scale(var(--effect-scale)); }
+  100% { opacity: 0; transform: translate(-32%, -20%) rotate(29deg) scale(1.1, 0.4); }
+}
+
+.cult-effect-reduced {
+  animation: ink-hit-still 120ms ease-out both;
+}
+
+@keyframes ink-hit-still {
+  0% { opacity: 0.7; transform: translate(-50%, -50%) rotate(29deg) scale(var(--effect-scale)); }
+  100% { opacity: 0; transform: translate(-50%, -50%) rotate(29deg) scale(var(--effect-scale)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cult-effect-leaf { display: none; }
+  .cult-effect-cut { animation: ink-hit-still 120ms ease-out both; }
 }
 
 .cult-tree {

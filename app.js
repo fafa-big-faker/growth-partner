@@ -236,6 +236,7 @@ const FEATURE_ICON_OVERRIDES = Object.freeze({
 
 function getFeatureIconPath(name) {
   if (name === 'icon-forge') return 'assets/runtime/v4/icons/icon-forge.webp';
+  if (name === 'icon-close') return 'assets/runtime/ui/close.svg';
   const replacement = FEATURE_ICON_OVERRIDES[name];
   return replacement ? `${V3_IMAGE_ROOT}/icons/${replacement}.webp` : `${V2_IMAGE_ROOT}/icons/${name}.webp`;
 }
@@ -288,9 +289,7 @@ function getInitialGameImageAssets(axeId = null) {
   const v2Files = [
     'backgrounds/cultivate.webp', 'backgrounds/tasks.webp',
     'backgrounds/reward.webp', 'trees/sprout.webp', 'trees/spirit.webp', 'trees/divine.webp',
-    'effects/effect-drop-glow.webp', 'effects/effect-hit-spark.webp',
-    'effects/effect-leaf-gold.webp', 'effects/effect-leaf-green.webp',
-    ...['breakthrough', 'close', 'lock', 'tree-info', 'wallet']
+    ...['breakthrough', 'lock', 'tree-info', 'wallet']
       .map(name => `icons/icon-${name}.webp`),
     ...['button-primary', 'button-secondary', 'checkbox-off', 'checkbox-on', 'chop-button-bg', 'panel-corner',
       'panel-divider', 'scroll-thumb',
@@ -308,7 +307,8 @@ function getInitialGameImageAssets(axeId = null) {
   const currentAxeFrames = axeId
     ? [...getAxeIdleFrames(axeId), ...getAxeChopFrames(axeId)]
     : [];
-  return AssetPreloader.collect([itemImages, configuredImages, currentAxeFrames, v2Files, v3Files, v4Files]);
+  const feedbackFiles = ['assets/runtime/ui/close.svg', 'assets/runtime/effects/leaf-ink.webp?v=ink-feedback-20260908'];
+  return AssetPreloader.collect([itemImages, configuredImages, currentAxeFrames, v2Files, v3Files, v4Files, feedbackFiles]);
 }
 
 function preloadAxeAnimation(itemId, onProgress = () => {}) {
@@ -2498,7 +2498,7 @@ const UI = {
       <div class="modal">
         <div class="modal-header">
           <div class="modal-title">${options.title || ''}</div>
-          <button class="modal-close" aria-label="关闭" title="关闭">${renderFeatureIcon('icon-close', '关闭', 'modal-close-icon')}</button>
+          <button type="button" class="modal-close ink-close" aria-label="关闭" title="关闭">${renderFeatureIcon('icon-close', '', 'modal-close-icon')}</button>
         </div>
         <div class="modal-body">${contentHTML}</div>
         ${options.footer || ''}
@@ -4008,7 +4008,7 @@ const PlayerView = {
           <div class="signin-line"><div class="signin-line-fill" style="width:${fillPct}%"></div></div>
           <div class="signin-nodes">${nodes}</div>
         </div>
-        <div class="signin-hint">累计签到 3 / 7 / 14 / 28 天可领取对应奖励，每月 1 号重置</div>
+        <div class="signin-hint"><span>累计签到 ${rewards.map(reward => reward.requiredDays).join(' / ')} 天可领取对应奖励</span><span class="signin-reset">每月 1 号重置</span></div>
       </div>
     `;
   },
@@ -5080,7 +5080,7 @@ const PlayerView = {
         this._playChopButtonFeedback(chopBtn, timing.speed);
         void AudioManager.playEffect('chopHit');
         const characterAnimation = CultivatorAnimator.playChop({ resumeIdle: false, frameMs: timing.frameMs });
-        CultivationEffects.playHit({ scene, tree: treeIcon, intensity: 1 });
+        CultivationEffects.playHit({ scene, tree: treeIcon, intensity: 1, speed: timing.speed });
         if (treeIcon) {
           treeIcon.classList.add('shaking');
           setTimeout(() => treeIcon && treeIcon.classList.remove('shaking'), 250);

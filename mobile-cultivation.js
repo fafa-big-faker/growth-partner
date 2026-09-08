@@ -156,7 +156,7 @@
       const overlay = doc.createElement('div');
       overlay.className = 'mobile-inventory-overlay';
       overlay.hidden = true;
-      overlay.innerHTML = '<section class="modal mobile-inventory-panel" id="mobile-inventory-dialog" role="dialog" aria-modal="true" aria-labelledby="mobile-inventory-title" tabindex="-1"><header class="mobile-inventory-header"><h2 id="mobile-inventory-title">背包</h2><button type="button" class="mobile-inventory-close" aria-label="收起背包" title="收起背包">×</button></header><div class="mobile-inventory-body"></div></section>';
+      overlay.innerHTML = '<section class="modal mobile-inventory-panel" id="mobile-inventory-dialog" role="dialog" aria-modal="true" aria-labelledby="mobile-inventory-title" tabindex="-1"><header class="mobile-inventory-header"><h2 id="mobile-inventory-title">背包</h2><button type="button" class="mobile-inventory-close ink-close" aria-label="收起背包" title="收起背包"><img class="modal-close-icon" src="assets/runtime/ui/close.svg" alt=""></button></header><div class="mobile-inventory-body"></div></section>';
       doc.body.appendChild(overlay);
       state = {
         main, dashboard, inventory, equipment, forge, grid, actions, trigger, overlay,

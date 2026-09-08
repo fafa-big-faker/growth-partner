@@ -18,25 +18,29 @@
 
 Files: `login-art.js`, `tests/login-art.test.js`. Do not edit Auth/index or shared browser check.
 
-- [ ] Assert the infinite float keyframe is `translateY(-10px)` and duration 6400.
-- [ ] Compute ripple placement from visible lake segments minus form/Logo exclusions. Keep existing cover mapping and choose at most two clear centers; use darker 1.5px+ paired water strokes, not tiny low-alpha remnants.
-- [ ] Preserve `setLoading(loading, percent)` and lifecycle cancellation; run `node --test tests/login-art.test.js`.
+- [x] Assert the infinite float keyframe is `translateY(-10px)` and duration 6400.
+- [x] Compute ripple placement from visible lake segments minus form/Logo exclusions. Keep existing cover mapping and choose at most two clear centers; use darker 1.5px+ paired water strokes, not tiny low-alpha remnants.
+- [x] Preserve `setLoading(loading, percent)` and lifecycle cancellation; run `node --test tests/login-art.test.js`.
 
 ## 2. Tree Hits (Effects Worker)
 
 Files: `cultivation-effects.js`, effect block in `styles.css`, `tests/cultivation-effects.test.js`, a deterministic leaf-extraction script and new small runtime effect asset. Main wires the call-site speed/preload/version.
 
-- [ ] Test `playHit({scene,tree,intensity:1,speed:3})` creates fewer than seven restrained elements, with shorter durations than speed1, and `clear()` removes nodes and timers.
-- [ ] Extract the central leaf from existing effect art, preserving leaf details and removing surrounding orbit/magenta edge contamination. Keep originals untouched and save source trace/script plus transparent runtime WebP. Reuse existing pixel artwork; no AI call.
-- [ ] Replace legacy spark/glow with short ink slash and 3-5 leaves; use actual scene scale for position and distinct crown/strike origins. Add `speed` option (default1), reduced-motion fallback, live-node cap and cleanup. No new chop timers.
-- [ ] Replace old effect CSS block, ensuring delay is included in the animation declaration and speed affects the complete lifetime. Run effect and timeline tests.
+- [x] Test `playHit({scene,tree,intensity:1,speed:3})` creates fewer than seven restrained elements, with shorter durations than speed1, and `clear()` removes nodes and timers.
+- [x] Extract the central leaf from existing effect art, preserving leaf details and removing surrounding orbit/magenta edge contamination. Keep originals untouched and save source trace/script plus transparent runtime WebP. Reuse existing pixel artwork; no AI call.
+- [x] Replace legacy spark/glow with short ink slash and 3-5 leaves; use actual scene scale for position and distinct crown/strike origins. Add `speed` option (default1), reduced-motion fallback, live-node cap and cleanup. No new chop timers.
+- [x] Replace old effect CSS block, ensuring delay is included in the animation declaration and speed affects the complete lifetime. Run effect and timeline tests.
 
 ## 3. Controls And Contrast (Main)
 
 Files: `app.js` shared modal and sign-in markup/preloader, `xianlai-v4.css`, `ink-pages.css`, `mobile-cultivation.js`, new licensed `assets/runtime/ui/close.svg`, tests and release includes.
 
-- [ ] Vendor Lucide X with its license, use 44x44 dismiss targets and 22px icon. Keep `aria-label`, focus-visible, hover/press, disabled and Escape behavior. Route both modal and drawer to the shared visual.
-- [ ] Replace fixed sign-in hint numbers with `rewards.map(r => r.requiredDays).join(' / ')`, split reset into a span, and set explicit foreground/background contrast >=4.5:1.
-- [ ] Pass `timing.speed` only in the existing ten-chop hit callback; preload the new leaf/close instead of unused hit sprites, version all changed runtime dependencies.
-- [ ] Extend `tests/ink-polish.browser-check.cjs` to require meaningfully visible stroke alpha/coverage and logo motion, plus close target/hover/locked/dismiss behavior and sign-in contrast. No screenshots or real database calls.
-- [ ] Run all Node/image/syntax and mobile browser tests, update maintenance notes, inspect scoped staged changes, push main and verify Pages assets against the committed files.
+- [x] Vendor Lucide X with its license, use 44x44 dismiss targets and 22px icon. Keep `aria-label`, focus-visible, hover/press, disabled and Escape behavior. Route both modal and drawer to the shared visual.
+- [x] Replace fixed sign-in hint numbers with `rewards.map(r => r.requiredDays).join(' / ')`, split reset into a span, and set explicit foreground/background contrast >=4.5:1.
+- [x] Pass `timing.speed` only in the existing ten-chop hit callback; preload the new leaf/close instead of unused hit sprites, version all changed runtime dependencies.
+- [x] Extend `tests/ink-polish.browser-check.cjs` to require meaningfully visible stroke alpha/coverage and logo motion, plus close target/hover/locked/dismiss behavior and sign-in contrast. No screenshots or real database calls.
+- [x] Run all Node/image/syntax and mobile browser tests, update maintenance notes and inspect scoped staged changes.
+
+Release gate: push main and verify Pages assets against the committed files. Deployment confirmation is recorded in the release response after remote verification.
+
+Verification: 233 Node tests, 17 image tests, four login/page viewports and five mobile/scene viewports passed. All syntax checks and the 1400-byte leaf reproducibility check passed. No screenshots or real account/data operations were performed.

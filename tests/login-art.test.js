@@ -53,7 +53,7 @@ function setup({ cached = false, reduced = false, contextAvailable = true, width
     rect: (...args) => inkCalls.push(['rect', ...args]),
     clip: (...args) => inkCalls.push(['clip', ...args]),
     ellipse: (...args) => inkCalls.push(['ellipse', ...args]),
-    bezierCurveTo() {}, stroke: () => inkCalls.push(['stroke']) };
+    bezierCurveTo() {}, stroke() { inkCalls.push(['stroke', this.globalAlpha, this.lineWidth]); } };
   let bounds = { left: 0, top: 0, width, height };
   get('login-screen').getBoundingClientRect = () => bounds;
   get('login-loading-track').style.setProperty = function (name, value) { this[name] = value; };
@@ -224,8 +224,8 @@ test('logo floats only after the entrance, and float pauses or cancels with life
   const floating = state.logo.animations[1];
   assert.equal(reveal.state, 'cancelled');
   assert.equal(floating.options.iterations, Infinity);
-  assert.ok(floating.options.duration >= 6000 && floating.options.duration <= 8000);
-  assert.ok(floating.keyframes.some(keyframe => keyframe.transform === 'translateY(-4px)'));
+  assert.equal(floating.options.duration, 6400);
+  assert.ok(floating.keyframes.some(keyframe => keyframe.transform === 'translateY(-10px)'));
   assert.ok(floating.keyframes.every(keyframe => !/scale|rotate/.test(keyframe.transform)));
   state.controller.setVisible(false);
   assert.equal(floating.state, 'paused');
@@ -264,6 +264,32 @@ test('ambient water keeps drawing after reveal with only two flattened ripple gr
   state.step(6000);
   assert.ok(state.inkCalls.some(call => call[0] === 'stroke'));
   assert.equal(state.frames.size, 1);
+});
+
+test('mobile ripple centers use visible lake space outside the login form', () => {
+  const state = setup({ width: 360, height: 640 });
+  state.get('login-form-panel').parentElement = {
+    getBoundingClientRect: () => ({ left: 24, top: 340, width: 312, height: 230 }),
+  };
+  state.step(1000);
+  const rings = state.inkCalls.filter(call => call[0] === 'ellipse');
+  assert.ok(rings.length > 0 && rings.length <= 4);
+  assert.ok(rings.every(([, x, y, radiusX, radiusY]) =>
+    x - radiusX >= 0 && x + radiusX <= 360 && y - radiusY > 582 && y + radiusY < 640));
+  const strokes = state.inkCalls.filter(call => call[0] === 'stroke');
+  assert.ok(strokes.some(([, alpha, width]) => alpha >= .23 && width >= 1.5));
+});
+
+test('water is already present at entry and logo float envelope stays excluded', () => {
+  const state = setup({ width: 390, height: 844 });
+  state.logo.getBoundingClientRect = () => ({ left: 45, top: 530, width: 300, height: 80 });
+  state.step(0);
+  assert.ok(state.inkCalls.some(call => call[0] === 'ellipse'));
+  assert.ok(state.inkCalls.some(call => call[0] === 'rect' && call[1] === 21 && call[2] === 506
+    && call[3] === 348 && call[4] === 128));
+  state.inkCalls.length = 0;
+  state.step(100);
+  assert.ok(!state.inkCalls.some(call => call[0] === 'transform'), 'stable layout does not resize canvas each frame');
 });
 
 test('mobile water rendering is capped below desktop frame rate', () => {

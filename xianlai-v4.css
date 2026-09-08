@@ -31,7 +31,36 @@
 }
 
 .modal-body { min-width: 0; }
-.modal-close { flex: 0 0 32px; }
+.modal .ink-close {
+  display: inline-flex;
+  flex: 0 0 44px;
+  width: 44px;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: #43574d;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color 140ms ease, border-color 140ms ease, transform 140ms ease;
+}
+
+.modal .ink-close .modal-close-icon { width: 22px; height: 22px; pointer-events: none; }
+.modal .ink-close:focus-visible { outline: 2px solid #486951; outline-offset: 2px; }
+.modal .ink-close:active:not(:disabled) { background: #dce7df; transform: scale(.93); }
+.modal .ink-close:disabled { cursor: not-allowed; opacity: .45; transform: none; }
+@media (hover: hover) {
+  .modal .ink-close:hover:not(:disabled) { background: #edf2ee; border-color: #a2b3a7; }
+  .modal .ink-close:hover:not(:disabled) .modal-close-icon { filter: brightness(.72); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .modal .ink-close { transition: none; }
+  .modal .ink-close:active:not(:disabled) { transform: none; }
+}
 .modal-footer { flex-wrap: wrap; }
 
 :is(#player-dashboard, .mobile-inventory-panel) .item-slot {
