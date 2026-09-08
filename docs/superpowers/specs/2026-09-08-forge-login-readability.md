@@ -1,0 +1,9 @@
+# Forge And Login Readability Polish
+
+User requested direct UI corrections with two art-generation proposals. Follow the established autonomous workflow; preserve gameplay and existing player data.
+
+- Forge: reserve a fixed action slot inside the axe frame, separate from the swapping/shaking image node. Eligible results show Equip now; ineligible show `<configured realm>及以上可装备` in readable red at the same location. No redundant realm requirement when eligible. Keep repeated forge action stable rather than adding an extra button below it. Preserve skill/quality/flavour information, move secondary detail after the primary draw controls if required to avoid shifting them.
+- Login: name browser page exactly `仙来`; explain that title does not rename the address bar host. Wait until the backdrop and Logo are ready and the visible scene has rested for 500ms before beginning the existing entrance. No delay to form interaction, no authentication wait, no duplicate entrance; reduced motion remains immediate, hidden/destroyed cleanup remains correct.
+- Pages: remove the rectangular solid background behind main headings, daily/weekly/self labels and the currency-exchange heading/subtitle. Keep dark readable typography and genuine V5 paper item frames. Do not restore pale green copy or add a global blur.
+- Artwork proposals: five compact quality emblems, progressively richer silhouette/material and distinct gray/blue/purple/rose/gold families; one ink-brush login-button bitmap without text, with live text glow on hover/keyboard focus after it arrives. No AI generation or fabricated substitute asset in this turn. Provide two reusable prompts and source sizes for the user's usual generation workflow.
+- Validate with unit tests plus local mocked geometry/event checks, no screenshots or real account requests. Leave Supabase/config/credentials unchanged and release scoped tested files through origin/main.
