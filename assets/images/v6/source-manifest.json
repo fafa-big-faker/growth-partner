@@ -1,0 +1,212 @@
+{
+  "sources": {
+    "quality": {
+      "file": "仙来V6-品质徽记图集.png",
+      "size": [
+        1536,
+        1024
+      ],
+      "mode": "RGBA",
+      "alphaRange": [
+        0,
+        254
+      ],
+      "sha256": "f8b4bef3e8c3fc440ee0f85382fec3eeae8cb0d6f9748a30eca3172b666a6347"
+    },
+    "login": {
+      "file": "仙来V6-登录按钮图集.png",
+      "size": [
+        1536,
+        1024
+      ],
+      "mode": "RGBA",
+      "alphaRange": [
+        0,
+        254
+      ],
+      "sha256": "d083c1d0f22d2f78a1ddf72c710b2eecea0d1c554a999fa9433cef7bd076550a"
+    }
+  },
+  "assets": {
+    "quality": {
+      "quality-1": {
+        "path": "assets/images/v6/quality/quality-1.png",
+        "size": [
+          171,
+          435
+        ],
+        "source": "quality",
+        "cell": [
+          0,
+          0,
+          512,
+          512
+        ],
+        "contentBounds": [
+          209,
+          63,
+          356,
+          474
+        ],
+        "padding": 12,
+        "alphaRange": [
+          0,
+          254
+        ]
+      },
+      "quality-2": {
+        "path": "assets/images/v6/quality/quality-2.png",
+        "size": [
+          169,
+          435
+        ],
+        "source": "quality",
+        "cell": [
+          512,
+          0,
+          1024,
+          512
+        ],
+        "contentBounds": [
+          689,
+          63,
+          834,
+          474
+        ],
+        "padding": 12,
+        "alphaRange": [
+          0,
+          254
+        ]
+      },
+      "quality-3": {
+        "path": "assets/images/v6/quality/quality-3.png",
+        "size": [
+          170,
+          435
+        ],
+        "source": "quality",
+        "cell": [
+          1024,
+          0,
+          1536,
+          512
+        ],
+        "contentBounds": [
+          1187,
+          63,
+          1333,
+          474
+        ],
+        "padding": 12,
+        "alphaRange": [
+          0,
+          254
+        ]
+      },
+      "quality-4": {
+        "path": "assets/images/v6/quality/quality-4.png",
+        "size": [
+          170,
+          435
+        ],
+        "source": "quality",
+        "cell": [
+          0,
+          512,
+          512,
+          1024
+        ],
+        "contentBounds": [
+          208,
+          560,
+          354,
+          971
+        ],
+        "padding": 12,
+        "alphaRange": [
+          0,
+          254
+        ]
+      },
+      "quality-5": {
+        "path": "assets/images/v6/quality/quality-5.png",
+        "size": [
+          170,
+          435
+        ],
+        "source": "quality",
+        "cell": [
+          512,
+          512,
+          1024,
+          1024
+        ],
+        "contentBounds": [
+          688,
+          560,
+          834,
+          971
+        ],
+        "padding": 12,
+        "alphaRange": [
+          0,
+          254
+        ]
+      }
+    },
+    "ui": {
+      "login-brush": {
+        "path": "assets/images/v6/ui/login-brush.png",
+        "size": [
+          1487,
+          340
+        ],
+        "source": "login",
+        "cell": [
+          0,
+          0,
+          1536,
+          512
+        ],
+        "contentBounds": [
+          39,
+          179,
+          1502,
+          495
+        ],
+        "padding": 12,
+        "alphaRange": [
+          0,
+          254
+        ]
+      },
+      "login-lettering": {
+        "path": "assets/images/v6/ui/login-lettering.png",
+        "size": [
+          1187,
+          361
+        ],
+        "source": "login",
+        "cell": [
+          0,
+          512,
+          1536,
+          1024
+        ],
+        "contentBounds": [
+          220,
+          567,
+          1383,
+          904
+        ],
+        "padding": 12,
+        "alphaRange": [
+          0,
+          254
+        ]
+      }
+    }
+  },
+  "minimumAlpha": 5
+}

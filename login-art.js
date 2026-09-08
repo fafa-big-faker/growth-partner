@@ -19,6 +19,8 @@
     const label = doc.getElementById('login-loading-percent');
     const track = doc.getElementById('login-loading-track');
     const button = doc.getElementById('login-submit');
+    const buttonBrush = doc.getElementById('login-submit-brush');
+    const buttonLettering = doc.getElementById('login-submit-lettering');
     const ripple = doc.getElementById('login-button-ink');
     const form = doc.getElementById('login-form-panel');
     const media = host.matchMedia?.('(prefers-reduced-motion: reduce)');
@@ -57,9 +59,29 @@
     let texturesStarted = false;
     const textures = [];
     const imageRequests = [];
+    const buttonArtwork = [buttonBrush, buttonLettering].filter(Boolean).map(image => ({ image, ready: false }));
 
     const active = () => !destroyed && visible && intersecting && !doc.hidden;
     const hasTextures = () => textures.some(Boolean);
+
+    function syncButtonArtwork() {
+      if (destroyed) return;
+      button?.classList.toggle('login-submit-art-ready', buttonArtwork.length === 2 && buttonArtwork.every(entry => entry.ready));
+    }
+
+    function initButtonArtwork() {
+      buttonArtwork.forEach(entry => {
+        entry.onLoad = () => {
+          entry.ready = entry.image.naturalWidth > 0;
+          syncButtonArtwork();
+        };
+        entry.onError = () => { entry.ready = false; syncButtonArtwork(); };
+        entry.image.addEventListener('load', entry.onLoad);
+        entry.image.addEventListener('error', entry.onError);
+        entry.ready = Boolean(entry.image.complete && entry.image.naturalWidth > 0);
+      });
+      syncButtonArtwork();
+    }
 
     function paintProgress() {
       if (bar) {
@@ -373,8 +395,8 @@
       lastPulse = timestamp;
       rippleAnimation?.cancel();
       rippleAnimation = ripple.animate([
-        { opacity: 0.38, transform: 'scale(.45)' },
-        { opacity: 0, transform: 'scale(1.3)' },
+        { opacity: 0.24, transform: 'scale(.98)' },
+        { opacity: 0, transform: 'scale(1.045)' },
       ], { duration: 420, easing: 'cubic-bezier(.2,.65,.35,1)' });
     }
 
@@ -401,6 +423,7 @@
         }
       }
       loadBackdrop();
+      initButtonArtwork();
       button?.addEventListener('pointerdown', onPointer);
       form?.addEventListener('submit', pulse);
       doc.addEventListener('visibilitychange', onVisibility);
@@ -458,6 +481,10 @@
       observer?.disconnect();
       resizeObserver?.disconnect();
       imageRequests.forEach(image => { image.onload = null; image.onerror = null; });
+      buttonArtwork.forEach(entry => {
+        entry.image.removeEventListener('load', entry.onLoad);
+        entry.image.removeEventListener('error', entry.onError);
+      });
       textures.length = 0;
       logo?.removeEventListener('load', onLogoLoad);
       logo?.removeEventListener('error', onLogoError);

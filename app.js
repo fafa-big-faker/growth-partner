@@ -309,7 +309,8 @@ function getInitialGameImageAssets(axeId = null) {
     : [];
   const feedbackFiles = ['assets/runtime/ui/close.svg', 'assets/runtime/effects/leaf-ink.webp?v=ink-feedback-20260908'];
   const v5Files = ['assets/runtime/v5/ui/task-paper.webp', 'assets/runtime/v5/ui/shop-paper.webp'];
-  return AssetPreloader.collect([itemImages, configuredImages, currentAxeFrames, v2Files, v3Files, v4Files, feedbackFiles, v5Files]);
+  const v6QualityFiles = [1, 2, 3, 4, 5].map(quality => `assets/runtime/v6/quality/quality-${quality}.webp?v=xianlai-v6-20260908`);
+  return AssetPreloader.collect([itemImages, configuredImages, currentAxeFrames, v2Files, v3Files, v4Files, feedbackFiles, v5Files, v6QualityFiles]);
 }
 
 function preloadAxeAnimation(itemId, onProgress = () => {}) {

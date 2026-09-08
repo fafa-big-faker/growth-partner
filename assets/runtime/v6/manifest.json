@@ -1,0 +1,90 @@
+{
+  "quality": {
+    "quality-1": {
+      "path": "assets/runtime/v6/quality/quality-1.webp",
+      "size": [
+        44,
+        112
+      ],
+      "alphaRange": [
+        0,
+        255
+      ],
+      "bytes": 3456
+    },
+    "quality-2": {
+      "path": "assets/runtime/v6/quality/quality-2.webp",
+      "size": [
+        44,
+        112
+      ],
+      "alphaRange": [
+        0,
+        255
+      ],
+      "bytes": 4140
+    },
+    "quality-3": {
+      "path": "assets/runtime/v6/quality/quality-3.webp",
+      "size": [
+        44,
+        112
+      ],
+      "alphaRange": [
+        0,
+        255
+      ],
+      "bytes": 4008
+    },
+    "quality-4": {
+      "path": "assets/runtime/v6/quality/quality-4.webp",
+      "size": [
+        44,
+        112
+      ],
+      "alphaRange": [
+        0,
+        255
+      ],
+      "bytes": 4094
+    },
+    "quality-5": {
+      "path": "assets/runtime/v6/quality/quality-5.webp",
+      "size": [
+        44,
+        112
+      ],
+      "alphaRange": [
+        0,
+        255
+      ],
+      "bytes": 4368
+    }
+  },
+  "ui": {
+    "login-brush": {
+      "path": "assets/runtime/v6/ui/login-brush.webp",
+      "size": [
+        960,
+        220
+      ],
+      "alphaRange": [
+        0,
+        255
+      ],
+      "bytes": 72242
+    },
+    "login-lettering": {
+      "path": "assets/runtime/v6/ui/login-lettering.webp",
+      "size": [
+        768,
+        234
+      ],
+      "alphaRange": [
+        0,
+        255
+      ],
+      "bytes": 78454
+    }
+  }
+}

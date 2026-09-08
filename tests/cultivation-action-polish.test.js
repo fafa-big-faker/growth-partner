@@ -28,7 +28,7 @@ test('cultivation action uses the ink button and a digits-only count', () => {
   const cssVersion = html.match(/styles\.css\?v=([^"\s]+)/)?.[1];
   const appVersion = html.match(/app\.js\?v=([^"\s]+)/)?.[1];
   assert.ok(cssVersion);
-  assert.equal(cssVersion, appVersion);
+  assert.ok(appVersion, 'scripts and unchanged styles retain independent cache versions');
 });
 
 test('tree hint and forge entrance stay contextual and uncluttered', () => {

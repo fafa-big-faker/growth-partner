@@ -85,7 +85,7 @@ test('breakthrough preserves quality unlocks and locked action flow', async () =
 });
 
 test('V4 modal and forge surfaces use measured nine-slice values and local assets', () => {
-  const assets = [...css.matchAll(/url\('([^']+)'\)/g)].map(match => match[1]);
+  const assets = [...css.matchAll(/url\('([^']+)'\)/g)].map(match => match[1]).filter(asset => asset.startsWith('assets/runtime/v4/'));
   assert.equal(new Set(assets).size, 4);
   for (const asset of assets) {
     assert.ok(asset.startsWith('assets/runtime/v4/ui/'));
@@ -105,7 +105,7 @@ test('V4 modal and forge surfaces use measured nine-slice values and local asset
 test('inventory surfaces keep badges readable inside both dashboard and drawer', () => {
   assert.match(css, /:is\(#player-dashboard, \.mobile-inventory-panel\) \.item-slot::before\s*\{[^}]*pointer-events:\s*none/s);
   assert.match(css, /\.item-slot::before\s*\{[^}]*border-image-slice:\s*33 fill/s);
-  assert.match(css, /\.item-slot:not\(\.empty\)::after\s*\{[^}]*width:\s*3px[^}]*pointer-events:\s*none/s);
+  assert.match(css, /\.item-slot:not\(\.empty\)::after\s*\{[^}]*width:\s*12px[^}]*pointer-events:\s*none/s);
   assert.match(css, /\.item-slot\.item-locked\s*\{[^}]*opacity:\s*1[^}]*filter:\s*none/s);
   assert.match(css, /\.item-slot\.item-locked \.item-icon\s*\{[^}]*opacity:\s*0\.62/s);
   assert.match(css, /\.item-count\s*\{[^}]*z-index:\s*3[^}]*color:\s*#fff/s);

@@ -195,3 +195,12 @@ node scripts\normalize_audio.js
 - 运行图共8张，总计185,918字节。task-paper为960x200，slice上右下左86/61/51/122；shop-paper为960x199，slice56/130/122/61。两框都保留完整边角，内容区随文案延展。
 - 两张纸框进入游戏必需预载。六张墨纹使用`?v=xianlai-v5-20260908`，由LoginArt独立后台加载，不阻塞登录；首次载入缺图时不回退到程序水纹。
 - 校验`python tests/xianlai-v5-assets.test.py`、`node --test tests/v5-*.test.js`，再跑既有图片和功能测试。原图替换后重新量alpha范围、边界与slice，不能盲沿用当前常量。
+
+## 13. V6 品质墨记与登录按钮
+
+- 原图目录为仓库同级`美术风格参考V6`，包含`仙来V6-品质徽记图集.png`和`仙来V6-登录按钮图集.png`，均为1536x1024 RGBA。品质已改为平面短竖墨痕，不使用旧提示词中的玉石切面徽章；文件名保留用户原名。
+- 执行`python scripts/import_xianlai_v6_art.py`，再执行`python scripts/build_runtime_images.py --v6-only`。仅重建V6，原图及旧版本资源保持不变；全量构建也包含V6。
+- 透明像素带黑色或光晕RGB，不等于可见黑底。只清理alpha小于5的噪点，按实际alpha轮廓裁切并四周补12px透明边，不按RGB去黑、不截断笔锋。六格品质图最后一格留空；登录图上下分别为墨刷和书法字。
+- 源图实测bounds及指纹位于`assets/images/v6/source-manifest.json`。五枚品质源图169至171x435，运行图均44x112；墨刷源1487x340、运行960x220；文字源1187x361、运行768x234。7张WebP共170,762字节（约167KiB），不按整格512px缩图造成标记继续过小。
+- 所有运行URL使用`?v=xianlai-v6-20260908`。五枚墨记进入游戏首登预载；按钮两层在HTML头部预载，与实际img及点击墨影引用完全一致，不加入验证后的游戏必需资源队列。
+- 校验`python tests/xianlai-v6-assets.test.py`及`node --test tests/v6-*.test.js`。`node tests/v6-art.browser-check.cjs`用本地模拟数据检查四视口、图片透明度、两种背包、悬浮/焦点、失败兜底和登录恢复，无截图、无真实账号。

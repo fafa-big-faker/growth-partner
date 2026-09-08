@@ -9,6 +9,8 @@
   <link rel="icon" href="assets/runtime/v3/icons/icon-cultivate.webp">
   <link rel="preload" as="image" href="assets/runtime/v3/backgrounds/login.webp" fetchpriority="high">
   <link rel="preload" as="image" href="assets/runtime/v3/ui/logo.webp" fetchpriority="high">
+  <link rel="preload" as="image" href="assets/runtime/v6/ui/login-brush.webp?v=xianlai-v6-20260908">
+  <link rel="preload" as="image" href="assets/runtime/v6/ui/login-lettering.webp?v=xianlai-v6-20260908">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700;900&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -18,8 +20,8 @@
   </script>
   <link rel="stylesheet" href="styles.css?v=forge-login-polish-20260908">
   <link rel="stylesheet" href="xianlai-ui.css?v=xianlai-art-v3-20260908">
-  <link rel="stylesheet" href="login-art.css?v=ink-motion-pages-20260908">
-  <link rel="stylesheet" href="xianlai-v4.css?v=ink-feedback-20260908">
+  <link rel="stylesheet" href="login-art.css?v=xianlai-v6-20260908">
+  <link rel="stylesheet" href="xianlai-v4.css?v=xianlai-v6-20260908">
   <link rel="stylesheet" href="mobile-cultivation.css?v=xianlai-v5-20260908">
   <link rel="stylesheet" href="ink-pages.css?v=forge-login-polish-20260908">
   <link rel="stylesheet" href="ink-scrollbars.css?v=ink-motion-pages-20260908">
@@ -47,7 +49,12 @@
       <div class="login-input-wrap">
         <input type="password" id="login-password" name="password" aria-label="道号密码" placeholder="请输入道号密码" autocomplete="current-password" required>
       </div>
-      <button type="submit" class="login-submit" id="login-submit"><span id="login-button-ink" aria-hidden="true"></span>开始游戏</button>
+      <button type="submit" class="login-submit" id="login-submit" aria-label="踏入仙途">
+        <span id="login-button-ink" aria-hidden="true"></span>
+        <img class="login-submit-brush" id="login-submit-brush" src="assets/runtime/v6/ui/login-brush.webp?v=xianlai-v6-20260908" alt="" aria-hidden="true" draggable="false">
+        <img class="login-submit-lettering" id="login-submit-lettering" src="assets/runtime/v6/ui/login-lettering.webp?v=xianlai-v6-20260908" alt="" aria-hidden="true" draggable="false">
+        <span class="login-submit-fallback">踏入仙途</span>
+      </button>
       </form>
       <section class="login-loading" id="login-loading" hidden aria-live="polite">
         <div class="loading-track" id="login-loading-track" role="progressbar" aria-label="入道进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span id="login-loading-bar"></span></div>
@@ -144,10 +151,10 @@
   <script src="character-animator.js"></script>
   <script src="cultivation-effects.js?v=ink-feedback-20260908"></script>
   <script src="audio-manager.js?v=xianlai-art-v3-20260908"></script>
-  <script src="login-art.js?v=forge-login-polish-20260908"></script>
+  <script src="login-art.js?v=xianlai-v6-20260908"></script>
   <script src="player-data-cache.js"></script>
   <script src="inventory-novelty.js"></script>
   <script src="mobile-cultivation.js?v=ink-feedback-20260908"></script>
-  <script src="app.js?v=forge-login-polish-20260908"></script>
+  <script src="app.js?v=xianlai-v6-20260908"></script>
 </body>
 </html>

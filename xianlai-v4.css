@@ -66,6 +66,7 @@
 :is(#player-dashboard, .mobile-inventory-panel) .item-slot {
   --v4-slot: url('assets/runtime/v4/ui/slot-item.webp');
   --v4-quality: #87928c;
+  --v6-quality-mark: url('assets/runtime/v6/quality/quality-1.webp?v=xianlai-v6-20260908');
   background: none;
   border: 0;
   border-radius: 0;
@@ -96,19 +97,19 @@
   position: absolute;
   top: 7px;
   left: 7px;
-  width: 3px;
-  height: 13px;
+  width: 12px;
+  height: 26px;
   z-index: 2;
   pointer-events: none;
-  background: var(--v4-quality);
-  border-radius: 1px;
+  background: var(--v6-quality-mark) center / contain no-repeat;
+  border-radius: 0;
 }
 
-:is(#player-dashboard, .mobile-inventory-panel) .item-slot.quality-1 { --v4-quality: #87928c; }
-:is(#player-dashboard, .mobile-inventory-panel) .item-slot.quality-2 { --v4-quality: #397aaf; }
-:is(#player-dashboard, .mobile-inventory-panel) .item-slot.quality-3 { --v4-quality: #8b62ae; }
-:is(#player-dashboard, .mobile-inventory-panel) .item-slot.quality-4 { --v4-quality: #b74e70; }
-:is(#player-dashboard, .mobile-inventory-panel) .item-slot.quality-5 { --v4-quality: #a98226; }
+:is(#player-dashboard, .mobile-inventory-panel) .item-slot.quality-1 { --v4-quality: #87928c; --v6-quality-mark: url('assets/runtime/v6/quality/quality-1.webp?v=xianlai-v6-20260908'); }
+:is(#player-dashboard, .mobile-inventory-panel) .item-slot.quality-2 { --v4-quality: #397aaf; --v6-quality-mark: url('assets/runtime/v6/quality/quality-2.webp?v=xianlai-v6-20260908'); }
+:is(#player-dashboard, .mobile-inventory-panel) .item-slot.quality-3 { --v4-quality: #8b62ae; --v6-quality-mark: url('assets/runtime/v6/quality/quality-3.webp?v=xianlai-v6-20260908'); }
+:is(#player-dashboard, .mobile-inventory-panel) .item-slot.quality-4 { --v4-quality: #b74e70; --v6-quality-mark: url('assets/runtime/v6/quality/quality-4.webp?v=xianlai-v6-20260908'); }
+:is(#player-dashboard, .mobile-inventory-panel) .item-slot.quality-5 { --v4-quality: #a98226; --v6-quality-mark: url('assets/runtime/v6/quality/quality-5.webp?v=xianlai-v6-20260908'); }
 
 :is(#player-dashboard, .mobile-inventory-panel) .item-slot:hover {
   box-shadow: none;
