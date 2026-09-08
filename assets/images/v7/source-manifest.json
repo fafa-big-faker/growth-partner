@@ -1,0 +1,229 @@
+{
+  "sources": {
+    "paper": {
+      "file": "仙来V7-双栏背包底纸.png",
+      "size": [
+        1774,
+        887
+      ],
+      "mode": "RGBA",
+      "alphaRange": [
+        0,
+        255
+      ],
+      "sha256": "cc7ea0db7d5496ed5b83922cbb240f7370fb9e483f56364181623f92cf609e7b"
+    },
+    "rewards": {
+      "file": "仙来V7-奖励品质墨团图集.png",
+      "size": [
+        1536,
+        1024
+      ],
+      "mode": "RGBA",
+      "alphaRange": [
+        0,
+        254
+      ],
+      "sha256": "7d5a79c3a4f33b31039b22fec81678ae73d633a89df9873e79dac8b45aca4b17"
+    }
+  },
+  "assets": {
+    "rewards": {
+      "quality-1": {
+        "path": "assets/images/v7/rewards/quality-1.png",
+        "size": [
+          256,
+          256
+        ],
+        "source": "rewards",
+        "cell": [
+          0,
+          0,
+          512,
+          512
+        ],
+        "contentBounds": [
+          52,
+          80,
+          467,
+          448
+        ],
+        "padding": 0,
+        "alphaRange": [
+          0,
+          255
+        ],
+        "alphaBounds": [
+          25,
+          38,
+          236,
+          226
+        ]
+      },
+      "quality-2": {
+        "path": "assets/images/v7/rewards/quality-2.png",
+        "size": [
+          256,
+          256
+        ],
+        "source": "rewards",
+        "cell": [
+          512,
+          0,
+          1024,
+          512
+        ],
+        "contentBounds": [
+          561,
+          76,
+          988,
+          448
+        ],
+        "padding": 0,
+        "alphaRange": [
+          0,
+          255
+        ],
+        "alphaBounds": [
+          22,
+          37,
+          239,
+          226
+        ]
+      },
+      "quality-3": {
+        "path": "assets/images/v7/rewards/quality-3.png",
+        "size": [
+          256,
+          256
+        ],
+        "source": "rewards",
+        "cell": [
+          1024,
+          0,
+          1536,
+          512
+        ],
+        "contentBounds": [
+          1068,
+          74,
+          1492,
+          448
+        ],
+        "padding": 0,
+        "alphaRange": [
+          0,
+          255
+        ],
+        "alphaBounds": [
+          21,
+          36,
+          236,
+          226
+        ]
+      },
+      "quality-4": {
+        "path": "assets/images/v7/rewards/quality-4.png",
+        "size": [
+          256,
+          256
+        ],
+        "source": "rewards",
+        "cell": [
+          0,
+          512,
+          512,
+          1024
+        ],
+        "contentBounds": [
+          46,
+          580,
+          474,
+          957
+        ],
+        "padding": 0,
+        "alphaRange": [
+          0,
+          255
+        ],
+        "alphaBounds": [
+          21,
+          33,
+          239,
+          224
+        ]
+      },
+      "quality-5": {
+        "path": "assets/images/v7/rewards/quality-5.png",
+        "size": [
+          256,
+          256
+        ],
+        "source": "rewards",
+        "cell": [
+          512,
+          512,
+          1024,
+          1024
+        ],
+        "contentBounds": [
+          561,
+          580,
+          988,
+          959
+        ],
+        "padding": 0,
+        "alphaRange": [
+          0,
+          255
+        ],
+        "alphaBounds": [
+          22,
+          33,
+          239,
+          226
+        ]
+      }
+    },
+    "ui": {
+      "inventory-paper": {
+        "path": "assets/images/v7/ui/inventory-paper.png",
+        "size": [
+          1679,
+          683
+        ],
+        "source": "paper",
+        "cell": [
+          0,
+          0,
+          1774,
+          887
+        ],
+        "contentBounds": [
+          61,
+          114,
+          1716,
+          773
+        ],
+        "padding": 12,
+        "alphaRange": [
+          0,
+          255
+        ],
+        "alphaBounds": [
+          12,
+          12,
+          1667,
+          671
+        ],
+        "slice": [
+          216,
+          320,
+          200,
+          380
+        ]
+      }
+    }
+  },
+  "minimumAlpha": 5
+}

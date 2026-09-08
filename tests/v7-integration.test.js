@@ -1,0 +1,33 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const vm = require('node:vm');
+const RewardPresentation = require('../reward-presentation');
+const root = path.join(__dirname, '..');
+const app = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
+const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+const version = 'xianlai-v7-20260909';
+
+test('every V7 image is preloaded with the exact runtime cache key', () => {
+  const preload = app.match(/function getInitialGameImageAssets\([^]*?\n\}/)[0];
+  const context = {
+    AssetPreloader: { collect: lists => [...new Set(lists.flat())] },
+    GAME_CONFIG: { itemTable: [] }, ITEM_IMAGES: {},
+    V2_IMAGE_ROOT: 'assets/runtime/v2', V3_IMAGE_ROOT: 'assets/runtime/v3',
+    getItemIconPath() {},
+  };
+  const urls = vm.runInNewContext(`${preload}; getInitialGameImageAssets()`, context);
+  for (const url of [...RewardPresentation.getAssetUrls(), `assets/runtime/v7/ui/inventory-paper.webp?v=${version}`, 'assets/runtime/ui/arrow-left.svg']) {
+    assert.equal(urls.filter(candidate => candidate === url).length, 1, url);
+    assert.ok(fs.statSync(path.join(root, url.split('?')[0])).size > 0, url);
+  }
+});
+
+test('new modules load before application and paper/quality style before scrollbar overrides', () => {
+  for (const file of ['mobile-cultivation.js', 'reward-presentation.js', 'mobile-cultivation.css', 'reward-presentation.css', 'app.js']) {
+    assert.ok(html.includes(`${file}?v=${version}`), file);
+  }
+  assert.ok(html.indexOf('src="reward-presentation.js') < html.indexOf('src="app.js'));
+  assert.ok(html.indexOf('href="reward-presentation.css') < html.indexOf('href="ink-scrollbars.css'));
+});

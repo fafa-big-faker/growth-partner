@@ -44,9 +44,8 @@ async function main() {
         UI._updateMailBadge = () => {};
         UI._updateAchBadge = () => {};
         Game.state = { level: 1, realmLevel: 1, treeRealm: 1, treeLevel: 1, axeId: '51001', axeInstanceId: 'equipped', coin: 1234, choppingCount: 50, exp: 0 };
-        Game.equippedWeapon = null;
         Game.inventory = Object.values(ITEMS).filter(item => item.type >= 1 && item.type <= 4).map(item => ({ itemId: item.id, quantity: 12 }));
-        Game.weapons = Array.from({ length: 12 }, (_, index) => ({ id: 'weapon-' + index, itemId: '51001', skillRolls: [] }));
+        Game.weapons = [{ id: 'equipped', itemId: '51001', skillRolls: [] }, ...Array.from({ length: 12 }, (_, index) => ({ id: 'weapon-' + index, itemId: '51001', skillRolls: [] }))];
         document.getElementById('login-screen').style.display = 'none';
         document.getElementById('player-dashboard').style.display = 'flex';
         Router.playerTab('cultivate', { force: true });
@@ -108,7 +107,7 @@ async function main() {
       const mobile = viewport.width < 720 || viewport.height <= 500 && viewport.width <= 950;
       if (mobile && viewport.height > viewport.width) {
         assert.ok(geometry.nav.bottom <= viewport.height + 1, 'navigation remains onscreen');
-        assert.ok(geometry.count.bottom < geometry.nav.y, 'chop count remains above navigation');
+        assert.ok(geometry.count.bottom <= viewport.height, 'chop count remains onscreen within unified navigation');
         assert.ok(geometry.scene.bottom < geometry.chop.y, 'scene stays above the chop controls');
         assert.ok(geometry.toggle.right < geometry.chop.x, 'ten chop does not overlap chop');
         assert.ok(geometry.forge.x > geometry.chop.right, 'forge does not overlap chop');
@@ -120,53 +119,98 @@ async function main() {
         await page.locator('#chop-btn').click();
         await page.locator('.forge-btn').click();
         assert.deepEqual(await page.evaluate(() => probe), { chop: 1, forge: 1, tree: 3 });
-        await page.locator('.mobile-inventory-trigger').click();
-        await page.waitForFunction(() => document.querySelector('.mobile-inventory-panel').getBoundingClientRect().bottom <= innerHeight + 1);
-        const paper = await page.evaluate(() => {
-          const style = selector => getComputedStyle(document.querySelector(selector));
-          return {
-            trigger: getComputedStyle(document.querySelector('.mobile-inventory-trigger'), '::before').borderImageSource,
-            outer: style('.mobile-inventory-panel').borderImageSource,
-            inside: style('.mobile-inventory-body .cult-inventory').backgroundColor,
-            innerBlur: style('.mobile-inventory-body .cult-inventory').backdropFilter,
-            equipBlur: style('.mobile-inventory-body .equip-info-bar').backdropFilter,
-            title: style('.mobile-inventory-header h2').color,
-          };
+        assert.equal(await page.locator('.mobile-inventory-overlay').count(), 0, 'legacy drawer is gone');
+        assert.equal(await page.locator('#inventory-grid').count(), 1, 'one item grid');
+        const splitGeometry = await page.evaluate(() => {
+          const left = document.querySelector('.mobile-items-pane').getBoundingClientRect();
+          const right = document.querySelector('.mobile-equipment-pane').getBoundingClientRect();
+          const paper = document.querySelector('.mobile-inventory-columns');
+          const paperStyle = getComputedStyle(paper);
+          const beforeStyle = getComputedStyle(paper, '::before');
+          const slots = Array.from(document.querySelectorAll('#inventory-grid .item-slot')).map(node => node.getBoundingClientRect().width);
+          return { ratio: left.width / right.width, separated: left.right <= right.x + 1,
+            art: paperStyle.borderImageSource + beforeStyle.borderImageSource + paperStyle.backgroundImage,
+            slots, bottom: paper.getBoundingClientRect().bottom };
         });
-        assert.ok(paper.trigger.includes('v3/ui/frame-topbar.webp'));
-        assert.ok(paper.outer.includes('v4/ui/modal-paper.webp'));
-        assert.equal(paper.inside, 'rgba(0, 0, 0, 0)');
-        assert.equal(paper.innerBlur, 'none');
-        assert.equal(paper.equipBlur, 'none');
-        assert.equal(paper.title, 'rgb(37, 43, 41)');
-        await page.locator('[data-tab="weapons"].inv-tab-v').click();
-        await page.evaluate(() => { document.getElementById('inventory-grid').scrollTop = 150; });
-        await page.locator('[data-tab="items"].inv-tab-v').click();
-        await page.locator('[data-tab="weapons"].inv-tab-v').click();
-        assert.equal(await page.evaluate(() => document.getElementById('inventory-grid').scrollTop), 150);
-        await page.locator('.item-slot:not(.empty)').first().focus();
+        assert.ok(splitGeometry.ratio > 1.3 && splitGeometry.ratio < 1.8, 'inventory uses a clear 3:2 split');
+        assert.ok(splitGeometry.separated);
+        assert.match(splitGeometry.art, /v7\/ui\/inventory-paper.webp/);
+        assert.ok(splitGeometry.slots.every(width => width >= 44), 'item touch targets are at least 44px');
+        const skillVisible = await page.evaluate(() => {
+          const content = document.getElementById('mobile-equipment-content').getBoundingClientRect();
+          const skill = document.querySelector('.mobile-equipped-skills').getBoundingClientRect();
+          return skill.y + 12 <= content.bottom;
+        });
+        assert.ok(skillVisible, 'current skill begins onscreen without scrolling the equipment');
+        assert.equal(await page.locator('#mobile-weapon-toggle').textContent(), '武器库');
+        const leftScroll = await page.evaluate(() => {
+          const grid = document.getElementById('inventory-grid');
+          grid.scrollTop = 100;
+          return grid.scrollTop;
+        });
+        assert.ok(leftScroll > 0, 'items scroll internally');
+        await page.locator('#mobile-weapon-toggle').click();
+        assert.equal(await page.locator('#mobile-weapon-toggle').textContent(), '返回');
+        assert.equal(await page.locator('#mobile-weapon-grid .weapon-slot').count(), 13);
+        const axeWidth = await page.locator('#mobile-weapon-grid .weapon-slot img').first().evaluate(node => node.getBoundingClientRect().width);
+        assert.ok(axeWidth >= 35, 'library axes do not fall back to legacy 28px icons');
+        assert.match(await page.locator('#mobile-weapon-grid .weapon-slot').first().getAttribute('onclick'), /equipped/);
+        await page.locator('#mobile-weapon-grid .weapon-slot').first().focus();
         await page.keyboard.press('Enter');
         assert.equal(await page.locator('.modal-overlay').count(), 1);
+        assert.equal(await page.locator('.weapon-detail-actions').innerText(), '当前装备');
+        assert.equal(await page.locator('.weapon-detail-actions button').count(), 0, 'current axe cannot be sold or re-equipped');
         await page.keyboard.press('Escape');
         assert.equal(await page.locator('.modal-overlay').count(), 0);
-        assert.equal(await page.evaluate(() => document.querySelector('.mobile-inventory-overlay').hidden), false);
-        await page.evaluate(() => { ITEMS['51001'].name = '一把名字特别长但是不应该把背包撑出手机屏幕的斧头'.repeat(3); });
+        assert.equal(await page.locator('#mobile-weapon-toggle').textContent(), '返回');
+        assert.equal(await page.evaluate(() => document.getElementById('inventory-grid').scrollTop), leftScroll);
+        const rightScroll = await page.evaluate(() => {
+          const grid = document.getElementById('mobile-weapon-grid');
+          grid.scrollTop = 100;
+          return grid.scrollTop;
+        });
+        assert.ok(rightScroll > 0, 'weapons scroll independently');
+        await page.locator('#mobile-weapon-toggle').click();
+        assert.equal(await page.locator('#mobile-weapon-toggle').textContent(), '武器库', 'return without equipping');
+        await page.locator('#mobile-weapon-toggle').click();
+        assert.equal(await page.evaluate(() => document.getElementById('mobile-weapon-grid').scrollTop), rightScroll);
+        await page.evaluate(() => {
+          Game.state.axeInstanceId = 'weapon-1';
+          ITEMS['51001'].name = '一把名字特别长但是不应该把背包撑出手机屏幕的斧头'.repeat(3);
+        });
         await page.evaluate(() => PlayerView.renderCultivate());
         assert.equal(await page.locator('#inventory-grid').count(), 1);
-        assert.equal(await page.locator('.mobile-inventory-overlay').count(), 1);
-        assert.equal(await page.evaluate(() => document.querySelector('.mobile-inventory-overlay').hidden), false);
+        assert.equal(await page.locator('#mobile-weapon-toggle').textContent(), '返回');
+        assert.equal(await page.evaluate(() => document.getElementById('inventory-grid').scrollTop), leftScroll);
+        assert.equal(await page.evaluate(() => document.getElementById('mobile-weapon-grid').scrollTop), rightScroll);
+        assert.match(await page.locator('#mobile-weapon-grid .weapon-slot').first().getAttribute('onclick'), /weapon-1/);
         assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
-        await page.keyboard.press('Escape');
-        assert.equal(await page.evaluate(() => document.body.style.overflow), '');
-        await page.locator('.mobile-inventory-trigger').click();
+        await page.evaluate(() => {
+          PlayerView.renderTasks = () => { document.getElementById('player-main').innerHTML = '<p>Tasks fixture</p>'; };
+          PlayerView.renderReward = () => { document.getElementById('player-main').innerHTML = '<p>Shop fixture</p>'; };
+        });
+        await page.locator('#player-dashboard .bottom-nav [data-tab="tasks"]').click();
+        assert.equal(await page.locator('#player-dashboard .bottom-nav [data-tab="cultivate"]').innerText(), '返回');
+        assert.equal(await page.locator('#chop-btn:visible').count(), 0);
+        assert.equal(await page.locator('.ten-toggle:visible').count(), 0);
+        assert.equal(await page.locator('.forge-btn:visible').count(), 0);
+        await page.locator('#player-dashboard .bottom-nav [data-tab="reward"]').click();
+        await page.locator('#player-dashboard .bottom-nav [data-tab="cultivate"]').click();
+        assert.equal(await page.locator('#mobile-weapon-toggle').textContent(), '返回');
+        assert.equal(await page.evaluate(() => document.getElementById('inventory-grid').scrollTop), leftScroll);
+        assert.equal(await page.evaluate(() => document.getElementById('mobile-weapon-grid').scrollTop), rightScroll);
+        await page.evaluate(() => { PlayerView.currentInvTab = 'weapons'; });
         await page.setViewportSize({ width: 1440, height: 900 });
         await page.waitForFunction(() => !document.getElementById('player-dashboard').classList.contains('mobile-cultivation'));
         assert.equal(await page.evaluate(() => document.querySelector('.forge-btn').parentElement.className), 'equip-info-bar');
         assert.equal(await page.evaluate(() => !!document.getElementById('inventory-grid').closest('#player-main')), true);
+        assert.equal(await page.evaluate(() => document.getElementById('inventory-grid').classList.contains('weapons-grid')), true, 'desktop tab restored');
         await page.setViewportSize(viewport);
-        await page.locator('.mobile-inventory-trigger').click();
-        await page.evaluate(() => { PlayerView.renderTasks = () => { document.getElementById('player-main').innerHTML = 'Tasks fixture'; }; Router.playerTab('tasks'); });
-        assert.equal(await page.locator('.mobile-inventory-overlay').count(), 0);
+        await page.waitForFunction(() => document.getElementById('player-dashboard').classList.contains('mobile-cultivation'));
+        assert.equal(await page.evaluate(() => document.getElementById('inventory-grid').classList.contains('weapons-grid')), false);
+        assert.equal(await page.evaluate(() => document.getElementById('inventory-grid').scrollTop), leftScroll, 'item scroll survives responsive round trip');
+        assert.equal(await page.evaluate(() => document.getElementById('mobile-weapon-grid').scrollTop), rightScroll, 'weapon scroll survives responsive round trip');
+        await page.evaluate(() => Auth.logout());
         assert.equal(await page.evaluate(() => document.body.style.overflow), '');
         assert.equal(await page.evaluate(() => document.getElementById('player-dashboard').inert), false);
       }

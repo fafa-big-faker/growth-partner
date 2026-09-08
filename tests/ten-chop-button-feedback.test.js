@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const TenChopTimeline = require('../ten-chop-timeline');
+const RewardPresentation = require('../reward-presentation');
 
 const app = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
 function method(name) {
@@ -50,6 +51,8 @@ async function simulateTenChops(chops, started = true) {
   const tree = makeButton();
   const context = {
     ITEMS: { '0': { name: '小钱钱' } },
+    QUALITY: {}, RewardPresentation,
+    escapeHtml: value => String(value ?? ''),
     Game: { state: { realmLevel: 99, choppingCount: 10 }, chopTen: async () => {
       writes++;
       if (chops instanceof Error) throw chops;

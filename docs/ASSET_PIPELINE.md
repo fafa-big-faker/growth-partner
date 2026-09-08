@@ -204,3 +204,12 @@ node scripts\normalize_audio.js
 - 源图实测bounds及指纹位于`assets/images/v6/source-manifest.json`。五枚品质源图169至171x435，运行图均44x112；墨刷源1487x340、运行960x220；文字源1187x361、运行768x234。7张WebP共170,762字节（约167KiB），不按整格512px缩图造成标记继续过小。
 - 所有运行URL使用`?v=xianlai-v6-20260908`。五枚墨记进入游戏首登预载；按钮两层在HTML头部预载，与实际img及点击墨影引用完全一致，不加入验证后的游戏必需资源队列。
 - 校验`python tests/xianlai-v6-assets.test.py`及`node --test tests/v6-*.test.js`。`node tests/v6-art.browser-check.cjs`用本地模拟数据检查四视口、图片透明度、两种背包、悬浮/焦点、失败兜底和登录恢复，无截图、无真实账号。
+
+## 14. V7 奖励墨团与双栏背包纸面
+
+- 原图位于仓库同级`美术风格参考V7`。`仙来V7-奖励品质墨团图集.png`实际1536x1024、RGBA、alpha为0至254；`仙来V7-双栏背包底纸.png`实际1774x887、RGBA、alpha为0至255。不能按提示词中的1024x512尺寸硬切纸面，原图保持不变。
+- 执行`python scripts/import_xianlai_v7_art.py`，再执行`python scripts/build_runtime_images.py --v7-only`。只重建V7；全量构建也包含V7。来源SHA、实际格子、alpha边界及透明安全边记录于`assets/images/v7/source-manifest.json`。
+- 只清理alpha小于5的透明彩噪，不按RGB去黑或最大连通块丢弃碎墨。奖励图按3列2行的512x512格提取，最后一格清噪后为空；完整格等比缩成256x256透明PNG与WebP，保留约20px以上透明边。五张依次为灰、蓝、紫、玫红、金，不拉伸V6竖向品质墨记充当墨团。
+- 纸面有效alpha边界为`61,114,1716,773`，裁切后加四周12px透明边，源PNG为1679x683，运行WebP为960x391。九宫格上/右/下/左源slice为`216/320/200/380`，运行slice为`124/183/114/217`，保留边角云叶及风纹。手机显示边框建议6至8px，不按源slice占用内容内边距；两栏与道具格由布局生成，不烘焙进纸面或再嵌套两张纸框。
+- 五张墨团位于`assets/runtime/v7/rewards/quality-1.webp`至`quality-5.webp`；纸面为`assets/runtime/v7/ui/inventory-paper.webp`。六张WebP共145,430字节（约142KiB），运行路径与首屏预载使用相同的`?v=xianlai-v7-20260909`。
+- 校验`python tests/xianlai-v7-assets.test.py`，检查精确资产数、来源指纹、原图逐像素重建、透明边、品质中心色、纸面可读留白及200KiB体积上限。再跑既有V5/V6图片回归；不得因新版本重建而覆盖旧图片。

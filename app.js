@@ -307,10 +307,12 @@ function getInitialGameImageAssets(axeId = null) {
   const currentAxeFrames = axeId
     ? [...getAxeIdleFrames(axeId), ...getAxeChopFrames(axeId)]
     : [];
-  const feedbackFiles = ['assets/runtime/ui/close.svg', 'assets/runtime/effects/leaf-ink.webp?v=ink-feedback-20260908'];
+  const feedbackFiles = ['assets/runtime/ui/close.svg', 'assets/runtime/ui/arrow-left.svg', 'assets/runtime/effects/leaf-ink.webp?v=ink-feedback-20260908'];
   const v5Files = ['assets/runtime/v5/ui/task-paper.webp', 'assets/runtime/v5/ui/shop-paper.webp'];
   const v6QualityFiles = [1, 2, 3, 4, 5].map(quality => `assets/runtime/v6/quality/quality-${quality}.webp?v=xianlai-v6-20260908`);
-  return AssetPreloader.collect([itemImages, configuredImages, currentAxeFrames, v2Files, v3Files, v4Files, feedbackFiles, v5Files, v6QualityFiles]);
+  const v7Files = ['ui/inventory-paper.webp', ...[1, 2, 3, 4, 5].map(quality => `rewards/quality-${quality}.webp`)]
+    .map(path => `assets/runtime/v7/${path}?v=xianlai-v7-20260909`);
+  return AssetPreloader.collect([itemImages, configuredImages, currentAxeFrames, v2Files, v3Files, v4Files, feedbackFiles, v5Files, v6QualityFiles, v7Files]);
 }
 
 function preloadAxeAnimation(itemId, onProgress = () => {}) {
@@ -2297,6 +2299,7 @@ const Auth = {
     this._setLoading(false, 0);
     AudioManager.pauseBgm();
     CultivatorAnimator.stop();
+    if (typeof MobileCultivation !== 'undefined') MobileCultivation.unmount();
     PlayerView.clearDataCaches();
     Game.state = null;
     Game.inventory = [];
@@ -2315,7 +2318,7 @@ const Router = {
     const main = document.getElementById('player-main');
     if (this.currentPlayerTab === tab && main?.dataset.renderedTab === tab && !options.force) return;
 
-    if (tab !== 'cultivate' && typeof MobileCultivation !== 'undefined') MobileCultivation.unmount();
+    if (typeof MobileCultivation !== 'undefined') MobileCultivation.setPage(tab);
 
     void AudioManager.playEffect('uiOpen');
     this.currentPlayerTab = tab;
@@ -2912,7 +2915,12 @@ const PlayerView = {
     CultivatorAnimator.attach(document.getElementById('cultivator-sprite'));
     AudioManager.syncControls();
     this.renderInventory(this.currentInvTab);
-    if (typeof MobileCultivation !== 'undefined') MobileCultivation.mount(mobileState || {});
+    if (typeof MobileCultivation !== 'undefined') {
+      MobileCultivation.mount(mobileState || {}, {
+        onModeChange: () => this.renderInventory(this.currentInvTab),
+      });
+      MobileCultivation.refreshEquipment(this.getMobileEquipmentPresentation());
+    }
     UI._updateMailBadge();
     UI._updateAchBadge();
   },
@@ -3086,6 +3094,7 @@ const PlayerView = {
   renderInventory(tab) {
     const grid = document.getElementById('inventory-grid');
     if (!grid) return;
+    if (typeof MobileCultivation !== 'undefined' && MobileCultivation.isMobile()) tab = 'items';
     if (typeof MobileCultivation !== 'undefined') MobileCultivation.beforeInventoryRender(tab);
 
     const isWeapons = tab === 'weapons';
@@ -3136,7 +3145,41 @@ const PlayerView = {
     }
 
     grid.innerHTML = html;
-    if (typeof MobileCultivation !== 'undefined') MobileCultivation.refreshInventory(tab);
+    if (typeof MobileCultivation !== 'undefined') {
+      MobileCultivation.refreshInventory(tab);
+      if (MobileCultivation.isMobile()) MobileCultivation.refreshEquipment(this.getMobileEquipmentPresentation());
+    }
+  },
+
+  getMobileEquipmentPresentation() {
+    const current = Game.equippedWeapon;
+    const def = ITEMS[current?.itemId || Game.state.axeId] || ITEMS['51001'];
+    const quality = QUALITY[def.quality] || QUALITY[1];
+    const skillHtml = renderWeaponSkills(current, '');
+    const detailAction = current ? `onclick="PlayerView.showItemDetail('${current.itemId}','${current.id}')"` : '';
+    const html = `
+      <button type="button" class="mobile-equipped-art" ${detailAction} aria-label="查看当前装备${escapeHtml(def.name)}">
+        ${renderItemIcon(current?.itemId || Game.state.axeId, def.icon, 'mobile-equipped-image')}
+      </button>
+      <div class="mobile-equipped-title quality-item-name quality-${def.quality}">${escapeHtml(def.name)}</div>
+      <div class="mobile-equipped-quality quality-item-name quality-${def.quality}">${escapeHtml(quality.name)}</div>
+      <div class="mobile-equipped-skills">${skillHtml || '暂无特殊技能'}</div>`;
+    const weapons = [...Game.weapons].sort((a, b) => Number(b.id === Game.state.axeInstanceId) - Number(a.id === Game.state.axeInstanceId));
+    const weaponsHtml = weapons.map(weapon => {
+      const item = ITEMS[weapon.itemId];
+      if (!item) return '';
+      const isCurrent = weapon.id === Game.state.axeInstanceId;
+      const locked = !canEquipAxeQuality(item.quality, Game.state.realmLevel);
+      const isNew = InventoryNewState.isWeaponNew(weapon.id);
+      return `<button type="button" class="item-slot weapon-slot quality-${item.quality}${locked ? ' item-locked' : ''}${isCurrent ? ' is-equipped' : ''}"
+          onclick="PlayerView.showItemDetail('${weapon.itemId}','${weapon.id}')" aria-label="${isCurrent ? '当前装备：' : ''}${escapeHtml(item.name)}">
+        <span class="item-icon">${renderItemIcon(weapon.itemId, item.icon)}</span>
+        ${isCurrent ? '<span class="mobile-current-badge">当前</span>' : ''}
+        ${isNew ? '<span class="item-new-badge">新</span>' : ''}
+        ${locked ? `<span class="item-lock-badge">${renderFeatureIcon('icon-lock', '仙阶未解锁', 'lock-badge-icon')}</span>` : ''}
+      </button>`;
+    }).join('') || '<p class="mobile-library-empty">暂无仙斧</p>';
+    return { html, weaponsHtml };
   },
 
   showItemDetail(itemId, instanceId = null) {
@@ -3146,8 +3189,9 @@ const PlayerView = {
     else InventoryNewState.clearItem(itemId);
     this.renderInventory(this.currentInvTab);
     const qty = Game._getItemQty(itemId);
-    const q = QUALITY[def.quality];
+    const q = QUALITY[def.quality] || QUALITY[1];
     const weapon = instanceId ? Game.weapons.find(entry => entry.id === instanceId) : null;
+    const isEquipped = !!weapon && weapon.id === Game.state.axeInstanceId;
 
     // 仙斧专属：仙阶限制
     let axeRealmHtml = '';
@@ -3164,7 +3208,11 @@ const PlayerView = {
     } else if (def.type === 2) {
       actionBtn = `<button class="btn btn-primary btn-sm" onclick="PlayerView.cashItem('${itemId}')">提现 ¥${def.value}</button>`;
     } else if (def.type === 5) {
-      if (axeLocked) {
+      if (isEquipped) {
+        actionBtn = '<span class="weapon-current-label">当前装备</span>';
+      } else if (!weapon) {
+        actionBtn = '';
+      } else if (axeLocked) {
         actionBtn = `
           <button class="btn btn-outline btn-sm" disabled style="opacity:0.5">${renderFeatureIcon('icon-lock', '', 'button-feature-icon')}仙阶不足</button>
           <button class="btn btn-outline btn-sm" onclick="PlayerView.sellItem('${instanceId}',this)">出售 +${renderItemIcon('0', '🪙', 'item-icon-xs')} ${def.sellPrice}</button>
@@ -3217,7 +3265,7 @@ const PlayerView = {
           ${renderItemIcon(itemId, def.icon, 'item-icon-lg')}
           ${axeLocked ? `<span class="detail-lock-art">${renderFeatureIcon('icon-lock', '仙阶未解锁', 'lock-detail-icon')}</span>` : ''}
         </div>
-        <div style="font-size:18px;font-weight:700">${def.name}</div>
+        <div class="item-detail-name quality-item-name quality-${def.quality}" style="font-size:18px;font-weight:700;overflow-wrap:anywhere">${escapeHtml(def.name)}</div>
         <div style="margin-top:4px"><span class="tag" style="background:${q.color}20;color:${q.color}">${q.name}</span></div>
         <div style="margin-top:8px;font-size:13px;color:var(--text-secondary)">数量：${qty}</div>
       </div>
@@ -3426,6 +3474,10 @@ const PlayerView = {
     const weapon = Game.weapons.find(entry => entry.id === instanceId);
     const def = ITEMS[weapon?.itemId];
     if (!weapon || !def) return;
+    if (instanceId === Game.state.axeInstanceId) {
+      UI.toast('当前装备不能出售，请先更换仙斧', 'warn');
+      return;
+    }
     UI.confirm(`确定出售 ${def.name}，获得 ${def.sellPrice} ${ITEMS['0']?.name || '游戏币'}？`, async () => {
       const operationKey = `sell-axe:${instanceId}`;
       if (OperationGuard.isActive(operationKey)) return;
@@ -3523,42 +3575,13 @@ const PlayerView = {
   },
 
   _showRewardModal(item) {
-    const buffHtml = item.buffText
-      ? `<div style="color:var(--quality-4);font-size:14px;font-weight:600;margin-bottom:8px">斧技触发 · ${item.buffText}</div>`
-      : '';
-    const refundHtml = item.refundChopping
-      ? `<div style="color:var(--accent);font-size:13px;margin-bottom:8px">返还 ${item.refundChopping} 次砍树</div>`
-      : '';
-    const extraHtml = item.extraDrop ? `
-      <div class="bonus-drop-row">
-        <span class="bonus-drop-label">第十砍额外奖励</span>
-        ${renderItemIcon(item.extraDrop.itemId, item.extraDrop.item?.icon, 'item-icon-sm')}
-        <span>${item.extraDrop.item?.name || '道具'} ×${item.extraDrop.quantity}</span>
-      </div>` : '';
-
-    // 特殊道具（游戏币/砍树次数）单独展示
-    let icon, name, color, label;
-    if (item.kind === 'coin') {
-      icon = renderItemIcon('0', '🪙', 'item-icon-lg'); name = ITEMS['0']?.name || '游戏币'; color = '#526f61';
-      label = `货币 · 获得 ×${item.quantity}`;
-    } else if (item.kind === 'chopping') {
-      icon = renderItemIcon('1', '🪓', 'item-icon-lg'); name = '砍树次数'; color = '#4a90d9';
-      label = `体力 · 获得 ×${item.quantity}`;
-    } else {
-      const q = QUALITY[item.quality] || { name: '', color: '#9e9e9e' };
-      icon = item.item ? renderItemIcon(item.itemId, item.item.icon, 'item-icon-lg') : '🎁';
-      name = item.item ? item.item.name : '道具';
-      color = q.color;
-      label = `${q.name} · 获得 ×${item.quantity}`;
-    }
+    const rewards = RewardPresentation.createRenderer({ items: ITEMS, quality: QUALITY, renderItemIcon, escapeHtml });
+    const extraHtml = item.extraDrop
+      ? rewards.renderResults([{ ...item.extraDrop, isExtra: true }]) : '';
 
     UI.modal(`
-      <div class="reward-modal">
-        <div class="reward-icon">${icon}</div>
-        <div class="reward-name" style="color:${color}">${name}</div>
-        <div class="reward-quality">${label}</div>
-        ${buffHtml}
-        ${refundHtml}
+      <div class="reward-modal reward-modal-v7">
+        ${rewards.renderItem(item, { size: 'large' })}
         ${extraHtml}
         <button class="btn btn-primary btn-block" onclick="this.closest('.modal-overlay').remove()">收下</button>
       </div>
@@ -5124,32 +5147,9 @@ const PlayerView = {
     scatterEls.forEach(el => { if (el) el.remove(); });
 
     // 显示结果弹窗
-    const itemsHtml = results.map(r => {
-      const extraTag = r.isExtra ? '<div style="font-size:10px;color:var(--warning);font-weight:600">额外掉落</div>' : '';
-      const buffTag = r.buffText ? `<div style="font-size:10px;color:var(--quality-4)">${r.buffText}</div>` : '';
-      let icon, name, color;
-      if (r.kind === 'coin') { icon = renderItemIcon('0', '🪙', 'item-icon-sm'); name = ITEMS['0']?.name || '游戏币'; color = '#526f61'; }
-      else if (r.kind === 'chopping') { icon = renderItemIcon('1', '🪓', 'item-icon-sm'); name = '砍树次数'; color = '#4a90d9'; }
-      else {
-        const q = QUALITY[r.quality] || QUALITY[1];
-        icon = r.item ? renderItemIcon(r.itemId, r.item.icon, 'item-icon-sm') : '🎁';
-        name = r.item ? r.item.name : '道具';
-        color = q.color;
-      }
-      return `<div style="text-align:center;padding:8px;border:1px solid ${color}40;border-radius:8px;background:${color}10">
-        <div style="display:flex;align-items:center;justify-content:center;height:40px">${icon}</div>
-        <div style="font-size:11px;font-weight:600;color:${color};margin-top:2px">${name}</div>
-        <div style="font-size:10px;color:var(--text-light)">×${r.quantity}</div>
-        ${extraTag}
-        ${buffTag}
-      </div>`;
-    }).join('');
+    const rewards = RewardPresentation.createRenderer({ items: ITEMS, quality: QUALITY, renderItemIcon, escapeHtml });
 
-    UI.modal(`
-      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px">
-        ${itemsHtml}
-      </div>
-    `, {
+    UI.modal(rewards.renderResults(results), {
       title: `${renderFeatureIcon('icon-reward', '', 'section-title-icon')} 十连砍结果（共 ${results.length} 件）`,
       footer: `<div class="modal-footer">
         <button class="btn btn-primary btn-sm" onclick="this.closest('.modal-overlay').remove();PlayerView.renderCultivate()">确定</button>

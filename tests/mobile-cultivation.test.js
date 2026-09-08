@@ -17,60 +17,86 @@ test('controller safely ignores a non-cultivation page and repeated cleanup', ()
   assert.equal(controller.close(), false);
   assert.doesNotThrow(() => controller.beforeInventoryRender('weapons'));
   assert.doesNotThrow(() => controller.refreshInventory('weapons'));
+  assert.doesNotThrow(() => controller.refreshEquipment({ html: '', weaponsHtml: '' }));
+  assert.doesNotThrow(() => controller.setPage('tasks'));
+  assert.equal(controller.isMobile(), false);
 });
 
-test('mobile drawer moves the existing inventory and does not create a second grid', () => {
-  assert.match(source, /move\(state\.inventory, state\.drawerBody\)/);
-  assert.match(source, /move\(state\.equipment, state\.drawerBody\)/);
-  assert.match(source, /move\(state\.forge, state\.actions\)/);
+test('mobile media detection works before cultivation is mounted', () => {
+  const queries = [];
+  const controller = createController({ document: { getElementById: () => null }, matchMedia(query) { queries.push(query); return { matches: true }; } });
+  assert.equal(controller.isMobile(), true);
+  assert.match(queries[0], /max-width: 719px/);
+  assert.match(queries[0], /max-height: 500px/);
+});
+
+test('dual columns move the unique item grid and original actions without a modal drawer', () => {
+  assert.match(source, /move\(state\.grid, state\.itemsPane\)/);
+  assert.match(source, /move\(state\.chop, navigation\.nav\)/);
+  assert.match(source, /move\(state\.ten, navigation\.nav\)/);
+  assert.match(source, /move\(state\.forge, navigation\.nav\)/);
   assert.match(source, /marker\.replaceWith\(node\)/);
   assert.doesNotMatch(source, /id=["']inventory-grid["']/);
-  assert.match(source, /overlay\.className = 'mobile-inventory-overlay'/);
-  assert.doesNotMatch(source, /overlay\.className = 'modal-overlay'/);
+  assert.match(source, /id="mobile-equipment-content"/);
+  assert.match(source, /id="mobile-weapon-grid"/);
+  assert.doesNotMatch(source, /mobile-inventory-overlay|drawerBody|doc\.body\.style\.overflow/);
 });
 
-test('inventory redraw and full cultivate refresh preserve drawer state and each tab scroll', () => {
+test('inventory redraw and full cultivate refresh preserve independent scroll and library mode', () => {
   assert.match(source, /state\.scroll\[state\.tab\] = state\.grid\.scrollTop/);
   assert.match(source, /state\.grid\.scrollTop = state\.scroll\[state\.tab\] \|\| 0/);
-  assert.match(source, /snapshot\.open && state\.mobile/);
+  assert.match(source, /state\.rightScroll\[state\.mode\] = host\.scrollTop/);
+  assert.match(source, /restore\.mode === 'library'/);
+  assert.match(source, /presentation\.weaponsHtml !== state\.weaponsHtml/);
+  assert.match(source, /state\.weaponGrid\.scrollTop = state\.rightScroll\.library/);
   assert.match(app, /MobileCultivation\.unmount\(\{ preserve: true \}\)/);
-  assert.match(app, /MobileCultivation\.mount\(mobileState \|\| \{\}\)/);
+  assert.match(app, /MobileCultivation\.mount\(mobileState \|\| \{\}, \{/);
+  assert.match(app, /onModeChange:/);
   const render = app.slice(app.indexOf('  renderInventory(tab) {'), app.indexOf('  showItemDetail('));
   assert.ok(render.indexOf('beforeInventoryRender(tab)') < render.indexOf('grid.innerHTML = html'));
   assert.ok(render.indexOf('refreshInventory(tab)') > render.indexOf('grid.innerHTML = html'));
+  assert.match(render, /MobileCultivation\.isMobile\(\)\) tab = 'items'/);
 });
 
-test('drawer isolates background controls and gives nested details first Escape handling', () => {
-  assert.match(source, /state\.dashboard\.inert = true/);
-  assert.match(source, /state\.dashboard\.inert = state\.oldInert/);
-  assert.match(source, /doc\.body\.style\.overflow = state\.oldOverflow/);
-  assert.match(source, /if \(hasNestedModal\(\)\) \{[\s\S]*topModal\.classList\.contains\('modal-locked'\)/);
-  assert.match(source, /event\.target === overlay && !hasNestedModal\(\)/);
-  assert.match(source, /aria-modal="true"/);
+test('keyboard details retain the library and do not duplicate native button activation', () => {
+  assert.match(source, /event\.key === 'Escape' && !modal\.classList\.contains\('modal-locked'\)/);
+  assert.match(source, /modal\.remove\(\);\s*state\.modeButton\.focus/);
   assert.match(source, /event\.key === 'Tab'/);
-  assert.match(source, /state\.returnFocus\?\.isConnected/);
   assert.match(source, /slot\.setAttribute\('tabindex', '0'\)/);
+  assert.match(source, /slot\.tagName !== 'BUTTON'/);
   assert.match(source, /event\.key === 'Enter' \|\| event\.key === ' '/);
   assert.match(source, /\['ArrowLeft', 'ArrowRight', 'Home', 'End'\]/);
 });
 
-test('route, logout and responsive mode changes release moved DOM, observers and body lock', () => {
-  assert.match(app, /tab !== 'cultivate'[\s\S]*MobileCultivation\.unmount\(\)/);
-  assert.match(source, /state\.dashboard\.style\.display === 'none'\) unmount\(\)/);
+test('navigation persists across routes, switches to a return icon and fully cleans up on logout', () => {
+  assert.match(app, /MobileCultivation\.setPage\(tab\)/);
+  assert.match(source, /tab !== 'cultivate' && state\) unmount\(\{ preserve: true \}\)/);
+  assert.match(source, /navigation\?\.dashboard\.style\.display === 'none'\) unmount\(\)/);
   assert.match(source, /for \(const cleanup of state\.cleanups\) cleanup\(\)/);
+  assert.match(source, /for \(const cleanup of navigation\.cleanups\) cleanup\(\)/);
   assert.match(source, /observer\.disconnect\(\)/);
-  assert.match(source, /state\.overlay\.remove\(\)/);
+  assert.match(source, /state\.dual\.remove\(\)/);
   assert.match(source, /state\.stage\.replaceWith\(\.\.\.state\.stage\.childNodes\)/);
+  assert.match(source, /assets\/runtime\/ui\/arrow-left\.svg/);
+  assert.match(source, /navigation\.centerText\.textContent = navigation\.originalText/);
+  assert.match(source, /state\.onModeChange\?\.\(\)/);
+  assert.doesNotMatch(source, /env\.PlayerView|env\.Router/);
 });
 
-test('short portrait keeps actions and nav onscreen without independently changing tree anchors', () => {
+test('short portrait keeps dual panes and actions onscreen without changing relative tree anchors', () => {
   assert.match(css, /height: 100dvh/);
   assert.match(css, /min-height: 480px\) and \(orientation: portrait\)/);
   assert.match(css, /\.mobile-scene-stage \{ transform: scale\(0\.8\)/);
   assert.doesNotMatch(css, /--tree-left:|--character-left:|--character-bottom:|--tree-width:/);
-  assert.match(css, /\.chop-circle-btn \{ grid-column: 2; grid-row: 1/);
+  assert.match(css, /\.chop-circle-btn \{ grid-column: 2; grid-row: 1 \/ 3/);
   assert.match(css, /\.ten-toggle \{ grid-column: 1; grid-row: 1/);
   assert.match(css, /\.forge-btn \{ grid-column: 3; grid-row: 1/);
   assert.match(css, /\.mobile-scene-stage \.cult-tree \{ pointer-events: auto/);
+  assert.match(css, /grid-template-columns: minmax\(0, 3fr\) minmax\(0, 2fr\)/);
+  assert.match(css, /#mobile-weapon-grid \{ grid-template-columns: repeat\(2/);
+  assert.match(css, /@media \(max-width: 374px\)/);
+  assert.match(css, /inventory-paper\.webp\?v=xianlai-v7-20260909/);
+  assert.match(css, /scrollbar-color: #799085 transparent/);
+  assert.match(css, /min-height: 44px/);
   assert.match(css, /prefers-reduced-motion: reduce/);
 });

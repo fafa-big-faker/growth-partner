@@ -5,13 +5,21 @@
 })(typeof window === 'undefined' ? globalThis : window, function () {
   'use strict';
 
+  const MEDIA_QUERY = '(max-width: 719px), (max-height: 500px) and (max-width: 950px)';
+
   function createController(env) {
     const doc = env.document;
     let state = null;
+    let navigation = null;
+    let saved = {};
 
-    function listen(target, type, handler, options) {
+    function listen(owner, target, type, handler, options) {
       target.addEventListener(type, handler, options);
-      state.cleanups.push(() => target.removeEventListener(type, handler, options));
+      owner.cleanups.push(() => target.removeEventListener(type, handler, options));
+    }
+
+    function isMobile() {
+      return navigation ? navigation.media.matches : !!env.matchMedia?.(MEDIA_QUERY).matches;
     }
 
     function move(node, host) {
@@ -32,48 +40,111 @@
       }
     }
 
-    function hasNestedModal() {
-      return !!doc.querySelector('.modal-overlay');
-    }
-
-    function focusables() {
-      return Array.from(state.panel.querySelectorAll('button, [href], input, [tabindex="0"]'))
-        .filter(node => !node.disabled && !node.hidden && node.getClientRects().length);
-    }
-
-    function open() {
-      if (!state?.mobile || state.open || hasNestedModal()) return false;
-      state.returnFocus = doc.activeElement;
-      state.oldOverflow = doc.body.style.overflow;
-      state.oldInert = state.dashboard.inert;
-      state.open = true;
-      state.overlay.hidden = false;
-      state.overlay.inert = false;
-      state.trigger.setAttribute('aria-expanded', 'true');
-      doc.body.style.overflow = 'hidden';
-      state.dashboard.inert = true;
-      state.closeButton.focus({ preventScroll: true });
-      return true;
-    }
-
-    function close(options = {}) {
-      if (!state?.open) return false;
-      state.open = false;
-      state.overlay.hidden = true;
-      state.overlay.inert = false;
-      state.trigger.setAttribute('aria-expanded', 'false');
-      doc.body.style.overflow = state.oldOverflow;
-      state.dashboard.inert = state.oldInert;
-      if (options.restoreFocus !== false && !hasNestedModal()) {
-        const target = state.returnFocus?.isConnected ? state.returnFocus : state.trigger;
-        target.focus({ preventScroll: true });
+    function applyNavigation() {
+      if (!navigation) return;
+      const mobile = isMobile();
+      const cultivation = navigation.page === 'cultivate';
+      navigation.dashboard.classList.toggle('mobile-player-navigation', mobile);
+      navigation.dashboard.dataset.mobilePage = navigation.page;
+      navigation.center.hidden = mobile && cultivation;
+      navigation.center.setAttribute('aria-label', mobile && !cultivation ? '返回修仙' : '修仙');
+      navigation.centerText.textContent = mobile && !cultivation ? '返回' : navigation.originalText;
+      if (navigation.centerImage) {
+        const src = mobile && !cultivation ? 'assets/runtime/ui/arrow-left.svg' : navigation.originalSource;
+        if (navigation.centerImage.getAttribute('src') !== src) navigation.centerImage.setAttribute('src', src);
       }
+    }
+
+    function ensureNavigation() {
+      if (navigation) return true;
+      const dashboard = doc.getElementById('player-dashboard');
+      const nav = dashboard?.querySelector('.bottom-nav');
+      const center = nav?.querySelector('[data-tab="cultivate"]');
+      const centerText = center?.querySelector('.nav-text');
+      if (!nav || !centerText || !env.matchMedia) return false;
+      const centerImage = center.querySelector('img');
+      navigation = {
+        dashboard, nav, center, centerText, centerImage,
+        originalText: centerText.textContent,
+        originalSource: centerImage?.getAttribute('src'),
+        page: dashboard.dataset.playerScene || 'cultivate',
+        media: env.matchMedia(MEDIA_QUERY), cleanups: [],
+      };
+      for (const item of nav.querySelectorAll('.nav-item')) {
+        const role = item.getAttribute('role');
+        const tabIndex = item.getAttribute('tabindex');
+        item.setAttribute('role', 'button');
+        item.setAttribute('tabindex', '0');
+        navigation.cleanups.push(() => {
+          role === null ? item.removeAttribute('role') : item.setAttribute('role', role);
+          tabIndex === null ? item.removeAttribute('tabindex') : item.setAttribute('tabindex', tabIndex);
+        });
+      }
+      listen(navigation, nav, 'keydown', event => {
+        const item = event.target.closest('.nav-item');
+        if (item && (event.key === 'Enter' || event.key === ' ')) {
+          event.preventDefault();
+          item.click();
+        }
+      });
+      const onMediaChange = () => {
+        switchMode();
+        applyNavigation();
+      };
+      if (navigation.media.addEventListener) listen(navigation, navigation.media, 'change', onMediaChange);
+      else {
+        const media = navigation.media;
+        media.addListener(onMediaChange);
+        navigation.cleanups.push(() => media.removeListener(onMediaChange));
+      }
+      if (env.MutationObserver) {
+        const observer = new env.MutationObserver(() => {
+          if (navigation?.dashboard.style.display === 'none') unmount();
+        });
+        observer.observe(dashboard, { attributes: true, attributeFilter: ['style'] });
+        navigation.cleanups.push(() => observer.disconnect());
+      }
+      applyNavigation();
       return true;
     }
+
+    function setPage(tab) {
+      if (!ensureNavigation()) return;
+      if (tab !== 'cultivate' && state) unmount({ preserve: true });
+      navigation.page = tab;
+      applyNavigation();
+    }
+
+    function captureScroll() {
+      if (!state || state.transitioning || (state.mobile !== null && isMobile() !== state.mobile)) return;
+      state.scroll[state.tab] = state.grid.scrollTop;
+      if (state.mobile) {
+        const host = state.mode === 'library' ? state.weaponGrid : state.equipmentContent;
+        state.rightScroll[state.mode] = host.scrollTop;
+      }
+    }
+
+    function showMode(mode) {
+      if (!state?.mobile) return false;
+      captureScroll();
+      state.mode = mode;
+      const library = mode === 'library';
+      state.equipmentContent.hidden = library;
+      state.weaponGrid.hidden = !library;
+      state.modeButton.textContent = library ? '返回' : '武器库';
+      state.modeButton.setAttribute('aria-label', library ? '返回当前装备' : '打开武器库');
+      state.modeButton.setAttribute('aria-expanded', String(library));
+      const host = library ? state.weaponGrid : state.equipmentContent;
+      host.scrollTop = state.rightScroll[mode] || 0;
+      return true;
+    }
+
+    function open() { return showMode('library'); }
+    function close() { return showMode('equipment'); }
 
     function beforeInventoryRender(tab) {
       if (!state) return;
-      state.scroll[state.tab] = state.grid.scrollTop;
+      captureScroll();
       state.tab = tab;
     }
 
@@ -81,204 +152,188 @@
       if (!state) return;
       state.tab = tab || state.tab;
       state.grid.scrollTop = state.scroll[state.tab] || 0;
-      const slots = Array.from(state.grid.querySelectorAll('.item-slot:not(.empty)'));
       state.grid.setAttribute('aria-label', state.tab === 'weapons' ? '武器' : '道具');
-      for (const slot of slots) {
+      for (const slot of state.grid.querySelectorAll('.item-slot:not(.empty)')) {
         slot.setAttribute('role', 'button');
         slot.setAttribute('tabindex', '0');
         slot.setAttribute('aria-label', slot.querySelector('img')?.alt || '查看物品');
       }
-      state.count.textContent = `${state.tab === 'weapons' ? '武器' : '道具'} ${slots.length}`;
-      state.novelty.hidden = !state.grid.querySelector('.item-new-badge');
-      state.preview.replaceChildren();
-      for (const slot of slots.slice(0, 3)) {
-        const source = slot.querySelector('img');
-        if (!source) continue;
-        const image = source.cloneNode(false);
-        image.removeAttribute('id');
-        image.className = '';
-        image.alt = '';
-        state.preview.appendChild(image);
-      }
-      state.equippedName.textContent = state.equipment.querySelector('.equip-name')?.textContent || '';
       for (const tabButton of state.inventory.querySelectorAll('.inv-tab-v')) {
         tabButton.setAttribute('aria-selected', String(tabButton.dataset.tab === state.tab));
       }
     }
 
-    function switchMode() {
+    function refreshEquipment(presentation = {}) {
       if (!state) return;
-      const mobile = state.media.matches;
-      if (mobile === state.mobile) return;
-      close({ restoreFocus: false });
-      state.mobile = mobile;
-      state.dashboard.classList.toggle('mobile-cultivation', mobile);
-      state.trigger.hidden = !mobile;
-      if (mobile) {
+      captureScroll();
+      if (typeof presentation.html === 'string' && presentation.html !== state.equipmentHtml) {
+        state.equipmentContent.innerHTML = presentation.html;
+        state.equipmentHtml = presentation.html;
+      }
+      if (typeof presentation.weaponsHtml === 'string' && presentation.weaponsHtml !== state.weaponsHtml) {
+        state.weaponGrid.innerHTML = presentation.weaponsHtml;
+        state.weaponsHtml = presentation.weaponsHtml;
+      }
+      state.equipmentContent.scrollTop = state.rightScroll.equipment || 0;
+      state.weaponGrid.scrollTop = state.rightScroll.library || 0;
+    }
+
+    function switchMode() {
+      if (!state || isMobile() === state.mobile) return;
+      if (state.mobile !== null) captureScroll();
+      const scroll = { ...state.scroll };
+      const rightScroll = { ...state.rightScroll };
+      // Moving a scroller to a larger or hidden host can clamp scrollTop to zero.
+      // Preserve the user's offsets until the destination layout is populated.
+      state.transitioning = true;
+      state.mobile = isMobile();
+      state.dashboard.classList.toggle('mobile-cultivation', state.mobile);
+      state.dual.hidden = !state.mobile;
+      if (state.mobile) {
         if (state.scene) {
           state.stage = doc.createElement('div');
           state.stage.className = 'mobile-scene-stage';
           while (state.scene.firstChild) state.stage.appendChild(state.scene.firstChild);
           state.scene.appendChild(state.stage);
         }
-        move(state.inventory, state.drawerBody);
-        move(state.equipment, state.drawerBody);
-        move(state.forge, state.actions);
+        move(state.grid, state.itemsPane);
+        move(state.chop, navigation.nav);
+        move(state.ten, navigation.nav);
+        move(state.forge, navigation.nav);
+        showMode(state.mode);
       } else {
         restoreHomes();
       }
+      applyNavigation();
+      // PlayerView is lexical in the app; responsive redraw uses the supplied callback.
+      state.onModeChange?.();
+      state.scroll = scroll;
+      state.rightScroll = rightScroll;
       refreshInventory();
+      state.equipmentContent.scrollTop = rightScroll.equipment || 0;
+      state.weaponGrid.scrollTop = rightScroll.library || 0;
+      state.transitioning = false;
     }
 
-    function mount(snapshot = {}) {
-      unmount();
+    function mount(snapshot = {}, options = {}) {
+      if (state) unmount({ preserve: true });
+      if (!ensureNavigation()) return;
       const main = doc.getElementById('player-main');
-      const dashboard = doc.getElementById('player-dashboard');
       const inventory = main?.querySelector('.cult-inventory');
       const equipment = main?.querySelector('.equip-info-bar');
-      const forge = equipment?.querySelector('.forge-btn');
       const grid = inventory?.querySelector('#inventory-grid');
-      const actions = main?.querySelector('.cult-action');
-      if (!dashboard || !inventory || !equipment || !forge || !grid || !actions) return;
-
-      const trigger = doc.createElement('button');
-      trigger.type = 'button';
-      trigger.className = 'mobile-inventory-trigger';
-      trigger.hidden = true;
-      trigger.setAttribute('aria-haspopup', 'dialog');
-      trigger.setAttribute('aria-controls', 'mobile-inventory-dialog');
-      trigger.setAttribute('aria-expanded', 'false');
-      trigger.innerHTML = '<span class="mobile-inventory-label">背包<span class="mobile-inventory-count"></span></span><span class="mobile-inventory-preview" aria-hidden="true"></span><span class="mobile-inventory-new" hidden>新</span><span class="mobile-inventory-chevron" aria-hidden="true">⌃</span><span class="mobile-equipped-name"></span>';
-      inventory.before(trigger);
-
-      // This is deliberately not a .modal-overlay: item actions may remove those
-      // overlays, but must never delete the sole inventory DOM underneath them.
-      const overlay = doc.createElement('div');
-      overlay.className = 'mobile-inventory-overlay';
-      overlay.hidden = true;
-      overlay.innerHTML = '<section class="modal mobile-inventory-panel" id="mobile-inventory-dialog" role="dialog" aria-modal="true" aria-labelledby="mobile-inventory-title" tabindex="-1"><header class="mobile-inventory-header"><h2 id="mobile-inventory-title">背包</h2><button type="button" class="mobile-inventory-close ink-close" aria-label="收起背包" title="收起背包"><img class="modal-close-icon" src="assets/runtime/ui/close.svg" alt=""></button></header><div class="mobile-inventory-body"></div></section>';
-      doc.body.appendChild(overlay);
+      const forge = equipment?.querySelector('.forge-btn');
+      const chop = main?.querySelector('#chop-btn');
+      const ten = main?.querySelector('.ten-toggle');
+      if (!inventory || !equipment || !grid || !forge || !chop || !ten) return;
+      const restore = { ...saved, ...snapshot };
+      const dual = doc.createElement('section');
+      dual.className = 'mobile-inventory-columns';
+      dual.hidden = true;
+      dual.setAttribute('aria-label', '背包与装备');
+      dual.innerHTML = '<div class="mobile-items-pane"></div><section class="mobile-equipment-pane" aria-label="仙斧"><div id="mobile-equipment-content" class="mobile-equipment-content" tabindex="0" aria-label="当前装备"></div><div id="mobile-weapon-grid" class="mobile-weapon-grid inventory-grid weapons-grid" aria-label="武器库" hidden></div><button type="button" id="mobile-weapon-toggle" class="mobile-weapon-toggle" aria-controls="mobile-weapon-grid" aria-expanded="false">武器库</button></section>';
+      inventory.before(dual);
       state = {
-        main, dashboard, inventory, equipment, forge, grid, actions, trigger, overlay,
+        main, dashboard: navigation.dashboard, inventory, equipment, grid, forge, chop, ten, dual,
         scene: main.querySelector('.cult-scene'), stage: null,
-        panel: overlay.querySelector('.mobile-inventory-panel'),
-        drawerBody: overlay.querySelector('.mobile-inventory-body'),
-        closeButton: overlay.querySelector('.mobile-inventory-close'),
-        count: trigger.querySelector('.mobile-inventory-count'),
-        novelty: trigger.querySelector('.mobile-inventory-new'),
-        preview: trigger.querySelector('.mobile-inventory-preview'),
-        equippedName: trigger.querySelector('.mobile-equipped-name'),
-        media: env.matchMedia('(max-width: 719px), (max-height: 500px) and (max-width: 950px)'),
-        scroll: { items: 0, weapons: 0, ...(snapshot.scroll || {}) },
+        itemsPane: dual.querySelector('.mobile-items-pane'),
+        equipmentContent: dual.querySelector('#mobile-equipment-content'),
+        weaponGrid: dual.querySelector('#mobile-weapon-grid'),
+        modeButton: dual.querySelector('.mobile-weapon-toggle'),
+        scroll: { items: 0, weapons: 0, ...(restore.scroll || {}) },
+        rightScroll: { equipment: 0, library: 0, ...(restore.rightScroll || {}) },
+        mode: restore.mode === 'library' ? 'library' : 'equipment',
         tab: grid.classList.contains('weapons-grid') ? 'weapons' : 'items',
-        mobile: false, open: false, homes: [], cleanups: [],
+        mobile: null, homes: [], cleanups: [], onModeChange: options.onModeChange,
       };
-      state.inventory.querySelector('.inv-tabs-v').setAttribute('role', 'tablist');
-      for (const tabButton of state.inventory.querySelectorAll('.inv-tab-v')) {
-        tabButton.setAttribute('role', 'tab');
-        tabButton.setAttribute('aria-controls', 'inventory-grid');
+      navigation.page = 'cultivate';
+      inventory.querySelector('.inv-tabs-v')?.setAttribute('role', 'tablist');
+      for (const button of inventory.querySelectorAll('.inv-tab-v')) {
+        button.setAttribute('role', 'tab');
+        button.setAttribute('aria-controls', 'inventory-grid');
       }
       grid.setAttribute('role', 'tabpanel');
-      listen(trigger, 'click', open);
-      listen(state.closeButton, 'click', () => close());
-      listen(overlay, 'click', event => { if (event.target === overlay && !hasNestedModal()) close(); });
-      listen(grid, 'scroll', () => { state.scroll[state.tab] = grid.scrollTop; }, { passive: true });
-      listen(inventory, 'keydown', event => {
+      listen(state, state.modeButton, 'click', () => showMode(state.mode === 'library' ? 'equipment' : 'library'));
+      const canCapture = () => state && !state.transitioning && isMobile() === state.mobile;
+      listen(state, grid, 'scroll', () => {
+        if (canCapture()) state.scroll[state.tab] = grid.scrollTop;
+      }, { passive: true });
+      listen(state, state.equipmentContent, 'scroll', () => {
+        if (canCapture() && state.mobile && state.mode === 'equipment') state.rightScroll.equipment = state.equipmentContent.scrollTop;
+      }, { passive: true });
+      listen(state, state.weaponGrid, 'scroll', () => {
+        if (canCapture() && state.mobile && state.mode === 'library') state.rightScroll.library = state.weaponGrid.scrollTop;
+      }, { passive: true });
+      listen(state, main, 'keydown', event => {
         const slot = event.target.closest('.item-slot:not(.empty)');
-        if (slot && (event.key === 'Enter' || event.key === ' ')) {
+        if (slot && slot.tagName !== 'BUTTON' && (event.key === 'Enter' || event.key === ' ')) {
           event.preventDefault();
           slot.click();
-          return;
         }
-        const tabButton = event.target.closest('.inv-tab-v');
-        if (!tabButton || !['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+        const tab = event.target.closest('.inv-tab-v');
+        if (!tab || !['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
         event.preventDefault();
         const tabs = Array.from(inventory.querySelectorAll('.inv-tab-v'));
-        const index = tabs.indexOf(tabButton);
+        const index = tabs.indexOf(tab);
         const next = event.key === 'Home' ? tabs[0] : event.key === 'End' ? tabs.at(-1) : tabs[(index + (event.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length];
         next.focus({ preventScroll: true });
         next.click();
       });
-      listen(doc, 'keydown', event => {
-        if (!state?.open) return;
-        if (hasNestedModal()) {
-          const topModal = Array.from(doc.querySelectorAll('.modal-overlay')).at(-1);
-          if (event.key === 'Escape') {
-            if (!topModal.classList.contains('modal-locked')) {
-              event.preventDefault();
-              topModal.remove();
-              state.closeButton.focus({ preventScroll: true });
-            }
-          } else if (event.key === 'Tab') {
-            const targets = Array.from(topModal.querySelectorAll('button, [href], input, select, textarea, [tabindex="0"]'))
-              .filter(node => !node.disabled && !node.hidden && node.getClientRects().length);
-            const first = targets[0];
-            const last = targets.at(-1);
-            if (first && (event.shiftKey ? doc.activeElement === first || !topModal.contains(doc.activeElement) : doc.activeElement === last || !topModal.contains(doc.activeElement))) {
-              event.preventDefault();
-              (event.shiftKey ? last : first).focus();
-            }
-          }
-          return;
-        }
-        if (event.key === 'Escape') {
+      listen(state, doc, 'keydown', event => {
+        if (!state?.mobile) return;
+        const modal = Array.from(doc.querySelectorAll('.modal-overlay')).at(-1);
+        if (!modal) return;
+        if (event.key === 'Escape' && !modal.classList.contains('modal-locked')) {
           event.preventDefault();
-          close();
+          modal.remove();
+          state.modeButton.focus({ preventScroll: true });
         } else if (event.key === 'Tab') {
-          const targets = focusables();
-          const first = targets[0] || state.panel;
-          const last = targets.at(-1) || state.panel;
-          if (event.shiftKey && (doc.activeElement === first || !state.panel.contains(doc.activeElement))) {
-            event.preventDefault(); last.focus();
-          } else if (!event.shiftKey && (doc.activeElement === last || !state.panel.contains(doc.activeElement))) {
-            event.preventDefault(); first.focus();
+          const targets = Array.from(modal.querySelectorAll('button, [href], input, select, textarea, [tabindex="0"]'))
+            .filter(node => !node.disabled && !node.hidden && node.getClientRects().length);
+          const first = targets[0];
+          const last = targets.at(-1);
+          if (first && (event.shiftKey ? doc.activeElement === first || !modal.contains(doc.activeElement) : doc.activeElement === last || !modal.contains(doc.activeElement))) {
+            event.preventDefault();
+            (event.shiftKey ? last : first).focus();
           }
         }
       });
-      const onMediaChange = () => switchMode();
-      if (state.media.addEventListener) listen(state.media, 'change', onMediaChange);
-      else {
-        state.media.addListener(onMediaChange);
-        state.cleanups.push(() => state.media.removeListener(onMediaChange));
-      }
-      if (env.MutationObserver) {
-        const observer = new env.MutationObserver(() => {
-          if (!state) return;
-          if (state.dashboard.style.display === 'none') unmount();
-          else if (state.open) {
-            const nested = Array.from(doc.querySelectorAll('.modal-overlay')).at(-1);
-            state.overlay.inert = !!nested;
-            if (nested && !nested.contains(doc.activeElement)) {
-              nested.querySelector('button:not(:disabled), input:not(:disabled), select:not(:disabled)')?.focus({ preventScroll: true });
-            } else if (!nested && !state.panel.contains(doc.activeElement)) {
-              state.closeButton.focus({ preventScroll: true });
-            }
-          }
-        });
-        observer.observe(dashboard, { attributes: true, attributeFilter: ['style'] });
-        const modalContainer = doc.getElementById('modal-container');
-        if (modalContainer) observer.observe(modalContainer, { childList: true });
-        state.cleanups.push(() => observer.disconnect());
-      }
+      const initialScroll = { ...state.scroll };
+      const initialRightScroll = { ...state.rightScroll };
       switchMode();
+      state.scroll = initialScroll;
+      state.rightScroll = initialRightScroll;
       refreshInventory();
-      if (snapshot.open && state.mobile) open();
+      state.equipmentContent.scrollTop = state.rightScroll.equipment;
+      state.weaponGrid.scrollTop = state.rightScroll.library;
     }
 
     function unmount(options = {}) {
-      if (!state) return {};
-      const snapshot = { open: state.open, scroll: { ...state.scroll, [state.tab]: state.grid.scrollTop } };
-      close({ restoreFocus: false });
-      for (const cleanup of state.cleanups) cleanup();
-      restoreHomes();
-      state.dashboard.classList.remove('mobile-cultivation');
-      state.trigger.remove();
-      state.overlay.remove();
-      state = null;
-      return options.preserve ? snapshot : {};
+      if (state) {
+        captureScroll();
+        saved = { mode: state.mode, scroll: { ...state.scroll }, rightScroll: { ...state.rightScroll } };
+        for (const cleanup of state.cleanups) cleanup();
+        restoreHomes();
+        state.dashboard.classList.remove('mobile-cultivation');
+        state.dual.remove();
+        state = null;
+      }
+      if (options.preserve) return { ...saved, ...(saved.scroll ? { scroll: { ...saved.scroll }, rightScroll: { ...saved.rightScroll } } : {}) };
+      if (navigation) {
+        for (const cleanup of navigation.cleanups) cleanup();
+        navigation.dashboard.classList.remove('mobile-player-navigation');
+        delete navigation.dashboard.dataset.mobilePage;
+        navigation.center.hidden = false;
+        navigation.center.removeAttribute('aria-label');
+        navigation.centerText.textContent = navigation.originalText;
+        if (navigation.centerImage) navigation.centerImage.setAttribute('src', navigation.originalSource);
+        navigation = null;
+      }
+      saved = {};
+      return {};
     }
 
-    return { mount, unmount, open, close, beforeInventoryRender, refreshInventory };
+    return { mount, unmount, isMobile, setPage, open, close, beforeInventoryRender, refreshInventory, refreshEquipment };
   }
 
   return { createController };

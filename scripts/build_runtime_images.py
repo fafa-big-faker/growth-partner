@@ -234,12 +234,56 @@ def build_v6_assets() -> tuple[dict, int, int, int]:
     return manifest, count, source_bytes, runtime_bytes
 
 
+def build_v7_assets() -> tuple[dict, int, int, int]:
+    source_manifest = SOURCE_ROOT / "v7/source-manifest.json"
+    if not source_manifest.exists():
+        return {}, 0, 0, 0
+    specs = json.loads(source_manifest.read_text(encoding="utf-8"))["assets"]
+    manifest = {}
+    count = source_bytes = runtime_bytes = 0
+    for group, assets in specs.items():
+        manifest[group] = {}
+        for name, spec in assets.items():
+            source = ROOT / spec["path"]
+            destination = RUNTIME_ROOT / "v7" / group / f"{name}.webp"
+            with Image.open(source) as image:
+                optimized = fit_within(image, (256, 256) if group == "rewards" else (960, 960))
+                save_webp(optimized, destination, quality=90)
+                runtime_spec = {
+                    "path": destination.relative_to(ROOT).as_posix(),
+                    "size": list(optimized.size),
+                    "alphaRange": list(optimized.getchannel("A").getextrema()),
+                    "alphaBounds": list(optimized.getchannel("A").getbbox()),
+                    "bytes": destination.stat().st_size,
+                }
+                if "slice" in spec:
+                    scale_x = optimized.width / image.width
+                    scale_y = optimized.height / image.height
+                    runtime_spec["slice"] = [round(value * (scale_y if index % 2 == 0 else scale_x))
+                                             for index, value in enumerate(spec["slice"])]
+                manifest[group][name] = runtime_spec
+            source_bytes += source.stat().st_size
+            runtime_bytes += destination.stat().st_size
+            count += 1
+    destination = RUNTIME_ROOT / "v7/manifest.json"
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    destination.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    return manifest, count, source_bytes, runtime_bytes
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     version_only = parser.add_mutually_exclusive_group()
     version_only.add_argument("--v5-only", action="store_true", help="Build only imported V5 assets, leaving existing runtime artwork untouched.")
     version_only.add_argument("--v6-only", action="store_true", help="Build only imported V6 assets, leaving existing runtime artwork untouched.")
+    version_only.add_argument("--v7-only", action="store_true", help="Build only imported V7 assets, leaving existing runtime artwork untouched.")
     args = parser.parse_args()
+    if args.v7_only:
+        _, count, source_bytes, runtime_bytes = build_v7_assets()
+        if not count:
+            raise FileNotFoundError("Import V7 artwork before building its runtime assets")
+        print(f"V7 assets: {count} ({mib(source_bytes):.2f} MiB -> {mib(runtime_bytes):.2f} MiB)")
+        return
     if args.v6_only:
         _, count, source_bytes, runtime_bytes = build_v6_assets()
         if not count:
@@ -258,8 +302,9 @@ def main() -> None:
     _, v4_count, v4_source, v4_runtime = build_v4_assets()
     _, v5_count, v5_source, v5_runtime = build_v5_assets()
     _, v6_count, v6_source, v6_runtime = build_v6_assets()
-    source_total = character_source + v2_source + v3_source + v4_source + v5_source + v6_source
-    runtime_total = character_runtime + v2_runtime + v3_runtime + v4_runtime + v5_runtime + v6_runtime
+    _, v7_count, v7_source, v7_runtime = build_v7_assets()
+    source_total = character_source + v2_source + v3_source + v4_source + v5_source + v6_source + v7_source
+    runtime_total = character_runtime + v2_runtime + v3_runtime + v4_runtime + v5_runtime + v6_runtime + v7_runtime
     reduction = 100 * (1 - runtime_total / source_total) if source_total else 0
     print(f"Character frames: {character_count} ({mib(character_source):.2f} MiB -> {mib(character_runtime):.2f} MiB)")
     print(f"V2 assets: {v2_count} ({mib(v2_source):.2f} MiB -> {mib(v2_runtime):.2f} MiB)")
@@ -267,6 +312,7 @@ def main() -> None:
     print(f"V4 assets: {v4_count} ({mib(v4_source):.2f} MiB -> {mib(v4_runtime):.2f} MiB)")
     print(f"V5 assets: {v5_count} ({mib(v5_source):.2f} MiB -> {mib(v5_runtime):.2f} MiB)")
     print(f"V6 assets: {v6_count} ({mib(v6_source):.2f} MiB -> {mib(v6_runtime):.2f} MiB)")
+    print(f"V7 assets: {v7_count} ({mib(v7_source):.2f} MiB -> {mib(v7_runtime):.2f} MiB)")
     print(f"Total: {mib(source_total):.2f} MiB -> {mib(runtime_total):.2f} MiB ({reduction:.1f}% smaller)")
 
 

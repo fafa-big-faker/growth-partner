@@ -1,0 +1,120 @@
+{
+  "rewards": {
+    "quality-1": {
+      "path": "assets/runtime/v7/rewards/quality-1.webp",
+      "size": [
+        256,
+        256
+      ],
+      "alphaRange": [
+        0,
+        255
+      ],
+      "alphaBounds": [
+        25,
+        38,
+        236,
+        226
+      ],
+      "bytes": 16564
+    },
+    "quality-2": {
+      "path": "assets/runtime/v7/rewards/quality-2.webp",
+      "size": [
+        256,
+        256
+      ],
+      "alphaRange": [
+        0,
+        255
+      ],
+      "alphaBounds": [
+        22,
+        37,
+        239,
+        226
+      ],
+      "bytes": 22790
+    },
+    "quality-3": {
+      "path": "assets/runtime/v7/rewards/quality-3.webp",
+      "size": [
+        256,
+        256
+      ],
+      "alphaRange": [
+        0,
+        255
+      ],
+      "alphaBounds": [
+        21,
+        36,
+        236,
+        226
+      ],
+      "bytes": 22142
+    },
+    "quality-4": {
+      "path": "assets/runtime/v7/rewards/quality-4.webp",
+      "size": [
+        256,
+        256
+      ],
+      "alphaRange": [
+        0,
+        255
+      ],
+      "alphaBounds": [
+        21,
+        33,
+        239,
+        224
+      ],
+      "bytes": 22024
+    },
+    "quality-5": {
+      "path": "assets/runtime/v7/rewards/quality-5.webp",
+      "size": [
+        256,
+        256
+      ],
+      "alphaRange": [
+        0,
+        255
+      ],
+      "alphaBounds": [
+        22,
+        33,
+        239,
+        226
+      ],
+      "bytes": 22236
+    }
+  },
+  "ui": {
+    "inventory-paper": {
+      "path": "assets/runtime/v7/ui/inventory-paper.webp",
+      "size": [
+        960,
+        391
+      ],
+      "alphaRange": [
+        0,
+        255
+      ],
+      "alphaBounds": [
+        5,
+        4,
+        955,
+        386
+      ],
+      "bytes": 39674,
+      "slice": [
+        124,
+        183,
+        114,
+        217
+      ]
+    }
+  }
+}
