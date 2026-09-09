@@ -72,6 +72,6 @@ test('new resources and mobile controller load before app with a coherent releas
     assert.ok(html.indexOf(file) < html.indexOf('src="app.js'));
   }
   assert.match(html, /viewport-fit=cover/);
-  assert.match(html, /game-config\.js\?v=xianlai-v4-20260908/);
+  assert.match(html, /game-config\.js\?v=reward-focus-20260909/);
   assert.doesNotMatch(html, /v2\/icons\/icon-forge/);
 });

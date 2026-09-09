@@ -3625,6 +3625,7 @@ const PlayerView = {
     document.querySelectorAll('#floating-items-container .falling-item, #floating-items-container .scatter-item')
       .forEach(element => element.remove());
     AudioManager.stopEffects('chop-drops');
+    if (typeof ChopRefundFeedback !== 'undefined') ChopRefundFeedback.clear();
   },
 
   _waitForChopFeedback(ms, version) {
@@ -3641,7 +3642,13 @@ const PlayerView = {
     });
   },
 
-  _startRewardReveal(overlay) {
+  _showChopRefund(item) {
+    if (typeof ChopRefundFeedback === 'undefined' || !(Number(item?.refundChopping) > 0)) return;
+    ChopRefundFeedback.show(document.getElementById('chop-btn'), item.refundChopping, { audio: AudioManager });
+  },
+
+  _startRewardReveal(overlay, { single = false } = {}) {
+    if (typeof ChopRefundFeedback !== 'undefined') ChopRefundFeedback.clear();
     const button = overlay.querySelector('.reward-reveal-confirm');
     let complete = false;
     const reveal = RewardPresentation.playReveal(overlay, {
@@ -3653,8 +3660,8 @@ const PlayerView = {
     });
     overlay._rewardReveal = reveal;
     button.addEventListener('click', () => {
-      if (!complete) reveal.finish();
-      else { reveal.cancel(); overlay.remove(); }
+      if (!single && !complete) reveal.finish();
+      else UI.closeModal(overlay);
     });
   },
 
@@ -3688,6 +3695,7 @@ const PlayerView = {
         await characterAnimation;
         if (version !== this._chopPresentationVersion || !Game.state) return Boolean(item);
         if (item) {
+          this._showChopRefund(item);
           if (treeIcon) UI.playDropAnimation(item, treeIcon);
 
           if (item.extraDrop && treeIcon) {
@@ -3712,23 +3720,23 @@ const PlayerView = {
   _showRewardModal(item) {
     const rewards = RewardPresentation.createRenderer({ items: ITEMS, quality: QUALITY, renderItemIcon, escapeHtml });
     const extraHtml = item.extraDrop
-      ? rewards.renderResults([{ ...item.extraDrop, isExtra: true }]) : '';
+      ? rewards.renderResults([{ ...item.extraDrop, isExtra: true }], { notice: false }) : '';
 
     const overlay = UI.modal(`
       <div class="reward-modal reward-modal-v7">
         ${rewards.renderItem(item, { size: 'large' })}
-        ${rewards.renderRefundTotal([item])}
         ${extraHtml}
+        ${rewards.renderNotice()}
       </div>
     `, {
       title: `${renderFeatureIcon('icon-reward', '', 'section-title-icon')} 获得物品`,
       footer: `<div class="modal-footer">
-        <button type="button" class="btn btn-primary btn-sm reward-reveal-confirm">全部显示</button>
+        <button type="button" class="btn btn-primary btn-sm reward-reveal-confirm">收下</button>
       </div>`
     });
     overlay.classList.add('reward-dialog-overlay');
     overlay.querySelector('.modal').classList.add('reward-dialog', 'reward-dialog--single');
-    this._startRewardReveal(overlay);
+    this._startRewardReveal(overlay, { single: true });
   },
 
   // --- 任务页 ---
@@ -5272,6 +5280,7 @@ const PlayerView = {
         await characterAnimation;
         if (version !== this._chopPresentationVersion || !Game.state) return true;
         if (item) {
+          this._showChopRefund(item);
           results.push(item);
           if (treeIcon) {
             const el = UI.playScatterAnimation(item, treeIcon, i, timing.dropMs);
@@ -5314,7 +5323,7 @@ const PlayerView = {
     const overlay = UI.modal(rewards.renderResults(results), {
       title: `${renderFeatureIcon('icon-reward', '', 'section-title-icon')} 十连砍结果（共 ${results.length} 件）`,
       footer: `<div class="modal-footer">
-        <button type="button" class="btn btn-primary btn-sm reward-reveal-confirm">全部显示</button>
+        <button type="button" class="btn btn-primary btn-sm reward-reveal-confirm">显示全部</button>
       </div>`
     });
     overlay.classList.add('reward-dialog-overlay');

@@ -1,0 +1,64 @@
+.chop-refund-feed {
+  position: fixed;
+  z-index: 180;
+  width: 280px;
+  height: 0;
+  pointer-events: none;
+  user-select: none;
+  contain: layout style;
+  clip-path: inset(calc(-1 * var(--refund-visible-height, 112px)) -4px 0);
+}
+
+.chop-refund-row {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  transform: translateY(var(--refund-offset, 0px));
+  transition: transform 160ms cubic-bezier(.2, .7, .3, 1);
+}
+
+.chop-refund-copy {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 1px;
+  max-width: 100%;
+  color: #253f36;
+  font-family: 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 24px;
+  white-space: nowrap;
+  letter-spacing: 0;
+  text-shadow: 0 1px 2px #fff, 0 -1px 2px #fff, 1px 0 2px #fff, -1px 0 2px #fff;
+  pointer-events: none;
+  animation: chop-refund-arrive 160ms ease-out both;
+  transition: opacity 280ms ease-out;
+}
+
+.chop-refund-count {
+  padding-inline: 1px;
+  color: #216952;
+  font-size: inherit;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.chop-refund-followup .chop-refund-copy { animation-delay: 100ms; }
+.chop-refund-leaving .chop-refund-copy { animation: none; opacity: 0; }
+
+@keyframes chop-refund-arrive {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.chop-refund-reduced .chop-refund-row,
+.chop-refund-reduced .chop-refund-copy { animation: none; transition: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .chop-refund-row, .chop-refund-copy { animation: none; transition: none; }
+}

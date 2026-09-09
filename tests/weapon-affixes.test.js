@@ -100,7 +100,7 @@ test('frozen multiplier and refund rolls evaluate without generating new values'
   assert.deepEqual(
     WeaponAffixes.applyRewardMultipliers({ itemId: '10001', quality: 1, quantity: 2 }, [multiplier], () => 0.2),
     { itemId: '10001', quality: 1, quantity: 6, baseQuantity: 2,
-      buffTriggers: [{ beforeQuantity: 2, afterQuantity: 6, multiplier: 3, skillId: null, buffId: 1, buffRowId: null, buffQuality: null }] },
+      buffTriggers: [{ type: 1, beforeQuantity: 2, afterQuantity: 6, multiplier: 3, skillId: null, buffId: 1, buffRowId: null, buffQuality: null }] },
   );
   assert.equal(WeaponAffixes.rollRefund([refund], () => 0.49), 2);
   assert.equal(WeaponAffixes.rollRefund([refund], () => 0.5), 0);
@@ -122,8 +122,8 @@ test('multiplier metadata preserves ordered true quantities, skill sources and o
   assert.equal(result.quantity, 12);
   assert.equal(result.baseQuantity, 2);
   assert.deepEqual(result.buffTriggers, [
-    { beforeQuantity: 2, afterQuantity: 6, multiplier: 3, skillId: 11, buffId: 1, buffRowId: 3, buffQuality: 3 },
-    { beforeQuantity: 6, afterQuantity: 12, multiplier: 2, skillId: 14, buffId: 1, buffRowId: 4, buffQuality: 4 },
+    { type: 1, beforeQuantity: 2, afterQuantity: 6, multiplier: 3, skillId: 11, buffId: 1, buffRowId: 3, buffQuality: 3 },
+    { type: 1, beforeQuantity: 6, afterQuantity: 12, multiplier: 2, skillId: 14, buffId: 1, buffRowId: 4, buffQuality: 4 },
   ]);
   assert.deepEqual({ rolls, drop }, original, 'recording feedback never modifies the reward input or frozen skills');
 });

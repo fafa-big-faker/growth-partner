@@ -63,6 +63,13 @@ async function simulateTenChops(chops, started = true) {
     document: { getElementById: id => id === 'chop-btn' ? button : tree },
     TenChopTimeline,
     AudioManager: { playEffect: () => {} },
+    ChopRefundFeedback: {
+      show: (anchor, quantity, settings) => {
+        assert.equal(anchor, button);
+        assert.equal(settings.audio, context.AudioManager);
+        events.push(['refund', quantity]);
+      },
+    },
     CultivatorAnimator: {
       playChop: async timing => events.push(['character', timing.frameMs]),
       resumeIdle: () => events.push(['idle']),
@@ -82,7 +89,7 @@ async function simulateTenChops(chops, started = true) {
     setTimeout: callback => { callback(); return 0; },
     renderItemIcon: () => '', renderFeatureIcon: () => '',
   };
-  const view = vm.runInNewContext(`({${method('doChopTen')}})`, context);
+  const view = vm.runInNewContext(`({${method('doChopTen')},${method('_showChopRefund')}})`, context);
   context.PlayerView = view;
   view._chopPresentationVersion = 0;
   view._waitForChopFeedback = async () => true;
@@ -113,5 +120,26 @@ test('locked, failed or empty ten-chop requests never play a spurious button str
   for (const [value, started] of [[[], false], [null, true], [new Error('network'), true]]) {
     const { events } = await simulateTenChops(value, started);
     assert.equal(events.filter(event => event[0] === 'button').length, 0);
+    assert.equal(events.filter(event => event[0] === 'refund').length, 0);
   }
+});
+
+test('refund hints follow each confirmed accelerating stroke without changing its button, character or drop timing', async () => {
+  const chops = Array.from({ length: 10 }, (_, index) => ({
+    kind: 'coin', quantity: 1, refundChopping: index % 2 ? 0 : index + 1,
+  }));
+  const { events, writes, error } = await simulateTenChops(chops);
+  assert.equal(error, undefined);
+  assert.equal(writes, 1);
+  let cursor = 0;
+  for (let index = 0; index < 10; index++) {
+    const timing = TenChopTimeline.getStep(index);
+    const expected = [['button', timing.speed], ['character', timing.frameMs]];
+    if (chops[index].refundChopping) expected.push(['refund', chops[index].refundChopping]);
+    expected.push(['drop', timing.dropMs]);
+    assert.deepEqual(events.slice(cursor, cursor + expected.length), expected);
+    cursor += expected.length;
+  }
+  assert.deepEqual(events.slice(cursor), [['idle']]);
+  assert.equal(events.filter(event => event[0] === 'refund').length, 5);
 });

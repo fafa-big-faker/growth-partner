@@ -12,8 +12,8 @@ test('metadata uses complete ordered real trigger chains and never reverse engin
   const metadata = Rewards.getRewardMetadata(bonus);
   assert.equal(metadata.baseQuantity, 2);
   assert.equal(metadata.quantity, 12);
-  assert.equal(metadata.refund, 2);
-  assert.deepEqual(metadata.triggers, bonus.buffTriggers);
+  assert.equal('refund' in metadata, false);
+  assert.deepEqual(metadata.triggers, bonus.buffTriggers.map(trigger => ({ type: 1, ...trigger })));
   assert.deepEqual(bonus, original);
   for (const reward of [
     { quantity: 12, buffText: '×3' },
@@ -26,39 +26,63 @@ test('metadata uses complete ordered real trigger chains and never reverse engin
     assert.equal(result.baseQuantity, reward.quantity);
     assert.deepEqual(result.triggers, []);
   }
-  assert.deepEqual(Rewards.getRewardMetadata(null), { quantity: 1, baseQuantity: 1, triggers: [], refund: 0 });
+  assert.deepEqual(Rewards.getRewardMetadata(null), { quantity: 1, baseQuantity: 1, triggers: [] });
 });
 
 test('reveal plan staggers ordinary rewards and finishes both true skill transitions before the next item', () => {
   const plan = Rewards.getRevealPlan([Rewards.getRewardMetadata(bonus), Rewards.getRewardMetadata({ quantity: 8 })]);
-  assert.deepEqual(plan.events.filter(event => event.type === 'reveal').map(event => event.at), [0, 990]);
-  assert.deepEqual(plan.events.filter(event => event.type === 'trigger').map(event => event.at), [120, 570]);
-  assert.deepEqual(plan.events.filter(event => event.type === 'quantity').map(event => [event.at, event.quantity]), [[390, 6], [750, 12]]);
-  assert.deepEqual(plan.events.filter(event => event.type === 'settle').map(event => event.at), [570, 870]);
-  assert.equal(plan.events.find(event => event.type === 'refund').at, 870);
-  assert.equal(plan.duration, 1210);
+  assert.deepEqual(plan.events.filter(event => event.type === 'reveal').map(event => event.at), [0, 2720]);
+  assert.deepEqual(plan.events.filter(event => event.type === 'trigger').map(event => event.at), [120, 1420]);
+  assert.deepEqual(plan.events.filter(event => event.type === 'shake').map(event => event.at), [420, 1720]);
+  assert.deepEqual(plan.events.filter(event => event.type === 'quantity').map(event => [event.at, event.quantity]), [[920, 6], [2220, 12]]);
+  assert.deepEqual(plan.events.filter(event => event.type === 'settle').map(event => event.at), [1420, 2720]);
+  assert.equal(plan.events.some(event => event.type.startsWith('refund')), false);
+  assert.equal(plan.duration, 2940);
   const ordinary = Rewards.getRevealPlan(Array.from({ length: 10 }, () => Rewards.getRewardMetadata({ quantity: 1 })));
   assert.deepEqual(ordinary.events.filter(event => event.type === 'reveal').map(event => event.at), Array.from({ length: 10 }, (_, index) => index * 120));
 });
 
-test('only the first skill across the batch gets 450ms and refund-only items share the trigger timeline', () => {
+test('every skill in the batch gets all 1300ms and refund-only items do not pause or animate', () => {
   const one = { quantity: 6, baseQuantity: 2, buffTriggers: [bonus.buffTriggers[0]] };
   const plan = Rewards.getRevealPlan([one, one, { quantity: 1, refundChopping: 2 }].map(Rewards.getRewardMetadata));
-  assert.deepEqual(plan.events.filter(event => event.type === 'trigger' || event.type === 'refund-trigger').map(event => event.at), [120, 690, 1110]);
-  assert.deepEqual(plan.events.filter(event => event.type === 'settle').map(event => event.at), [570, 990, 1410]);
-  assert.equal(plan.events.find(event => event.type === 'refund').at, 1290);
+  assert.deepEqual(plan.events.filter(event => event.type === 'trigger').map(event => event.at), [120, 1540]);
+  assert.deepEqual(plan.events.filter(event => event.type === 'settle').map(event => event.at), [1420, 2840]);
+  assert.deepEqual(plan.events.filter(event => event.type === 'reveal').map(event => event.at), [0, 1420, 2840]);
+  assert.equal(plan.events.some(event => event.type.startsWith('refund')), false);
+  for (const trigger of plan.events.filter(event => event.type === 'trigger')) {
+    for (const [type, delay] of [['shake', 300], ['quantity', 800], ['settle', 1300]]) {
+      const next = plan.events.find(event => event.type === type && event.itemIndex === trigger.itemIndex);
+      assert.equal(next.at - trigger.at, delay);
+    }
+  }
 });
 
-test('rendered output keeps final quantities, escaped metadata, refund icons and a batch total', () => {
+test('explicit type 2 never enters multiplier metadata or the presentation timeline, while legacy multipliers remain compatible', () => {
+  const explicit = { ...bonus, buffTriggers: [
+    { type: 2, refund: 2 }, { ...bonus.buffTriggers[0], type: '1' },
+    { type: 2, beforeQuantity: 6, afterQuantity: 600, multiplier: 100 }, { ...bonus.buffTriggers[1], type: 1 },
+  ] };
+  const metadata = Rewards.getRewardMetadata(explicit);
+  assert.equal(metadata.baseQuantity, 2);
+  assert.equal(metadata.triggers.length, 2);
+  assert.ok(metadata.triggers.every(trigger => trigger.type === 1));
+  assert.deepEqual(Rewards.getRewardMetadata({ quantity: 2, baseQuantity: 1,
+    buffTriggers: [{ type: 2, beforeQuantity: 1, afterQuantity: 2, multiplier: 2 }] }).triggers, []);
+  const plan = Rewards.getRevealPlan([{ quantity: 2, baseQuantity: 1,
+    triggers: [{ type: 2, beforeQuantity: 1, afterQuantity: 2, multiplier: 2 }], refund: 20 }]);
+  assert.deepEqual(plan.events.map(event => event.type), ['reveal', 'complete-item']);
+});
+
+test('rendered output keeps final quantities, compact multiplier marks and one shared notice, without any refunds', () => {
   const renderer = Rewards.createRenderer({ renderItemIcon: (id, fallback, cls) => `<img data-id="${id}" class="${cls}">` });
   const html = renderer.renderResults([bonus, { itemId: '1', quantity: 2, refundChopping: 3 }, { quantity: 7, isExtra: true }]);
   assert.match(html, /reward-item-quantity-value">×12</);
-  assert.match(html, /reward-item-feedback/);
+  assert.match(html, /aria-label="斧技增幅6倍">×6<\/span>/);
+  assert.doesNotMatch(html, /reward-item-feedback|reward-item-refund|reward-refund|返还|斧技发动/);
   assert.match(html, /data-reward-reveal="\{&quot;quantity&quot;:12/);
-  assert.match(html, /reward-refund-icon/);
-  assert.match(html, /data-refund-total="5"/);
-  assert.match(html, /本次共返还/);
-  assert.equal(renderer.renderRefundTotal([null, { quantity: 3 }]), '');
+  assert.equal((html.match(/class="reward-skill-notice"/g) || []).length, 1);
+  assert.match(renderer.renderNotice(), /role="status" aria-live="polite"/);
+  assert.doesNotMatch(renderer.renderResults([bonus], { notice: false }), /reward-skill-notice/);
   assert.ok(html.indexOf('reward-results-extra') > html.indexOf('reward-results-regular'));
 });
 
@@ -78,22 +102,22 @@ function fixture(rewards, reduced = false) {
     addEventListener(name, callback) { listeners.set(name, callback); }, removeEventListener(name) { listeners.delete(name); } };
   const entries = rewards.map(reward => {
     const metadata = Rewards.getRewardMetadata(reward);
-    const element = { ...node(), dataset: { rewardReveal: JSON.stringify(metadata) } };
+    const element = { ...node(), dataset: { rewardReveal: JSON.stringify(metadata), rewardQuality: '3' } };
     const quantity = node(); quantity.textContent = `×${metadata.quantity}`;
-    const ticker = { ...node(), dataset: {} };
     const buff = metadata.triggers.length ? node() : null;
-    if (buff) buff.innerHTML = 'final skill summary';
-    const refund = metadata.refund ? node() : null;
-    const reserves = [node(35), node(72)];
-    const selectors = { '.reward-item-quantity-value': quantity, '.reward-item-buff': buff, '.reward-item-refund': refund,
-      '.reward-item-quantity': reserves[0], '.reward-item-feedback': reserves[1], '.reward-quantity-ticker': ticker };
+    if (buff) buff.innerHTML = '×6';
+    const reserves = [node(17)];
+    const selectors = { '.reward-item-quantity-value': quantity, '.reward-item-buff': buff,
+      '.reward-item-quantity': reserves[0] };
     element.querySelector = selector => selectors[selector];
-    return { element, quantity, ticker, buff, refund, reserves };
+    return { element, quantity, buff, reserves };
   });
+  const notice = node(32);
   const overlay = { ownerDocument: document, nodeType: 1, parentElement: null, isConnected: true, hidden: false, dataset: {},
+    querySelector: selector => selector === '.reward-skill-notice-text' ? notice : null,
     querySelectorAll: () => entries.map(entry => entry.element) };
   return {
-    overlay, entries, timers, document, observers, played, stopped,
+    overlay, entries, notice, timers, document, observers, played, stopped,
     audio: { playEffect(name, options) { played.push({ name, group: options.group, at: now }); return Promise.resolve(true); }, stopEffects(group) { stopped.push(group); } },
     notify() { observers.filter(observer => observer.active).forEach(observer => observer.callback()); },
     visibility() { listeners.get('visibilitychange')?.(); },
@@ -114,16 +138,27 @@ test('controller displays base and true intermediate quantities, holds later ite
   const controller = Rewards.playReveal(f.overlay, { audio: f.audio, onComplete: () => completed++ });
   assert.equal(f.entries[0].quantity.textContent, '×2');
   assert.equal(f.entries[1].element.dataset.revealState, 'pending');
-  assert.equal(f.entries[0].reserves[1].style.minHeight, '72px');
-  f.advance(389); assert.equal(f.entries[0].quantity.textContent, '×2');
-  f.advance(390); assert.equal(f.entries[0].quantity.textContent, '×6');
-  assert.equal(f.entries[0].ticker.dataset.previousQuantity, '×2');
-  f.advance(750); assert.equal(f.entries[0].quantity.textContent, '×12');
-  f.advance(869); assert.equal(f.entries[0].refund.style.visibility, 'hidden');
-  f.advance(870); assert.equal(f.entries[0].refund.style.visibility, '');
+  assert.equal(f.entries[0].reserves[0].style.minHeight, '17px');
+  f.advance(120); assert.equal(f.notice.textContent, '斧技发动 · 数量×3');
+  assert.equal(f.notice.classList.values.has('quality-3'), true);
+  f.advance(419); assert.equal(f.entries[0].element.classList.values.has('is-count-shaking'), false);
+  f.advance(420); assert.equal(f.entries[0].element.classList.values.has('is-count-shaking'), true);
+  f.advance(919); assert.equal(f.entries[0].quantity.textContent, '×2');
+  f.advance(920); assert.equal(f.entries[0].quantity.textContent, '×6');
+  assert.equal(f.entries[0].element.classList.values.has('is-count-shaking'), false);
+  assert.equal(f.entries[0].element.classList.values.has('is-count-changing'), true);
+  f.advance(1419); assert.equal(f.entries[0].element.classList.values.has('is-count-changing'), true);
+  f.advance(1420); assert.equal(f.notice.textContent, '斧技发动 · 数量×2');
+  assert.equal(f.entries[0].element.classList.values.has('is-count-changing'), false);
+  f.advance(1719); assert.equal(f.entries[0].element.classList.values.has('is-count-shaking'), false);
+  f.advance(1720); assert.equal(f.entries[0].element.classList.values.has('is-count-shaking'), true);
+  f.advance(2219); assert.equal(f.entries[0].quantity.textContent, '×6');
+  f.advance(2220); assert.equal(f.entries[0].quantity.textContent, '×12');
+  f.advance(2719); assert.equal(f.entries[0].element.classList.values.has('is-count-changing'), true);
   assert.equal(f.entries[1].element.dataset.revealState, 'pending');
-  f.advance(990); assert.equal(f.entries[1].element.dataset.revealState, 'revealing');
-  f.advance(1210); assert.equal(completed, 1);
+  f.advance(2720); assert.equal(f.entries[1].element.dataset.revealState, 'revealing');
+  assert.equal(f.notice.textContent, '');
+  f.advance(2940); assert.equal(completed, 1);
   assert.equal(f.timers.size, 0);
   assert.equal(f.overlay.dataset.rewardRevealState, 'complete');
   assert.equal(f.stopped.length, 0, 'natural completion does not truncate audio tails');
@@ -147,8 +182,9 @@ test('finish and cancel clear all future callbacks and owned audio without affec
     assert.equal(completed, mode === 'finish' ? 1 : 0);
     assert.equal(f.entries[0].quantity.textContent, '×12');
     assert.equal(f.entries[1].quantity.textContent, '×8');
-    assert.equal(f.entries[0].buff.innerHTML, 'final skill summary');
-    assert.equal(f.entries[0].reserves[1].style.minHeight, '');
+    assert.equal(f.entries[0].buff.innerHTML, '×6');
+    assert.equal(f.entries[0].reserves[0].style.minHeight, '');
+    assert.equal(f.notice.textContent, '');
     assert.equal(f.stopped.length, 1);
     assert.deepEqual(bonus, original);
   }
@@ -170,13 +206,13 @@ test('removed modals cancel while hidden surfaces finish so their confirmation c
   }
 });
 
-test('refund-only awards activate the skill cue once and combined multiplier/refund does not add a duplicate skill cue', () => {
+test('refund-only awards have no skill cue and combined refunds never add result events or cues', () => {
   for (const reward of [{ quantity: 1, refundChopping: 2 }, bonus]) {
     const f = fixture([reward]);
     Rewards.playReveal(f.overlay, { audio: f.audio });
     f.advance(10000);
-    assert.equal(f.played.filter(sound => sound.name === 'skillTrigger').length, reward.buffTriggers?.length || 1);
-    assert.equal(f.entries[0].refund.style.visibility, '');
+    assert.equal(f.played.filter(sound => sound.name === 'skillTrigger').length, reward.buffTriggers?.length || 0);
+    assert.equal(f.played.filter(sound => sound.name === 'rewardReveal').length, 1 + (reward.buffTriggers?.length || 0));
   }
 });
 

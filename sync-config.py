@@ -101,6 +101,41 @@ def row_value(row, indexes, field, default=""):
     index = indexes[field]
     return row[index] if index < len(row) else default
 
+def parse_buff_table(rows):
+    buff_headers = header_indexes(
+        rows,
+        [
+            "id", "buff_id", "buff_quality", "buff_description", "params_type_desc",
+            "effect_desc", "value1_range", "value2_range", "value3_range", "weight", "type",
+        ],
+        "BUFF表",
+    )
+    buffs = []
+    for row_number, row in enumerate(rows[2:], start=3):
+        if not row_value(row, buff_headers, "id"):
+            continue
+        raw_type = row_value(row, buff_headers, "type")
+        try:
+            buff_type = float(to_str(raw_type))
+        except (TypeError, ValueError):
+            buff_type = None
+        if isinstance(raw_type, bool) or buff_type not in (1, 2):
+            raise RuntimeError(f"BUFF表 第{row_number}行 type 必须为 1（掉落倍率）或 2（返还次数）")
+        buffs.append({
+            "id": to_int(row_value(row, buff_headers, "id")),
+            "buffId": to_int(row_value(row, buff_headers, "buff_id")),
+            "type": int(buff_type),
+            "buffQuality": to_int(row_value(row, buff_headers, "buff_quality")),
+            "description": to_str(row_value(row, buff_headers, "buff_description")),
+            "paramsTypeDesc": to_str(row_value(row, buff_headers, "params_type_desc")),
+            "effectDesc": to_str(row_value(row, buff_headers, "effect_desc")),
+            "value1Range": to_str(row_value(row, buff_headers, "value1_range")),
+            "value2Range": to_str(row_value(row, buff_headers, "value2_range")),
+            "value3Range": to_str(row_value(row, buff_headers, "value3_range")),
+            "weight": to_int(row_value(row, buff_headers, "weight")),
+        })
+    return buffs
+
 def parse_items(s):
     """解析逗号分隔的ID列表"""
     if not s:
@@ -321,31 +356,8 @@ print(f"    {len(skill_table)} 条")
 
 # 7. BUFF表
 print("  → BUFF表")
-rows = read_sheet(SHEETS["技能表"], "BUFF表", "A1:J100")
-buff_headers = header_indexes(
-    rows,
-    [
-        "id", "buff_id", "buff_quality", "buff_description", "params_type_desc",
-        "effect_desc", "value1_range", "value2_range", "value3_range", "weight",
-    ],
-    "BUFF表",
-)
-buff_table = []
-for row in rows[2:]:
-    if not row_value(row, buff_headers, "id"):
-        continue
-    buff_table.append({
-        "id": to_int(row_value(row, buff_headers, "id")),
-        "buffId": to_int(row_value(row, buff_headers, "buff_id")),
-        "buffQuality": to_int(row_value(row, buff_headers, "buff_quality")),
-        "description": to_str(row_value(row, buff_headers, "buff_description")),
-        "paramsTypeDesc": to_str(row_value(row, buff_headers, "params_type_desc")),
-        "effectDesc": to_str(row_value(row, buff_headers, "effect_desc")),
-        "value1Range": to_str(row_value(row, buff_headers, "value1_range")),
-        "value2Range": to_str(row_value(row, buff_headers, "value2_range")),
-        "value3Range": to_str(row_value(row, buff_headers, "value3_range")),
-        "weight": to_int(row_value(row, buff_headers, "weight")),
-    })
+rows = read_sheet(SHEETS["技能表"], "BUFF表", "A1:K100")
+buff_table = parse_buff_table(rows)
 print(f"    {len(buff_table)} 条")
 
 # 8. 仙树灵阶表

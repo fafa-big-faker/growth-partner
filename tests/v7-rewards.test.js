@@ -49,7 +49,7 @@ test('missing, empty and multiple extra results render without empty headings', 
   assert.deepEqual(require(modulePath).groupResults([null, false, undefined]), { regular: [], extra: [] });
 });
 
-test('shared items preserve quantities, buff and chopping refunds', () => {
+test('shared items preserve granted quantities but keep refunds and old prose out of reward cards', () => {
   const html = renderer().renderItem({
     itemId: '55001', quantity: 3, quality: 5,
     buffText: '掉落量×2倍！', refundChopping: 2,
@@ -60,11 +60,10 @@ test('shared items preserve quantities, buff and chopping refunds', () => {
   assert.match(html, /盘古开天劈歪斧/);
   assert.match(html, /×3/);
   assert.match(html, /仙品/);
-  assert.match(html, /斧技触发 · 掉落量×2倍！/);
-  assert.match(html, /返还 2 次砍树/);
+  assert.doesNotMatch(html, /斧技触发|掉落量|返还|reward-item-feedback/);
   const ten = renderer().renderResults([{ itemId: '0', quantity: 25, refundChopping: 3 }]);
   assert.match(ten, /×25/);
-  assert.match(ten, /返还 3 次砍树/);
+  assert.doesNotMatch(ten, /返还|reward-refund/);
 });
 
 test('coin and chopping use their real item IDs and configured names', () => {
@@ -97,7 +96,7 @@ test('reward copy is escaped and markup never trusts arbitrary size or quality v
     buffText: '<img onerror="bad">', quality: '" onload="bad', quantity: 2,
   }, { size: '" onclick="bad' });
   assert.match(html, /&lt;script&gt;bad&lt;\/script&gt;/);
-  assert.match(html, /&lt;img onerror=&quot;bad&quot;&gt;/);
+  assert.doesNotMatch(html, /<img onerror|&lt;img onerror/);
   assert.doesNotMatch(html, /<script>|onclick=|onload=/);
   assert.match(html, /reward-item--regular/);
 });
@@ -117,6 +116,10 @@ test('ten layout stays five columns, extras center, and art has no framed cards 
   assert.match(css, /\.reward-results-regular\s*\{[^}]*grid-template-columns:\s*repeat\(5,\s*minmax\(0,\s*1fr\)\)/s);
   assert.match(css, /\.reward-results-extra-items\s*\{[^}]*justify-content:\s*center/s);
   assert.match(css, /\.reward-results-extra-items\s*\{[^}]*flex-wrap:\s*wrap/s);
+  assert.match(css, /\.reward-skill-notice\s*\{[^}]*height:\s*32px;[^}]*min-height:\s*32px/s);
+  assert.match(css, /\.reward-dialog > \.modal-body\s*\{[^}]*scrollbar-gutter:\s*auto;[^}]*scrollbar-width:\s*none/s);
+  assert.match(css, /\.reward-dialog > \.modal-body::-webkit-scrollbar\s*\{[^}]*display:\s*none/s);
+  assert.doesNotMatch(css, /reward-item-(?:feedback|refund)|reward-refund-total/);
   assert.doesNotMatch(css, /drop-shadow\(/);
   for (const match of css.matchAll(/box-shadow:\s*([^;]+);/g)) assert.equal(match[1], 'none');
   for (let index = 1; index <= 5; index++) assert.match(css, new RegExp(`\\.quality-item-name\\.quality-${index}`));
@@ -144,12 +147,16 @@ test('both chop result surfaces share the renderer and keep close callbacks', ()
   assert.match(single, /RewardPresentation\.createRenderer\(\{\s*items:\s*ITEMS,\s*quality:\s*QUALITY,\s*renderItemIcon,\s*escapeHtml\s*\}\)/);
   assert.match(single, /\.renderItem\(item,\s*\{\s*size:\s*'large'/);
   assert.match(single, /item\.extraDrop/);
-  assert.match(single, /全部显示/);
-  assert.match(single, /this\._startRewardReveal\(overlay\)/);
+  assert.match(single, /reward-reveal-confirm">收下/);
+  assert.doesNotMatch(single, /显示全部|全部显示|renderRefundTotal/);
+  assert.match(single, /this\._startRewardReveal\(overlay,\s*\{\s*single:\s*true\s*\}\)/);
+  assert.match(single, /rewards\.renderNotice\(\)/);
+  assert.match(single, /notice:\s*false/);
   assert.match(controller, /onComplete:[\s\S]*收下/);
-  assert.match(controller, /reveal\.finish\(\)/);
-  assert.match(controller, /reveal\.cancel\(\); overlay\.remove\(\)/);
+  assert.match(controller, /if\s*\(!single && !complete\) reveal\.finish\(\)/);
+  assert.match(controller, /UI\.closeModal\(overlay\)/);
   assert.match(ten, /RewardPresentation\.createRenderer/);
+  assert.match(ten, /reward-reveal-confirm">显示全部/);
   assert.match(ten, /\.renderResults\(results\)/);
   assert.match(ten, /this\._startRewardReveal\(overlay\)/);
   assert.doesNotMatch(ten, /const itemsHtml = results\.map/);

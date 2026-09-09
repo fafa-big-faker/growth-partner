@@ -41,11 +41,11 @@ test('skill and BUFF configuration use stable English headers and grouped lookup
   assert.match(sync, /\["skill_id",\s*"buff_id"\]/);
   for (const field of [
     'id', 'buff_id', 'buff_quality', 'buff_description', 'params_type_desc',
-    'effect_desc', 'value1_range', 'value2_range', 'value3_range', 'weight',
+    'effect_desc', 'value1_range', 'value2_range', 'value3_range', 'weight', 'type',
   ]) {
     assert.match(sync, new RegExp(`"${field}"`));
   }
-  assert.match(sync, /"BUFF表",\s*"A1:J100"/);
+  assert.match(sync, /"BUFF表",\s*"A1:K100"/);
   assert.match(sync, /GAME_CONFIG\.buffTable\.filter\(b => b\.buffId === skill\.buffId\)/);
   assert.match(gameConfig, /buffTable:\s*\[/);
 });
@@ -82,6 +82,7 @@ test('every configured skill has a complete 1000-weight BUFF group', () => {
     assert.equal(buffs.reduce((sum, row) => sum + row.weight, 0), 1000);
     assert.deepEqual(Array.from(buffs, row => row.buffQuality), [1, 2, 3, 4, 5]);
     for (const row of buffs) {
+      assert.ok([1, 2].includes(row.type), `BUFF row ${row.id} has an invalid effect type`);
       assert.ok(row.value1Range, `BUFF row ${row.id} is missing value1_range`);
       assert.ok(row.value2Range, `BUFF row ${row.id} is missing value2_range`);
     }

@@ -27,9 +27,13 @@ test('every V7 image is preloaded with the exact runtime cache key', () => {
 
 test('new modules load before application and paper/quality style before scrollbar overrides', () => {
   for (const file of ['mobile-cultivation.js', 'reward-presentation.js', 'mobile-cultivation.css', 'reward-presentation.css', 'app.js']) {
-    const codeVersion = 'reward-login-20260909';
+    const codeVersion = file.startsWith('mobile-cultivation.') ? 'reward-login-20260909' : 'reward-focus-20260909';
     assert.ok(html.includes(`${file}?v=${codeVersion}`), file);
   }
   assert.ok(html.indexOf('src="reward-presentation.js') < html.indexOf('src="app.js'));
   assert.ok(html.indexOf('href="reward-presentation.css') < html.indexOf('href="ink-scrollbars.css'));
+  for (const file of ['chop-refund-feedback.js', 'chop-refund-feedback.css', 'weapon-affixes.js', 'game-config.js']) {
+    assert.ok(html.includes(`${file}?v=reward-focus-20260909`), file);
+    assert.ok(html.indexOf(file) < html.indexOf('src="app.js'));
+  }
 });

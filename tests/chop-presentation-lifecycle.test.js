@@ -49,6 +49,7 @@ function fixture(options = {}) {
   const nodes = new Map();
   const overlays = [];
   const drops = [];
+  const refunds = [];
   const reveals = [];
   const events = [];
   const calls = { single: 0, batch: 0, character: 0, render: 0 };
@@ -94,6 +95,14 @@ function fixture(options = {}) {
         const overlay = element();
         const children = new Map(['.modal', '.modal-close', '.reward-reveal-confirm'].map(selector => [selector, element()]));
         overlay.querySelector = selector => children.get(selector) || null;
+        let html = '';
+        Object.defineProperty(overlay, 'innerHTML', {
+          get: () => html,
+          set: value => {
+            html = value;
+            children.get('.reward-reveal-confirm').textContent = value.match(/class="[^"]*reward-reveal-confirm[^"]*">([^<]*)/)?.[1] || '';
+          },
+        });
         return overlay;
       },
       querySelectorAll: selector => {
@@ -117,10 +126,27 @@ function fixture(options = {}) {
       stop: () => events.push(['character-stop']),
     },
     CultivationEffects: { playHit: () => {} },
+    ChopRefundFeedback: {
+      show: (anchor, quantity, settings) => {
+        const refund = element();
+        Object.assign(refund, { anchor, quantity, audio: settings.audio });
+        refunds.push(refund);
+        events.push(['refund', quantity]);
+        return true;
+      },
+      clear: () => {
+        refunds.forEach(refund => refund.remove());
+        events.push(['refund-clear']);
+      },
+    },
     MobileCultivation: { setPage: () => {}, unmount: () => {} },
     LoginArt: { setVisible: () => {} },
     RewardPresentation: {
-      createRenderer: () => ({ renderItem: () => 'item', renderResults: () => 'results', renderRefundTotal: () => 'refund' }),
+      createRenderer: () => ({
+        renderItem: () => 'item',
+        renderResults: (_items, { notice = true } = {}) => `results${notice ? '<p class="reward-notice">notice</p>' : ''}`,
+        renderNotice: () => '<p class="reward-notice">notice</p>',
+      }),
       playReveal: (_overlay, settings) => {
         const controller = {
           finishCount: 0, cancelCount: 0,
@@ -138,7 +164,7 @@ function fixture(options = {}) {
   });
   Object.assign(UI, vm.runInContext(`({${['runLockedAction', 'modal', 'closeModal'].map(method).join(',')}})`, context));
   const view = vm.runInContext(`({${['_waitForChopFeedback', 'cancelChopPresentation', '_startRewardReveal',
-    '_showRewardModal', 'doChop', 'doChopTen'].map(method).join(',')}})`, context);
+    '_showChopRefund', '_showRewardModal', 'doChop', 'doChopTen'].map(method).join(',')}})`, context);
   Object.assign(view, {
     _chopPresentationVersion: 0, _chopWait: null, _tenChopMode: false,
     _playChopButtonFeedback: () => {}, renderCultivate: () => { calls.render++; },
@@ -151,7 +177,7 @@ function fixture(options = {}) {
   const auth = vm.runInContext(`({${method('logout')}})`, context);
   auth._setLoading = () => {};
   return {
-    view, router, auth, Game, calls, guard, timers, nodes, overlays, drops, reveals, events, result,
+    view, router, auth, Game, calls, guard, timers, nodes, overlays, drops, refunds, reveals, events, result,
     async advance(ms) {
       const target = now + ms;
       while (true) {
@@ -168,18 +194,23 @@ function fixture(options = {}) {
   };
 }
 
-test('single chop remains guarded through feedback waiting and never grants again during reveal', async () => {
+test('single chop remains guarded through feedback waiting and one collect click closes its unfinished reveal', async () => {
   const f = fixture();
   const work = f.view.doChop();
   await flush();
   assert.equal(f.calls.single, 1);
   assert.equal(f.guard.isActive('chop'), true);
   assert.ok(f.view._chopWait);
+  assert.equal(f.refunds.length, 1);
+  assert.equal(f.refunds[0].quantity, 2);
+  assert.equal(f.refunds[0].anchor, f.nodes.get('chop-btn'));
+  assert.equal(typeof f.refunds[0].audio.playEffect, 'function');
   assert.equal(await f.view.doChop(), false);
   assert.equal(await f.view.doChopTen(), false);
   await f.advance(799);
   assert.equal(f.overlays.length, 0);
   assert.equal(f.guard.isActive('chop'), true);
+  assert.equal(f.refunds[0].isConnected, true, 'refund appears beside the chop action before the result dialog');
   await f.advance(1);
   assert.equal(await work, true);
   assert.equal(f.guard.isActive('chop'), false);
@@ -187,13 +218,15 @@ test('single chop remains guarded through feedback waiting and never grants agai
   assert.equal(f.calls.single, 1);
   assert.equal(f.calls.batch, 0);
   assert.equal(f.overlays.length, 1);
+  assert.equal(f.refunds[0].isConnected, false, 'the result dialog clears the scene refund feed');
+  assert.equal((f.overlays[0].innerHTML.match(/reward-notice/g) || []).length, 1);
   const button = f.overlays[0].querySelector('.reward-reveal-confirm');
+  assert.equal(button.textContent, '收下');
   button.click();
-  assert.equal(f.reveals[0].finishCount, 1);
-  button.click();
+  assert.equal(f.reveals[0].finishCount, 0, 'single chop has no intermediate skip step');
   assert.equal(f.reveals[0].cancelCount, 1);
   assert.equal(f.overlays[0].isConnected, false);
-  assert.equal(f.calls.single, 1, 'skip and close are presentation only');
+  assert.equal(f.calls.single, 1, 'collect is presentation only');
 });
 
 test('route change during a saved single reward wait cancels the old modal and releases the guard', async () => {
@@ -201,8 +234,10 @@ test('route change during a saved single reward wait cancels the old modal and r
   const work = f.view.doChop();
   await flush();
   assert.equal(f.drops.length, 1);
+  assert.equal(f.refunds.length, 1);
   f.router.playerTab('tasks');
   assert.ok(f.drops.every(drop => !drop.isConnected), 'route change immediately removes old floating reward art');
+  assert.ok(f.refunds.every(refund => !refund.isConnected), 'route change clears the old refund feed');
   assert.equal(f.view._chopWait, null);
   assert.ok(![...f.timers.values()].some(timer => timer.ms === 800));
   assert.equal(await work, true);
@@ -226,6 +261,7 @@ test('route change while the single database outcome is pending never starts old
   assert.equal(await work, true);
   await f.advance(10000);
   assert.equal(f.drops.length, 0);
+  assert.equal(f.refunds.length, 0, 'late results cannot show a refund on another page');
   assert.equal(f.overlays.length, 0);
   assert.equal(f.calls.single, 1);
 });
@@ -239,10 +275,13 @@ test('logout between ordinary and bonus drops removes pending waiting without in
   assert.ok([...f.timers.values()].some(timer => timer.ms === 180));
   f.auth.logout();
   assert.ok(f.drops.every(drop => !drop.isConnected), 'logout immediately removes old falling reward art');
+  assert.equal(f.refunds.length, 1);
+  assert.ok(f.refunds.every(refund => !refund.isConnected), 'logout removes the refund attached to the old chop button');
   assert.equal(f.Game.state, null);
   assert.equal(await work, true);
   await f.advance(10000);
   assert.equal(f.drops.length, 1, 'cancelled bonus animation does not get a late callback');
+  assert.equal(f.refunds.length, 1, 'extra drops do not create a second refund');
   assert.equal(f.overlays.length, 0);
   assert.equal(f.calls.single, 1);
   assert.equal(f.view._chopWait, null);
@@ -256,6 +295,7 @@ test('ten-chop cancellation after one scatter removes its nodes without calling 
   assert.equal(f.calls.batch, 1);
   assert.equal(f.calls.character, 1);
   assert.equal(f.drops.length, 1);
+  assert.equal(f.refunds.length, 1, 'first confirmed stroke has exactly one refund');
   assert.equal(await f.view.doChopTen(), false);
   f.router.playerTab('reward');
   assert.equal(await work, true);
@@ -263,6 +303,8 @@ test('ten-chop cancellation after one scatter removes its nodes without calling 
   assert.equal(f.calls.batch, 1);
   assert.equal(f.calls.character, 1);
   assert.ok(f.drops.every(drop => !drop.isConnected));
+  assert.equal(f.refunds.length, 1, 'cancelled later strokes never add refunds');
+  assert.ok(f.refunds.every(refund => !refund.isConnected));
   assert.equal(f.overlays.length, 0);
   assert.equal(f.guard.isActive('chop'), false);
   assert.equal(f.view._chopWait, null);
@@ -281,6 +323,7 @@ test('logout before a pending batch resolves suppresses every old visual and pre
   assert.equal(f.calls.batch, 1);
   assert.equal(f.calls.character, 0);
   assert.equal(f.drops.length, 0);
+  assert.equal(f.refunds.length, 0);
   assert.equal(f.overlays.length, 0);
   assert.equal(f.guard.isActive('chop'), false);
 });
@@ -295,12 +338,22 @@ test('completed ten-chop presentation reveals one saved batch and keeps skip/clo
   assert.equal(f.calls.single, 0);
   assert.equal(f.calls.character, 10);
   assert.equal(f.drops.length, 10);
+  assert.equal(f.refunds.length, 10);
+  assert.ok(f.refunds.every(refund => refund.quantity === 2));
+  assert.ok(f.refunds.every(refund => !refund.isConnected), 'opening the batch result clears all old floating refunds');
   assert.ok(f.drops.every(drop => !drop.isConnected));
   assert.equal(f.overlays.length, 1);
   assert.equal(f.view._chopWait, null);
   const button = f.overlays[0].querySelector('.reward-reveal-confirm');
+  assert.equal(button.textContent, '显示全部');
   button.click();
+  assert.equal(f.reveals[0].finishCount, 1);
+  assert.equal(f.reveals[0].cancelCount, 0);
+  assert.equal(f.overlays[0].isConnected, true);
+  assert.equal(button.textContent, '收下');
   button.click();
+  assert.equal(f.reveals[0].finishCount, 1);
+  assert.equal(f.reveals[0].cancelCount, 1);
   assert.equal(f.calls.batch, 1);
   assert.equal(f.overlays[0].isConnected, false);
 });
@@ -311,7 +364,44 @@ test('failed resource outcome never displays success and the guard recovers', as
   assert.equal(await f.view.doChopTen(), false);
   assert.equal(f.overlays.length, 0);
   assert.equal(f.drops.length, 0);
+  assert.equal(f.refunds.length, 0);
   assert.equal(f.guard.isActive('chop'), false);
+});
+
+test('single refund waits for both the saved result and its character stroke', async () => {
+  const animation = deferred();
+  const f = fixture({ animation: () => animation.promise });
+  const work = f.view.doChop();
+  await flush();
+  assert.equal(f.calls.single, 1);
+  assert.equal(f.refunds.length, 0);
+  animation.resolve(true);
+  await flush();
+  assert.equal(f.refunds.length, 1);
+  await f.advance(800);
+  assert.equal(await work, true);
+});
+
+test('a single extra reward keeps one notice and never adds a separate refund total', async () => {
+  const f = fixture();
+  f.result.extraDrop = { itemId: '200', quantity: 1, quality: 1, isExtra: true, refundChopping: 99 };
+  const work = f.view.doChop();
+  await flush();
+  await f.advance(800);
+  assert.equal(await work, true);
+  assert.equal(f.drops.length, 2);
+  assert.equal(f.refunds.length, 1);
+  assert.equal(f.refunds[0].quantity, 2);
+  assert.equal((f.overlays[0].innerHTML.match(/reward-notice/g) || []).length, 1);
+  assert.doesNotMatch(f.overlays[0].innerHTML, /refund-total/);
+});
+
+test('zero, missing and negative refunds never show an action hint', () => {
+  const f = fixture();
+  for (const item of [null, {}, { refundChopping: 0 }, { refundChopping: -1 }]) f.view._showChopRefund(item);
+  assert.equal(f.refunds.length, 0);
+  assert.equal(f.calls.single, 0);
+  assert.equal(f.calls.batch, 0);
 });
 
 test('all close routes cancel reward playback after its natural visual completion', async () => {

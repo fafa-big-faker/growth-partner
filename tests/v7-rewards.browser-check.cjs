@@ -83,6 +83,8 @@ async function main() {
           modal: rect(modal), header: rect(header), body: rect(body), footer: footer ? rect(footer) : null,
           bodyScrollTop: body.scrollTop, bodyScrollHeight: body.scrollHeight, bodyHeight: body.clientHeight,
           bodyOverflow: getComputedStyle(body).overflowY, modalOverflow: getComputedStyle(modal).overflowY,
+          scrollbarWidth: getComputedStyle(body).scrollbarWidth, scrollbarGutter: getComputedStyle(body).scrollbarGutter,
+          regularRowGap: document.querySelector('.reward-results-regular') ? parseFloat(getComputedStyle(document.querySelector('.reward-results-regular')).rowGap) : null,
           buttonPoint, buttonRect, buttonTextOffset, buttonLabel: button?.textContent.trim() || '',
           buttonAccessible: buttonPoint ? button.contains(document.elementFromPoint(buttonPoint.x, buttonPoint.y)) : false,
           artWidth: document.querySelector('.reward-item--large .reward-art')?.getBoundingClientRect().width || null,
@@ -106,6 +108,8 @@ async function main() {
       assert.ok(geometry.footer, 'confirmation lives outside the body scroll container');
       assert.equal(geometry.modalOverflow, 'hidden');
       assert.equal(geometry.bodyOverflow, 'auto');
+      assert.equal(geometry.scrollbarWidth, 'none');
+      assert.equal(geometry.scrollbarGutter, 'auto');
       assert.ok(geometry.modal.y >= 11 && geometry.modal.bottom <= viewport.height - 11);
       assert.ok(geometry.footer.y >= geometry.body.bottom - 1, 'footer never overlaps the scroll body');
       assert.ok(geometry.footer.bottom <= viewport.height - 11);
@@ -171,7 +175,8 @@ async function main() {
         extraDrop: { kind: 'coin', quantity: 100, quality: 2 } }));
       const single = await inspectRewards(); assertFits(single); assertFooter(single, viewport);
       assert.equal(single.items.length, 2);
-      assert.match(await page.locator('.reward-modal-v7').textContent(), /返还 2 次砍树/);
+      assert.doesNotMatch(await page.locator('.reward-modal-v7').textContent(), /返还|掉落量/);
+      assert.equal(await page.locator('.reward-skill-notice').count(), 1, 'single reward with extras owns only one common notice');
       await closeFromCurrentPosition(single);
 
       await page.evaluate(() => {
@@ -185,7 +190,8 @@ async function main() {
       assert.ok(ten.regular[5].y > ten.regular[0].y);
       assert.deepEqual(ten.regular.map(item => item.id), ['v7-long', ...Array(9).fill('40001')]);
       assert.equal(ten.extraRows[0].count, 1);
-      assert.match(await page.locator('.reward-results').textContent(), /返还 2 次砍树/);
+      assert.doesNotMatch(await page.locator('.reward-results').textContent(), /返还|掉落量/);
+      assert.equal(ten.regularRowGap, 10, 'regular rows retain compact consistent spacing');
 
       await page.evaluate(() => {
         document.getElementById('modal-container').replaceChildren();
@@ -199,16 +205,21 @@ async function main() {
       await page.evaluate(() => {
         document.getElementById('modal-container').replaceChildren();
         v7ShowResults([...v7Regular.map((reward, index) => ({ ...reward,
+          quantity: (index + 1) * (index + 2), baseQuantity: index + 1,
+          buffTriggers: [{ type: 1, beforeQuantity: index + 1, afterQuantity: (index + 1) * (index + 2), multiplier: index + 2 }],
           buffText: `掉落量×${index + 2}倍！每次砍树时抽到对应品质奖励后触发。`, refundChopping: index + 1,
         })), { kind: 'coin', quantity: 1000, quality: 5, isExtra: true }]);
       });
       const allBuffs = await inspectRewards(); assertFits(allBuffs); assertFooter(allBuffs, viewport);
       assert.equal(allBuffs.bodyScrollTop, 0);
-      assert.equal(await page.locator('.reward-item-buff').count(), 10, 'all real buff descriptions are retained');
-      assert.equal(await page.locator('.reward-item-refund').count(), 10, 'all per-reward refunds are retained');
-      if (viewport.height <= 640) assert.ok(allBuffs.bodyScrollHeight > allBuffs.bodyHeight, 'short screens scroll only the reward contents');
+      assert.equal(await page.locator('.reward-item-buff').count(), 10, 'all real multiplier chains retain compact marks');
+      assert.equal(await page.locator('.reward-item-refund, .reward-refund-total, .reward-item-feedback').count(), 0, 'no per-cell feedback paragraphs or refund totals');
+      assert.equal(await page.locator('.reward-skill-notice').count(), 1);
+      assert.equal(allBuffs.regularRowGap, 10);
+      if (viewport.height <= 390) assert.ok(allBuffs.bodyScrollHeight > allBuffs.bodyHeight, 'short landscape scrolls only the compact reward contents');
       await page.evaluate(() => { const body = document.querySelector('.reward-dialog .modal-body'); body.scrollTop = body.scrollHeight; });
       const scrolled = await inspectRewards(); assertFooter(scrolled, viewport);
+      if (allBuffs.bodyScrollHeight > allBuffs.bodyHeight) assert.ok(scrolled.bodyScrollTop > 0, 'hiding the scrollbar does not disable scrolling');
       assert.deepEqual(scrolled.header, allBuffs.header, 'header position remains stable while reward body scrolls');
       assert.deepEqual(scrolled.footer, allBuffs.footer, 'footer position remains stable while reward body scrolls');
       await page.evaluate(() => { document.querySelector('.reward-dialog .modal-body').scrollTop = 0; });

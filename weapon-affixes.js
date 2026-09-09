@@ -59,8 +59,24 @@
     };
   }
 
+  function getBuffType(buff) {
+    if (!buff || typeof buff !== 'object') return null;
+    if (buff.type !== undefined && buff.type !== null && buff.type !== '') {
+      const type = Number(buff.type);
+      return type === 1 || type === 2 ? type : null;
+    }
+    // Frozen legacy instances keep their original behavior without rerolling.
+    if (buff.effectType === 'reward_multiplier') return 1;
+    if (buff.effectType === 'chop_refund') return 2;
+    if (typeof buff.description === 'string' && buff.description.trim()) {
+      return buff.description.includes('返还') ? 2 : 1;
+    }
+    return null;
+  }
+
   function classifyEffect(buff) {
-    return String(buff?.description || '').includes('返还') ? 'chop_refund' : 'reward_multiplier';
+    const type = getBuffType(buff);
+    return type === 1 ? 'reward_multiplier' : type === 2 ? 'chop_refund' : null;
   }
 
   function rollValues(buff, effectType, random) {
@@ -90,12 +106,14 @@
       const selected = pickWeightedBuff(skill.buffs, random);
       if (!selected) throw new Error(`Missing weighted BUFF configuration: ${skill.buffId}`);
       const effectType = classifyEffect(selected);
+      if (!effectType) throw new Error(`Invalid BUFF type: ${selected.id}`);
       return {
         skillId: Number(skill.skillId),
         buffId: Number(skill.buffId),
         buffRowId: Number(selected.id),
         buffQuality: Number(selected.buffQuality) || 1,
         description: String(selected.description || ''),
+        type: getBuffType(selected),
         effectType,
         values: rollValues(selected, effectType, random),
       };
@@ -103,7 +121,7 @@
   }
 
   function formatValue(key, value, roll, qualityTable) {
-    const effectType = roll.effectType || classifyEffect(roll);
+    const effectType = classifyEffect(roll);
     if (key === 'value1' && effectType === 'reward_multiplier') {
       const quality = (qualityTable || []).find(row => Number(row.id ?? row.qualityId) === Number(value));
       return quality?.name || `品质${value}`;
@@ -119,7 +137,7 @@
     if (!skillRoll) return '';
     const normalizedRoll = {
       ...skillRoll,
-      effectType: skillRoll.effectType || classifyEffect(skillRoll),
+      effectType: classifyEffect(skillRoll),
     };
     let template = escapeHtml(normalizedRoll.description || '');
     for (const key of ['value1', 'value2', 'value3']) {
@@ -153,13 +171,14 @@
     if (!drop) return drop;
     const result = { ...drop, baseQuantity: drop.quantity, buffTriggers: [] };
     for (const roll of Array.isArray(rolls) ? rolls : []) {
-      if (roll?.effectType !== 'reward_multiplier') continue;
+      if (getBuffType(roll) !== 1) continue;
       if (Number(roll.values?.value1) !== Number(result.quality)) continue;
       if (clampRandom(random()) * 100 >= Number(roll.values?.value2)) continue;
       const beforeQuantity = result.quantity;
       const multiplier = Math.max(1, Number(roll.values?.value3) || 1);
       result.quantity *= multiplier;
       result.buffTriggers.push({
+        type: 1,
         beforeQuantity, afterQuantity: result.quantity, multiplier,
         skillId: roll.skillId ?? null, buffId: roll.buffId ?? null,
         buffRowId: roll.buffRowId ?? null, buffQuality: roll.buffQuality ?? null,
@@ -171,7 +190,7 @@
   function rollRefund(rolls, random = Math.random) {
     let refund = 0;
     for (const roll of Array.isArray(rolls) ? rolls : []) {
-      if (roll?.effectType !== 'chop_refund') continue;
+      if (getBuffType(roll) !== 2) continue;
       if (clampRandom(random()) * 100 < Number(roll.values?.value1)) {
         refund += Math.max(0, Math.floor(Number(roll.values?.value2) || 0));
       }
@@ -180,6 +199,7 @@
   }
 
   const api = {
+    getBuffType,
     rollRange,
     pickWeightedBuff,
     rollSkills,

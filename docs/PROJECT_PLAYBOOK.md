@@ -25,6 +25,7 @@
 - 奖励包当前字段：`pack_id`, `item_ids`, `item_quantities`, `quality_id`, `quality_note`。
 - 每日签到当前字段：`item_ids`, `item_quantities`。
 - 商店说明字段：`description`；`note` 仅供内部备注，不展示给玩家。
+- BUFF 的 `type` 为必需整数：`1` 掉落倍率，`2` 返还砍树次数。按英文表头读取，不按列号、BUFF ID 或新文案推测；非法值要报告具体行号。
 
 ## 3. 同步配置
 
@@ -89,6 +90,7 @@ Python 语法检查：
 - `player_state.axe_id` 保留为当前外观道具 ID；真正的装备归属以 `axe_instance_id` 为准。
 - 锻造时先根据道具的技能 ID，从同 `buff_id` 的配置中按 `weight` 抽档，再从 `value*_range` 生成数值。
 - 抽中的 `buffRowId`、`buffQuality` 和最终数值永久写入 `skill_rolls`；砍树时只读取这些固定值，禁止再次随机强度。
+- 新词条同时冻结配置 `type` 与兼容的 `effectType`，显式 `type` 优先。历史实例缺少 `type` 时保留原 `effectType`，更旧记录才兼容原描述；不为补类型迁移、重抽或修改玩家数值。
 - 锻造、装备、出售必须分别调用 `forge_weapon_instance`、`equip_weapon_instance`、`sell_weapon_instance` 原子 RPC。
 - 历史斧头迁移后若词条为空，由 `initialize_weapon_affixes` 只写一次；并发情况下以后端已保存结果为准。
 - 技能文案只给动态参数添加 `buff-quality-*` 颜色，正文保持中性，避免整段高饱和影响可读性。
@@ -211,7 +213,7 @@ git push origin main
 ## 13. V7 品质奖励展示
 
 - `reward-presentation.js/css`只负责表现，显式注入道具配置和图标函数，不接触数据库、随机权重或物品发放。
-- 十连结果按真实`isExtra`分组，常规十次5+5，额外奖励单独居中；不能用数组第11项硬切。单次奖励和额外奖励复用墨团组件，保留数量、BUFF及返还次数。
+- 十连结果按真实`isExtra`分组，常规十次5+5，额外奖励单独居中；不能用数组第11项硬切。单次奖励和额外奖励复用墨团组件，保留真实数量及倍率；返还次数只在砍树按钮上方反馈。
 - 使用V7五色墨团，不增加发光方框。纸上品质名称使用同色相较深文本色，不修改飞书配置颜色，不让金色在纸上看不清。
 - 普通道具详情标题应用自身品质色，武器详情继续以技能为重点。图片路径、预载和缓存版本保持一致。
 - 奖励弹窗须分别检查单抽和全BUFF十连。头尾不滚动、内容区可滚动，短屏中不滚动也能点击确认；不能只验整个弹窗在视口里或奖励排成5+5。
@@ -222,8 +224,10 @@ git push origin main
 - `inventory-order.js`只对道具显示副本排序：数值类型ID优先、数值道具ID其次。按`DB.playerRole`隔离本地显式顺序，新种类追加、数量变化不重新排序；不改`Game.inventory`原数组、不清新标记、不排序武器。整理按钮固定左栏底部，44px点击高度；只让左滚动归零，保留右栏模式和滚动。
 - `MobileCultivation.mount`通过`onSort`接收回调，不能假设顶层`const PlayerView`是`window.PlayerView`属性。锁定标记使用本地Lucide锁，14px，不恢复旧位图锁。
 - `WeaponAffixes.applyRewardMultipliers`在原随机调用中记录`baseQuantity`和`buffTriggers`的前后数量、倍率及技能来源，不在表现阶段重新随机。额外奖励不套用普通掉落技能。
-- `RewardPresentation.playReveal(overlay,{audio,onComplete})`只消费已到账结果；固定位置逐个揭示，技能数字按记录逐次变化，返还有逐项提示及总计。`finish()`立即显示全部，`cancel()`清理，减少动态直接最终态；不能因为表现新增资源发放。普通/技能格都不许挤动固定footer或扩大单次弹窗。
-- 单次与十连共用`_startRewardReveal`。底部演出中为“全部显示”，完成为“收下”。延迟单次弹窗留在砍树操作锁内；路由/退出通过`cancelChopPresentation`作废旧表现和计时器，不能离页后再弹旧结果。十连原动作与掉落时间轴不变。
+- `RewardPresentation.playReveal(overlay,{audio,onComplete})`只消费已到账结果；固定位置逐个揭示，只有类型1按真实记录演出倍率。每次触发固定1300ms：提示及音效300ms、旧数字晃动500ms、换新数字放大回落500ms；直到结束才播下一件，不因多次触发缩短。类型2不参与结果时间轴。`finish()`立即显示全部，`cancel()`清理，减少动态直接最终态；不能因为表现新增资源发放。
+- 格内只留图标、名称、数量及短倍率标记；“斧技发动 · 数量×N”放在32px固定单行提示区。移除三行技能段落与多余占位，内容保留滚动但隐藏轨道，头尾和按钮不随结果变化移动。单次含额外奖励也只能有一个提示区。
+- 单次与十连共用`_startRewardReveal`：单次传`single:true`，按钮始终“收下”且一次点击立即关闭；十连演出中“显示全部”，跳过或完成后“收下”。延迟单次弹窗留在砍树操作锁内；路由/退出通过`cancelChopPresentation`作废旧表现和计时器，不能离页后再弹旧结果。十连原动作与掉落时间轴不变。
+- `ChopRefundFeedback.show(button,count,{audio})`在每刀已确认结果的原时间点同步调用，不等待飘字。按钮上方显示“斧技发动：返还X次”，最多4条，新条目向上推旧条目，1.6秒自动结束；显示层点击穿透、声音350ms限频。离页、隐藏、按钮移除及结果弹窗打开时清理，不累计到下一轮，也不再次发奖。
 - `UI.playDropSound`按真实掉落品质选择：1/2原掉落，3珍品，4/5大奖；物理砍击仍用原音。奖励弹窗统一短音，技能触发独立音；声音分组限并发，跳过/关闭只停当前组，不影响BGM或锻造循环。
 - `LoginBoot`在外部SDK前启动，初始shell为inert；关键图片load+decode、装饰成功或用户简化、Auth事件绑定完成三个条件共同放行。Auth绑定后`markRuntimeReady()`，再用`LoginArt.init({prepared})`复用已解码图片，不重复下载墨纹。
 - 首屏4张主图失败重试，墨纹失败可以简化进入，不能把失败计作100%。`AssetPreloader`全局6并发，成功及进行中URL去重，取消只释放当前消费者。后台游戏预热在登录画面齐全后启动；正式登录优先，音频不再硬性阻塞。角色仍只预载当前武器10帧，公共/角色缺图重试失败明确恢复登录页。

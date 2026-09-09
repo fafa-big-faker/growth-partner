@@ -1,6 +1,6 @@
 // ===== 游戏配置文件（由 sync-config.py 从飞书表格自动生成）=====
 // 修改飞书表格后运行同步脚本即可更新，请勿手动编辑此文件
-// 最后同步: 2026-09-08 11:50:21
+// 最后同步: 2026-09-09 15:04:31
 
 const GAME_CONFIG = {
   // 角色等级经验表（共 150 条）
@@ -1391,6 +1391,7 @@ const GAME_CONFIG = {
   {
     "id": 1,
     "buffId": 1,
+    "type": 1,
     "buffQuality": 1,
     "description": "每次砍树时若抽到{vlaue1}的奖励，有{value2}的概率使其掉落量×{value3}倍",
     "paramsTypeDesc": "value1,value2,value3",
@@ -1403,6 +1404,7 @@ const GAME_CONFIG = {
   {
     "id": 2,
     "buffId": 1,
+    "type": 1,
     "buffQuality": 2,
     "description": "每次砍树时若抽到{vlaue1}的奖励，有{value2}的概率使其掉落量×{value3}倍",
     "paramsTypeDesc": "value1,value2",
@@ -1415,6 +1417,7 @@ const GAME_CONFIG = {
   {
     "id": 3,
     "buffId": 1,
+    "type": 1,
     "buffQuality": 3,
     "description": "每次砍树时若抽到{vlaue1}的奖励，有{value2}的概率使其掉落量×{value3}倍",
     "paramsTypeDesc": "",
@@ -1427,6 +1430,7 @@ const GAME_CONFIG = {
   {
     "id": 4,
     "buffId": 1,
+    "type": 1,
     "buffQuality": 4,
     "description": "每次砍树时若抽到{vlaue1}的奖励，有{value2}的概率使其掉落量×{value3}倍",
     "paramsTypeDesc": "",
@@ -1439,6 +1443,7 @@ const GAME_CONFIG = {
   {
     "id": 5,
     "buffId": 1,
+    "type": 1,
     "buffQuality": 5,
     "description": "每次砍树时若抽到{vlaue1}的奖励，有{value2}的概率使其掉落量×{value3}倍",
     "paramsTypeDesc": "",
@@ -1451,6 +1456,7 @@ const GAME_CONFIG = {
   {
     "id": 6,
     "buffId": 2,
+    "type": 1,
     "buffQuality": 1,
     "description": "每次砍树时若抽到{vlaue1}的奖励，有{value2}的概率使其掉落量×{value3}倍",
     "paramsTypeDesc": "",
@@ -1463,6 +1469,7 @@ const GAME_CONFIG = {
   {
     "id": 7,
     "buffId": 2,
+    "type": 1,
     "buffQuality": 2,
     "description": "每次砍树时若抽到{vlaue1}的奖励，有{value2}的概率使其掉落量×{value3}倍",
     "paramsTypeDesc": "",
@@ -1475,6 +1482,7 @@ const GAME_CONFIG = {
   {
     "id": 8,
     "buffId": 2,
+    "type": 1,
     "buffQuality": 3,
     "description": "每次砍树时若抽到{vlaue1}的奖励，有{value2}的概率使其掉落量×{value3}倍",
     "paramsTypeDesc": "",
@@ -1487,6 +1495,7 @@ const GAME_CONFIG = {
   {
     "id": 9,
     "buffId": 2,
+    "type": 1,
     "buffQuality": 4,
     "description": "每次砍树时若抽到{vlaue1}的奖励，有{value2}的概率使其掉落量×{value3}倍",
     "paramsTypeDesc": "",
@@ -1499,6 +1508,7 @@ const GAME_CONFIG = {
   {
     "id": 10,
     "buffId": 2,
+    "type": 1,
     "buffQuality": 5,
     "description": "每次砍树时若抽到{vlaue1}的奖励，有{value2}的概率使其掉落量×{value3}倍",
     "paramsTypeDesc": "",
@@ -1511,6 +1521,7 @@ const GAME_CONFIG = {
   {
     "id": 11,
     "buffId": 3,
+    "type": 1,
     "buffQuality": 1,
     "description": "每次砍树时若抽到{vlaue1}的奖励，有{value2}的概率使其掉落量×{value3}倍",
     "paramsTypeDesc": "",
@@ -1523,6 +1534,7 @@ const GAME_CONFIG = {
   {
     "id": 12,
     "buffId": 3,
+    "type": 1,
     "buffQuality": 2,
     "description": "每次砍树时若抽到{vlaue1}的奖励，有{value2}的概率使其掉落量×{value3}倍",
     "paramsTypeDesc": "",
@@ -1535,6 +1547,7 @@ const GAME_CONFIG = {
   {
     "id": 13,
     "buffId": 3,
+    "type": 1,
     "buffQuality": 3,
     "description": "每次砍树时若抽到{vlaue1}的奖励，有{value2}的概率使其掉落量×{value3}倍",
     "paramsTypeDesc": "",
@@ -1547,6 +1560,7 @@ const GAME_CONFIG = {
   {
     "id": 14,
     "buffId": 3,
+    "type": 1,
     "buffQuality": 4,
     "description": "每次砍树时若抽到{vlaue1}的奖励，有{value2}的概率使其掉落量×{value3}倍",
     "paramsTypeDesc": "",
@@ -1559,6 +1573,7 @@ const GAME_CONFIG = {
   {
     "id": 15,
     "buffId": 3,
+    "type": 1,
     "buffQuality": 5,
     "description": "每次砍树时若抽到{vlaue1}的奖励，有{value2}的概率使其掉落量×{value3}倍",
     "paramsTypeDesc": "",
@@ -1571,6 +1586,7 @@ const GAME_CONFIG = {
   {
     "id": 16,
     "buffId": 4,
+    "type": 1,
     "buffQuality": 1,
     "description": "每次砍树时若抽到{vlaue1}的奖励，有{value2}的概率使其掉落量×{value3}倍",
     "paramsTypeDesc": "",
@@ -1583,6 +1599,7 @@ const GAME_CONFIG = {
   {
     "id": 17,
     "buffId": 4,
+    "type": 1,
     "buffQuality": 2,
     "description": "每次砍树时若抽到{vlaue1}的奖励，有{value2}的概率使其掉落量×{value3}倍",
     "paramsTypeDesc": "",
@@ -1595,6 +1612,7 @@ const GAME_CONFIG = {
   {
     "id": 18,
     "buffId": 4,
+    "type": 1,
     "buffQuality": 3,
     "description": "每次砍树时若抽到{vlaue1}的奖励，有{value2}的概率使其掉落量×{value3}倍",
     "paramsTypeDesc": "",
@@ -1607,6 +1625,7 @@ const GAME_CONFIG = {
   {
     "id": 19,
     "buffId": 4,
+    "type": 1,
     "buffQuality": 4,
     "description": "每次砍树时若抽到{vlaue1}的奖励，有{value2}的概率使其掉落量×{value3}倍",
     "paramsTypeDesc": "",
@@ -1619,6 +1638,7 @@ const GAME_CONFIG = {
   {
     "id": 20,
     "buffId": 4,
+    "type": 1,
     "buffQuality": 5,
     "description": "每次砍树时若抽到{vlaue1}的奖励，有{value2}的概率使其掉落量×{value3}倍",
     "paramsTypeDesc": "",
@@ -1631,6 +1651,7 @@ const GAME_CONFIG = {
   {
     "id": 21,
     "buffId": 5,
+    "type": 1,
     "buffQuality": 1,
     "description": "每次砍树时若抽到{vlaue1}的奖励，有{value2}的概率使其掉落量×{value3}倍",
     "paramsTypeDesc": "",
@@ -1643,6 +1664,7 @@ const GAME_CONFIG = {
   {
     "id": 22,
     "buffId": 5,
+    "type": 1,
     "buffQuality": 2,
     "description": "每次砍树时若抽到{vlaue1}的奖励，有{value2}的概率使其掉落量×{value3}倍",
     "paramsTypeDesc": "",
@@ -1655,6 +1677,7 @@ const GAME_CONFIG = {
   {
     "id": 23,
     "buffId": 5,
+    "type": 1,
     "buffQuality": 3,
     "description": "每次砍树时若抽到{vlaue1}的奖励，有{value2}的概率使其掉落量×{value3}倍",
     "paramsTypeDesc": "",
@@ -1667,6 +1690,7 @@ const GAME_CONFIG = {
   {
     "id": 24,
     "buffId": 5,
+    "type": 1,
     "buffQuality": 4,
     "description": "每次砍树时若抽到{vlaue1}的奖励，有{value2}的概率使其掉落量×{value3}倍",
     "paramsTypeDesc": "",
@@ -1679,6 +1703,7 @@ const GAME_CONFIG = {
   {
     "id": 25,
     "buffId": 5,
+    "type": 1,
     "buffQuality": 5,
     "description": "每次砍树时若抽到{vlaue1}的奖励，有{value2}的概率使其掉落量×{value3}倍",
     "paramsTypeDesc": "",
@@ -1691,6 +1716,7 @@ const GAME_CONFIG = {
   {
     "id": 26,
     "buffId": 6,
+    "type": 2,
     "buffQuality": 1,
     "description": "每次砍树时有{value1}的概率返还{value2}的砍树次数",
     "paramsTypeDesc": "",
@@ -1703,6 +1729,7 @@ const GAME_CONFIG = {
   {
     "id": 27,
     "buffId": 6,
+    "type": 2,
     "buffQuality": 2,
     "description": "每次砍树时有{value1}的概率返还{value2}的砍树次数",
     "paramsTypeDesc": "",
@@ -1715,6 +1742,7 @@ const GAME_CONFIG = {
   {
     "id": 28,
     "buffId": 6,
+    "type": 2,
     "buffQuality": 3,
     "description": "每次砍树时有{value1}的概率返还{value2}的砍树次数",
     "paramsTypeDesc": "",
@@ -1727,6 +1755,7 @@ const GAME_CONFIG = {
   {
     "id": 29,
     "buffId": 6,
+    "type": 2,
     "buffQuality": 4,
     "description": "每次砍树时有{value1}的概率返还{value2}的砍树次数",
     "paramsTypeDesc": "",
@@ -1739,6 +1768,7 @@ const GAME_CONFIG = {
   {
     "id": 30,
     "buffId": 6,
+    "type": 2,
     "buffQuality": 5,
     "description": "每次砍树时有{value1}的概率返还{value2}的砍树次数",
     "paramsTypeDesc": "",
@@ -1751,6 +1781,7 @@ const GAME_CONFIG = {
   {
     "id": 31,
     "buffId": 7,
+    "type": 2,
     "buffQuality": 1,
     "description": "每次砍树时有{value1}的概率返还{value2}的砍树次数",
     "paramsTypeDesc": "",
@@ -1763,6 +1794,7 @@ const GAME_CONFIG = {
   {
     "id": 32,
     "buffId": 7,
+    "type": 2,
     "buffQuality": 2,
     "description": "每次砍树时有{value1}的概率返还{value2}的砍树次数",
     "paramsTypeDesc": "",
@@ -1775,6 +1807,7 @@ const GAME_CONFIG = {
   {
     "id": 33,
     "buffId": 7,
+    "type": 2,
     "buffQuality": 3,
     "description": "每次砍树时有{value1}的概率返还{value2}的砍树次数",
     "paramsTypeDesc": "",
@@ -1787,6 +1820,7 @@ const GAME_CONFIG = {
   {
     "id": 34,
     "buffId": 7,
+    "type": 2,
     "buffQuality": 4,
     "description": "每次砍树时有{value1}的概率返还{value2}的砍树次数",
     "paramsTypeDesc": "",
@@ -1799,6 +1833,7 @@ const GAME_CONFIG = {
   {
     "id": 35,
     "buffId": 7,
+    "type": 2,
     "buffQuality": 5,
     "description": "每次砍树时有{value1}的概率返还{value2}的砍树次数",
     "paramsTypeDesc": "",
@@ -1811,6 +1846,7 @@ const GAME_CONFIG = {
   {
     "id": 36,
     "buffId": 8,
+    "type": 2,
     "buffQuality": 1,
     "description": "每次砍树时有{value1}的概率返还{value2}的砍树次数",
     "paramsTypeDesc": "",
@@ -1823,6 +1859,7 @@ const GAME_CONFIG = {
   {
     "id": 37,
     "buffId": 8,
+    "type": 2,
     "buffQuality": 2,
     "description": "每次砍树时有{value1}的概率返还{value2}的砍树次数",
     "paramsTypeDesc": "",
@@ -1835,6 +1872,7 @@ const GAME_CONFIG = {
   {
     "id": 38,
     "buffId": 8,
+    "type": 2,
     "buffQuality": 3,
     "description": "每次砍树时有{value1}的概率返还{value2}的砍树次数",
     "paramsTypeDesc": "",
@@ -1847,6 +1885,7 @@ const GAME_CONFIG = {
   {
     "id": 39,
     "buffId": 8,
+    "type": 2,
     "buffQuality": 4,
     "description": "每次砍树时有{value1}的概率返还{value2}的砍树次数",
     "paramsTypeDesc": "",
@@ -1859,6 +1898,7 @@ const GAME_CONFIG = {
   {
     "id": 40,
     "buffId": 8,
+    "type": 2,
     "buffQuality": 5,
     "description": "每次砍树时有{value1}的概率返还{value2}的砍树次数",
     "paramsTypeDesc": "",
@@ -1871,6 +1911,7 @@ const GAME_CONFIG = {
   {
     "id": 41,
     "buffId": 9,
+    "type": 2,
     "buffQuality": 1,
     "description": "每次砍树时有{value1}的概率返还{value2}的砍树次数",
     "paramsTypeDesc": "",
@@ -1883,6 +1924,7 @@ const GAME_CONFIG = {
   {
     "id": 42,
     "buffId": 9,
+    "type": 2,
     "buffQuality": 2,
     "description": "每次砍树时有{value1}的概率返还{value2}的砍树次数",
     "paramsTypeDesc": "",
@@ -1895,6 +1937,7 @@ const GAME_CONFIG = {
   {
     "id": 43,
     "buffId": 9,
+    "type": 2,
     "buffQuality": 3,
     "description": "每次砍树时有{value1}的概率返还{value2}的砍树次数",
     "paramsTypeDesc": "",
@@ -1907,6 +1950,7 @@ const GAME_CONFIG = {
   {
     "id": 44,
     "buffId": 9,
+    "type": 2,
     "buffQuality": 4,
     "description": "每次砍树时有{value1}的概率返还{value2}的砍树次数",
     "paramsTypeDesc": "",
@@ -1919,6 +1963,7 @@ const GAME_CONFIG = {
   {
     "id": 45,
     "buffId": 9,
+    "type": 2,
     "buffQuality": 5,
     "description": "每次砍树时有{value1}的概率返还{value2}的砍树次数",
     "paramsTypeDesc": "",
@@ -1931,6 +1976,7 @@ const GAME_CONFIG = {
   {
     "id": 46,
     "buffId": 10,
+    "type": 2,
     "buffQuality": 1,
     "description": "每次砍树时有{value1}的概率返还{value2}的砍树次数",
     "paramsTypeDesc": "",
@@ -1943,6 +1989,7 @@ const GAME_CONFIG = {
   {
     "id": 47,
     "buffId": 10,
+    "type": 2,
     "buffQuality": 2,
     "description": "每次砍树时有{value1}的概率返还{value2}的砍树次数",
     "paramsTypeDesc": "",
@@ -1955,6 +2002,7 @@ const GAME_CONFIG = {
   {
     "id": 48,
     "buffId": 10,
+    "type": 2,
     "buffQuality": 3,
     "description": "每次砍树时有{value1}的概率返还{value2}的砍树次数",
     "paramsTypeDesc": "",
@@ -1967,6 +2015,7 @@ const GAME_CONFIG = {
   {
     "id": 49,
     "buffId": 10,
+    "type": 2,
     "buffQuality": 4,
     "description": "每次砍树时有{value1}的概率返还{value2}的砍树次数",
     "paramsTypeDesc": "",
@@ -1979,6 +2028,7 @@ const GAME_CONFIG = {
   {
     "id": 50,
     "buffId": 10,
+    "type": 2,
     "buffQuality": 5,
     "description": "每次砍树时有{value1}的概率返还{value2}的砍树次数",
     "paramsTypeDesc": "",

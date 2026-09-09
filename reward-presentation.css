@@ -33,8 +33,12 @@
   overflow-y: auto;
   overflow-x: hidden;
   overscroll-behavior: contain;
-  scrollbar-gutter: stable;
+  scrollbar-gutter: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
+
+.reward-dialog > .modal-body::-webkit-scrollbar { display: none; width: 0; height: 0; }
 
 .reward-dialog > .modal-footer {
   flex-shrink: 0;
@@ -52,6 +56,9 @@
   text-align: center;
 }
 
+.reward-dialog--single > .modal-header { margin-bottom: 4px; }
+.reward-dialog--single > .modal-footer { margin-top: 6px; padding-top: 6px; }
+
 .reward-results {
   padding: 2px 0 4px;
   color: #4e5751;
@@ -61,7 +68,7 @@
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   align-items: start;
-  gap: 18px 6px;
+  gap: 10px 6px;
 }
 
 .reward-item {
@@ -128,7 +135,7 @@
   font-weight: 700;
   line-height: 1.45;
   overflow-wrap: anywhere;
-  min-height: 35px;
+  min-height: 0;
 }
 
 .reward-item-quantity {
@@ -140,26 +147,33 @@
   font-weight: 600;
   line-height: 1.4;
   overflow-wrap: anywhere;
-  min-height: 34px;
+  min-height: 17px;
 }
 
 .reward-item-quantity-value { display: inline-block; max-width: 100%; }
 .reward-quantity-ticker { position: relative; display: inline-block; max-width: 100%; text-align: center; }
-.reward-item-feedback { width: 100%; min-height: 0; }
-.reward-item-refund { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 2px; }
-.reward-refund-icon { flex: 0 0 15px; display: inline-block; width: 15px; height: 15px; object-fit: contain; }
-.reward-refund-total { display: flex; justify-content: center; align-items: center; gap: 5px; margin-top: 12px; color: #466c55; font-size: 12px; line-height: 20px; }
-.reward-refund-total b { font-variant-numeric: tabular-nums; }
+.reward-item-buff { display: inline-block; margin-left: 4px; font-size: 10px; font-weight: 500; line-height: 1.4; }
+.reward-skill-notice {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  min-height: 32px;
+  margin-top: 4px;
+  background: rgba(236, 228, 212, .96);
+  pointer-events: none;
+}
+.reward-skill-notice-text { max-width: 100%; font-size: 12px; line-height: 20px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .reward-item.is-reward-pending > * { opacity: 0; }
 .reward-item.is-reward-revealing .reward-art { animation: reward-ink-reveal 210ms ease-out both; }
-.reward-item.is-reward-revealing :is(.reward-item-name, .reward-item-quantity, .reward-item-feedback) { animation: reward-copy-reveal 160ms ease-out both; }
-.reward-item.is-skill-active .reward-item-buff { color: #6f3b94; }
+.reward-item.is-reward-revealing :is(.reward-item-name, .reward-item-quantity) { animation: reward-copy-reveal 160ms ease-out both; }
 .reward-item.is-skill-active .reward-quality-ink { animation: reward-skill-ink 280ms ease-out both; }
-.reward-item.is-count-changing .reward-item-quantity-value { animation: reward-count-arrive 180ms ease-out both; }
-.reward-item.is-count-changing .reward-quantity-ticker::before { content: attr(data-previous-quantity); position: absolute; inset: 0; width: 100%; animation: reward-count-depart 150ms ease-out both; pointer-events: none; }
-.reward-item.is-refund-active .reward-item-refund { animation: reward-refund-reveal 170ms ease-out both; }
-.reward-art, .reward-item-name, .reward-item-quantity, .reward-item-feedback { pointer-events: none; }
+.reward-item.is-count-shaking .reward-item-quantity-value { animation: reward-count-shake 500ms linear both; }
+.reward-item.is-count-changing .reward-item-quantity-value { animation: reward-count-arrive 500ms cubic-bezier(.18,.72,.3,1) both; }
+.reward-art, .reward-item-name, .reward-item-quantity { pointer-events: none; }
 
 @keyframes reward-ink-reveal {
   from { opacity: 0; transform: translateY(3px) scale(.94); }
@@ -170,42 +184,24 @@
   to { opacity: 1; }
 }
 @keyframes reward-count-arrive {
-  0% { opacity: 0; transform: translateY(5px); }
-  55% { opacity: 1; transform: translate(-1px, -1px); }
-  78% { transform: translateX(1px); }
-  100% { opacity: 1; transform: translate(0); }
+  0% { transform: scale(1.55); }
+  65% { transform: scale(.96); }
+  100% { transform: scale(1); }
 }
-@keyframes reward-count-depart {
-  from { opacity: 1; transform: translateY(0); }
-  to { opacity: 0; transform: translateY(-7px); }
+@keyframes reward-count-shake {
+  0%, 100% { transform: translateX(0); }
+  12%, 36%, 60%, 84% { transform: translateX(-2px) rotate(-3deg); }
+  24%, 48%, 72% { transform: translateX(2px) rotate(3deg); }
 }
 @keyframes reward-skill-ink {
   0%, 100% { transform: scale(1); opacity: 1; }
   45% { transform: scale(1.08); opacity: .76; }
 }
-@keyframes reward-refund-reveal {
-  from { opacity: 0; transform: translateY(3px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
 .reward-item-quality { display: none; }
 
-.reward-item-buff,
-.reward-item-refund {
-  width: 100%;
-  margin-top: 4px;
-  font-size: 12px;
-  font-weight: 500;
-  line-height: 1.45;
-  overflow-wrap: anywhere;
-}
-
-.reward-item-buff { color: #8050ac; }
-.reward-item-refund { color: #466c55; }
-
 .reward-results-extra {
-  margin-top: 20px;
-  padding-top: 12px;
+  margin-top: 12px;
+  padding-top: 8px;
   border-top: 1px solid rgba(82, 101, 85, 0.2);
 }
 
@@ -234,22 +230,20 @@
 .reward-item--large .reward-item-quantity { margin-top: 4px; font-size: 13px; }
 .reward-item--large .reward-item-quantity { min-height: 20px; }
 .reward-item--large .reward-item-quality { display: inline; }
-.reward-item--large .reward-item-buff,
-.reward-item--large .reward-item-refund { margin-top: 6px; font-size: 12px; }
+.reward-item--large .reward-item-buff { font-size: 11px; }
 
 .reward-modal-v7 .reward-results-extra { margin-top: 12px; padding-top: 8px; }
 .reward-modal-v7 .reward-item--small { width: 64px; }
 
 @media (max-width: 380px) {
-  .reward-results-regular { gap: 15px 4px; }
+  .reward-results-regular { gap: 10px 4px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .reward-item.is-reward-pending > * { opacity: 1; }
   .reward-item.is-reward-revealing .reward-art,
-  .reward-item.is-reward-revealing :is(.reward-item-name, .reward-item-quantity, .reward-item-feedback),
+  .reward-item.is-reward-revealing :is(.reward-item-name, .reward-item-quantity),
+  .reward-item.is-count-shaking .reward-item-quantity-value,
   .reward-item.is-count-changing .reward-item-quantity-value,
-  .reward-item.is-skill-active .reward-quality-ink,
-  .reward-item.is-refund-active .reward-item-refund { animation: none; }
-  .reward-item.is-count-changing .reward-quantity-ticker::before { display: none; }
+  .reward-item.is-skill-active .reward-quality-ink { animation: none; }
 }
