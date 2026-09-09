@@ -2,6 +2,7 @@
   const ART_BASE = 'assets/runtime/v7/rewards';
   const ART_VERSION = 'xianlai-v7-20260909';
   const QUALITY_NAMES = ['凡品', '精品', '珍品', '神品', '仙品'];
+  const BUFF_QUALITY_CLASSES = QUALITY_NAMES.map((name, index) => `buff-quality-${index + 1}`);
   const activeReveals = new WeakMap();
   let revealId = 0;
 
@@ -14,6 +15,16 @@
   function qualityId(value) {
     const id = Number(value);
     return Number.isInteger(id) && id >= 1 && id <= 5 ? id : 1;
+  }
+
+  function quantityText(quantity, trigger) {
+    return `×${quantity}${trigger ? '！' : ''}`;
+  }
+
+  function setBuffQuality(element, trigger) {
+    if (!element) return;
+    element.classList.remove(...BUFF_QUALITY_CLASSES);
+    if (trigger) element.classList.add(`buff-quality-${qualityId(trigger.buffQuality)}`);
   }
 
   function getAssetUrls() {
@@ -63,12 +74,13 @@
     let cursor = 0;
     for (const [itemIndex, reward] of metadata.entries()) {
       events.push({ at: cursor, type: 'reveal', itemIndex });
-      cursor += 120;
+      const hasMultiplier = reward.triggers.some(trigger => trigger.type == null || Number(trigger.type) === 1);
+      cursor += hasMultiplier ? 300 : 120;
       for (const [triggerIndex, trigger] of reward.triggers.entries()) {
         if (trigger.type != null && Number(trigger.type) !== 1) continue;
         events.push({ at: cursor, type: 'trigger', itemIndex, triggerIndex });
         events.push({ at: cursor + 300, type: 'shake', itemIndex, triggerIndex });
-        events.push({ at: cursor + 800, type: 'quantity', itemIndex, quantity: trigger.afterQuantity });
+        events.push({ at: cursor + 800, type: 'quantity', itemIndex, triggerIndex, quantity: trigger.afterQuantity });
         cursor += 1300;
         events.push({ at: cursor, type: 'settle', itemIndex, triggerIndex });
       }
@@ -91,7 +103,7 @@
       const reserves = [name, element.querySelector('.reward-item-quantity')]
         .filter(Boolean).map(node => ({ node, original: node.style.minHeight || '', height: node.getBoundingClientRect().height }));
       return { element, metadata, quantity, name, originalName: name?.textContent || '',
-        nameFontSize: name?.style.fontSize || '', nameTitle: name?.getAttribute('title'),
+        nameFontSize: name?.style.fontSize || '', nameColor: name?.style.color || '', nameTitle: name?.getAttribute('title'),
         nameLabel: name?.getAttribute('aria-label'), reserves };
     });
     const group = `reward-dialog-${++revealId}`;
@@ -108,31 +120,52 @@
       if (!entry.name) return;
       entry.name.textContent = entry.originalName;
       entry.name.style.fontSize = entry.nameFontSize;
+      entry.name.style.color = entry.nameColor;
+      setBuffQuality(entry.name, null);
       for (const [attribute, value] of [['title', entry.nameTitle], ['aria-label', entry.nameLabel]]) {
         if (value == null) entry.name.removeAttribute(attribute);
         else entry.name.setAttribute(attribute, value);
       }
     }
-    function showSkillName(entry, multiplier) {
+    function showSkillName(entry, trigger) {
       if (!entry.name) return;
       const name = entry.name;
-      const full = `斧技·${multiplier}倍`;
+      const multiplier = trigger.multiplier;
+      const full = `斧技·${multiplier}倍！！`;
+      setBuffQuality(name, trigger);
+      name.style.color = `var(--quality-${qualityId(trigger.buffQuality)})`;
       const compact = multiplier >= 100000000 && multiplier % 100000000 === 0 ? `${multiplier / 100000000}亿`
         : multiplier >= 10000 && multiplier % 10000 === 0 ? `${multiplier / 10000}万` : String(multiplier);
       const fontSize = parseFloat(view.getComputedStyle?.(name).fontSize) || 12;
-      const width = name.getBoundingClientRect().width;
+      const width = name.clientWidth || name.getBoundingClientRect().width;
       name.setAttribute('title', full);
       name.setAttribute('aria-label', full);
-      for (const label of [full, `斧技${compact}倍`, `×${compact}`]) {
+      for (const label of [full, `斧技${compact}倍!!`, `斧技×${compact}!!`, `×${compact}!!`]) {
         name.style.fontSize = `${fontSize}px`;
         name.textContent = label;
         const measured = name.scrollWidth;
         if (!width || !measured || measured <= width) return;
         const fitted = fontSize * (width - 1) / measured;
-        if (fitted >= 11) { name.style.fontSize = `${fitted}px`; return; }
+        if (fitted >= 11) {
+          name.style.fontSize = `${fitted}px`;
+          if (name.scrollWidth <= width) return;
+        }
       }
       // Unusually long exact values must still remain inside this name's existing line.
-      if (width && name.scrollWidth > width) name.style.fontSize = `${fontSize * (width - 1) / name.scrollWidth}px`;
+      if (width && name.scrollWidth > width) {
+        let fitted = (parseFloat(name.style.fontSize) || fontSize) * (width - 1) / name.scrollWidth;
+        name.style.fontSize = `${fitted}px`;
+        // Font hinting rounds glyph widths; verify the fit after applying the estimated size.
+        for (let attempt = 0; attempt < 8 && name.scrollWidth > width; attempt++) {
+          fitted *= 0.95;
+          name.style.fontSize = `${fitted}px`;
+        }
+      }
+    }
+    function showQuantity(entry, quantity, trigger) {
+      if (!entry.quantity) return;
+      entry.quantity.textContent = quantityText(quantity, trigger);
+      setBuffQuality(entry.quantity, trigger);
     }
     function revealInBody(entry) {
       if (!body || !body.clientHeight) return;
@@ -170,7 +203,7 @@
       for (const entry of entries) {
         entry.element.classList.remove('is-reward-pending', 'is-reward-revealing', 'is-skill-active', 'is-count-shaking', 'is-count-changing');
         entry.element.dataset.revealState = 'complete';
-        if (entry.quantity) entry.quantity.textContent = `×${entry.metadata.quantity}`;
+        showQuantity(entry, entry.metadata.quantity, entry.metadata.triggers.at(-1));
         restoreName(entry);
         entry.reserves.forEach(({ node, original }) => { node.style.minHeight = original; });
       }
@@ -207,7 +240,7 @@
         cue('rewardReveal');
       } else if (event.type === 'trigger') {
         entry.element.classList.add('is-skill-active');
-        showSkillName(entry, entry.metadata.triggers[event.triggerIndex].multiplier);
+        showSkillName(entry, entry.metadata.triggers[event.triggerIndex]);
         revealInBody(entry);
         stopAudio();
         cue('skillTrigger');
@@ -215,7 +248,7 @@
         entry.element.classList.add('is-count-shaking');
       } else if (event.type === 'quantity') {
         entry.element.classList.remove('is-count-shaking');
-        if (entry.quantity) entry.quantity.textContent = `×${event.quantity}`;
+        showQuantity(entry, event.quantity, entry.metadata.triggers[event.triggerIndex]);
         entry.element.classList.add('is-count-changing');
         cue('rewardReveal');
       } else if (event.type === 'settle') {
@@ -235,7 +268,7 @@
       entry.element.classList.add('is-reward-pending');
       entry.element.dataset.revealState = 'pending';
       entry.reserves.forEach(({ node, height }) => { node.style.minHeight = `${height}px`; });
-      if (entry.quantity) entry.quantity.textContent = `×${entry.metadata.baseQuantity}`;
+      showQuantity(entry, entry.metadata.baseQuantity, null);
     }
     function schedule(callback, delay) {
       if (delay === 0) { callback(); return; }
@@ -271,6 +304,8 @@
       const size = ['large', 'small'].includes(options.size) ? options.size : 'regular';
       const metadata = getRewardMetadata(reward);
       const quantity = metadata.quantity;
+      const lastTrigger = metadata.triggers.at(-1);
+      const quantityClass = lastTrigger ? ` buff-quality-${qualityId(lastTrigger.buffQuality)}` : '';
       const icon = typeof renderIcon === 'function' && id
         ? renderIcon(id, definition.icon || '', 'reward-item-icon')
         : '<span class="reward-item-fallback" aria-hidden="true">物</span>';
@@ -280,7 +315,7 @@
           <div class="reward-art-icon">${icon}</div>
         </div>
         <div class="reward-item-name quality-item-name quality-${rank}">${escape(name)}</div>
-        <div class="reward-item-quantity"><span class="reward-item-quality">${escape(rankName)} · </span><span class="reward-quantity-ticker"><span class="reward-item-quantity-value">×${escape(quantity)}</span></span></div>
+        <div class="reward-item-quantity"><span class="reward-item-quality">${escape(rankName)} · </span><span class="reward-quantity-ticker"><span class="reward-item-quantity-value${quantityClass}">${escape(quantityText(quantity, lastTrigger))}</span></span></div>
       </div>`;
     }
 

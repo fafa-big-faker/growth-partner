@@ -221,9 +221,10 @@ test('single chop remains guarded through feedback waiting and one collect click
   assert.equal(f.refunds[0].isConnected, false, 'the result dialog clears the scene refund feed');
   assert.doesNotMatch(f.overlays[0].innerHTML, /reward-(?:skill-)?notice|reward-item-buff|refund-total/);
   assert.deepEqual(
-    [...f.overlays[0].innerHTML.matchAll(/class="reward-item-quantity-value">([^<]*)</g)].map(match => match[1]),
-    ['×6'],
+    [...f.overlays[0].innerHTML.matchAll(/class="reward-item-quantity-value(?: buff-quality-[1-5])?">([^<]*)</g)].map(match => match[1]),
+    ['×6！'],
   );
+  assert.match(f.overlays[0].innerHTML, /class="reward-item-quantity-value buff-quality-1">×6！</);
   const button = f.overlays[0].querySelector('.reward-reveal-confirm');
   assert.equal(button.textContent, '收下');
   button.click();
@@ -401,9 +402,11 @@ test('a single extra reward has only real quantities, no shared skill slot and o
   assert.doesNotMatch(method('_showRewardModal'), /renderNotice|notice\s*:/);
   assert.equal((overlay.innerHTML.match(/data-reward-item=/g) || []).length, 2);
   assert.deepEqual(
-    [...overlay.innerHTML.matchAll(/class="reward-item-quantity-value">([^<]*)</g)].map(match => match[1]),
-    ['×6', '×1'],
+    [...overlay.innerHTML.matchAll(/class="reward-item-quantity-value(?: buff-quality-[1-5])?">([^<]*)</g)].map(match => match[1]),
+    ['×6！', '×1'],
   );
+  assert.match(overlay.innerHTML, /class="reward-item-quantity-value buff-quality-1">×6！</);
+  assert.match(overlay.innerHTML, /class="reward-item-quantity-value">×1</);
   assert.equal((overlay.innerHTML.match(/reward-item-quantity-value/g) || []).length, 2,
     'each reward has one quantity without a permanent second multiplier');
   const button = overlay.querySelector('.reward-reveal-confirm');

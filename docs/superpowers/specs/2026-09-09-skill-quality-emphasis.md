@@ -2,6 +2,7 @@
 
 User approved the following behavior, including last-trigger precedence.
 
+- A reward with an effective type-1 trigger first keeps its real item name for 300ms after appearing. Ordinary rewards retain their existing 120ms pace. This lead-in occurs once per reward, not between consecutive triggers on the same item.
 - During a type-1 multiplier trigger, the local name becomes 斧技·N倍！！ in the triggering BUFF's quality color.
 - The old quantity keeps its existing style while shaking. Only at the existing +800ms quantity-change event does it become ×N！ in that trigger's BUFF quality color.
 - At completion restore the item name and its own quality color. Keep the enhanced quantity, its single exclamation and the last actually effective trigger's color until the modal closes.

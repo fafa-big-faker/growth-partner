@@ -56,7 +56,10 @@ async function main() {
           const box = item.getBoundingClientRect();
           const name = item.querySelector('.reward-item-name');
           const count = item.querySelector('.reward-item-quantity');
+          const quantity = item.querySelector('.reward-item-quantity-value');
           return { id: item.dataset.rewardItem, name: name.textContent, count: count.textContent,
+            quantity: quantity.textContent, quantityColor: getComputedStyle(quantity).color, quantityClasses: quantity.className,
+            nameColor: getComputedStyle(name).color, nameClasses: name.className,
             x: box.x, y: box.y, right: box.right, width: box.width,
             nameSize: parseFloat(getComputedStyle(name).fontSize),
             nameFits: name.scrollWidth <= name.clientWidth + 1,
@@ -131,7 +134,7 @@ async function main() {
       assert.equal(await page.locator('.modal-overlay').count(), 0, 'direct pointer click closes without auto-scrolling');
     }
 
-    for (const viewport of [{ width: 360, height: 540 }, { width: 360, height: 640 }, { width: 390, height: 844 }, { width: 844, height: 390 }, { width: 1440, height: 900 }]) {
+    for (const viewport of [{ width: 320, height: 568 }, { width: 360, height: 540 }, { width: 390, height: 844 }, { width: 844, height: 390 }, { width: 1440, height: 900 }]) {
       await page.setViewportSize(viewport);
       await page.goto('http://v7.local');
       await page.evaluate(tenRenderSource => {
@@ -163,6 +166,28 @@ async function main() {
       })));
       assert.equal(images.length, 5);
       assert.ok(images.every(image => image.visible > 10 && image.transparent > 10));
+
+      await page.evaluate(() => {
+        const reward = { itemId: '40001', quantity: 12, baseQuantity: 2, quality: 3,
+          buffTriggers: [{ type: 1, beforeQuantity: 2, afterQuantity: 6, multiplier: 3, buffQuality: 2 },
+            { type: 1, beforeQuantity: 6, afterQuantity: 12, multiplier: 2, buffQuality: 5 }] };
+        const reverse = { ...reward, buffTriggers: reward.buffTriggers.map((trigger, index) => ({ ...trigger, buffQuality: index === 0 ? 5 : 2 })) };
+        const overlay = UI.modal(v7Renderer.renderResults([reward, reverse, { itemId: '40001', quantity: 3 },
+          { itemId: '40001', quantity: 4, refundChopping: 2 }, { ...reward, isExtra: true }]), {
+          title: '静态奖励检查', footer: '<div class="modal-footer"><button class="btn btn-primary">收下</button></div>',
+        });
+        overlay.classList.add('reward-dialog-overlay');
+        overlay.querySelector('.modal').classList.add('reward-dialog', 'reward-dialog--ten');
+      });
+      const staticRewards = await inspectRewards(); assertFits(staticRewards); assertFooter(staticRewards, viewport);
+      assert.deepEqual(staticRewards.items.map(item => item.quantity), ['×12！', '×12！', '×3', '×4', '×12']);
+      assert.deepEqual(staticRewards.items.slice(0, 2).map(item => item.quantityColor), ['rgb(240, 180, 41)', 'rgb(74, 144, 217)'], 'static final colors follow the last trigger, including high-to-low rarity');
+      assert.match(staticRewards.items[0].quantityClasses, /\bbuff-quality-5\b/);
+      assert.match(staticRewards.items[1].quantityClasses, /\bbuff-quality-2\b/);
+      for (const item of staticRewards.items.slice(2)) assert.doesNotMatch(item.quantityClasses, /buff-quality-/);
+      assert.equal(staticRewards.items[0].nameColor, 'rgb(124, 76, 168)', 'static name retains its own item quality');
+      assert.equal(staticRewards.items[1].nameColor, 'rgb(124, 76, 168)');
+      await page.evaluate(() => UI.closeModal(document.querySelector('.reward-dialog-overlay')));
 
       await page.evaluate(() => PlayerView._showRewardModal({ kind: 'coin', quantity: 12, quality: 1 }));
       const compact = await inspectRewards(); assertFits(compact); assertFooter(compact, viewport);

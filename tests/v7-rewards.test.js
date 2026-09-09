@@ -66,6 +66,39 @@ test('shared items preserve granted quantities but keep refunds and old prose ou
   assert.doesNotMatch(ten, /返还|reward-refund/);
 });
 
+test('server-rendered enhanced quantity uses the last actual trigger quality rather than item or highest skill quality', () => {
+  const reward = {
+    itemId: '40001', quality: 4, quantity: 12, baseQuantity: 2,
+    buffTriggers: [
+      { beforeQuantity: 2, afterQuantity: 6, multiplier: 3, buffQuality: 5 },
+      { beforeQuantity: 6, afterQuantity: 12, multiplier: 2, buffQuality: 2 },
+      { beforeQuantity: 12, afterQuantity: 12, multiplier: 1, buffQuality: 5 },
+    ],
+  };
+  const original = structuredClone(reward);
+  const html = renderer().renderItem(reward);
+  const quantities = [...html.matchAll(/<span class="(reward-item-quantity-value[^"]*)">([^<]*)<\/span>/g)];
+  assert.equal(quantities.length, 1);
+  assert.equal(quantities[0][1], 'reward-item-quantity-value buff-quality-2');
+  assert.equal(quantities[0][2], '×12！');
+  assert.match(html, /class="reward-item-name quality-item-name quality-4">锻造石</);
+  assert.doesNotMatch(html, /reward-item-buff|reward-skill-notice/);
+  assert.deepEqual(reward, original);
+});
+
+test('plain, extra and refund-only rendered quantities stay uncolored and punctuation-free', () => {
+  const enhanced = { quantity: 6, baseQuantity: 2,
+    buffTriggers: [{ beforeQuantity: 2, afterQuantity: 6, multiplier: 3, buffQuality: 5 }] };
+  for (const reward of [{ quantity: 3 }, { quantity: 4, refundChopping: 2 }, { ...enhanced, isExtra: true }]) {
+    const html = renderer().renderItem({ itemId: '40001', quality: 5, ...reward });
+    const quantity = html.match(/<span class="(reward-item-quantity-value[^"]*)">([^<]*)<\/span>/);
+    assert.equal(quantity[1], 'reward-item-quantity-value');
+    assert.equal(quantity[2], `×${reward.quantity}`);
+  }
+  const fallback = renderer().renderItem({ ...enhanced, buffTriggers: enhanced.buffTriggers.map(({ buffQuality, ...trigger }) => trigger) });
+  assert.match(fallback, /class="reward-item-quantity-value buff-quality-1">×6！</);
+});
+
 test('coin and chopping use their real item IDs and configured names', () => {
   const coin = renderer().renderItem({ kind: 'coin', itemId: 'wrong', quantity: 300 });
   const chop = renderer().renderItem({ kind: 'chopping', quantity: 8 });
