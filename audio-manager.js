@@ -42,10 +42,12 @@
     const documentRef = options.documentRef || root.document;
     const loops = new Map();
     const activeEffects = new Map();
+    const playRequests = new WeakMap();
     let bgm = null;
     let wantsBgm = false;
     let controlsBound = false;
     let muted = false;
+    let suspended = false;
 
     try {
       muted = storage?.getItem(MUTE_STORAGE_KEY) === 'true';
@@ -67,11 +69,25 @@
       }
     }
 
+    function pauseAudio(audio) {
+      if (!audio) return;
+      playRequests.delete(audio);
+      audio.pause?.();
+    }
+
     async function safePlay(audio) {
-      if (!audio || muted) return false;
+      if (!audio || muted || suspended) return false;
+      const request = {};
+      playRequests.set(audio, request);
       try {
         const result = audio.play();
         if (result && typeof result.then === 'function') await result;
+        if (muted || suspended || playRequests.get(audio) !== request) {
+          // A cancelled play promise may finish after pause. Do not let it
+          // restart old audio or pause a newer, deliberately resumed BGM play.
+          if (!playRequests.has(audio) || playRequests.get(audio) === request) pauseAudio(audio);
+          return false;
+        }
         return true;
       } catch (error) {
         console.debug?.('Audio playback skipped:', error?.message || error);
@@ -97,8 +113,8 @@
       }
 
       if (muted) {
-        bgm?.pause?.();
-        loops.forEach(audio => audio.pause?.());
+        pauseAudio(bgm);
+        loops.forEach(pauseAudio);
         stopEffects();
       } else {
         if (wantsBgm) void safePlay(bgm);
@@ -113,7 +129,7 @@
     }
 
     function resetEffect(audio) {
-      audio.pause?.();
+      pauseAudio(audio);
       try {
         audio.currentTime = 0;
       } catch (error) {
@@ -130,7 +146,7 @@
     }
 
     async function playEffect(name, effectOptions = {}) {
-      if (muted) return false;
+      if (muted || suspended) return false;
       const settings = effectOptions || {};
       const group = typeof settings.group === 'string' && settings.group ? settings.group : name;
       const count = [...activeEffects.values()].filter(effect => effect.group === group).length;
@@ -159,6 +175,7 @@
 
     async function playBgm() {
       wantsBgm = true;
+      if (suspended) return false;
       if (!bgm) {
         bgm = createAudio('bgmMain');
         if (bgm) bgm.loop = true;
@@ -168,10 +185,11 @@
 
     function pauseBgm() {
       wantsBgm = false;
-      bgm?.pause?.();
+      pauseAudio(bgm);
     }
 
     async function startLoop(name) {
+      if (suspended) return false;
       let audio = loops.get(name);
       if (!audio) {
         audio = createAudio(name);
@@ -186,9 +204,19 @@
     function stopLoop(name) {
       const audio = loops.get(name);
       if (!audio) return;
-      audio.pause?.();
+      pauseAudio(audio);
       audio.currentTime = 0;
       loops.delete(name);
+    }
+
+    function setSuspended(value) {
+      const next = Boolean(value);
+      if (suspended === next) return;
+      suspended = next;
+      if (!suspended) return;
+      pauseAudio(bgm);
+      stopEffects();
+      for (const name of Array.from(loops.keys())) stopLoop(name);
     }
 
     async function preload(timeoutMs = 3000) {
@@ -244,6 +272,7 @@
       startLoop,
       stopLoop,
       setMuted,
+      setSuspended,
       toggleMuted,
       isMuted: () => muted,
       preload,

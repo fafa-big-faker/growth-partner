@@ -1,0 +1,8 @@
+{
+  "source": "icon-cultivate.webp",
+  "source_sha256": "9f4042be21d36f40a27c7dbf6fa0048f5aec8bf2353cd781bd399a4348197972",
+  "mode": "transparent-artwork",
+  "foreground": "324x324, artwork fits central 176x176 adaptive safe zone",
+  "foreground_sha256": "ffd1c290aad44a43fd9a5b1663763666f4ce4695526d82ebc9c0bff5fe700025",
+  "legacy_sha256": "d251dc0c885b6488738268c293859fe08710c1d9b02e28689783a3959ed632f0"
+}

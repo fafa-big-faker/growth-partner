@@ -312,3 +312,80 @@ test('audio errors and denied playback immediately release group capacity', asyn
   assert.equal(FakeAudio.instances.length, 4);
   assert.ok(FakeAudio.instances.every(item => item.onended === null && item.onerror === null));
 });
+
+test('suspension stops all audio without persisting mute or reviving completed loops', async () => {
+  const storage = createStorage();
+  const manager = freshManager({ storage });
+  await manager.playBgm();
+  await manager.playEffect('itemDrop');
+  await manager.startLoop('forgeProcess');
+  const prior = [...FakeAudio.instances];
+  manager.setSuspended(true);
+  manager.setSuspended(true);
+  assert.ok(prior.every(audio => audio.paused));
+  assert.equal(storage.getItem('growth-partner-audio-muted'), null);
+  assert.equal(manager.isMuted(), false);
+  assert.equal(await manager.playEffect('forgeSuccess'), false);
+  assert.equal(await manager.startLoop('forgeProcess'), false);
+  assert.equal(await manager.playBgm(), false);
+  assert.equal(FakeAudio.instances.length, prior.length);
+  manager.setSuspended(false);
+  assert.ok(prior.every(audio => audio.paused));
+  await manager.playBgm();
+  assert.equal(prior[0].paused, false);
+  assert.ok(prior.slice(1).every(audio => audio.paused));
+  manager.setMuted(true);
+  manager.setMuted(false);
+  assert.equal(prior[2].paused, true, 'unmuting must not resurrect the cleared forge loop');
+});
+
+test('unmuting and a delayed UI click cannot play audio while suspended', async () => {
+  let click;
+  const documentRef = { querySelectorAll: () => [], addEventListener: (name, handler) => { click = handler; } };
+  const manager = freshManager({ documentRef });
+  await manager.playBgm();
+  const bgm = FakeAudio.instances[0];
+  manager.bindControls();
+  manager.setSuspended(true);
+  manager.setMuted(true);
+  manager.setMuted(false);
+  click({ target: { closest: () => ({ matches: () => false, getAttribute: () => null }) } });
+  await Promise.resolve();
+  assert.equal(bgm.paused, true);
+  assert.equal(FakeAudio.instances.length, 1);
+});
+
+test('a cancelled play finishing after suspension and resume cannot restart old audio', async () => {
+  for (const kind of ['bgm', 'loop', 'effect']) {
+    let finish;
+    class DeferredAudio extends FakeAudio {
+      play() { return new Promise(resolve => { finish = () => { this.paused = false; resolve(); }; }); }
+    }
+    const manager = freshManager({ AudioCtor: DeferredAudio });
+    const pending = kind === 'bgm' ? manager.playBgm()
+      : kind === 'loop' ? manager.startLoop('forgeProcess') : manager.playEffect('itemDrop');
+    const audio = FakeAudio.instances[0];
+    manager.setSuspended(true);
+    manager.setSuspended(false);
+    finish();
+    assert.equal(await pending, false);
+    assert.equal(audio.paused, true);
+  }
+});
+
+test('a stale BGM play completion does not pause the newer deliberate foreground playback', async () => {
+  const complete = [];
+  class DeferredAudio extends FakeAudio {
+    play() { return new Promise(resolve => complete.push(() => { this.paused = false; resolve(); })); }
+  }
+  const manager = freshManager({ AudioCtor: DeferredAudio });
+  const oldPlay = manager.playBgm();
+  manager.setSuspended(true);
+  manager.setSuspended(false);
+  const newPlay = manager.playBgm();
+  complete[1]();
+  assert.equal(await newPlay, true);
+  complete[0]();
+  assert.equal(await oldPlay, false);
+  assert.equal(FakeAudio.instances[0].paused, false);
+});

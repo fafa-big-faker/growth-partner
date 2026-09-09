@@ -1,0 +1,22 @@
+/* Game artwork behaves like an app surface; editing remains browser-native. */
+:is(#login-screen, #player-dashboard, #admin-dashboard, #modal-container, #toast-container, #floating-items-container) {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+:is(#login-screen, #player-dashboard, #admin-dashboard, #modal-container, #toast-container, #floating-items-container) :is(img, svg, canvas, a) {
+  -webkit-user-drag: none;
+}
+
+:is(#login-screen, #player-dashboard, #admin-dashboard, #modal-container) :is(button, [role="button"], [role="tab"], label, input[type="checkbox"], input[type="radio"]) {
+  touch-action: manipulation;
+}
+
+:is(#login-screen, #player-dashboard, #admin-dashboard, #modal-container) :is(input, textarea, select, option, [contenteditable]:not([contenteditable="false"]), [data-native-interaction]),
+:is(#login-screen, #player-dashboard, #admin-dashboard, #modal-container) :is([contenteditable]:not([contenteditable="false"]), [data-native-interaction]) * {
+  -webkit-touch-callout: default;
+  -webkit-user-select: text;
+  user-select: text;
+  -webkit-user-drag: auto;
+}

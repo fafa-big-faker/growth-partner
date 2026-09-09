@@ -32,8 +32,24 @@ test('a failed task releases its key', async () => {
   }));
 
   assert.equal(guard.isActive('shop:1'), false);
+  assert.equal(guard.isBusy(), false);
   assert.deepEqual(
     await guard.run('shop:1', async () => true),
     { started: true, value: true },
   );
+});
+
+test('isBusy reports every active key until the final operation completes', async () => {
+  const guard = createOperationGuard();
+  const releases = [];
+  assert.equal(guard.isBusy(), false);
+  const first = guard.run('mail:fixture', () => new Promise(resolve => releases.push(resolve)));
+  const second = guard.run('compose:fixture', () => new Promise(resolve => releases.push(resolve)));
+  assert.equal(guard.isBusy(), true);
+  releases[0](true);
+  await first;
+  assert.equal(guard.isBusy(), true);
+  releases[1](true);
+  await second;
+  assert.equal(guard.isBusy(), false);
 });

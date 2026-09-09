@@ -3,6 +3,10 @@
     const activeKeys = new Set();
 
     return {
+      isBusy() {
+        return activeKeys.size > 0;
+      },
+
       isActive(key) {
         return activeKeys.has(String(key));
       },

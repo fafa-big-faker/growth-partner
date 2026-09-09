@@ -2,6 +2,15 @@
 
 这份手册记录日常开发中最容易重复、遗漏或卡住的流程。项目总体说明仍以 `HANDOVER.md` 为准。
 
+## 安卓入口与触摸交互
+
+- `web-interactions.js/css`仅在登录、两种账号界面与游戏弹窗/浮层关闭原生图片保存菜单、文字误选和拖拽。输入框、textarea、select、contenteditable及`data-native-interaction`保留长按编辑与粘贴；动态节点使用事件委托，不反复绑定。不得阻止touchmove或关闭双指缩放。
+- `app-shell.js`向安卓容器提供`window.XianlaiShell.handleBack()`及`setBackgrounded(boolean)`，前者同步返回是否已处理，后者控制宿主前后台音频。没有原生对象注入网页。返回调用既有弹窗关闭按钮与Router流程，进行中的资源操作不得被系统返回中途跳走。
+- `OperationGuard.isBusy()`只读当前是否存在任何资源操作，不修改锁或任务。`AudioManager.setSuspended()`暂停后台声音且不改用户静音偏好；回前台不补播旧音效或旧锻造循环。
+- 安卓工程及构建说明在`android-app/`。固定应用ID`cn.xianlai.game`、名称“仙来”，主入口仍为现有GitHub Pages。图标初期复用已批准的修仙图标，新图提示词在`docs/art-prompts/仙来-应用图标.md`。
+- 服务端存档由Supabase和原账号决定，打包不复制或迁移玩家数据。安卓WebView与浏览器的本地登录状态独立，首次使用需登录；重新打包覆盖安装须保持应用ID与签名、增加版本号。签名文件和密码只能保存在仓库外，禁止提交或在日志中输出。
+- 网页发布后应用重新加载可获取新版，不添加强制中断正在进行操作的自动刷新。APK壳的功能改动需要新安装包；本轮没有离线游戏或自建增量热更新系统。
+
 ## 1. 数据流
 
 ```text

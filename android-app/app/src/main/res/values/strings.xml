@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">仙来</string>
+    <string name="connecting">正在连接仙途…</string>
+    <string name="connection_error">暂时无法连接仙途</string>
+    <string name="retry_hint">请检查网络后重试。进度保存在云端。</string>
+    <string name="retry">重新连接</string>
+    <string name="exit_title">离开仙来？</string>
+    <string name="exit_message">下次打开时，登录原来的账号即可继续修炼。</string>
+    <string name="exit">离开</string>
+    <string name="stay">继续修炼</string>
+    <string name="browser_missing">没有可用的浏览器</string>
+    <string name="unsupported_link">暂不支持打开此链接</string>
+    <string name="engine_error">请更新 Android System WebView 或 Chrome 后重新打开仙来。</string>
+</resources>
