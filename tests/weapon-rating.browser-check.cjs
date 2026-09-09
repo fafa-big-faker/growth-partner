@@ -293,7 +293,7 @@ async function main() {
           Game.inventory.find(item => item.itemId === ratingFixture.costItemId).quantity -= ratingFixture.cost;
           return { item: { ...ratingFixture.axe }, itemId: weapon.itemId, quality: ratingFixture.axe.quality, weapon };
         };
-        // Only layout owns this local gate; production timing remains covered by forge-layout/ForgeReveal tests.
+        // This local gate exercises result layout; production timing has separate ForgeReveal tests.
         ForgeReveal.run = async (elements, outcome) => {
           const result = await outcome;
           await new Promise(resolve => { ratingFixture.pending = resolve; });
@@ -306,6 +306,7 @@ async function main() {
       });
       await settle(page);
       const forgeButton = await page.locator('#forge-ok').boundingBox();
+      assert.equal(await page.locator('.forge-modal .modal-title').textContent(), '天工开物');
       assert.equal(await page.locator('.forge-result-quality .weapon-rating').count(), 0, 'idle forge does not show an outcome rating');
       const forgeResults = [];
       for (const quality of [2, 5]) {
@@ -326,8 +327,12 @@ async function main() {
           const rating = element.querySelector('.weapon-rating');
           const tag = [...element.children].find(child => !child.classList.contains('weapon-rating'));
           return { outer: box(element), rating: box(rating), image: box(rating.querySelector('img')), tag: tag ? box(tag) : null, text: element.textContent.trim(),
+            summary: box(document.getElementById('forge-result-summary')), name: box(document.getElementById('forge-reveal-name')),
+            inSummary: document.getElementById('forge-result-summary').contains(element),
             expectedQuality: QUALITY[ratingFixture.axe.quality].name, button: box(document.getElementById('forge-ok')) };
         });
+        assert.equal(geometry.inSummary, true, 'forge quality and rating are in the compact summary');
+        assert.ok(geometry.summary.y >= geometry.name.bottom - 1 && geometry.summary.y - geometry.name.bottom <= 4, 'rating immediately follows the axe name');
         assert.ok(inside(geometry.outer, geometry.rating) && inside(geometry.rating, geometry.image), 'forge quality row does not clip the rating: ' + JSON.stringify(geometry));
         assert.ok(geometry.tag && !overlaps(geometry.tag, geometry.rating), 'forge axe quality and rating stay side by side without overlap: ' + JSON.stringify(geometry));
         assert.ok(Math.abs(geometry.image.width / geometry.image.height - 2) < 0.02, 'forge rating retains its aspect ratio');
@@ -335,6 +340,8 @@ async function main() {
         assert.ok(Math.abs(geometry.button.y - forgeButton.y) <= 1, 'result rating does not move repeated forge control');
         await page.locator('#forge-result-action button').click();
         await page.waitForFunction(() => document.querySelector('#forge-result-action button').textContent === '已装备');
+        assert.equal(await page.locator('#forge-result-action button').isDisabled(), true);
+        assert.equal(await page.locator('#forge-result-action .forge-result-equipped').count(), 1, 'equipped state retains the small scene overlay');
         assert.equal(await page.locator('.forge-result-quality .weapon-rating').getAttribute('data-rating'), RATING_NAMES[quality - 1], 'equipping preserves the result rating');
         assert.equal(await page.locator('.mobile-equipped-quality .weapon-rating').getAttribute('data-rating'), RATING_NAMES[quality - 1], 'forge equip updates current equipment rating');
         const afterButton = await page.locator('#forge-ok').boundingBox();

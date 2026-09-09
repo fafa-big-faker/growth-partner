@@ -1,0 +1,90 @@
+{
+  "script": "scripts/import_forge_art.py",
+  "minimumAlpha": 5,
+  "runtimeBudgetBytes": 98304,
+  "runtimeBytes": 53326,
+  "sources": {
+    "workshop": {
+      "file": "仙来-锻造展示台与装备墨签.png",
+      "size": [
+        1536,
+        1024
+      ],
+      "mode": "RGBA",
+      "alphaRange": [
+        0,
+        254
+      ],
+      "bytes": 1551048,
+      "sha256": "f9ae42f8438a527edf3260467a0482c1fb8f125494f1daca044e4a968418103a"
+    }
+  },
+  "assets": {
+    "stage": {
+      "path": "assets/images/forge-workshop/stage.png",
+      "size": [
+        793,
+        951
+      ],
+      "alphaRange": [
+        0,
+        254
+      ],
+      "alphaBounds": [
+        12,
+        12,
+        781,
+        939
+      ],
+      "bytes": 1266415,
+      "sha256": "28328293576ff779987cec66983e5090b518d36e18b6835aeca39b8fa1eac5cc",
+      "source": "workshop",
+      "cell": [
+        0,
+        0,
+        823,
+        1024
+      ],
+      "contentBounds": [
+        48,
+        52,
+        817,
+        979
+      ],
+      "padding": 12
+    },
+    "equip-slip": {
+      "path": "assets/images/forge-workshop/equip-slip.png",
+      "size": [
+        693,
+        207
+      ],
+      "alphaRange": [
+        0,
+        254
+      ],
+      "alphaBounds": [
+        12,
+        12,
+        681,
+        195
+      ],
+      "bytes": 199768,
+      "sha256": "9af3c82e9a778ad0b824147fe5a3ac26c3f0a5487f049e1162df4ef5ecfd697c",
+      "source": "workshop",
+      "cell": [
+        823,
+        0,
+        1536,
+        1024
+      ],
+      "contentBounds": [
+        829,
+        417,
+        1498,
+        600
+      ],
+      "padding": 12
+    }
+  }
+}

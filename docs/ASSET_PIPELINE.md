@@ -245,3 +245,12 @@ node scripts\normalize_audio.js
 - 运行URL与首登预载均使用`?v=weapon-ratings-20260909`。格底36x18px占位（实际字高13.5px），行内48x24px（实际字高18px）；所有评级用同一画布比例，不靠改变不同等级字体尺寸来制造稀有度差异。
 - 装备对勾为Lucide Static0.468.0的`assets/runtime/ui/check.svg`，仅修改墨绿描边，同目录ISC许可证沿用；它属于状态图标，不是评级美术，不增加底板。
 - `python tests/weapon-rating-assets.test.py`验证5款数量、尺寸、透明安全边、字高/基线、源指纹、重建、色彩和40KiB预算；图片到位后不得再把本组标记为“待生成”。
+
+## 17. 天工开物展示台与装备墨签
+
+- 原图位于仓库同级`美术风格参考V7/仙来-锻造展示台与装备墨签.png`，实际1536x1024、RGBA、alpha为0至254，1,551,048字节。源SHA256为`f9ae42f8438a527edf3260467a0482c1fb8f125494f1daca044e4a968418103a`；源图保持不变，替换后须重新测量，脚本不会盲用旧裁切。
+- 运行`python scripts/import_forge_art.py`同时输出本组PNG、WebP与manifest；`python scripts/import_forge_art.py --check`逐字节重建校验且不写文件。只写`assets/images/forge-workshop/`与`assets/runtime/forge-workshop/`，不重建原V7、锻造按钮或其他历史资源。
+- 两素材横向分离，alpha至少5的有效区域之间有12px完整透明间隔`x=817..828`，在`x=823`切开。展示台有效bounds为`48,52,817,979`，墨签为`829,417,1498,600`；按各自完整轮廓裁切后补四边12px透明安全边，PNG分别793x951和693x207。只清理alpha小于5的透明噪点，保留黑色墨线、细碎边缘和所有其他可见像素，不按最大连通块丢弃碎墨。
+- 正式运行图为`assets/runtime/forge-workshop/stage.webp`（320x384、45,042字节）和`equip-slip.webp`（288x86、8,284字节），总计53,326字节（约52.1KiB），预算96KiB。等比缩小到整数尺寸、WebP quality90且保留无损alpha，缩图后再清理alpha小于5的插值噪点；运行alpha bounds分别`5,5,315,379`及`5,5,283,81`，四周均有5px安全边。
+- 展示台完整等比铺在锻造场景中，斧头和装备操作作为独立叠层；不可将场景拉宽变形。墨签建议96px宽、等比约28.7px高，点击区单独保留至少44px高；不把按钮文字烘焙进图。实际引用与初始预载均使用`?v=forge-workshop-20260909`。
+- `python tests/forge-art-assets.test.py`检查精确两图、尺寸、路径、透明安全边、源与产物指纹、透明间隔、所有可见源像素无遗漏且只导出一次、无损alpha、确定性重建和字节预算。原图变更会先校验失败，不覆盖已有结果。

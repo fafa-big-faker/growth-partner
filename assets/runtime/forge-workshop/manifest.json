@@ -1,0 +1,44 @@
+{
+  "stage": {
+    "path": "assets/runtime/forge-workshop/stage.webp",
+    "size": [
+      320,
+      384
+    ],
+    "alphaRange": [
+      0,
+      255
+    ],
+    "alphaBounds": [
+      5,
+      5,
+      315,
+      379
+    ],
+    "bytes": 45042,
+    "sha256": "91ee1a14dda69de111fd42394a680b3ca93d4a0e862e41480fc227bf60149091",
+    "rendering": "Contain the complete scene without stretching; axes and controls remain separate overlays.",
+    "quality": 90
+  },
+  "equip-slip": {
+    "path": "assets/runtime/forge-workshop/equip-slip.webp",
+    "size": [
+      288,
+      86
+    ],
+    "alphaRange": [
+      0,
+      255
+    ],
+    "alphaBounds": [
+      5,
+      5,
+      283,
+      81
+    ],
+    "bytes": 8284,
+    "sha256": "c0e7e12c5a3d313b4fc1aa93001762d466bc13fa117ff26110fd22861b618f0d",
+    "rendering": "Contain at about 96px wide within an independent minimum 44px equipment hit target.",
+    "quality": 90
+  }
+}

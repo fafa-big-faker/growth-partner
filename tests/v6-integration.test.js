@@ -50,7 +50,7 @@ test('native login button keeps accessible text and independently preloaded imag
   }
   for (const file of ['app.js', 'login-art.js', 'login-art.css', 'xianlai-v4.css']) {
     const codeVersion = file === 'xianlai-v4.css' ? version
-      : file === 'app.js' ? 'local-skill-20260909' : 'reward-login-20260909';
+      : file === 'app.js' ? 'forge-workshop-20260909' : 'reward-login-20260909';
     assert.ok(html.includes(`${file}?v=${codeVersion}`));
   }
 });

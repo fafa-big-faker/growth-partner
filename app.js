@@ -332,7 +332,9 @@ function getInitialGameImageAssets(axeId = null) {
     .map(path => `assets/runtime/v7/${path}?v=xianlai-v7-20260909`);
   const ratingFiles = ['b', 'a', 's', 'ss', 'sss']
     .map(label => `assets/runtime/weapon-ratings/rating-${label}.webp?v=weapon-ratings-20260909`);
-  return AssetPreloader.collect([itemImages, configuredImages, currentAxeFrames, v2Files, v3Files, v4Files, feedbackFiles, v5Files, v6QualityFiles, v7Files, ratingFiles]);
+  const forgeFiles = ['stage', 'equip-slip']
+    .map(name => `assets/runtime/forge-workshop/${name}.webp?v=forge-workshop-20260909`);
+  return AssetPreloader.collect([itemImages, configuredImages, currentAxeFrames, v2Files, v3Files, v4Files, feedbackFiles, v5Files, v6QualityFiles, v7Files, ratingFiles, forgeFiles]);
 }
 
 function preloadAxeAnimation(itemId, onProgress = () => {}) {
@@ -2036,7 +2038,7 @@ const Game = {
     const result = await DB.forgeWeaponInstance(costItemId, costCount, itemId, skillRolls);
     if (!result.ok) {
       await this.refresh();
-      UI.toast(result.code === 'insufficient_materials' ? '锻铁不足' : '锻造未完成，请重试', 'error');
+      UI.toast(result.code === 'insufficient_materials' ? `${costItem?.name || '锻造材料'}不足` : '锻造未完成，请重试', 'error');
       return null;
     }
     const weapon = result.weapon;
@@ -3157,7 +3159,7 @@ const PlayerView = {
       const forgeButton = forgeModal.querySelector('#forge-ok');
       if (forgeButton && forgeButton.getAttribute('aria-busy') !== 'true') {
         forgeButton.disabled = quantity < cost;
-        if (forgeButton.disabled) forgeButton.textContent = '锻铁不足';
+        if (forgeButton.disabled) forgeButton.textContent = `${ITEMS[costItemId]?.name || '锻造材料'}不足`;
       }
     }
 
@@ -3549,6 +3551,7 @@ const PlayerView = {
         if (button?.isConnected) {
           button.disabled = true;
           button.textContent = '已装备';
+          button.classList.add('forge-result-equipped');
         }
         await this.renderCultivate();
       }
@@ -5111,20 +5114,18 @@ const PlayerView = {
 
     const overlay = UI.modal(`
       <div class="forge-modal-content">
-      <div class="forge-heading">
-        <div class="forge-heading-title">锻造仙斧</div>
-        <div class="forge-heading-copy">引灵火淬锻，静候仙斧成形</div>
-      </div>
       <div id="forge-reveal-stage" class="forge-reveal-stage" data-state="idle">
         <div class="forge-reveal-flash" aria-hidden="true"></div>
         <div class="forge-reveal-frame">
-          <div id="forge-reveal-art" class="forge-reveal-art" aria-live="off"><span class="forge-reveal-placeholder">?</span></div>
+          <img class="forge-scene-background" src="assets/runtime/forge-workshop/stage.webp?v=forge-workshop-20260909" alt="" aria-hidden="true" draggable="false">
+          <div id="forge-reveal-art" class="forge-reveal-art" aria-live="off"></div>
           <div id="forge-result-action" class="forge-result-action" aria-live="polite"></div>
         </div>
-        <div id="forge-reveal-name" class="forge-reveal-name">器灵待启</div>
+        <div id="forge-reveal-name" class="forge-reveal-name">以石为引，淬炼仙斧</div>
+        <div id="forge-result-summary" class="forge-result-summary" hidden></div>
         <div class="forge-reveal-information">
           <div class="forge-reveal-running">
-            <div id="forge-reveal-status" class="forge-reveal-status">准备锻造</div>
+            <div id="forge-reveal-status" class="forge-reveal-status"></div>
             <div class="forge-reveal-progress" role="progressbar" aria-label="锻造进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
               <div class="forge-reveal-progress-fill"></div>
             </div>
@@ -5132,6 +5133,10 @@ const PlayerView = {
           <div id="forge-result-detail" class="forge-result-detail" role="region" aria-label="仙斧技能与文案" tabindex="0" hidden></div>
         </div>
       </div>
+      <details class="forge-probability-details">
+        <summary>查看概率详情</summary>
+        <div class="forge-probability-list">${poolHtml}</div>
+      </details>
       </div>
       <div class="forge-lower-panel">
         <div class="forge-material-cost" title="每次消耗 ${forgeCost} 个${forgeCostItem?.name || '锻造材料'}">
@@ -5141,11 +5146,7 @@ const PlayerView = {
           <button class="btn btn-primary btn-sm" id="forge-ok" ${forgeQty >= forgeCost ? '' : 'disabled'}>锻造</button>
         </div>
       </div>
-      <details class="forge-probability-details">
-        <summary>查看概率详情</summary>
-        <div class="forge-probability-list">${poolHtml}</div>
-      </details>
-    `, { title: '锻造' });
+    `, { title: '天工开物' });
     overlay.classList.add('forge-modal-overlay');
     overlay.querySelector('.modal')?.classList.add('forge-modal');
 
@@ -5155,6 +5156,7 @@ const PlayerView = {
       const closeControls = overlay.querySelectorAll('.modal-close');
       const probabilityDetails = overlay.querySelector('.forge-probability-details');
       const detail = overlay.querySelector('#forge-result-detail');
+      const summary = overlay.querySelector('#forge-result-summary');
       const resultAction = overlay.querySelector('#forge-result-action');
       const elements = {
         art: overlay.querySelector('#forge-reveal-art'),
@@ -5170,6 +5172,10 @@ const PlayerView = {
       if (probabilityDetails) probabilityDetails.open = false;
       if (stage) stage.dataset.state = 'running';
       if (resultAction) resultAction.innerHTML = '';
+      if (summary) {
+        summary.hidden = true;
+        summary.innerHTML = '';
+      }
       if (detail) {
         detail.hidden = true;
         detail.innerHTML = '';
@@ -5198,25 +5204,30 @@ const PlayerView = {
         if (resultAction) {
           const requiredRealm = getMinRealmForAxeQuality(result.quality);
           resultAction.innerHTML = canEquip ? `
-            <button type="button" class="btn btn-outline btn-sm forge-result-equip" onclick="PlayerView._equipFromForge('${result.weapon.id}',this)">立即装备</button>
+            <button type="button" class="forge-result-equip" onclick="PlayerView._equipFromForge('${result.weapon.id}',this)">立即装备</button>
           ` : `<span class="forge-result-locked">${escapeHtml(requiredRealm?.name || '更高仙阶')}及以上可装备</span>`;
+        }
+        if (summary) {
+          summary.hidden = false;
+          summary.innerHTML = `
+            <div class="forge-result-quality" style="color:${q.color}"><span>${escapeHtml(q.name)}</span>${renderWeaponRating(result.weapon)}${resultSkillHtml ? '' : '<span class="forge-result-no-skill">· 无斧技</span>'}</div>
+          `;
         }
         if (detail) {
           detail.hidden = false;
           detail.innerHTML = `
-            <div class="forge-result-quality" style="color:${q.color}"><span>${escapeHtml(q.name)}</span>${renderWeaponRating(result.weapon)}</div>
-            ${resultSkillHtml ? `<div class="forge-result-skill">斧技 · ${resultSkillHtml}</div>` : '<div class="forge-result-no-skill">暂无斧技</div>'}
+            ${resultSkillHtml ? `<div class="forge-result-skill">斧技 · ${resultSkillHtml}</div>` : ''}
             <div class="forge-result-copy">${escapeHtml(result.item.desc || '')}</div>
           `;
         }
       } else if (outcome.started) {
         if (stage) stage.dataset.state = 'idle';
-        if (elements.art) elements.art.innerHTML = '<span class="forge-reveal-placeholder">?</span>';
+        if (elements.art) elements.art.innerHTML = '';
         if (elements.name) {
-          elements.name.textContent = '器灵待启';
+          elements.name.textContent = '以石为引，淬炼仙斧';
           elements.name.style.removeProperty('color');
         }
-        if (elements.status) elements.status.textContent = '准备锻造';
+        if (elements.status) elements.status.textContent = '';
         if (elements.progressFill) elements.progressFill.style.transition = 'none';
         ForgeReveal.setProgress(elements, 0);
       }
@@ -5227,7 +5238,7 @@ const PlayerView = {
       if (result) btn.textContent = '再锻造一次';
       else btn.textContent = '锻造';
       btn.disabled = stoneCount < forgeCost;
-      if (btn.disabled) btn.textContent = '锻铁不足';
+      if (btn.disabled) btn.textContent = `${forgeCostItem?.name || '锻造材料'}不足`;
 
       overlay.classList.remove('modal-locked');
       closeControls.forEach(control => { control.disabled = false; });

@@ -146,18 +146,20 @@ test('forge frame keeps its action slot outside the swapping art and before the 
   assert.match(showForge, /resultAction\.innerHTML = ''/);
   assert.ok(showForge.indexOf('id="forge-result-action"') < showForge.indexOf('id="forge-ok"'));
   assert.ok(showForge.indexOf('id="forge-result-detail"') < showForge.indexOf('id="forge-ok"'));
-  assert.ok(showForge.indexOf('class="forge-probability-details"') > showForge.indexOf('id="forge-ok"'));
+  assert.ok(showForge.indexOf('class="forge-probability-details"') < showForge.indexOf('class="forge-lower-panel"'));
   assert.match(showForge, /overlay\.classList\.add\('forge-modal-overlay'\)/);
 });
 
 test('forge result replaces progress with prominent skills without appending another panel', () => {
   const showForge = app.match(/\r?\n  showForge\(\) \{[\s\S]*?\r?\n  },\r?\n\r?\n  \/\/ 十连砍/)?.[0] || '';
   assert.match(showForge, /class="forge-reveal-information"[\s\S]*class="forge-reveal-running"[\s\S]*id="forge-result-detail"/);
-  assert.match(showForge, /暂无斧技/);
+  assert.match(showForge, /forge-result-summary/);
+  assert.match(showForge, /forge-result-quality[^]*forge-result-no-skill">· 无斧技/);
   assert.match(showForge, /escapeHtml\(result\.item\.desc/);
   assert.match(styles, /\[data-state="result"\] \.forge-reveal-running\s*\{\s*display:\s*none/);
-  assert.match(styles, /\.forge-reveal-information\s*\{[^}]*height:\s*160px/s);
-  assert.match(styles, /\.forge-modal-content\s*\{[^}]*overflow-y:\s*auto/s);
+  assert.doesNotMatch(styles, /\.forge-reveal-information\s*\{[^}]*height:\s*160px/s);
+  assert.match(styles, /\.forge-result-detail\s*\{[^}]*overflow-y:\s*auto/s);
+  assert.match(styles, /\.forge-modal-content\s*\{[^}]*overflow:\s*hidden/s);
 });
 
 test('forge eligibility renders an equip action or configured red requirement, never redundant copy', () => {
@@ -167,9 +169,9 @@ test('forge eligibility renders an equip action or configured red requirement, n
   assert.match(showForge, /resultAction\.innerHTML = canEquip \?/);
   assert.match(showForge, /forge-result-equip[\s\S]*?>立即装备<\/button>/);
   assert.match(showForge, /forge-result-locked[\s\S]*?及以上可装备/);
-  assert.match(styles, /\.forge-result-action\s*\{[^}]*height:\s*44px/);
-  assert.match(styles, /\.forge-result-locked\s*\{[^}]*color:\s*#9d3836/);
-  assert.match(styles, /\.modal-overlay\.forge-modal-overlay\s*\{[^}]*align-items:\s*flex-start/);
+  assert.match(styles, /\.forge-result-action\s*\{[^}]*position:\s*absolute/);
+  assert.match(styles, /\.forge-result-locked\s*,\s*\.forge-result-equipped\s*\{[^}]*color:\s*#9d3836/);
+  assert.match(styles, /\.modal-overlay\.forge-modal-overlay\s*\{[^}]*align-items:\s*center/);
 });
 
 test('forge reveal styling is restrained and has reduced-motion support', () => {
@@ -187,5 +189,20 @@ test('forge reveal styling is restrained and has reduced-motion support', () => 
 test('equipping a forge result keeps the draw loop open', () => {
   const equip = app.match(/\r?\n  async _equipFromForge\([\s\S]*?\r?\n  },\r?\n\r?\n  sellItem/)?.[0] || '';
   assert.match(equip, /button\.textContent = '已装备'/);
+  assert.match(equip, /classList\.add\('forge-result-equipped'\)/);
   assert.doesNotMatch(equip, /modal-overlay'[\s\S]*?remove/);
+});
+
+test('forge workshop uses one title and preloads the exact two art URLs', () => {
+  const showForge = app.match(/\r?\n  showForge\(\) \{[\s\S]*?\r?\n  },\r?\n\r?\n  \/\/ 十连砍/)?.[0] || '';
+  assert.match(showForge, /title: '天工开物'/);
+  assert.doesNotMatch(showForge, /forge-heading|forge-reveal-placeholder|锻造仙斧|准备锻造|锻铁不足/);
+  assert.match(showForge, /forge-scene-background[^>]*stage\.webp\?v=forge-workshop-20260909/);
+  const preload = app.match(/function getInitialGameImageAssets\([\s\S]*?\n\}/)?.[0] || '';
+  assert.match(preload, /const forgeFiles = \['stage', 'equip-slip'\]/);
+  assert.match(preload, /forge-workshop\/\$\{name\}\.webp\?v=forge-workshop-20260909/);
+  assert.match(preload, /AssetPreloader\.collect\([^]*forgeFiles/);
+  assert.match(styles, /equip-slip\.webp\?v=forge-workshop-20260909/);
+  assert.match(showForge, /summary\.hidden = true/);
+  assert.match(showForge, /summary\.innerHTML = ''/);
 });
