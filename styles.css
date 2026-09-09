@@ -2232,67 +2232,70 @@ body {
 }
 
 .cult-tree {
-  --tree-width: 148px;
-  --tree-height: 174px;
-  --tree-box-width: 148px;
-  --tree-left: -51px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  width: var(--tree-box-width);
+  --tree-size: 216px;
+  --tree-left: -103px;
+  --tree-bottom: 12px;
+  width: var(--tree-size);
+  height: var(--tree-size);
   cursor: pointer;
-  transition: var(--transition);
   position: absolute;
   left: calc(50% + var(--tree-left));
-  bottom: 0;
+  bottom: var(--tree-bottom);
   z-index: 1;
   user-select: none;
-  transform-origin: center bottom;
 }
 
-.tree-appearance-sprout {
-  --tree-width: 148px;
-  --tree-height: 174px;
-  --tree-box-width: 148px;
-  --tree-left: -51px;
+.cult-tree .tree-visual {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  isolation: isolate;
+  pointer-events: none;
 }
 
-.tree-appearance-spirit {
-  --tree-width: 184px;
-  --tree-height: 202px;
-  --tree-box-width: 176px;
-  --tree-left: -59px;
+.cult-tree .tree-img,
+.cult-tree .tree-light {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
 }
-
-.tree-appearance-divine {
-  --tree-width: 198px;
-  --tree-height: 220px;
-  --tree-box-width: 184px;
-  --tree-left: -68px;
-}
-
-.cult-tree:hover { transform: scale(1.05); }
-.cult-tree:active { transform: scale(0.97); }
 
 .cult-tree .tree-img {
-  width: var(--tree-width);
-  height: var(--tree-height);
-  object-fit: contain;
-  object-position: center bottom;
-  filter: drop-shadow(0 4px 8px rgba(0,0,0,0.12));
-  animation: tree-sway 4s ease-in-out infinite;
+  animation: none;
+  filter: none;
 }
 
-@keyframes tree-sway {
-  0%, 100% { transform: rotate(-2deg); }
-  50% { transform: rotate(2deg); }
+.cult-tree .tree-light {
+  mix-blend-mode: screen;
+  opacity: 0.06;
+  animation: wish-tree-light 8s ease-in-out infinite;
+  animation-play-state: paused;
+}
+
+.cult-tree[data-light-active="true"] .tree-light {
+  animation-play-state: running;
+}
+
+@keyframes wish-tree-light {
+  0%, 100% { opacity: 0.06; }
+  50% { opacity: 0.18; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cult-tree .tree-light { animation: none; opacity: 0.06; }
 }
 
 .cult-tree .tree-label {
+  position: absolute;
+  left: 50%;
+  bottom: calc(4px - var(--tree-bottom));
+  transform: translateX(-50%);
   font-size: 14px;
   font-weight: 700;
   color: var(--primary-dark);
-  margin-top: 4px;
   white-space: nowrap;
 }
 
@@ -2995,7 +2998,6 @@ body {
 
 .cult-tree .tree-img {
   image-rendering: auto;
-  filter: drop-shadow(0 7px 8px rgba(28, 50, 39, 0.28));
 }
 
 .topbar-feature-icon,
@@ -3773,23 +3775,10 @@ body {
   #player-dashboard .cult-inventory .inventory-grid.weapons-grid { grid-template-columns: repeat(6, 1fr); }
   #player-dashboard .cult-char { width: 162px; height: 232px; }
   #player-dashboard .cult-scene { --character-left: -124px; min-height: 274px; }
-  #player-dashboard .tree-appearance-sprout {
-    --tree-width: 176px;
-    --tree-height: 204px;
-    --tree-box-width: 176px;
-    --tree-left: -47px;
-  }
-  #player-dashboard .tree-appearance-spirit {
-    --tree-width: 202px;
-    --tree-height: 224px;
-    --tree-box-width: 192px;
-    --tree-left: -52px;
-  }
-  #player-dashboard .tree-appearance-divine {
-    --tree-width: 216px;
-    --tree-height: 240px;
-    --tree-box-width: 202px;
-    --tree-left: -63px;
+  #player-dashboard .cult-tree {
+    --tree-size: 288px;
+    --tree-left: -125px;
+    --tree-bottom: 6px;
   }
 }
 
@@ -3799,30 +3788,22 @@ body {
 
 @media (max-width: 380px) {
   #player-dashboard .cult-scene { --character-left: -76px; }
-  #player-dashboard .tree-appearance-sprout {
-    --tree-width: 118px;
-    --tree-height: 138px;
-    --tree-box-width: 118px;
-    --tree-left: -42px;
+  #player-dashboard .cult-tree {
+    --tree-size: 180px;
+    --tree-left: -79.5px;
+    --tree-bottom: 8px;
   }
-  #player-dashboard .tree-appearance-spirit {
-    --tree-width: 140px;
-    --tree-height: 154px;
-    --tree-box-width: 132px;
-    --tree-left: -44px;
-  }
-  #player-dashboard .tree-appearance-divine {
-    --tree-width: 150px;
-    --tree-height: 166px;
-    --tree-box-width: 140px;
-    --tree-left: -52px;
-  }
+}
+
+/* Keep the shared strike alignment when a short, wide scene cannot fit the mature crown. */
+@media (max-height: 699px) and (min-width: 720px) {
+  #player-dashboard.mobile-cultivation .mobile-scene-stage { transform: scale(0.78); }
 }
 
 /* ===== 砍树核心操作精修 ===== */
 .tree-upgrade-hint {
   position: absolute;
-  top: -2px;
+  top: var(--tree-crown-top, 0%);
   left: 50%;
   z-index: 4;
   min-width: 48px;

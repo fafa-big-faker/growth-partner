@@ -10,6 +10,54 @@
     const motionQuery = root.matchMedia?.('(prefers-reduced-motion: reduce)');
     const liveNodes = new Map();
     let destroyed = false;
+    let observedTree = null;
+    let treeOnscreen = true;
+    let treeObserver;
+    let treeResizeObserver;
+    let fittedStage;
+
+    function fitTreeScene() {
+      const scene = observedTree?.closest?.('.cult-scene');
+      const stage = scene?.querySelector?.('.mobile-scene-stage');
+      if (!stage || !scene.clientHeight || !observedTree.offsetHeight || !root.getComputedStyle) return;
+      // Reserve the largest skin's crown for every stage so an upgrade never moves the actor.
+      const bottom = parseFloat(root.getComputedStyle(observedTree).bottom) || 0;
+      const neededHeight = observedTree.offsetHeight * (1 - 47 / 384) + bottom + 8;
+      const scale = Math.min(1, Math.max(0.1, (scene.clientHeight - 4) / neededHeight));
+      stage.style.transform = `scale(${scale})`;
+      fittedStage = stage;
+    }
+
+    function syncTreeLight() {
+      if (!observedTree?.dataset) return;
+      observedTree.dataset.lightActive = String(!destroyed && !documentRef?.hidden
+        && observedTree.isConnected !== false && treeOnscreen && !motionQuery?.matches);
+    }
+
+    function observeTree(tree) {
+      if (observedTree?.dataset) observedTree.dataset.lightActive = 'false';
+      treeObserver?.disconnect();
+      treeResizeObserver?.disconnect();
+      fittedStage?.style.removeProperty('transform');
+      fittedStage = null;
+      observedTree = tree || null;
+      treeOnscreen = true;
+      if (tree && root.IntersectionObserver) {
+        treeObserver = new root.IntersectionObserver(entries => {
+          const entry = entries.find(item => item.target === observedTree);
+          if (entry) { treeOnscreen = entry.isIntersecting; syncTreeLight(); }
+        });
+        treeObserver.observe(tree);
+      }
+      const scene = tree?.closest?.('.cult-scene');
+      if (scene && root.ResizeObserver) {
+        treeResizeObserver = new root.ResizeObserver(fitTreeScene);
+        treeResizeObserver.observe(scene);
+        treeResizeObserver.observe(tree);
+      }
+      fitTreeScene();
+      syncTreeLight();
+    }
 
     function release(node, cancel = true) {
       if (!liveNodes.has(node)) return;
@@ -24,8 +72,10 @@
 
     function onVisibilityChange() {
       if (documentRef.hidden) clear();
+      syncTreeLight();
     }
     documentRef?.addEventListener?.('visibilitychange', onVisibilityChange);
+    motionQuery?.addEventListener?.('change', syncTreeLight);
 
     function addParticle(scene, kind, origin, index, timing, scale, reduced) {
       while (liveNodes.size >= MAX_LIVE_NODES) release(liveNodes.keys().next().value);
@@ -65,9 +115,13 @@
           x: (rect.left - sceneRect.left + rect.width * x) / scaleX - (scene.clientLeft || 0),
           y: (rect.top - sceneRect.top + rect.height * y) / scaleY - (scene.clientTop || 0),
         });
-        // Match the existing strike point; leaves start on the crown, not at the axe.
-        const strike = localPoint(treeRect, 0.42, 0.45);
-        const crown = localPoint(imageRect, 0.52, 0.28);
+        const anchor = (name, fallback) => {
+          const value = Number(tree.dataset?.[name]);
+          return Number.isFinite(value) && value > 0 && value < 1 ? value : fallback;
+        };
+        const hasStrike = tree.dataset?.strikeX != null && tree.dataset?.strikeY != null;
+        const strike = localPoint(hasStrike ? imageRect : treeRect, anchor('strikeX', 0.42), anchor('strikeY', 0.45));
+        const crown = localPoint(imageRect, anchor('crownX', 0.52), anchor('crownY', 0.28));
         const safeSpeed = Math.max(1, Math.min(3, Number(speed) || 1));
         const timing = { speed: safeSpeed, impactDelay: 180 / safeSpeed };
         const scale = Math.max(0.65, Math.min(1.15, imageRect.width / scaleX / 176));
@@ -85,10 +139,13 @@
       },
 
       clear,
+      observeTree,
 
       destroy() {
         clear();
+        observeTree(null);
         documentRef?.removeEventListener?.('visibilitychange', onVisibilityChange);
+        motionQuery?.removeEventListener?.('change', syncTreeLight);
         destroyed = true;
       },
     };

@@ -221,14 +221,25 @@ function renderWeaponRating(weapon, context = 'inline') {
 const V2_IMAGE_ROOT = 'assets/runtime/v2';
 
 const TREE_APPEARANCES = Object.freeze({
-  sprout: { src: `${V2_IMAGE_ROOT}/trees/sprout.webp` },
-  spirit: { src: `${V2_IMAGE_ROOT}/trees/spirit.webp` },
-  divine: { src: `${V2_IMAGE_ROOT}/trees/divine.webp` },
+  ...Object.fromEntries([
+    [0.57, 0.4141666667], [0.5283333333, 0.3975], [0.4766666667, 0.3291666667],
+    [0.4816666667, 0.2825], [0.5033333333, 0.2725],
+  ].map((crown, index) => {
+    const suffix = String(index + 1).padStart(2, '0');
+    return [`tree_${suffix}`, {
+      src: `assets/runtime/wish-trees/tree_${suffix}.webp?v=wish-trees-20260909`,
+      light: `assets/runtime/wish-trees/light-${suffix}.webp?v=wish-trees-20260909`,
+      strike: [176 / 384, 272 / 384], crown,
+      crownTop: [126, 108, 80, 55, 47][index] / 384,
+    }];
+  })),
 });
 
 function getTreeAppearance(treeRealm) {
-  const requestedKey = String(treeRealm?.appearance || '').trim().toLowerCase();
-  const key = TREE_APPEARANCES[requestedKey] ? requestedKey : 'sprout';
+  const rawKey = String(treeRealm?.appearance || '').trim().toLowerCase();
+  const aliases = { sprout: 'tree_01', spirit: 'tree_03', divine: 'tree_05' };
+  const requestedKey = aliases[rawKey] || rawKey;
+  const key = Object.hasOwn(TREE_APPEARANCES, requestedKey) ? requestedKey : 'tree_01';
   return { key, ...TREE_APPEARANCES[key] };
 }
 
@@ -305,7 +316,7 @@ const CultivatorAnimator = CharacterAnimator.createFrameAnimator({
 function getInitialGameImageAssets(axeId = null) {
   const v2Files = [
     'backgrounds/cultivate.webp', 'backgrounds/tasks.webp',
-    'backgrounds/reward.webp', 'trees/sprout.webp', 'trees/spirit.webp', 'trees/divine.webp',
+    'backgrounds/reward.webp',
     ...['breakthrough', 'tree-info', 'wallet']
       .map(name => `icons/icon-${name}.webp`),
     ...['button-primary', 'button-secondary', 'checkbox-off', 'checkbox-on', 'chop-button-bg', 'panel-corner',
@@ -334,7 +345,8 @@ function getInitialGameImageAssets(axeId = null) {
     .map(label => `assets/runtime/weapon-ratings/rating-${label}.webp?v=weapon-ratings-20260909`);
   const forgeFiles = ['stage', 'equip-slip']
     .map(name => `assets/runtime/forge-workshop/${name}.webp?v=forge-workshop-20260909`);
-  return AssetPreloader.collect([itemImages, configuredImages, currentAxeFrames, v2Files, v3Files, v4Files, feedbackFiles, v5Files, v6QualityFiles, v7Files, ratingFiles, forgeFiles]);
+  const treeFiles = Object.values(TREE_APPEARANCES).flatMap(tree => [tree.src, tree.light]);
+  return AssetPreloader.collect([itemImages, configuredImages, currentAxeFrames, v2Files, v3Files, v4Files, feedbackFiles, v5Files, v6QualityFiles, v7Files, ratingFiles, forgeFiles, treeFiles]);
 }
 
 function preloadAxeAnimation(itemId, onProgress = () => {}) {
@@ -2911,9 +2923,12 @@ const PlayerView = {
         <div class="cult-char">
           <img id="cultivator-sprite" src="${getAxeIdleFrames(Game.state.axeId)[0]}" class="char-img" alt="装备${axeDef.name}的修炼者" />
         </div>
-        <div class="cult-tree tree-appearance-${treeAppearance.key}" id="tree-icon" onclick="PlayerView.showTreeDetail()">
+        <div class="cult-tree tree-appearance-${treeAppearance.key}" id="tree-icon" style="--tree-crown-top:${treeAppearance.crownTop * 100}%" data-strike-x="${treeAppearance.strike[0]}" data-strike-y="${treeAppearance.strike[1]}" data-crown-x="${treeAppearance.crown[0]}" data-crown-y="${treeAppearance.crown[1]}" onclick="PlayerView.showTreeDetail()">
           ${canUpgradeTree ? '<span class="tree-upgrade-hint" aria-hidden="true">可升级</span>' : ''}
-          <img src="${treeAppearance.src}" class="tree-img" alt="${treeConfig.name}" />
+          <div class="tree-visual">
+            <img src="${treeAppearance.src}" class="tree-img" alt="${treeConfig.name}" />
+            <img src="${treeAppearance.light}" class="tree-light" alt="" aria-hidden="true" draggable="false" />
+          </div>
           <div class="tree-label">${treeConfig.name}</div>
         </div>
       </div>
@@ -2986,6 +3001,7 @@ const PlayerView = {
       });
       MobileCultivation.refreshEquipment(this.getMobileEquipmentPresentation());
     }
+    CultivationEffects.observeTree(document.getElementById('tree-icon'));
     UI._updateMailBadge();
     UI._updateAchBadge();
   },
@@ -3621,6 +3637,7 @@ const PlayerView = {
   _chopWait: null,
 
   cancelChopPresentation() {
+    CultivationEffects.observeTree(null);
     this._chopPresentationVersion += 1;
     this._chopWait?.cancel();
     this._chopWait = null;

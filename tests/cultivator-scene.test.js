@@ -2,9 +2,18 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const vm = require('node:vm');
 
 const app = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
 const css = fs.readFileSync(path.join(__dirname, '..', 'styles.css'), 'utf8');
+const treeManifest = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'assets/runtime/wish-trees/manifest.json'), 'utf8'));
+
+function treeAppearanceRuntime() {
+  const start = app.indexOf('const TREE_APPEARANCES =');
+  const end = app.indexOf('const V3_IMAGE_ROOT =', start);
+  assert.ok(start >= 0 && end > start, 'tree appearance resolver must remain independently evaluable');
+  return vm.runInNewContext(`${app.slice(start, end)}; ({ appearances: TREE_APPEARANCES, getTreeAppearance });`);
+}
 
 
 test('cultivation scene places the animated cultivator before the tree', () => {
@@ -46,20 +55,21 @@ test('cultivation scene keeps the character and tree within striking distance', 
     /\.cult-scene \{[^}]*position:\s*relative[^}]*overflow:\s*hidden/,
     'the scene should provide one positioned coordinate system',
   );
-  for (const appearance of ['sprout', 'spirit', 'divine']) {
-    assert.match(css, new RegExp(`\\.tree-appearance-${appearance}\\s*\\{[\\s\\S]*?--tree-left:`));
-  }
   const treeRule = css.match(/\.cult-tree\s*\{[\s\S]*?\}/)?.[0] || '';
   const characterRule = css.match(/\.cult-char\s*\{[\s\S]*?\}/)?.[0] || '';
   assert.match(treeRule, /position:\s*absolute/);
   assert.match(treeRule, /z-index:\s*1/);
   assert.match(treeRule, /left:\s*calc\(50% \+ var\(--tree-left\)\)/);
+  assert.match(treeRule, /--tree-size:\s*216px/);
+  assert.match(treeRule, /width:\s*var\(--tree-size\)/);
+  assert.match(treeRule, /height:\s*var\(--tree-size\)/);
+  assert.match(treeRule, /--tree-left:\s*-103px/);
   assert.match(characterRule, /position:\s*absolute/);
   assert.match(characterRule, /z-index:\s*3/);
   assert.match(characterRule, /pointer-events:\s*none/, 'decorative character must not intercept tree clicks');
   assert.match(characterRule, /left:\s*calc\(50% \+ var\(--character-left\)\)/);
   assert.match(css, /\.cult-effect \{[\s\S]*?z-index:\s*4/);
-  assert.match(css, /\.cult-tree \.tree-img \{[\s\S]*?object-position:\s*center bottom/);
+  assert.match(css, /\.cult-tree \.tree-img,\s*\.cult-tree \.tree-light\s*\{[^}]*object-fit:\s*contain/);
   assert.match(css, /\.cult-char \.char-img \{[\s\S]*?transform:\s*scale\(1\.2\)/);
   const spriteRule = css.match(/\.cult-char \.char-img\s*\{[^}]*\}/)?.[0] || '';
   assert.match(spriteRule, /pointer-events:\s*none/, 'scaled transparent sprite must be click-through');
@@ -69,12 +79,48 @@ test('tree appearance is configuration-driven with a safe fallback', () => {
   const render = app.match(/async renderCultivate\(\)[\s\S]*?\n  },/)?.[0] || '';
   const detail = app.match(/\n  showTreeDetail\(\) \{[\s\S]*?\n  },/)?.[0] || '';
   assert.match(app, /const TREE_APPEARANCES = Object\.freeze/);
-  assert.match(app, /TREE_APPEARANCES\[requestedKey\] \? requestedKey : 'sprout'/);
+  const { appearances, getTreeAppearance } = treeAppearanceRuntime();
+  assert.deepEqual(Object.keys(appearances), ['tree_01', 'tree_02', 'tree_03', 'tree_04', 'tree_05']);
+  const sources = new Set();
+  const lights = new Set();
+  for (const key of Object.keys(appearances)) {
+    const skin = getTreeAppearance({ appearance: key });
+    assert.equal(skin.key, key);
+    assert.equal(skin.src, `${treeManifest[key].path}?v=wish-trees-20260909`);
+    assert.equal(skin.light, `${treeManifest[`light-${key.slice(-2)}`].path}?v=wish-trees-20260909`);
+    skin.strike.forEach((coordinate, index) => assert.ok(Math.abs(coordinate - treeManifest[key].anchors.strike[index]) < 1e-8));
+    skin.crown.forEach((coordinate, index) => assert.ok(Math.abs(coordinate - treeManifest[key].anchors.crown[index]) < 1e-8));
+    sources.add(skin.src);
+    lights.add(skin.light);
+  }
+  assert.equal(sources.size, 5);
+  assert.equal(lights.size, 5);
+  for (const [legacy, expected] of [['sprout', 'tree_01'], ['spirit', 'tree_03'], ['divine', 'tree_05']]) {
+    assert.equal(getTreeAppearance({ appearance: legacy }).key, expected);
+  }
+  assert.equal(getTreeAppearance({ appearance: ' TREE_04 ' }).key, 'tree_04');
+  for (const config of [undefined, {}, { appearance: '' }, { appearance: 'unknown' }, { appearance: 'constructor' }, { appearance: '__proto__' }]) {
+    assert.equal(getTreeAppearance(config).key, 'tree_01');
+  }
   assert.ok((app.match(/appearance:\s*tree\.appearance/g) || []).length >= 2);
   assert.match(app, /const treeAppearance = getTreeAppearance\(treeRealm\)/);
   assert.match(render, /tree-appearance-\$\{treeAppearance\.key\}/);
+  assert.match(render, /data-strike-x="\$\{treeAppearance\.strike\[0\]\}"/);
+  assert.match(render, /data-strike-y="\$\{treeAppearance\.strike\[1\]\}"/);
+  assert.match(render, /data-crown-x="\$\{treeAppearance\.crown\[0\]\}"/);
+  assert.match(render, /data-crown-y="\$\{treeAppearance\.crown\[1\]\}"/);
+  assert.match(render, /src="\$\{treeAppearance\.light\}" class="tree-light"[^>]*aria-hidden="true"/);
   assert.match(detail, /const treeAppearance = getTreeAppearance\(treeRealm\)/);
+  assert.match(detail, /src="\$\{treeAppearance\.src\}"/);
+  assert.match(app, /Object\.values\(TREE_APPEARANCES\)\.flatMap\(tree => \[tree\.src, tree\.light\]\)/);
   assert.doesNotMatch(app, /treeLevel >= 13|treeLevel >= 6/);
+});
+
+test('tree light observation follows scene mounting and route cleanup', () => {
+  const render = app.match(/async renderCultivate\(\)[\s\S]*?\n  },/)?.[0] || '';
+  const cancel = app.match(/\n  cancelChopPresentation\(\) \{[\s\S]*?\n  },/)?.[0] || '';
+  assert.match(render, /CultivationEffects\.observeTree\(document\.getElementById\('tree-icon'\)\)/);
+  assert.match(cancel, /CultivationEffects\.observeTree\(null\)/);
 });
 
 

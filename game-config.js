@@ -1,6 +1,6 @@
 // ===== 游戏配置文件（由 sync-config.py 从飞书表格自动生成）=====
 // 修改飞书表格后运行同步脚本即可更新，请勿手动编辑此文件
-// 最后同步: 2026-09-09 15:04:31
+// 最后同步: 2026-09-09 20:54:19
 
 const GAME_CONFIG = {
   // 角色等级经验表（共 150 条）
@@ -2045,7 +2045,7 @@ const GAME_CONFIG = {
   {
     "id": 0,
     "name": "仙树",
-    "appearance": "sprout",
+    "appearance": "tree_01",
     "poolId": 1000,
     "reqItems": [],
     "note": ""
@@ -2053,7 +2053,7 @@ const GAME_CONFIG = {
   {
     "id": 1,
     "name": "仙树·灵阶1",
-    "appearance": "sprout",
+    "appearance": "tree_01",
     "poolId": 1001,
     "reqItems": [
       {
@@ -2066,7 +2066,7 @@ const GAME_CONFIG = {
   {
     "id": 2,
     "name": "仙树·灵阶2",
-    "appearance": "sprout",
+    "appearance": "tree_01",
     "poolId": 1002,
     "reqItems": [
       {
@@ -2079,7 +2079,7 @@ const GAME_CONFIG = {
   {
     "id": 3,
     "name": "仙树·灵阶3",
-    "appearance": "sprout",
+    "appearance": "tree_01",
     "poolId": 1003,
     "reqItems": [
       {
@@ -2092,7 +2092,7 @@ const GAME_CONFIG = {
   {
     "id": 4,
     "name": "仙树·灵阶4",
-    "appearance": "spirit",
+    "appearance": "tree_02",
     "poolId": 1004,
     "reqItems": [
       {
@@ -2105,7 +2105,7 @@ const GAME_CONFIG = {
   {
     "id": 5,
     "name": "仙树·灵阶5",
-    "appearance": "spirit",
+    "appearance": "tree_02",
     "poolId": 1005,
     "reqItems": [
       {
@@ -2118,7 +2118,7 @@ const GAME_CONFIG = {
   {
     "id": 6,
     "name": "仙树·灵阶6",
-    "appearance": "spirit",
+    "appearance": "tree_02",
     "poolId": 1006,
     "reqItems": [
       {
@@ -2131,7 +2131,7 @@ const GAME_CONFIG = {
   {
     "id": 7,
     "name": "仙树·灵阶7",
-    "appearance": "spirit",
+    "appearance": "tree_03",
     "poolId": 1007,
     "reqItems": [
       {
@@ -2144,7 +2144,7 @@ const GAME_CONFIG = {
   {
     "id": 8,
     "name": "仙树·灵阶8",
-    "appearance": "spirit",
+    "appearance": "tree_03",
     "poolId": 1008,
     "reqItems": [
       {
@@ -2157,7 +2157,7 @@ const GAME_CONFIG = {
   {
     "id": 9,
     "name": "仙树·灵阶9",
-    "appearance": "spirit",
+    "appearance": "tree_03",
     "poolId": 1009,
     "reqItems": [
       {
@@ -2170,7 +2170,7 @@ const GAME_CONFIG = {
   {
     "id": 10,
     "name": "仙树·灵阶10",
-    "appearance": "spirit",
+    "appearance": "tree_04",
     "poolId": 1010,
     "reqItems": [
       {
@@ -2183,7 +2183,7 @@ const GAME_CONFIG = {
   {
     "id": 11,
     "name": "仙树·灵阶11",
-    "appearance": "divine",
+    "appearance": "tree_04",
     "poolId": 1011,
     "reqItems": [
       {
@@ -2196,7 +2196,7 @@ const GAME_CONFIG = {
   {
     "id": 12,
     "name": "仙树·灵阶12",
-    "appearance": "divine",
+    "appearance": "tree_04",
     "poolId": 1012,
     "reqItems": [
       {
@@ -2209,7 +2209,7 @@ const GAME_CONFIG = {
   {
     "id": 13,
     "name": "仙树·灵阶13",
-    "appearance": "divine",
+    "appearance": "tree_05",
     "poolId": 1013,
     "reqItems": [
       {
@@ -2222,7 +2222,7 @@ const GAME_CONFIG = {
   {
     "id": 14,
     "name": "仙树·灵阶14",
-    "appearance": "divine",
+    "appearance": "tree_05",
     "poolId": 1014,
     "reqItems": [
       {
@@ -2235,7 +2235,7 @@ const GAME_CONFIG = {
   {
     "id": 15,
     "name": "仙树·灵阶15",
-    "appearance": "divine",
+    "appearance": "tree_05",
     "poolId": 1015,
     "reqItems": [
       {

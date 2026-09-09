@@ -126,7 +126,7 @@ function fixture(options = {}) {
       resumeIdle: () => events.push(['idle']),
       stop: () => events.push(['character-stop']),
     },
-    CultivationEffects: { playHit: () => {} },
+    CultivationEffects: { playHit: () => {}, observeTree: () => {} },
     ChopRefundFeedback: {
       show: (anchor, quantity, settings) => {
         const refund = element();

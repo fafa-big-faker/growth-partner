@@ -7,6 +7,7 @@ const AssetPreloader = require('../asset-preloader');
 const { createAudioManager } = require('../audio-manager');
 const root = path.join(__dirname, '..');
 const app = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
+const treeSource = app.slice(app.indexOf('const TREE_APPEARANCES ='), app.indexOf('function getTreeAppearance('));
 const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const iconSource = app.slice(app.indexOf('const V3_IMAGE_ROOT'), app.indexOf('function escapeHtml'));
 
@@ -27,7 +28,7 @@ test('all new runtime artwork is included in preload and old login art is no lon
     GAME_CONFIG: { itemTable: [] }, ITEM_IMAGES: {}, AssetPreloader,
     getItemIconPath: () => '',
   };
-  vm.runInNewContext(`${source}\nglobalThis.assets = getInitialGameImageAssets();`, context);
+  vm.runInNewContext(`${treeSource}\n${source}\nglobalThis.assets = getInitialGameImageAssets();`, context);
   const manifest = JSON.parse(fs.readFileSync(path.join(root, 'assets/runtime/v3/manifest.json'), 'utf8'));
   for (const group of Object.values(manifest)) {
     for (const item of Object.values(group)) {

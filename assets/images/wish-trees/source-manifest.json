@@ -1,0 +1,804 @@
+{
+  "script": "scripts/import_wish_trees.py",
+  "minimumAlpha": 5,
+  "canvasSize": [
+    384,
+    384
+  ],
+  "scale": 0.64,
+  "runtimeBytes": 329414,
+  "runtimeBudgetBytes": 409600,
+  "source": {
+    "file": "仙来-五阶段仙树图集.png",
+    "size": [
+      1536,
+      1024
+    ],
+    "mode": "RGBA",
+    "alphaRange": [
+      0,
+      253
+    ],
+    "bytes": 2371358,
+    "sha256": "0640347cf5c52cb81282e0ce8ae7b391a47b9ce90f4b3cbb3d9c0d452049645e"
+  },
+  "lightExtraction": {
+    "luminanceStart": 190,
+    "luminanceRamp": 50,
+    "alphaScale": 0.72,
+    "minimumSourceAlpha": 64,
+    "preserveOriginalRgb": true
+  },
+  "assets": {
+    "tree_01": {
+      "path": "assets/images/wish-trees/tree_01.png",
+      "size": [
+        384,
+        384
+      ],
+      "alphaRange": [
+        0,
+        255
+      ],
+      "alphaBounds": [
+        114,
+        126,
+        305,
+        360
+      ],
+      "visiblePixels": 19009,
+      "bytes": 68264,
+      "sha256": "9079c4cbefb02e1ecc57b50586988549e82e74a5d5ee16e8ab24ea6a1b3594d9",
+      "tree": "tree_01",
+      "kind": "tree",
+      "anchors": {
+        "strike": [
+          0.4583333333,
+          0.7083333333
+        ],
+        "ground": [
+          0.5133333333,
+          0.9375
+        ],
+        "crown": [
+          0.57,
+          0.4141666667
+        ]
+      },
+      "canvasAnchors": {
+        "strike": [
+          176.0,
+          272.0
+        ],
+        "ground": [
+          197.12,
+          360.0
+        ],
+        "crown": [
+          218.88,
+          159.04
+        ]
+      },
+      "cell": [
+        0,
+        0,
+        512,
+        490
+      ],
+      "contentBounds": [
+        142,
+        101,
+        441,
+        468
+      ],
+      "sourceAnchors": {
+        "strike": [
+          239,
+          330.5
+        ],
+        "ground": [
+          272,
+          468
+        ],
+        "crown": [
+          306,
+          154
+        ]
+      },
+      "scale": 0.64
+    },
+    "light-01": {
+      "path": "assets/images/wish-trees/light-01.png",
+      "size": [
+        384,
+        384
+      ],
+      "alphaRange": [
+        0,
+        181
+      ],
+      "alphaBounds": [
+        138,
+        136,
+        279,
+        349
+      ],
+      "visiblePixels": 1385,
+      "bytes": 8819,
+      "sha256": "4e29475e50306c25502ef825dee9865033364d067c3c709ad6dd700aeafc01f4",
+      "tree": "tree_01",
+      "kind": "light",
+      "anchors": {
+        "strike": [
+          0.4583333333,
+          0.7083333333
+        ],
+        "ground": [
+          0.5133333333,
+          0.9375
+        ],
+        "crown": [
+          0.57,
+          0.4141666667
+        ]
+      },
+      "canvasAnchors": {
+        "strike": [
+          176.0,
+          272.0
+        ],
+        "ground": [
+          197.12,
+          360.0
+        ],
+        "crown": [
+          218.88,
+          159.04
+        ]
+      },
+      "cell": [
+        0,
+        0,
+        512,
+        490
+      ],
+      "contentBounds": [
+        142,
+        101,
+        441,
+        468
+      ],
+      "sourceAnchors": {
+        "strike": [
+          239,
+          330.5
+        ],
+        "ground": [
+          272,
+          468
+        ],
+        "crown": [
+          306,
+          154
+        ]
+      },
+      "scale": 0.64
+    },
+    "tree_02": {
+      "path": "assets/images/wish-trees/tree_02.png",
+      "size": [
+        384,
+        384
+      ],
+      "alphaRange": [
+        0,
+        255
+      ],
+      "alphaBounds": [
+        69,
+        108,
+        303,
+        360
+      ],
+      "visiblePixels": 30210,
+      "bytes": 103192,
+      "sha256": "034c426ce21f591cae3cc2ee527bfd097e09c79089cf81e0970540bc967854ba",
+      "tree": "tree_02",
+      "kind": "tree",
+      "anchors": {
+        "strike": [
+          0.4583333333,
+          0.7083333333
+        ],
+        "ground": [
+          0.485,
+          0.9375
+        ],
+        "crown": [
+          0.5283333333,
+          0.3975
+        ]
+      },
+      "canvasAnchors": {
+        "strike": [
+          176.0,
+          272.0
+        ],
+        "ground": [
+          186.24,
+          360.0
+        ],
+        "crown": [
+          202.88,
+          152.64
+        ]
+      },
+      "cell": [
+        512,
+        0,
+        1024,
+        490
+      ],
+      "contentBounds": [
+        589,
+        73,
+        956,
+        468
+      ],
+      "sourceAnchors": {
+        "strike": [
+          756,
+          330.5
+        ],
+        "ground": [
+          772,
+          468
+        ],
+        "crown": [
+          798,
+          144
+        ]
+      },
+      "scale": 0.64
+    },
+    "light-02": {
+      "path": "assets/images/wish-trees/light-02.png",
+      "size": [
+        384,
+        384
+      ],
+      "alphaRange": [
+        0,
+        182
+      ],
+      "alphaBounds": [
+        80,
+        117,
+        280,
+        350
+      ],
+      "visiblePixels": 2442,
+      "bytes": 14834,
+      "sha256": "fbbf20074fa9f389ae3ea7bb09143cfcf1ed58b8cfb273b31e77dbf90d5caf21",
+      "tree": "tree_02",
+      "kind": "light",
+      "anchors": {
+        "strike": [
+          0.4583333333,
+          0.7083333333
+        ],
+        "ground": [
+          0.485,
+          0.9375
+        ],
+        "crown": [
+          0.5283333333,
+          0.3975
+        ]
+      },
+      "canvasAnchors": {
+        "strike": [
+          176.0,
+          272.0
+        ],
+        "ground": [
+          186.24,
+          360.0
+        ],
+        "crown": [
+          202.88,
+          152.64
+        ]
+      },
+      "cell": [
+        512,
+        0,
+        1024,
+        490
+      ],
+      "contentBounds": [
+        589,
+        73,
+        956,
+        468
+      ],
+      "sourceAnchors": {
+        "strike": [
+          756,
+          330.5
+        ],
+        "ground": [
+          772,
+          468
+        ],
+        "crown": [
+          798,
+          144
+        ]
+      },
+      "scale": 0.64
+    },
+    "tree_03": {
+      "path": "assets/images/wish-trees/tree_03.png",
+      "size": [
+        384,
+        384
+      ],
+      "alphaRange": [
+        0,
+        255
+      ],
+      "alphaBounds": [
+        54,
+        80,
+        328,
+        360
+      ],
+      "visiblePixels": 43178,
+      "bytes": 143167,
+      "sha256": "e1de8824755d08bf3ae4c66f81411bac6d87429e1cf17aa2a4b65d1e6cf30a64",
+      "tree": "tree_03",
+      "kind": "tree",
+      "anchors": {
+        "strike": [
+          0.4583333333,
+          0.7083333333
+        ],
+        "ground": [
+          0.505,
+          0.9375
+        ],
+        "crown": [
+          0.4766666667,
+          0.3291666667
+        ]
+      },
+      "canvasAnchors": {
+        "strike": [
+          176.0,
+          272.0
+        ],
+        "ground": [
+          193.92,
+          360.0
+        ],
+        "crown": [
+          183.04,
+          126.4
+        ]
+      },
+      "cell": [
+        1024,
+        0,
+        1536,
+        490
+      ],
+      "contentBounds": [
+        1062,
+        33,
+        1490,
+        471
+      ],
+      "sourceAnchors": {
+        "strike": [
+          1253,
+          333.5
+        ],
+        "ground": [
+          1281,
+          471
+        ],
+        "crown": [
+          1264,
+          106
+        ]
+      },
+      "scale": 0.64
+    },
+    "light-03": {
+      "path": "assets/images/wish-trees/light-03.png",
+      "size": [
+        384,
+        384
+      ],
+      "alphaRange": [
+        0,
+        182
+      ],
+      "alphaBounds": [
+        76,
+        84,
+        300,
+        348
+      ],
+      "visiblePixels": 5243,
+      "bytes": 28347,
+      "sha256": "57083d4282ec00aee07c81b43b9f6d2c5067de95c79ac35e09c616e4eb4cf3e4",
+      "tree": "tree_03",
+      "kind": "light",
+      "anchors": {
+        "strike": [
+          0.4583333333,
+          0.7083333333
+        ],
+        "ground": [
+          0.505,
+          0.9375
+        ],
+        "crown": [
+          0.4766666667,
+          0.3291666667
+        ]
+      },
+      "canvasAnchors": {
+        "strike": [
+          176.0,
+          272.0
+        ],
+        "ground": [
+          193.92,
+          360.0
+        ],
+        "crown": [
+          183.04,
+          126.4
+        ]
+      },
+      "cell": [
+        1024,
+        0,
+        1536,
+        490
+      ],
+      "contentBounds": [
+        1062,
+        33,
+        1490,
+        471
+      ],
+      "sourceAnchors": {
+        "strike": [
+          1253,
+          333.5
+        ],
+        "ground": [
+          1281,
+          471
+        ],
+        "crown": [
+          1264,
+          106
+        ]
+      },
+      "scale": 0.64
+    },
+    "tree_04": {
+      "path": "assets/images/wish-trees/tree_04.png",
+      "size": [
+        384,
+        384
+      ],
+      "alphaRange": [
+        0,
+        255
+      ],
+      "alphaBounds": [
+        35,
+        55,
+        345,
+        360
+      ],
+      "visiblePixels": 53187,
+      "bytes": 175693,
+      "sha256": "7c869dd877ca7dd0fcdf824b1648a442f953e073bee8307b9cda4a8ef47bfddd",
+      "tree": "tree_04",
+      "kind": "tree",
+      "anchors": {
+        "strike": [
+          0.4583333333,
+          0.7083333333
+        ],
+        "ground": [
+          0.4933333333,
+          0.9375
+        ],
+        "crown": [
+          0.4816666667,
+          0.2825
+        ]
+      },
+      "canvasAnchors": {
+        "strike": [
+          176.0,
+          272.0
+        ],
+        "ground": [
+          189.44,
+          360.0
+        ],
+        "crown": [
+          184.96,
+          108.48
+        ]
+      },
+      "cell": [
+        0,
+        490,
+        520,
+        1024
+      ],
+      "contentBounds": [
+        23,
+        515,
+        509,
+        994
+      ],
+      "sourceAnchors": {
+        "strike": [
+          244,
+          856.5
+        ],
+        "ground": [
+          265,
+          994
+        ],
+        "crown": [
+          258,
+          601
+        ]
+      },
+      "scale": 0.64
+    },
+    "light-04": {
+      "path": "assets/images/wish-trees/light-04.png",
+      "size": [
+        384,
+        384
+      ],
+      "alphaRange": [
+        0,
+        181
+      ],
+      "alphaBounds": [
+        60,
+        66,
+        320,
+        350
+      ],
+      "visiblePixels": 7522,
+      "bytes": 38780,
+      "sha256": "8721e177efda321743c40fc72b975eb5d7d3db830bd496391aad4370344b89dc",
+      "tree": "tree_04",
+      "kind": "light",
+      "anchors": {
+        "strike": [
+          0.4583333333,
+          0.7083333333
+        ],
+        "ground": [
+          0.4933333333,
+          0.9375
+        ],
+        "crown": [
+          0.4816666667,
+          0.2825
+        ]
+      },
+      "canvasAnchors": {
+        "strike": [
+          176.0,
+          272.0
+        ],
+        "ground": [
+          189.44,
+          360.0
+        ],
+        "crown": [
+          184.96,
+          108.48
+        ]
+      },
+      "cell": [
+        0,
+        490,
+        520,
+        1024
+      ],
+      "contentBounds": [
+        23,
+        515,
+        509,
+        994
+      ],
+      "sourceAnchors": {
+        "strike": [
+          244,
+          856.5
+        ],
+        "ground": [
+          265,
+          994
+        ],
+        "crown": [
+          258,
+          601
+        ]
+      },
+      "scale": 0.64
+    },
+    "tree_05": {
+      "path": "assets/images/wish-trees/tree_05.png",
+      "size": [
+        384,
+        384
+      ],
+      "alphaRange": [
+        0,
+        255
+      ],
+      "alphaBounds": [
+        27,
+        47,
+        373,
+        360
+      ],
+      "visiblePixels": 60068,
+      "bytes": 198545,
+      "sha256": "a8cbda6c8e6dd61fa248a74784036d410cc183d03b01ef7e3ee3ccc4df521c04",
+      "tree": "tree_05",
+      "kind": "tree",
+      "anchors": {
+        "strike": [
+          0.4583333333,
+          0.7083333333
+        ],
+        "ground": [
+          0.4966666667,
+          0.9375
+        ],
+        "crown": [
+          0.5033333333,
+          0.2725
+        ]
+      },
+      "canvasAnchors": {
+        "strike": [
+          176.0,
+          272.0
+        ],
+        "ground": [
+          190.72,
+          360.0
+        ],
+        "crown": [
+          193.28,
+          104.64
+        ]
+      },
+      "cell": [
+        520,
+        490,
+        1536,
+        1024
+      ],
+      "contentBounds": [
+        532,
+        508,
+        1074,
+        996
+      ],
+      "sourceAnchors": {
+        "strike": [
+          766,
+          858.5
+        ],
+        "ground": [
+          789,
+          996
+        ],
+        "crown": [
+          793,
+          597
+        ]
+      },
+      "scale": 0.64
+    },
+    "light-05": {
+      "path": "assets/images/wish-trees/light-05.png",
+      "size": [
+        384,
+        384
+      ],
+      "alphaRange": [
+        0,
+        182
+      ],
+      "alphaBounds": [
+        45,
+        49,
+        361,
+        355
+      ],
+      "visiblePixels": 10720,
+      "bytes": 54926,
+      "sha256": "852f7c291875aa4f23e97ca161048435f90f5cafb73bd0d62debcf99c811c175",
+      "tree": "tree_05",
+      "kind": "light",
+      "anchors": {
+        "strike": [
+          0.4583333333,
+          0.7083333333
+        ],
+        "ground": [
+          0.4966666667,
+          0.9375
+        ],
+        "crown": [
+          0.5033333333,
+          0.2725
+        ]
+      },
+      "canvasAnchors": {
+        "strike": [
+          176.0,
+          272.0
+        ],
+        "ground": [
+          190.72,
+          360.0
+        ],
+        "crown": [
+          193.28,
+          104.64
+        ]
+      },
+      "cell": [
+        520,
+        490,
+        1536,
+        1024
+      ],
+      "contentBounds": [
+        532,
+        508,
+        1074,
+        996
+      ],
+      "sourceAnchors": {
+        "strike": [
+          766,
+          858.5
+        ],
+        "ground": [
+          789,
+          996
+        ],
+        "crown": [
+          793,
+          597
+        ]
+      },
+      "scale": 0.64
+    }
+  }
+}

@@ -7,6 +7,7 @@ const AssetPreloader = require('../asset-preloader');
 
 const root = path.join(__dirname, '..');
 const app = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
+const treeSource = app.slice(app.indexOf('const TREE_APPEARANCES ='), app.indexOf('function getTreeAppearance('));
 const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const manifest = JSON.parse(fs.readFileSync(path.join(root, 'assets/runtime/v4/manifest.json'), 'utf8'));
 const resolver = app.match(/function getItemIconPath\([^]*?\n\}/)[0];
@@ -51,7 +52,7 @@ test('preloads cover the complete V4 set without requesting replaced icons and f
     V2_IMAGE_ROOT: 'assets/runtime/v2', V3_IMAGE_ROOT: 'assets/runtime/v3',
     GAME_CONFIG: { itemTable: [...Object.keys(items).map(id => ({ id, iconImage: items[id] })), { id: 99999, iconImage: 'custom.webp' }] },
   };
-  vm.runInNewContext(`${resolver}\n${preload}\nglobalThis.assets = getInitialGameImageAssets();`, context);
+  vm.runInNewContext(`${resolver}\n${treeSource}\n${preload}\nglobalThis.assets = getInitialGameImageAssets();`, context);
   for (const group of Object.values(manifest)) {
     for (const asset of Object.values(group)) {
       assert.ok(context.assets.includes(asset.path), `missing ${asset.path}`);
@@ -72,6 +73,6 @@ test('new resources and mobile controller load before app with a coherent releas
     assert.ok(html.indexOf(file) < html.indexOf('src="app.js'));
   }
   assert.match(html, /viewport-fit=cover/);
-  assert.match(html, /game-config\.js\?v=reward-focus-20260909/);
+  assert.match(html, /game-config\.js\?v=wish-trees-20260909/);
   assert.doesNotMatch(html, /v2\/icons\/icon-forge/);
 });

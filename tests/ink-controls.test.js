@@ -7,6 +7,7 @@ const AssetPreloader = require('../asset-preloader');
 
 const root = path.join(__dirname, '..');
 const app = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
+const treeSource = app.slice(app.indexOf('const TREE_APPEARANCES ='), app.indexOf('function getTreeAppearance('));
 const mobile = fs.readFileSync(path.join(root, 'mobile-cultivation.js'), 'utf8');
 const css = fs.readFileSync(path.join(root, 'mobile-cultivation.css'), 'utf8');
 const helperSource = app.match(/function getExperiencePercent\([^]*?\n\}/)?.[0];
@@ -110,7 +111,7 @@ test('preload includes each actual versioned ink control URL once and excludes t
     ITEM_IMAGES: { duplicate: urls[1] }, V2_IMAGE_ROOT: 'assets/runtime/v2', V3_IMAGE_ROOT: 'assets/runtime/v3',
     getItemIconPath: (id, configured) => configured || urls[1],
   };
-  const actual = vm.runInNewContext(`${preload};getInitialGameImageAssets()`, context);
+  const actual = vm.runInNewContext(`${treeSource}\n${preload};getInitialGameImageAssets()`, context);
   for (const url of urls) assert.equal(actual.filter(candidate => candidate === url).length, 1, url);
   assert.equal(actual.filter(url => url.includes('/ink-controls/')).length, 3);
   assert.doesNotMatch(preload, /undo-2\.svg/);

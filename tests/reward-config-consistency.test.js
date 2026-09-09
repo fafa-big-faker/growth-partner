@@ -66,9 +66,9 @@ test('realm and tree configuration use stable headers and latest progression val
   );
   assert.deepEqual(
     Array.from(config.treeTable, row => row.appearance),
-    ['sprout', 'sprout', 'sprout', 'sprout',
-      'spirit', 'spirit', 'spirit', 'spirit', 'spirit', 'spirit', 'spirit',
-      'divine', 'divine', 'divine', 'divine', 'divine'],
+    ['tree_01', 'tree_01', 'tree_01', 'tree_01',
+      'tree_02', 'tree_02', 'tree_02', 'tree_03', 'tree_03', 'tree_03',
+      'tree_04', 'tree_04', 'tree_04', 'tree_05', 'tree_05', 'tree_05'],
   );
 });
 

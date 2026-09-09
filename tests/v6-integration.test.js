@@ -8,6 +8,7 @@ const root = path.join(__dirname, '..');
 const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const css = fs.readFileSync(path.join(root, 'xianlai-v4.css'), 'utf8');
 const app = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
+const treeSource = app.slice(app.indexOf('const TREE_APPEARANCES ='), app.indexOf('function getTreeAppearance('));
 const version = 'xianlai-v6-20260908';
 
 test('five flat ink marks cover both inventory surfaces without changing slot geometry', () => {
@@ -27,7 +28,7 @@ test('game preload includes the exact five mark URLs but never waits on login de
   const preload = app.match(/function getInitialGameImageAssets\([^]*?\n\}/)[0];
   const context = { V2_IMAGE_ROOT: 'assets/runtime/v2', V3_IMAGE_ROOT: 'assets/runtime/v3',
     GAME_CONFIG: { itemTable: [] }, ITEM_IMAGES: {}, AssetPreloader, getItemIconPath: () => '' };
-  vm.runInNewContext(`${preload}\nglobalThis.assets = getInitialGameImageAssets();`, context);
+  vm.runInNewContext(`${treeSource}\n${preload}\nglobalThis.assets = getInitialGameImageAssets();`, context);
   for (let quality = 1; quality <= 5; quality++) {
     const asset = `assets/runtime/v6/quality/quality-${quality}.webp?v=${version}`;
     assert.equal(context.assets.filter(url => url === asset).length, 1);
@@ -50,7 +51,7 @@ test('native login button keeps accessible text and independently preloaded imag
   }
   for (const file of ['app.js', 'login-art.js', 'login-art.css', 'xianlai-v4.css']) {
     const codeVersion = file === 'xianlai-v4.css' ? version
-      : file === 'app.js' ? 'forge-workshop-20260909' : 'reward-login-20260909';
+      : file === 'app.js' ? 'wish-trees-20260909' : 'reward-login-20260909';
     assert.ok(html.includes(`${file}?v=${codeVersion}`));
   }
 });
