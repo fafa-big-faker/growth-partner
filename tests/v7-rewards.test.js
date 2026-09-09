@@ -157,6 +157,7 @@ test('reward dialogs keep a compact single result and a fixed footer outside the
   assert.match(css, /\.modal\.reward-dialog\s*\{[^}]*display:\s*flex;[^}]*flex-direction:\s*column;[^}]*overflow:\s*hidden/s);
   assert.match(css, /\.reward-dialog > \.modal-body\s*\{[^}]*min-height:\s*0;[^}]*overflow-y:\s*auto/s);
   assert.match(css, /\.reward-dialog > \.modal-footer\s*\{[^}]*flex-shrink:\s*0/s);
+  assert.match(css, /\.reward-dialog > \.modal-footer > \.btn\s*\{[^}]*min-height:\s*44px;[^}]*justify-content:\s*center;[^}]*align-items:\s*center;[^}]*text-align:\s*center/s);
   assert.match(css, /\.reward-item--large \.reward-art\s*\{\s*max-width:\s*104px;/);
   assert.match(single, /footer:\s*`<div class="modal-footer">/);
   assert.doesNotMatch(single, /\$\{extraHtml\}\s*<button/);

@@ -20,6 +20,7 @@ test('controller safely ignores a non-cultivation page and repeated cleanup', ()
   assert.doesNotThrow(() => controller.refreshEquipment({ html: '', weaponsHtml: '' }));
   assert.doesNotThrow(() => controller.setPage('tasks'));
   assert.equal(controller.isMobile(), false);
+  assert.equal(controller.isEnabled(), false);
 });
 
 test('mobile media detection works before cultivation is mounted', () => {
@@ -28,6 +29,12 @@ test('mobile media detection works before cultivation is mounted', () => {
   assert.equal(controller.isMobile(), true);
   assert.match(queries[0], /max-width: 719px/);
   assert.match(queries[0], /max-height: 500px/);
+});
+
+test('shared layout is enabled on desktop without pretending it is a mobile viewport', () => {
+  const controller = createController({ document: { getElementById: () => ({}) }, matchMedia: () => ({ matches: false }) });
+  assert.equal(controller.isMobile(), false);
+  assert.equal(controller.isEnabled(), true);
 });
 
 test('dual columns move the unique item grid and original actions without a modal drawer', () => {
@@ -55,7 +62,7 @@ test('inventory redraw and full cultivate refresh preserve independent scroll an
   const render = app.slice(app.indexOf('  renderInventory(tab) {'), app.indexOf('  showItemDetail('));
   assert.ok(render.indexOf('beforeInventoryRender(tab)') < render.indexOf('grid.innerHTML = html'));
   assert.ok(render.indexOf('refreshInventory(tab)') > render.indexOf('grid.innerHTML = html'));
-  assert.match(render, /MobileCultivation\.isMobile\(\)\) tab = 'items'/);
+  assert.match(render, /MobileCultivation\.isEnabled\(\)\) tab = 'items'/);
 });
 
 test('keyboard details retain the library and do not duplicate native button activation', () => {
@@ -101,4 +108,18 @@ test('short portrait keeps dual panes and actions onscreen without changing rela
   assert.match(css, /scrollbar-color: #799085 transparent/);
   assert.match(css, /min-height: 44px/);
   assert.match(css, /prefers-reduced-motion: reduce/);
+});
+
+test('unified paper and inventory dimensions are bounded independently from screen height', () => {
+  assert.match(css, /@media screen/);
+  for (const height of [180, 224, 280]) assert.ok(css.includes(`--inventory-height: ${height}px`));
+  assert.match(css, /grid-template-rows: 44px minmax\(166px, 1fr\) 50px var\(--inventory-height\)/);
+  assert.doesNotMatch(css, /minmax\(172px, \.92fr\)/);
+  const paperRules = [...css.matchAll(/\.bottom-nav::before\s*\{([^}]+)\}/g)].map(match => match[1]);
+  assert.equal(paperRules.length, 2);
+  for (const rule of paperRules) {
+    assert.match(rule, /max-height: (?:64|72)px/);
+    assert.doesNotMatch(rule, /(?:^|;)\s*(?:min-|max-)?height:[^;]*env\(/);
+  }
+  assert.match(paperRules[0], /bottom: env\(safe-area-inset-bottom\)/);
 });

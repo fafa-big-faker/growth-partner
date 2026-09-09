@@ -47,6 +47,9 @@
 .reward-dialog > .modal-footer > .btn {
   min-width: 112px;
   min-height: 44px;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
 }
 
 .reward-results {

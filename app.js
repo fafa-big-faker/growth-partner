@@ -3094,7 +3094,7 @@ const PlayerView = {
   renderInventory(tab) {
     const grid = document.getElementById('inventory-grid');
     if (!grid) return;
-    if (typeof MobileCultivation !== 'undefined' && MobileCultivation.isMobile()) tab = 'items';
+    if (typeof MobileCultivation !== 'undefined' && MobileCultivation.isEnabled()) tab = 'items';
     if (typeof MobileCultivation !== 'undefined') MobileCultivation.beforeInventoryRender(tab);
 
     const isWeapons = tab === 'weapons';
@@ -3147,7 +3147,7 @@ const PlayerView = {
     grid.innerHTML = html;
     if (typeof MobileCultivation !== 'undefined') {
       MobileCultivation.refreshInventory(tab);
-      if (MobileCultivation.isMobile()) MobileCultivation.refreshEquipment(this.getMobileEquipmentPresentation());
+      if (MobileCultivation.isEnabled()) MobileCultivation.refreshEquipment(this.getMobileEquipmentPresentation());
     }
   },
 

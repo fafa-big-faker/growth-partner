@@ -70,9 +70,9 @@ test('actual current-weapon detail never offers equipment or sale actions', () =
   assert.match(content, /sellItem\('spare'/);
 });
 
-test('mobile inventory is always items without resetting desktop tab preference', () => {
+test('shared inventory always shows items without mutating the legacy tab preference', () => {
   const source = sourceMethod('renderInventory');
-  assert.match(source, /MobileCultivation\.isMobile\(\)/);
+  assert.match(source, /MobileCultivation\.isEnabled\(\)/);
   assert.match(source, /tab = 'items'/);
   assert.doesNotMatch(source, /this\.currentInvTab\s*=/);
 });

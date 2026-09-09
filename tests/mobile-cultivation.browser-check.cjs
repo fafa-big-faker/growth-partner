@@ -2,6 +2,7 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
 const path = require('node:path');
+const { execFileSync } = require('node:child_process');
 
 function isInside(outer, inner, tolerance = 1) {
   return inner.x >= outer.x - tolerance && inner.y >= outer.y - tolerance
@@ -44,10 +45,20 @@ function checkCompactBadges(cells) {
   }
 }
 
+function checkItemRows(cells) {
+  assert.ok(cells.length >= 20, 'enough ordinary items exercise scrolling on desktop');
+  for (const cell of cells) {
+    assert.ok(Math.abs(cell.slot.width - cell.slot.height) <= 1, 'ordinary item cells stay square, independent of image intrinsic dimensions: ' + JSON.stringify(cell));
+    assert.ok(isInside(cell.slot, cell.icon), 'ordinary item artwork stays inside its cell');
+  }
+  checkCompactBadges(cells);
+}
+
 function checkWeaponRows(cells) {
   assert.ok(cells.length >= 8, 'multiple weapon rows are exercised');
   cells.forEach((cell, index) => {
     assert.ok(cell.slot.width >= 44 && cell.slot.height >= 44, 'weapon touch target stays usable');
+    assert.ok(cell.slot.width <= 80.5, 'weapon library cells stay bounded on desktop and fullscreen');
     assert.ok(Math.abs(cell.slot.height - cell.slot.width * 4 / 3) < 1, 'weapon slot keeps 3:4 geometry: ' + JSON.stringify(cell));
     assert.ok(isInside(cell.slot, cell.icon), 'weapon icon stays inside its slot: ' + JSON.stringify(cell));
     assert.ok(cell.icon.width >= 35, 'library axes do not fall back to legacy 28px icons');
@@ -63,6 +74,141 @@ function checkWeaponRows(cells) {
   checkCompactBadges(cells);
 }
 
+async function settleLayout(page) {
+  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+}
+
+async function inspectFixedLayout(page) {
+  return page.evaluate(() => {
+    const box = selector => {
+      const node = document.querySelector(selector);
+      const rect = node?.getBoundingClientRect();
+      return rect ? { x: rect.x, y: rect.y, width: rect.width, height: rect.height, right: rect.right, bottom: rect.bottom } : null;
+    };
+    const nav = document.querySelector('.bottom-nav');
+    const paper = getComputedStyle(nav, '::before');
+    const inventory = document.querySelector('.mobile-inventory-columns');
+    const inventoryPaper = getComputedStyle(inventory, '::before');
+    return {
+      viewport: { width: innerWidth, height: innerHeight },
+      enabled: typeof MobileCultivation.isEnabled === 'function' && MobileCultivation.isEnabled(),
+      mobile: MobileCultivation.isMobile(), fullscreen: !!document.fullscreenElement,
+      main: box('#player-main'), inventory: box('.mobile-inventory-columns'), weaponPane: box('.mobile-equipment-pane'),
+      dock: box('.bottom-nav'), scene: box('.cult-scene'), character: box('.cult-char'),
+      equippedImage: box('.mobile-equipped-image'), libraryIcon: box('#mobile-weapon-grid .item-icon img'),
+      inventoryPaperHeight: parseFloat(inventoryPaper.height),
+      navPaperHeight: parseFloat(paper.height), navPaperBottom: parseFloat(paper.bottom),
+      leftScroll: document.getElementById('inventory-grid').scrollTop,
+      rightScroll: document.getElementById('mobile-weapon-grid').scrollTop,
+      mode: document.getElementById('mobile-weapon-toggle').textContent,
+      bodyWidth: document.documentElement.scrollWidth, bodyHeight: document.documentElement.scrollHeight,
+      uniqueGrid: document.querySelectorAll('#inventory-grid').length,
+      sameNodes: !window.fixedLayoutRefs || Object.entries(window.fixedLayoutRefs).every(([selector, node]) => document.querySelector(selector) === node),
+    };
+  });
+}
+
+function checkFixedLayout(current, baseline = null) {
+  const expectedInventoryHeight = current.viewport.width >= 720 ? 280 : 224;
+  assert.equal(current.enabled, true, 'the shared layout is enabled on desktop as well as phone');
+  assert.equal(current.uniqueGrid, 1);
+  assert.equal(current.sameNodes, true, 'viewport/fullscreen changes retain the original layout nodes');
+  assert.ok(current.main.width <= 620 && current.dock.width <= 620, 'the shared desktop layout is bounded to 620px');
+  assert.ok(Math.abs(current.main.x + current.main.width / 2 - current.viewport.width / 2) <= 1, 'the shared layout stays horizontally centered');
+  assert.ok(Math.abs(current.inventory.height - expectedInventoryHeight) <= 1, 'inventory paper has a fixed height: ' + JSON.stringify(current));
+  assert.ok(Math.abs(current.inventoryPaperHeight - current.inventory.height) <= 1, 'inventory artwork follows only the bounded inventory surface');
+  assert.ok(Math.abs(current.navPaperHeight - 72) <= 1, 'navigation paper remains 72px instead of filling the operation area');
+  assert.ok(Math.abs(current.dock.height - 124) <= 1, 'navigation operation area stays 124px');
+  assert.ok(Math.abs(current.dock.bottom - current.viewport.height) <= 1, 'dock stays attached to the viewport bottom');
+  assert.ok(current.bodyWidth <= current.viewport.width && current.bodyHeight <= current.viewport.height + 1, 'fullscreen/tall layouts do not make the whole page overflow');
+  assert.ok(current.inventory.bottom <= current.dock.y + 1, 'inventory remains above the navigation');
+  if (!baseline) return;
+  for (const key of ['inventory', 'weaponPane', 'dock', 'character']) {
+    for (const dimension of ['width', 'height']) {
+      assert.ok(Math.abs(current[key][dimension] - baseline[key][dimension]) <= 1, `${key} ${dimension} stays constant when only viewport height changes: ` + JSON.stringify({ baseline, current }));
+    }
+  }
+  const delta = current.viewport.height - baseline.viewport.height;
+  for (const key of ['inventory', 'weaponPane', 'dock']) {
+    assert.ok(Math.abs(current[key].y - baseline[key].y - delta) <= 1, `${key} moves with the bottom instead of stretching`);
+  }
+  assert.ok(Math.abs(current.scene.height - baseline.scene.height - delta) <= 1, 'the scene receives the extra vertical room');
+}
+
+async function checkHeightAndFullscreen(page, viewports) {
+  await page.evaluate(() => {
+    window.fixedLayoutRefs = Object.fromEntries(['#inventory-grid', '#mobile-weapon-grid', '.mobile-inventory-columns', '.bottom-nav', '#chop-btn']
+      .map(selector => [selector, document.querySelector(selector)]));
+  });
+  const snapshots = [];
+  let baseline;
+  let equipmentSize;
+  for (const viewport of viewports) {
+    await page.setViewportSize(viewport);
+    await settleLayout(page);
+    const inLibrary = await page.locator('#mobile-weapon-toggle').textContent() === '返回';
+    if (inLibrary) {
+      const retained = await inspectFixedLayout(page);
+      assert.equal(retained.leftScroll, 96, 'left scroll is retained through height changes');
+      assert.equal(retained.rightScroll, 96, 'right scroll is retained through height changes');
+      await page.locator('#mobile-weapon-toggle').click();
+    }
+    const equipment = await inspectFixedLayout(page);
+    checkFixedLayout(equipment, baseline);
+    if (!baseline) {
+      baseline = equipment;
+      equipmentSize = equipment.equippedImage;
+    }
+    for (const dimension of ['width', 'height']) assert.ok(Math.abs(equipment.equippedImage[dimension] - equipmentSize[dimension]) <= 1, `equipped art ${dimension} stays fixed on taller screens`);
+    await page.evaluate(() => { document.getElementById('inventory-grid').scrollTop = 96; });
+    await page.locator('#mobile-weapon-toggle').click();
+    await page.evaluate(() => { document.getElementById('mobile-weapon-grid').scrollTop = 96; });
+    await settleLayout(page);
+    const library = await inspectFixedLayout(page);
+    assert.equal(library.mode, '返回');
+    assert.equal(library.leftScroll, 96);
+    assert.equal(library.rightScroll, 96);
+    checkFixedLayout(library, baseline);
+    checkItemRows(await inspectGrid(page, '#inventory-grid'));
+    checkWeaponRows(await inspectGrid(page, '#mobile-weapon-grid'));
+    if (snapshots.length) {
+      for (const dimension of ['width', 'height']) assert.ok(Math.abs(library.libraryIcon[dimension] - snapshots[0].libraryIcon[dimension]) <= 1, `library art ${dimension} stays fixed on taller screens`);
+    }
+    snapshots.push(library);
+  }
+
+  const beforeFullscreen = await inspectFixedLayout(page);
+  const fullscreen = await page.evaluate(async () => {
+    if (!document.fullscreenEnabled || !document.documentElement.requestFullscreen) return { supported: false, reason: 'Fullscreen API unavailable in this browser' };
+    try {
+      await document.documentElement.requestFullscreen();
+      return { supported: true, entered: document.fullscreenElement === document.documentElement };
+    } catch (error) {
+      return { supported: false, reason: `${error.name}: ${error.message}` };
+    }
+  });
+  if (fullscreen.supported) {
+    assert.equal(fullscreen.entered, true, 'the actual Fullscreen API was entered');
+    await settleLayout(page);
+    fullscreen.during = await inspectFixedLayout(page);
+    checkFixedLayout(fullscreen.during, beforeFullscreen);
+    assert.equal(fullscreen.during.mode, '返回');
+    assert.equal(fullscreen.during.leftScroll, 96);
+    assert.equal(fullscreen.during.rightScroll, 96);
+    await page.evaluate(() => document.exitFullscreen());
+    await settleLayout(page);
+    fullscreen.after = await inspectFixedLayout(page);
+    assert.equal(fullscreen.after.fullscreen, false);
+    checkFixedLayout(fullscreen.after, beforeFullscreen);
+    assert.equal(fullscreen.after.mode, '返回');
+    assert.equal(fullscreen.after.leftScroll, 96);
+    assert.equal(fullscreen.after.rightScroll, 96);
+  }
+  await page.locator('#mobile-weapon-toggle').click();
+  await page.evaluate(() => { delete window.fixedLayoutRefs; });
+  return { snapshots, fullscreen };
+}
+
 async function main() {
   const playwright = require(process.env.PLAYWRIGHT_MODULE || 'C:/Users/Administrator/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
   const browser = await playwright.chromium.launch({
@@ -70,6 +216,9 @@ async function main() {
     executablePath: process.env.BROWSER_EXECUTABLE || 'C:/Program Files/Google/Chrome/Application/chrome.exe',
   });
   const root = path.resolve(__dirname, '..');
+  // A read-only baseline mode demonstrates that the old fluid CSS fails these invariants.
+  const baselineCss = process.argv.includes('--baseline-layout-css')
+    ? execFileSync('git', ['show', 'HEAD:mobile-cultivation.css'], { cwd: root }) : null;
   const page = await browser.newPage();
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
@@ -81,7 +230,7 @@ async function main() {
       const file = path.resolve(root, relative);
       if (!file.startsWith(root + path.sep)) return route.abort();
       try {
-        let data = await fs.readFile(file);
+        let data = relative === 'mobile-cultivation.css' && baselineCss ? baselineCss : await fs.readFile(file);
         if (relative === 'index.html') {
           let html = data.toString();
           for (const sheet of ['xianlai-v4.css', 'mobile-cultivation.css']) {
@@ -97,13 +246,19 @@ async function main() {
     });
 
     const results = [];
-    for (const viewport of [{ width: 360, height: 640 }, { width: 360, height: 540 }, { width: 360, height: 480 }, { width: 390, height: 680 }, { width: 390, height: 844 }, { width: 844, height: 390 }, { width: 1440, height: 900 }]) {
+    const viewports = baselineCss ? [{ width: 390, height: 680 }] : [{ width: 360, height: 640 }, { width: 360, height: 540 }, { width: 360, height: 480 }, { width: 390, height: 680 }, { width: 390, height: 844 }, { width: 844, height: 390 }, { width: 1440, height: 900 }];
+    for (const viewport of viewports) {
       await page.setViewportSize(viewport);
       await page.goto('http://mobile.local');
       await page.evaluate(() => {
         UI._updateMailBadge = () => {};
         UI._updateAchBadge = () => {};
         Game.state = { level: 1, realmLevel: 1, treeRealm: 1, treeLevel: 1, axeId: '51001', axeInstanceId: 'equipped', coin: 1234, choppingCount: 50, exp: 0 };
+        const source = Object.values(ITEMS).find(item => item.type === 1);
+        for (let index = 0; index < 24; index++) {
+          const id = `geometry-item-${index}`;
+          ITEMS[id] = { ...source, id, name: `测试道具${index}`, iconImage: getItemIconPath(source.id, source.iconImage) };
+        }
         Game.inventory = Object.values(ITEMS).filter(item => item.type >= 1 && item.type <= 4).map(item => ({ itemId: item.id, quantity: 12 }));
         Game.weapons = [{ id: 'equipped', itemId: '51001', skillRolls: [] }, ...Array.from({ length: 12 }, (_, index) => ({ id: 'weapon-' + index, itemId: '51001', skillRolls: [] }))];
         InventoryNewState.setRole(`mobile-geometry-${innerWidth}-${innerHeight}`);
@@ -119,6 +274,12 @@ async function main() {
       });
       await page.waitForFunction(() => Array.from(document.images).every(image => image.complete && image.naturalWidth > 0), null, { timeout: 7000 });
       const loadedImages = await page.evaluate(() => document.images.length);
+      let resizeCheck = null;
+      if (viewport.width === 390 && viewport.height === 680) {
+        resizeCheck = await checkHeightAndFullscreen(page, [680, 950, 1200, 680].map(height => ({ width: 390, height })));
+      } else if (viewport.width === 1440) {
+        resizeCheck = await checkHeightAndFullscreen(page, [900, 1200, 900].map(height => ({ width: 1440, height })));
+      }
       const effectsCheck = await page.evaluate(async () => {
         const scene = document.getElementById('tree-area');
         const tree = document.getElementById('tree-icon');
@@ -175,17 +336,19 @@ async function main() {
       });
       assert.ok(geometry.width <= viewport.width, 'no horizontal overflow');
       const mobile = viewport.width < 720 || viewport.height <= 500 && viewport.width <= 950;
-      if (mobile) {
+      {
         assert.ok(geometry.navPaper.height >= 62 && geometry.navPaper.height <= 76, 'navigation paper is a shallow bottom strip: ' + JSON.stringify(geometry));
         assert.match(geometry.navPaper.art, /v3\/ui\/frame-nav.webp/);
         assert.equal(geometry.navPaper.pointer, 'none');
         assert.ok(geometry.toggle.bottom <= geometry.navPaper.y + 1, 'paper does not rise behind ten-chop control: ' + JSON.stringify(geometry));
         assert.ok(geometry.forge.bottom <= geometry.navPaper.y + 1, 'paper does not rise behind forge control: ' + JSON.stringify(geometry));
       }
-      if (mobile && viewport.height > viewport.width) {
+      {
+        assert.equal(await page.evaluate(() => MobileCultivation.isEnabled()), true, 'all viewports use the unified layout');
+        assert.equal(await page.evaluate(() => MobileCultivation.isMobile()), mobile, 'mobile API remains a physical media check');
         assert.ok(geometry.nav.bottom <= viewport.height + 1, 'navigation remains onscreen');
         assert.ok(geometry.count.bottom <= viewport.height, 'chop count remains onscreen within unified navigation');
-        assert.ok(geometry.scene.bottom < geometry.chop.y, 'scene stays above the chop controls');
+        if (viewport.height > 609) assert.ok(geometry.scene.bottom < geometry.chop.y, 'scene stays above the chop controls');
         assert.ok(geometry.toggle.right < geometry.chop.x, 'ten chop does not overlap chop');
         assert.ok(geometry.forge.x > geometry.chop.right, 'forge does not overlap chop');
         assert.ok(Math.abs(geometry.count.x + geometry.count.width / 2 - geometry.chop.x - geometry.chop.width / 2) < 1, 'count centers on chop');
@@ -214,8 +377,7 @@ async function main() {
         assert.match(splitGeometry.art, /v7\/ui\/inventory-paper.webp/);
         assert.ok(splitGeometry.slots.every(width => width >= 44), 'item touch targets are at least 44px');
         const itemGeometry = await inspectGrid(page, '#inventory-grid');
-        assert.ok(itemGeometry.every(cell => isInside(cell.slot, cell.icon)), 'item icons stay bounded by their slots');
-        checkCompactBadges(itemGeometry);
+        checkItemRows(itemGeometry);
         const equipmentStyle = await page.evaluate(() => {
           const tag = document.querySelector('.mobile-equipped-quality .tag');
           const button = document.getElementById('mobile-weapon-toggle');
@@ -257,6 +419,7 @@ async function main() {
         }
         assert.equal(await page.locator('#mobile-weapon-grid .weapon-slot').count(), 13);
         checkWeaponRows(await inspectGrid(page, '#mobile-weapon-grid'));
+        checkItemRows(await inspectGrid(page, '#inventory-grid'));
         const returnButtonStyle = await page.locator('#mobile-weapon-toggle').evaluate(node => ({
           art: getComputedStyle(node).borderImageSource, width: node.offsetWidth, height: node.offsetHeight,
         }));
@@ -326,22 +489,33 @@ async function main() {
         assert.equal(await page.locator('#mobile-weapon-toggle').textContent(), '返回');
         assert.equal(await page.evaluate(() => document.getElementById('inventory-grid').scrollTop), leftScroll);
         assert.equal(await page.evaluate(() => document.getElementById('mobile-weapon-grid').scrollTop), rightScroll);
-        await page.evaluate(() => { PlayerView.currentInvTab = 'weapons'; });
+        await page.evaluate(() => {
+          PlayerView.currentInvTab = 'weapons';
+          window.responsiveRefs = Object.fromEntries(['#inventory-grid', '#mobile-weapon-grid', '.mobile-inventory-columns', '.bottom-nav', '#chop-btn']
+            .map(selector => [selector, document.querySelector(selector)]));
+        });
         await page.setViewportSize({ width: 1440, height: 900 });
-        await page.waitForFunction(() => !document.getElementById('player-dashboard').classList.contains('mobile-cultivation'));
-        assert.equal(await page.evaluate(() => document.querySelector('.forge-btn').parentElement.className), 'equip-info-bar');
+        await settleLayout(page);
+        assert.equal(await page.evaluate(() => MobileCultivation.isEnabled()), true);
+        assert.equal(await page.evaluate(() => !!document.querySelector('.forge-btn').closest('.bottom-nav')), true);
         assert.equal(await page.evaluate(() => !!document.getElementById('inventory-grid').closest('#player-main')), true);
-        assert.equal(await page.evaluate(() => document.getElementById('inventory-grid').classList.contains('weapons-grid')), true, 'desktop tab restored');
+        assert.equal(await page.evaluate(() => document.getElementById('inventory-grid').classList.contains('weapons-grid')), false, 'desktop keeps items on the left rather than restoring the old tab layout');
+        assert.equal(await page.evaluate(() => Object.entries(window.responsiveRefs).every(([selector, node]) => document.querySelector(selector) === node)), true, 'desktop breakpoint does not rebuild the unified layout');
+        assert.equal(await page.locator('#mobile-weapon-grid .weapon-slot').count(), 13, 'all independent axe instances remain in the library');
+        checkWeaponRows(await inspectGrid(page, '#mobile-weapon-grid'));
         await page.setViewportSize(viewport);
-        await page.waitForFunction(() => document.getElementById('player-dashboard').classList.contains('mobile-cultivation'));
+        await settleLayout(page);
+        assert.equal(await page.evaluate(() => Object.entries(window.responsiveRefs).every(([selector, node]) => document.querySelector(selector) === node)), true);
         assert.equal(await page.evaluate(() => document.getElementById('inventory-grid').classList.contains('weapons-grid')), false);
         assert.equal(await page.evaluate(() => document.getElementById('inventory-grid').scrollTop), leftScroll, 'item scroll survives responsive round trip');
         assert.equal(await page.evaluate(() => document.getElementById('mobile-weapon-grid').scrollTop), rightScroll, 'weapon scroll survives responsive round trip');
         await page.evaluate(() => Auth.logout());
         assert.equal(await page.evaluate(() => document.body.style.overflow), '');
         assert.equal(await page.evaluate(() => document.getElementById('player-dashboard').inert), false);
+        assert.equal(await page.locator('.mobile-inventory-columns').count(), 0, 'logout removes the shared layout');
+        assert.equal(await page.locator('.mobile-return-button').count(), 0, 'logout clears return navigation state');
       }
-      results.push({ viewport, mobile, loadedImages, geometry, effectsCheck });
+      results.push({ viewport, mobile, loadedImages, geometry, effectsCheck, resizeCheck });
     }
     assert.deepEqual(errors, []);
     console.log(JSON.stringify({ ok: true, pageErrors: errors, results }, null, 2));

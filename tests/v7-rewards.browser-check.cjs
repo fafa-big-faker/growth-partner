@@ -44,6 +44,14 @@ async function main() {
         };
         const buttonRect = button ? rect(button) : null;
         const buttonPoint = buttonRect ? { x: buttonRect.x + buttonRect.width / 2, y: buttonRect.y + buttonRect.height / 2 } : null;
+        let buttonTextOffset = null;
+        if (button) {
+          const range = document.createRange();
+          range.selectNodeContents(button);
+          const textRect = range.getBoundingClientRect();
+          buttonTextOffset = { x: textRect.x + textRect.width / 2 - buttonPoint.x,
+            y: textRect.y + textRect.height / 2 - buttonPoint.y };
+        }
         const items = [...document.querySelectorAll('.reward-item')].map(item => {
           const box = item.getBoundingClientRect();
           const name = item.querySelector('.reward-item-name');
@@ -75,7 +83,8 @@ async function main() {
           modal: rect(modal), header: rect(header), body: rect(body), footer: footer ? rect(footer) : null,
           bodyScrollTop: body.scrollTop, bodyScrollHeight: body.scrollHeight, bodyHeight: body.clientHeight,
           bodyOverflow: getComputedStyle(body).overflowY, modalOverflow: getComputedStyle(modal).overflowY,
-          buttonPoint, buttonAccessible: buttonPoint ? button.contains(document.elementFromPoint(buttonPoint.x, buttonPoint.y)) : false,
+          buttonPoint, buttonRect, buttonTextOffset, buttonLabel: button?.textContent.trim() || '',
+          buttonAccessible: buttonPoint ? button.contains(document.elementFromPoint(buttonPoint.x, buttonPoint.y)) : false,
           artWidth: document.querySelector('.reward-item--large .reward-art')?.getBoundingClientRect().width || null,
           pageFits: document.documentElement.scrollWidth <= window.innerWidth + 1 };
       });
@@ -101,6 +110,11 @@ async function main() {
       assert.ok(geometry.footer.y >= geometry.body.bottom - 1, 'footer never overlaps the scroll body');
       assert.ok(geometry.footer.bottom <= viewport.height - 11);
       assert.equal(geometry.buttonAccessible, true, 'confirmation is clickable before any scrolling');
+      assert.ok(geometry.buttonRect.height >= 44, 'reward confirmation retains its 44px click target');
+      assert.ok(Math.abs(geometry.buttonTextOffset.x) <= 1,
+        `${geometry.buttonLabel} text is horizontally centered: ${JSON.stringify(geometry.buttonTextOffset)}`);
+      assert.ok(Math.abs(geometry.buttonTextOffset.y) <= 1,
+        `${geometry.buttonLabel} text is vertically centered: ${JSON.stringify(geometry.buttonTextOffset)}`);
     }
 
     async function closeFromCurrentPosition(geometry) {
@@ -207,6 +221,7 @@ async function main() {
       assert.equal(details.color, 'rgb(131, 93, 9)'); assert.equal(details.fits, true);
       results.push({ viewport, images: images.length, singleItems: single.items.length, tenRows: 2,
         singleSize: compact.modal, singleArt: compact.artWidth,
+        singleButtonTextOffset: compact.buttonTextOffset, tenButtonTextOffset: ten.buttonTextOffset,
         multipleExtraRows: multiple.extraRows.length, allBuffsFooterVisible: allBuffs.buttonAccessible, details });
     }
     assert.deepEqual(pageErrors, []);

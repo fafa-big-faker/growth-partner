@@ -22,6 +22,11 @@
       return navigation ? navigation.media.matches : !!env.matchMedia?.(MEDIA_QUERY).matches;
     }
 
+    // The original mobile layout now serves every player viewport.
+    function isEnabled() {
+      return !!doc?.getElementById('player-dashboard') && !!env.matchMedia;
+    }
+
     function move(node, host) {
       const marker = doc.createComment('mobile-cultivation-home');
       node.before(marker);
@@ -42,7 +47,7 @@
 
     function applyNavigation() {
       if (!navigation) return;
-      const mobile = isMobile();
+      const mobile = isEnabled();
       const cultivation = navigation.page === 'cultivate';
       navigation.dashboard.classList.toggle('mobile-player-navigation', mobile);
       navigation.dashboard.dataset.mobilePage = navigation.page;
@@ -117,7 +122,7 @@
     }
 
     function captureScroll() {
-      if (!state || state.transitioning || (state.mobile !== null && isMobile() !== state.mobile)) return;
+      if (!state || state.transitioning || (state.mobile !== null && isEnabled() !== state.mobile)) return;
       state.scroll[state.tab] = state.grid.scrollTop;
       if (state.mobile) {
         const host = state.mode === 'library' ? state.weaponGrid : state.equipmentContent;
@@ -180,14 +185,14 @@
     }
 
     function switchMode() {
-      if (!state || isMobile() === state.mobile) return;
+      if (!state || isEnabled() === state.mobile) return;
       if (state.mobile !== null) captureScroll();
       const scroll = { ...state.scroll };
       const rightScroll = { ...state.rightScroll };
       // Moving a scroller to a larger or hidden host can clamp scrollTop to zero.
       // Preserve the user's offsets until the destination layout is populated.
       state.transitioning = true;
-      state.mobile = isMobile();
+      state.mobile = isEnabled();
       state.dashboard.classList.toggle('mobile-cultivation', state.mobile);
       state.dual.hidden = !state.mobile;
       if (state.mobile) {
@@ -255,7 +260,7 @@
       }
       grid.setAttribute('role', 'tabpanel');
       listen(state, state.modeButton, 'click', () => showMode(state.mode === 'library' ? 'equipment' : 'library'));
-      const canCapture = () => state && !state.transitioning && isMobile() === state.mobile;
+      const canCapture = () => state && !state.transitioning && isEnabled() === state.mobile;
       listen(state, grid, 'scroll', () => {
         if (canCapture()) state.scroll[state.tab] = grid.scrollTop;
       }, { passive: true });
@@ -335,7 +340,7 @@
       return {};
     }
 
-    return { mount, unmount, isMobile, setPage, open, close, beforeInventoryRender, refreshInventory, refreshEquipment };
+    return { mount, unmount, isMobile, isEnabled, setPage, open, close, beforeInventoryRender, refreshInventory, refreshEquipment };
   }
 
   return { createController };
