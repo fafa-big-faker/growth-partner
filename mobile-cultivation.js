@@ -56,7 +56,7 @@
       navigation.center.setAttribute('aria-label', mobile && !cultivation ? '返回修仙' : '修仙');
       navigation.centerText.textContent = mobile && !cultivation ? '返回' : navigation.originalText;
       if (navigation.centerImage) {
-        const src = mobile && !cultivation ? 'assets/runtime/ui/undo-2.svg' : navigation.originalSource;
+        const src = mobile && !cultivation ? 'assets/runtime/ink-controls/return-arrow.webp?v=ink-controls-20260909' : navigation.originalSource;
         if (navigation.centerImage.getAttribute('src') !== src) navigation.centerImage.setAttribute('src', src);
       }
     }

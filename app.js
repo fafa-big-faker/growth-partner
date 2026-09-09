@@ -259,6 +259,13 @@ function escapeHtml(value) {
   })[char]);
 }
 
+function getExperiencePercent(exp, expMax) {
+  const value = Number(exp);
+  const maximum = Number(expMax);
+  if (!Number.isFinite(value) || !Number.isFinite(maximum) || maximum <= 0) return 0;
+  return Math.min(100, Math.max(0, value / maximum * 100));
+}
+
 const AXE_ANIMATION_IDS = ['51001', '51002', '52001', '52002', '53001', '53002', '54001', '54002', '55001'];
 
 function getAxeIdleFrames(itemId) {
@@ -307,7 +314,8 @@ function getInitialGameImageAssets(axeId = null) {
   const currentAxeFrames = axeId
     ? [...getAxeIdleFrames(axeId), ...getAxeChopFrames(axeId)]
     : [];
-  const feedbackFiles = ['assets/runtime/ui/close.svg', 'assets/runtime/ui/undo-2.svg', 'assets/runtime/effects/leaf-ink.webp?v=ink-feedback-20260908'];
+  const feedbackFiles = ['assets/runtime/ui/close.svg', 'assets/runtime/effects/leaf-ink.webp?v=ink-feedback-20260908',
+    ...['return-arrow', 'exp-track', 'exp-fill'].map(name => `assets/runtime/ink-controls/${name}.webp?v=ink-controls-20260909`)];
   const v5Files = ['assets/runtime/v5/ui/task-paper.webp', 'assets/runtime/v5/ui/shop-paper.webp'];
   const v6QualityFiles = [1, 2, 3, 4, 5].map(quality => `assets/runtime/v6/quality/quality-${quality}.webp?v=xianlai-v6-20260908`);
   const v7Files = ['ui/inventory-paper.webp', ...[1, 2, 3, 4, 5].map(quality => `rewards/quality-${quality}.webp`)]
@@ -2390,10 +2398,18 @@ const UI = {
     const realm = REALMS.find(r => r.level == Game.state.realmLevel) || REALMS[0];
     const realmEl = document.querySelector('.status-realm-text');
     if (realmEl) realmEl.textContent = `${Game.state.level}级 · ${realm.name}`;
-    const expFill = document.querySelector('.status-exp-fill');
-    if (expFill) expFill.style.width = `${Math.min(100, Game.state.exp / expMax * 100)}%`;
+    const expBar = document.querySelector('.status-exp-bar');
+    if (expBar) {
+      const percent = getExperiencePercent(Game.state.exp, expMax);
+      expBar.style.setProperty('--exp-progress', `${percent}%`);
+      expBar.setAttribute('aria-valuenow', String(percent));
+      expBar.setAttribute('aria-valuetext', `${Game.state.exp}/${expMax}`);
+    }
     const expText = document.querySelector('.status-exp-text');
-    if (expText) expText.textContent = `${Game.state.exp}/${expMax}`;
+    if (expText) {
+      expText.textContent = `${Game.state.exp}/${expMax}`;
+      expText.style.setProperty('--exp-text-width', `${String(expMax).length * 2 + 1}ch`);
+    }
     const chopBadge = document.querySelector('.chop-count-badge');
     if (chopBadge) chopBadge.textContent = Game.state.choppingCount;
     const coinEl = document.getElementById('coin-count');
@@ -2860,8 +2876,8 @@ const PlayerView = {
         <div class="status-center">
           <div class="status-realm">${renderFeatureIcon('icon-cultivate', '', 'status-realm-icon')}<span class="status-realm-text">${Game.state.level}级 · ${realm.name}</span></div>
           <div class="status-exp-row">
-            <div class="status-exp-bar"><div class="status-exp-fill" style="width:${Math.min(100, Game.state.exp / expMax * 100)}%"></div></div>
-            <span class="status-exp-text">${Game.state.exp}/${expMax}</span>
+            <div class="status-exp-bar" role="progressbar" aria-label="角色经验" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${getExperiencePercent(Game.state.exp, expMax)}" aria-valuetext="${Game.state.exp}/${expMax}" style="--exp-progress:${getExperiencePercent(Game.state.exp, expMax)}%"><div class="status-exp-fill" aria-hidden="true"></div></div>
+            <span class="status-exp-text" style="--exp-text-width:${String(expMax).length * 2 + 1}ch">${Game.state.exp}/${expMax}</span>
           </div>
         </div>
         ${nextRealm ? `

@@ -1,0 +1,139 @@
+{
+  "script": "scripts/import_ink_controls.py",
+  "minimumAlpha": 5,
+  "sources": {
+    "arrow": {
+      "file": "仙来-返回箭头.png",
+      "size": [
+        1254,
+        1254
+      ],
+      "mode": "RGBA",
+      "alphaRange": [
+        0,
+        255
+      ],
+      "sha256": "a31c29515989c2061616bcef9d8a9b3603aa3f828533e00aef797bd1904cbddd"
+    },
+    "experience": {
+      "file": "仙来-等级经验条图集.png",
+      "size": [
+        1536,
+        1024
+      ],
+      "mode": "RGBA",
+      "alphaRange": [
+        0,
+        254
+      ],
+      "sha256": "a53ada5fc4f945e8f3b64f8991322890d4ca57e921290d11b3a1214f97c03f04"
+    }
+  },
+  "assets": {
+    "return-arrow": {
+      "path": "assets/images/ink-controls/return-arrow.png",
+      "size": [
+        743,
+        560
+      ],
+      "alphaRange": [
+        0,
+        255
+      ],
+      "alphaBounds": [
+        12,
+        12,
+        731,
+        548
+      ],
+      "source": "arrow",
+      "cell": [
+        0,
+        0,
+        1254,
+        1254
+      ],
+      "contentBounds": [
+        267,
+        362,
+        986,
+        898
+      ],
+      "padding": 12
+    },
+    "exp-track": {
+      "path": "assets/images/ink-controls/exp-track.png",
+      "size": [
+        1333,
+        64
+      ],
+      "alphaRange": [
+        0,
+        254
+      ],
+      "alphaBounds": [
+        4,
+        4,
+        1329,
+        60
+      ],
+      "source": "experience",
+      "cell": [
+        0,
+        0,
+        1536,
+        512
+      ],
+      "contentBounds": [
+        106,
+        288,
+        1431,
+        344
+      ],
+      "padding": 4,
+      "slice": [
+        8,
+        61,
+        8,
+        61
+      ]
+    },
+    "exp-fill": {
+      "path": "assets/images/ink-controls/exp-fill.png",
+      "size": [
+        1333,
+        64
+      ],
+      "alphaRange": [
+        0,
+        254
+      ],
+      "alphaBounds": [
+        4,
+        4,
+        1329,
+        60
+      ],
+      "source": "experience",
+      "cell": [
+        0,
+        512,
+        1536,
+        1024
+      ],
+      "contentBounds": [
+        106,
+        682,
+        1431,
+        738
+      ],
+      "padding": 4,
+      "slice": [
+        8,
+        61,
+        8,
+        61
+      ]
+    }
+  }
+}

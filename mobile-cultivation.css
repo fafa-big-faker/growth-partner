@@ -100,9 +100,43 @@
   #player-dashboard.mobile-player-navigation .bottom-nav :is(.ten-toggle, .forge-btn) { position: relative; top: -4px; }
   #player-dashboard.mobile-player-navigation .bottom-nav .nav-item.mobile-return-button { width: var(--mobile-circle-size); height: var(--mobile-circle-size); min-height: 0; justify-self: center; align-self: center; padding: 0; border: 0; background: transparent url('assets/runtime/v2/ui/chop-button-bg.webp') center / contain no-repeat; box-shadow: none; filter: drop-shadow(0 5px 8px rgb(31 46 40 / 20%)); transition: filter 160ms ease, transform 160ms ease; }
   #player-dashboard.mobile-player-navigation .bottom-nav .mobile-return-button .nav-icon { display: grid; place-items: center; width: 100%; height: 100%; margin: 0; }
-  #player-dashboard.mobile-player-navigation .bottom-nav .mobile-return-button .nav-icon-img { width: 52px; height: 52px; filter: none; animation: none; transform: none; }
+  #player-dashboard.mobile-player-navigation .bottom-nav .mobile-return-button .nav-icon-img { width: 60px; height: 60px; object-fit: contain; filter: none; animation: none; transform: none; }
   #player-dashboard.mobile-player-navigation .bottom-nav .mobile-return-button .nav-text { display: none; }
   #player-dashboard.mobile-player-navigation .bottom-nav .mobile-return-button:active { transform: scale(.95); }
+}
+
+#player-dashboard .status-exp-bar {
+  position: relative;
+  min-width: 0;
+  height: 10px;
+  background: none;
+  border: 0;
+  border-radius: 0;
+  overflow: hidden;
+}
+#player-dashboard .status-exp-bar::before,
+#player-dashboard .status-exp-fill {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0 solid transparent;
+  border-image: url('assets/runtime/ink-controls/exp-track.webp?v=ink-controls-20260909') 6 44 fill / 1px 10px / 0 stretch;
+  background: none;
+  border-radius: 0;
+  pointer-events: none;
+}
+#player-dashboard .status-exp-bar::before { content: ''; }
+#player-dashboard .status-exp-fill {
+  border-image-source: url('assets/runtime/ink-controls/exp-fill.webp?v=ink-controls-20260909');
+  clip-path: inset(0 calc(100% - var(--exp-progress, 0%)) 0 0);
+  transition: clip-path 300ms ease;
+}
+#player-dashboard .status-exp-text {
+  width: var(--exp-text-width, 7ch);
+  font-family: ui-monospace, Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
 }
 
 @media (max-width: 374px) {
@@ -143,6 +177,7 @@
   #player-dashboard.mobile-player-navigation .bottom-nav .mobile-return-button:hover { filter: drop-shadow(0 6px 10px rgb(31 46 40 / 32%)); }
 }
 @media (prefers-reduced-motion: reduce) {
+  #player-dashboard .status-exp-fill { transition: none; }
   .mobile-weapon-toggle,
   #player-dashboard.mobile-player-navigation .bottom-nav .mobile-return-button { transition: none; }
 }

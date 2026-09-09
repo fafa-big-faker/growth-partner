@@ -181,7 +181,7 @@ node scripts\normalize_audio.js
 ## 11. 小型水墨反馈资源
 
 - 关闭图标为本地 `assets/runtime/ui/close.svg`，来自Lucide Static 0.468.0的X，使用ISC许可；同目录保留许可文本。仅修改墨色，不需要生成位图。
-- 手机底栏返回使用同版本Lucide的`assets/runtime/ui/undo-2.svg`，墨色#263c35、3px笔画，仍铺现有`v2/ui/chop-button-bg.webp`圆底；普通返回符号不需要重新生图。
+- 旧版返回符号`assets/runtime/ui/undo-2.svg`保留为历史资源。当前底栏已使用用户提供的水墨箭头，仍铺现有`v2/ui/chop-button-bg.webp`圆底；接入参数见第15节。
 - 落叶从原 `assets/images/v2/effects/effect-leaf-green.png`确定性提取，不覆盖原图。运行 `python scripts/extract_ink_leaf.py`，输出 `assets/images/effects/leaf-ink.png`、来源记录及 `assets/runtime/effects/leaf-ink.webp`。
 - 小叶48x64、无损透明WebP、当前1400字节。脚本使用实测轮廓去掉外圈，并转换为青灰色保留像素叶脉；源图尺寸变动时必须重新测量。
 - 运行 `python scripts/extract_ink_leaf.py --check`验证来源指纹、生成结果一致性、透明度和4KiB上限。此文件不依赖V2批量构建，更新叶片单独跑此脚本即可。
@@ -214,3 +214,14 @@ node scripts\normalize_audio.js
 - 纸面有效alpha边界为`61,114,1716,773`，裁切后加四周12px透明边，源PNG为1679x683，运行WebP为960x391。九宫格上/右/下/左源slice为`216/320/200/380`，运行slice为`124/183/114/217`，保留边角云叶及风纹。手机显示边框建议6至8px，不按源slice占用内容内边距；两栏与道具格由布局生成，不烘焙进纸面或再嵌套两张纸框。
 - 五张墨团位于`assets/runtime/v7/rewards/quality-1.webp`至`quality-5.webp`；纸面为`assets/runtime/v7/ui/inventory-paper.webp`。六张WebP共145,430字节（约142KiB），运行路径与首屏预载使用相同的`?v=xianlai-v7-20260909`。
 - 校验`python tests/xianlai-v7-assets.test.py`，检查精确资产数、来源指纹、原图逐像素重建、透明边、品质中心色、纸面可读留白及200KiB体积上限。再跑既有V5/V6图片回归；不得因新版本重建而覆盖旧图片。
+
+## 15. 返回箭头与等级经验槽
+
+- 原图仍在仓库同级`美术风格参考V7`，本组独立处理，不并入原V7六张资源构建。`仙来-返回箭头.png`实际1254x1254、RGBA；`仙来-等级经验条图集.png`实际1536x1024、RGBA。原图保持不变，来源SHA记录在`assets/images/ink-controls/source-manifest.json`，替换源图必须重新测量并更新脚本指纹，不盲沿用提示词坐标。
+- 执行`python scripts/import_ink_controls.py`一次同时输出PNG与WebP；`python scripts/import_ink_controls.py --check`逐字节重建验证且不写文件。该脚本仅写`assets/images/ink-controls/`及`assets/runtime/ink-controls/`，不要为这三张图片重新运行旧版全量构建。
+- 两图显示出的黑色或大光晕主要是alpha低于5的透明区残留RGB。仅清理alpha小于5的像素，保留黑色墨线和低透明度笔锋；不按RGB去黑、不另套会裁断轮廓的几何遮罩。运行缩图后同样清理极透明插值噪点。
+- 箭头实测有效范围为`267,362,986,898`，四边补12px，源PNG743x560，运行WebP160x121、4392字节。保持原宽高比；在现有圆形按钮背景里按约60px宽完整显示，不给箭头再烘焙圆底。
+- 空经验槽实测范围`106,288,1431,344`，满经验槽`106,682,1431,738`；二者主体均1325x56、水平端点一致。分别按实际槽体裁切并四边补4px，源PNG均1333x64，运行WebP均960x46，有效alpha边界均`2,3,957,42`。不得把整张半幅图或大光晕拿来缩放成经验槽。
+- 运行路径为`assets/runtime/ink-controls/return-arrow.webp`、`exp-track.webp`、`exp-fill.webp`，三张合计17604字节（约17.2KiB）。空槽6784字节，满槽6428字节；均quality90、保留无损透明通道。运行manifest保存精确尺寸、alpha边界、体积与切片参数。
+- 经验槽九宫格slice按上/右/下/左，源图`8/61/8/61`，运行`6/44/6/44`。两层在任何进度均使用相同完整槽尺寸；先固定纹理/端帽，再用裁切揭示填充，不能随进度压缩整张满槽图而移动左端、改变纹理或缩小右端帽。网页显示高度与文字由布局决定，不烘焙数字进图片。
+- 校验`python tests/ink-controls-assets.test.py`与脚本`--check`，覆盖准确三图、来源指纹、逐像素裁切、运行alpha保留、两槽对齐、墨色对比及体积。新素材实际URL和预载应使用完全相同缓存版本；原V7六张资源不得被覆盖。

@@ -1,0 +1,70 @@
+{
+  "return-arrow": {
+    "path": "assets/runtime/ink-controls/return-arrow.webp",
+    "size": [
+      160,
+      121
+    ],
+    "alphaRange": [
+      0,
+      255
+    ],
+    "alphaBounds": [
+      3,
+      2,
+      158,
+      119
+    ],
+    "bytes": 4392
+  },
+  "exp-track": {
+    "path": "assets/runtime/ink-controls/exp-track.webp",
+    "size": [
+      960,
+      46
+    ],
+    "alphaRange": [
+      0,
+      255
+    ],
+    "alphaBounds": [
+      2,
+      3,
+      957,
+      42
+    ],
+    "bytes": 6784,
+    "slice": [
+      6,
+      44,
+      6,
+      44
+    ],
+    "rendering": "Fixed complete texture; reveal fill by clipping, never scale by progress."
+  },
+  "exp-fill": {
+    "path": "assets/runtime/ink-controls/exp-fill.webp",
+    "size": [
+      960,
+      46
+    ],
+    "alphaRange": [
+      0,
+      255
+    ],
+    "alphaBounds": [
+      2,
+      3,
+      957,
+      42
+    ],
+    "bytes": 6428,
+    "slice": [
+      6,
+      44,
+      6,
+      44
+    ],
+    "rendering": "Fixed complete texture; reveal fill by clipping, never scale by progress."
+  }
+}

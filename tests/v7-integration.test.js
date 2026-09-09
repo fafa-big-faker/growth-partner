@@ -18,7 +18,8 @@ test('every V7 image is preloaded with the exact runtime cache key', () => {
     getItemIconPath() {},
   };
   const urls = vm.runInNewContext(`${preload}; getInitialGameImageAssets()`, context);
-  for (const url of [...RewardPresentation.getAssetUrls(), `assets/runtime/v7/ui/inventory-paper.webp?v=${version}`, 'assets/runtime/ui/undo-2.svg']) {
+  const controls = ['return-arrow', 'exp-track', 'exp-fill'].map(name => `assets/runtime/ink-controls/${name}.webp?v=ink-controls-20260909`);
+  for (const url of [...RewardPresentation.getAssetUrls(), `assets/runtime/v7/ui/inventory-paper.webp?v=${version}`, ...controls]) {
     assert.equal(urls.filter(candidate => candidate === url).length, 1, url);
     assert.ok(fs.statSync(path.join(root, url.split('?')[0])).size > 0, url);
   }
@@ -26,7 +27,8 @@ test('every V7 image is preloaded with the exact runtime cache key', () => {
 
 test('new modules load before application and paper/quality style before scrollbar overrides', () => {
   for (const file of ['mobile-cultivation.js', 'reward-presentation.js', 'mobile-cultivation.css', 'reward-presentation.css', 'app.js']) {
-    const codeVersion = file === 'reward-presentation.js' ? 'v7-layout-repair-20260909' : 'unified-layout-20260909';
+    const codeVersion = file === 'reward-presentation.js' ? 'v7-layout-repair-20260909'
+      : file === 'reward-presentation.css' ? 'unified-layout-20260909' : 'ink-controls-20260909';
     assert.ok(html.includes(`${file}?v=${codeVersion}`), file);
   }
   assert.ok(html.indexOf('src="reward-presentation.js') < html.indexOf('src="app.js'));

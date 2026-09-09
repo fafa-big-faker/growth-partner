@@ -21,10 +21,8 @@ test('every dismiss control uses the same licensed close symbol and safe native 
   assert.match(app, /type="button" class="modal-close ink-close" aria-label="关闭"/);
   const mobile = fs.readFileSync(path.join(root, 'mobile-cultivation.js'), 'utf8');
   assert.doesNotMatch(mobile, /mobile-inventory-overlay|mobile-inventory-close/);
-  assert.match(mobile, /assets\/runtime\/ui\/undo-2.svg/);
-  const arrow = fs.readFileSync(path.join(root, 'assets/runtime/ui/undo-2.svg'), 'utf8');
-  assert.match(arrow, /lucide-static v0.468.0/);
-  assert.match(arrow, /stroke="#263c35"/);
+  assert.match(mobile, /assets\/runtime\/ink-controls\/return-arrow\.webp\?v=ink-controls-20260909/);
+  assert.doesNotMatch(mobile, /assets\/runtime\/ui\/undo-2\.svg/);
   assert.match(modalCss, /\.modal \.ink-close\s*\{[^}]*width: 44px;[^}]*height: 44px;/);
   assert.match(modalCss, /\.ink-close:focus-visible/);
   assert.match(modalCss, /\.ink-close:active:not\(:disabled\)/);

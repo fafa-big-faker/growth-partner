@@ -479,7 +479,7 @@ async function main() {
           assert.equal(backGeometry.visibleText, '', 'return is an icon command, not a tiny text tab');
           assert.equal(backGeometry.background, geometry.chopArt, 'return reuses the actual chop circle artwork');
           for (const key of ['x', 'y', 'width', 'height']) assert.ok(Math.abs(backGeometry[key] - geometry.chop[key]) < 1, `return circle preserves chop ${key}: ` + JSON.stringify(backGeometry));
-          assert.match(backGeometry.image, /\/undo-2\.svg$/);
+          assert.match(backGeometry.image, /\/ink-controls\/return-arrow\.webp\?v=ink-controls-20260909$/);
           assert.ok(backGeometry.loaded && backGeometry.iconWidth >= 48 && backGeometry.iconHeight >= 48, 'return undo icon is loaded and prominent');
           assert.equal(await page.locator('#chop-btn:visible').count(), 0);
           assert.equal(await page.locator('.ten-toggle:visible').count(), 0);
