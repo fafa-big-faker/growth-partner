@@ -2198,6 +2198,7 @@ const Game = {
    ================================================================ */
 const Auth = {
   currentRole: 'player',
+  session: null,
   _loggingIn: false,
   _credentials: null,
   _warmup: null,
@@ -2300,6 +2301,7 @@ const Auth = {
         const retried = await AssetPreloader.preload(actorResult.failed);
         if (retried.failed.length) throw new Error('character artwork could not be loaded');
       }
+      this.session = account;
       if (typeof LoginArt !== 'undefined') LoginArt.setVisible(false);
       if (role === 'admin') {
         document.getElementById('login-screen').style.display = 'none';
@@ -2315,6 +2317,8 @@ const Auth = {
     } catch (error) {
       attemptActive = false;
       console.error('login initialization failed:', error);
+      this.session = null;
+      if (typeof FirstChopGuide !== 'undefined') FirstChopGuide.destroy();
       AudioManager.pauseBgm();
       Game.state = null;
       Game.inventory = [];
@@ -2350,6 +2354,7 @@ const Auth = {
   },
 
   logout() {
+    this.session = null;
     PlayerView.cancelChopPresentation();
     document.getElementById('player-dashboard').style.display = 'none';
     document.getElementById('admin-dashboard').style.display = 'none';
@@ -2884,6 +2889,43 @@ const PlayerView = {
     this._withdrawalCache.clear();
   },
 
+  startFirstChopGuide({ replay = false } = {}) {
+    if (typeof FirstChopGuide === 'undefined' || FirstChopGuide.isActive()) return false;
+    const account = Auth.session;
+    if (account?.role !== 'player' || !Game.state) return false;
+    if (replay ? account.environment !== 'test' : !FirstChopGuide.shouldStart({
+      role: account.role, environment: account.environment, totalChops: Game.state.totalChops,
+    })) return false;
+    const isCurrent = () => Auth.session === account && DB.playerRole === account.playerRole
+      && Boolean(Game.state) && Router.currentPlayerTab === 'cultivate'
+      && document.getElementById('player-dashboard')?.style.display === 'flex';
+    if (!isCurrent()) return false;
+    if (!(Number(Game.state.choppingCount) > 0)) {
+      if (replay) UI.toast('需要至少1次砍树次数才能重播引导', 'warn');
+      return false;
+    }
+    if ((typeof OperationGuard !== 'undefined' && OperationGuard.isBusy())
+        || document.querySelector('.modal-overlay')) {
+      if (replay) UI.toast('请先完成当前操作，再重播引导', 'warn');
+      return false;
+    }
+    return FirstChopGuide.start({
+      getTarget: () => document.getElementById('chop-btn'),
+      isCurrent,
+      onChop: async () => {
+        if (!isCurrent()) return false;
+        this._tenChopMode = false;
+        const toggle = document.getElementById('ten-chop-toggle');
+        if (toggle) toggle.checked = false;
+        return this.doChop();
+      },
+    });
+  },
+
+  replayFirstChopGuide() {
+    return this.startFirstChopGuide({ replay: true });
+  },
+
   async renderCultivate() {
     const main = document.getElementById('player-main');
     const mobileState = typeof MobileCultivation !== 'undefined' ? MobileCultivation.unmount({ preserve: true }) : null;
@@ -2914,6 +2956,8 @@ const PlayerView = {
           <button type="button" class="audio-toggle" aria-label="关闭声音" aria-pressed="false" title="关闭声音">
             <span class="audio-toggle-icon" aria-hidden="true">${renderFeatureIcon('icon-sound', '', 'audio-toggle-image')}</span>
           </button>
+          ${Auth.session?.role === 'player' && Auth.session?.environment === 'test'
+            ? '<button type="button" class="guide-replay-button" onclick="PlayerView.replayFirstChopGuide()" title="体验新手引导，正常消耗1次砍树次数">重播引导</button>' : ''}
         </div>
         <div class="res-pill res-coin" id="coin-pill" title="${escapeHtml(ITEMS['0']?.name || '游戏币')} · 游戏内货币，可在天道酬勤商店使用">
           <span class="res-icon">${renderItemIcon('0', '🪙', 'res-coin-img')}</span><span class="res-val" id="coin-count">${Game.state.coin || 0}</span>
@@ -2961,7 +3005,7 @@ const PlayerView = {
       <!-- ④ 操作区：砍树按钮 + 十连勾选 -->
       <div class="cult-action">
         <div class="action-chop-area">
-          <button class="chop-circle-btn" id="chop-btn" onclick="PlayerView.doChop()" ${Game.state.choppingCount <= 0 ? 'disabled' : ''}>
+          <button class="chop-circle-btn" id="chop-btn" aria-label="砍树" onclick="PlayerView.doChop()" ${Game.state.choppingCount <= 0 ? 'disabled' : ''}>
             <span class="chop-ink-ripple" aria-hidden="true"></span>
             <span class="chop-axe-icon">${renderItemIcon(Game.state.axeId, axeDef.icon, 'chop-axe-img')}</span>
             <span class="chop-count-badge">${Game.state.choppingCount}</span>
@@ -3006,6 +3050,7 @@ const PlayerView = {
     CultivationEffects.observeTree(document.getElementById('tree-icon'));
     UI._updateMailBadge();
     UI._updateAchBadge();
+    this.startFirstChopGuide();
   },
 
   toggleTenChop(checked) {
@@ -3639,6 +3684,7 @@ const PlayerView = {
   _chopWait: null,
 
   cancelChopPresentation() {
+    if (typeof FirstChopGuide !== 'undefined') FirstChopGuide.destroy();
     CultivationEffects.observeTree(null);
     this._chopPresentationVersion += 1;
     this._chopWait?.cancel();

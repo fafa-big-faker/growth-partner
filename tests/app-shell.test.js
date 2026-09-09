@@ -17,7 +17,7 @@ function node(properties = {}) {
   };
 }
 
-function setup({ player = true, admin = false, audio, operations } = {}) {
+function setup({ player = true, admin = false, audio, operations, guide } = {}) {
   const elements = new Map([
     ['player-dashboard', node({ style: { display: player ? 'flex' : 'none' } })],
     ['admin-dashboard', node({ style: { display: admin ? 'flex' : 'none' } })],
@@ -34,7 +34,7 @@ function setup({ player = true, admin = false, audio, operations } = {}) {
     playerTab(tab) { assert.equal(this, navigation); routes.push(tab); this.currentPlayerTab = tab; },
     adminTab(tab) { assert.equal(this, navigation); routes.push(tab); this.currentAdminTab = tab; },
   };
-  const controller = createController({ document, navigation, audio, operations });
+  const controller = createController({ document, navigation, audio, operations, guide });
   return { controller, document, elements, navigation, routes, modals, busy };
 }
 
@@ -51,6 +51,31 @@ test('Back closes only the top visible modal through its existing close button',
   assert.equal(state.controller.handleBack(), true);
   assert.deepEqual(clicks, ['upper']);
   assert.deepEqual(state.routes, []);
+});
+
+test('an active first-chop guide blocks Android Back before dialogs, library and navigation', () => {
+  let active = true;
+  const state = setup({ guide: { isActive: () => active } });
+  state.modals.push(node({ querySelector: () => node({ click: () => assert.fail('guide must own Back') }) }));
+  state.elements.set('mobile-weapon-toggle', node({
+    attributes: { 'aria-expanded': 'true' }, click: () => assert.fail('guide must own Back'),
+  }));
+  assert.equal(state.controller.handleBack(), true);
+  assert.deepEqual(state.routes, []);
+  active = false;
+  state.modals.length = 0;
+  state.elements.delete('mobile-weapon-toggle');
+  assert.equal(state.controller.handleBack(), false);
+});
+
+test('native background transitions pause and resume guide motion without duplicate notifications', () => {
+  const calls = [];
+  const state = setup({ guide: { setBackgrounded: value => calls.push(value) } });
+  state.controller.setBackgrounded(true);
+  state.controller.setBackgrounded(true);
+  state.controller.setBackgrounded(false);
+  state.controller.setBackgrounded(false);
+  assert.deepEqual(calls, [true, false]);
 });
 
 test('locked, disabled-close and nonclosable top modals swallow Back', () => {

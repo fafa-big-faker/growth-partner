@@ -17,6 +17,7 @@
       || (typeof AudioManager === 'undefined' ? root.AudioManager : AudioManager);
     const getOperations = () => resolve(options.operations)
       || (typeof OperationGuard === 'undefined' ? root.OperationGuard : OperationGuard);
+    const getGuide = () => resolve(options.guide) || root.FirstChopGuide;
 
     function visible(node) {
       if (!node || node.isConnected === false) return false;
@@ -35,6 +36,7 @@
 
     function handleBack() {
       if (destroyed) return false;
+      if (getGuide()?.isActive?.()) return true;
       const modal = Array.from(doc?.querySelectorAll?.('.modal-overlay') || []).filter(visible).at(-1);
       if (modal) {
         if (modal.classList?.contains('modal-locked') || busy()) return true;
@@ -72,6 +74,7 @@
       const next = Boolean(value);
       if (backgrounded === next) return;
       backgrounded = next;
+      getGuide()?.setBackgrounded?.(backgrounded);
       const audio = getAudio();
       audio?.setSuspended?.(backgrounded);
       if (!backgrounded && (visible(doc?.getElementById?.('player-dashboard'))
