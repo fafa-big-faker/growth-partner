@@ -183,6 +183,11 @@
   filter: brightness(1.08) drop-shadow(0 0 3px rgba(223, 255, 242, .8)) drop-shadow(0 0 7px rgba(207, 243, 227, .4));
 }
 
+#login-screen .login-submit.login-submit-touch-glow:not(:disabled) .login-submit-lettering {
+  filter: brightness(1.08) drop-shadow(0 0 3px rgba(223, 255, 242, .8)) drop-shadow(0 0 7px rgba(207, 243, 227, .4));
+  transition-duration: 60ms;
+}
+
 #login-screen .login-submit:active:not(:disabled) { transform: scale(.98); box-shadow: none; }
 #login-screen .login-submit:focus-visible { outline: 2px solid #5a7d68; outline-offset: 2px; }
 #login-screen .login-submit:disabled { opacity: .58; filter: none; cursor: wait; }

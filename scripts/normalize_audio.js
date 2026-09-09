@@ -1,8 +1,28 @@
 const fs = require('node:fs');
 const path = require('node:path');
+const crypto = require('node:crypto');
 
 const SOURCE_DIR = path.resolve(__dirname, '..', '..', '音频资源');
 const OUTPUT_DIR = path.resolve(__dirname, '..', 'assets', 'runtime', 'audio');
+
+const REWARD_SOURCES = Object.freeze({
+  'reward-reveal.wav': {
+    file: '奖励-逐项出现.wav',
+    sha256: 'c22283b16b3fa1a1912389c4cd4ad9c18b167701d654618d0c5e206ce400dbd2',
+  },
+  'drop-rare.wav': {
+    file: '掉落-珍品.wav',
+    sha256: 'ad6ef928ae34eca4efe0b35727af5abc44911f7609ae26a76d05e89b912551c6',
+  },
+  'drop-high.wav': {
+    file: '掉落-神仙品.wav',
+    sha256: '953d0739be3dcb5598a4e778bb7e01ee677477402b5ea7d59a1c62fae7826baf',
+  },
+  'skill-trigger.wav': {
+    file: '斧技-发动.wav',
+    sha256: '7f12427514a8b386092d21949964f67a34ff0db28bf3521a5d2736e02ee4b0ec',
+  },
+});
 
 const TARGET_PEAKS = Object.freeze({
   'ui-tap.wav': 0.62,
@@ -11,6 +31,10 @@ const TARGET_PEAKS = Object.freeze({
   'item-drop.wav': 0.68,
   'forge-process.wav': 0.72,
   'forge-success.wav': 0.76,
+  'reward-reveal.wav': 0.62,
+  'drop-rare.wav': 0.70,
+  'drop-high.wav': 0.76,
+  'skill-trigger.wav': 0.72,
 });
 
 function findChunk(buffer, expectedId) {
@@ -31,20 +55,40 @@ function findChunk(buffer, expectedId) {
   throw new Error(`Missing ${expectedId} chunk`);
 }
 
-function normalizePcm16(buffer, targetPeak) {
+function inspectPcm16(buffer) {
   const format = findChunk(buffer, 'fmt ');
+  if (format.size < 16) throw new Error('Incomplete PCM format header');
   const audioFormat = buffer.readUInt16LE(format.dataOffset);
   const bitsPerSample = buffer.readUInt16LE(format.dataOffset + 14);
   if (audioFormat !== 1 || bitsPerSample !== 16) {
     throw new Error(`Expected 16-bit PCM, received format ${audioFormat} / ${bitsPerSample}-bit`);
   }
-
+  const channels = buffer.readUInt16LE(format.dataOffset + 2);
+  const sampleRate = buffer.readUInt32LE(format.dataOffset + 4);
+  const byteRate = buffer.readUInt32LE(format.dataOffset + 8);
+  const blockAlign = buffer.readUInt16LE(format.dataOffset + 12);
+  if (channels < 1 || sampleRate < 1 || blockAlign !== channels * 2 || byteRate !== sampleRate * blockAlign) {
+    throw new Error('Invalid PCM frame format');
+  }
   const data = findChunk(buffer, 'data');
-  if (data.size % 2 !== 0) throw new Error('PCM data size must contain complete 16-bit samples');
+  if (data.size % blockAlign !== 0) throw new Error('PCM data must contain complete sample frames');
+  return {
+    channels, sampleRate, bitsPerSample, frames: data.size / blockAlign,
+    durationSeconds: data.size / byteRate, dataOffset: data.dataOffset, dataBytes: data.size,
+  };
+}
 
+function normalizePcm16(buffer, targetPeak) {
+  if (!Number.isFinite(targetPeak) || targetPeak <= 0 || targetPeak > 1) {
+    throw new Error('Expected a target peak greater than zero and no higher than one');
+  }
+  const info = inspectPcm16(buffer);
   let sourcePeak = 0;
-  for (let offset = data.dataOffset; offset < data.dataOffset + data.size; offset += 2) {
-    sourcePeak = Math.max(sourcePeak, Math.abs(buffer.readInt16LE(offset) / 32768));
+  let sourceSquares = 0;
+  for (let offset = info.dataOffset; offset < info.dataOffset + info.dataBytes; offset += 2) {
+    const sample = buffer.readInt16LE(offset) / 32768;
+    sourcePeak = Math.max(sourcePeak, Math.abs(sample));
+    sourceSquares += sample * sample;
   }
   if (sourcePeak === 0) throw new Error('Cannot normalize silent audio');
 
@@ -53,7 +97,7 @@ function normalizePcm16(buffer, targetPeak) {
   let outputPeak = 0;
   let squareSum = 0;
   let sampleCount = 0;
-  for (let offset = data.dataOffset; offset < data.dataOffset + data.size; offset += 2) {
+  for (let offset = info.dataOffset; offset < info.dataOffset + info.dataBytes; offset += 2) {
     const scaled = Math.round(buffer.readInt16LE(offset) * gain);
     const sample = Math.max(-32768, Math.min(32767, scaled));
     output.writeInt16LE(sample, offset);
@@ -64,29 +108,49 @@ function normalizePcm16(buffer, targetPeak) {
   }
 
   return {
+    ...info,
     output,
     sourcePeak,
+    sourceRms: Math.sqrt(sourceSquares / sampleCount),
     outputPeak,
     rms: Math.sqrt(squareSum / sampleCount),
     gain,
   };
 }
 
-function main() {
-  fs.mkdirSync(OUTPUT_DIR, { recursive: true });
-  Object.entries(TARGET_PEAKS).forEach(([fileName, targetPeak]) => {
-    const sourcePath = path.join(SOURCE_DIR, fileName);
+function main(args = process.argv.slice(2)) {
+  if (args.some(arg => !['--rewards-only', '--check'].includes(arg))) {
+    throw new Error('Usage: normalize_audio.js [--rewards-only] [--check]');
+  }
+  const check = args.includes('--check');
+  const names = args.includes('--rewards-only') ? Object.keys(REWARD_SOURCES) : Object.keys(TARGET_PEAKS);
+  if (!check) fs.mkdirSync(OUTPUT_DIR, { recursive: true });
+  names.forEach(fileName => {
+    const targetPeak = TARGET_PEAKS[fileName];
+    const mapping = REWARD_SOURCES[fileName];
+    const sourcePath = path.join(SOURCE_DIR, mapping?.file || fileName);
     const outputPath = path.join(OUTPUT_DIR, fileName);
     const source = fs.readFileSync(sourcePath);
+    if (mapping && crypto.createHash('sha256').update(source).digest('hex') !== mapping.sha256) {
+      throw new Error(`Source changed; remeasure the replacement before importing ${fileName}`);
+    }
     const result = normalizePcm16(source, targetPeak);
-    fs.writeFileSync(outputPath, result.output);
+    if (check) {
+      if (!fs.existsSync(outputPath) || !fs.readFileSync(outputPath).equals(result.output)) {
+        throw new Error(`Output differs: ${fileName}`);
+      }
+    } else {
+      fs.writeFileSync(outputPath, result.output);
+    }
     console.log(
-      `${fileName}: peak ${result.sourcePeak.toFixed(3)} -> ${result.outputPeak.toFixed(3)}, `
-      + `gain ${result.gain.toFixed(2)}x, rms ${result.rms.toFixed(3)}`,
+      `${fileName}: ${result.durationSeconds.toFixed(3)}s, ${result.sampleRate}Hz, ${result.channels}ch; `
+      + `peak ${result.sourcePeak.toFixed(3)} -> ${result.outputPeak.toFixed(3)}, `
+      + `gain ${result.gain.toFixed(2)}x, rms ${result.sourceRms.toFixed(4)} -> ${result.rms.toFixed(4)}`
+      + (check ? ' (verified)' : ''),
     );
   });
 }
 
 if (require.main === module) main();
 
-module.exports = { TARGET_PEAKS, findChunk, normalizePcm16 };
+module.exports = { REWARD_SOURCES, TARGET_PEAKS, findChunk, inspectPcm16, normalizePcm16 };

@@ -36,7 +36,7 @@ function element() {
   });
 }
 
-function setup({ cached = false, reduced = false, contextAvailable = true, texturesReady = true, backdropReady = true, width = 960, height = 720 } = {}) {
+function setup({ cached = false, reduced = false, contextAvailable = true, texturesReady = true, backdropReady = true, width = 960, height = 720, prepared = null } = {}) {
   const elements = new Map();
   const get = id => { if (!elements.has(id)) elements.set(id, element()); return elements.get(id); };
   const logo = get('login-brand-image');
@@ -89,7 +89,7 @@ function setup({ cached = false, reduced = false, contextAvailable = true, textu
   let nextId = 0;
   const frames = new Map();
   const timers = new Map();
-  const controller = create({ document: doc, window: host,
+  const controller = create({ document: doc, window: host, prepared,
     now: () => timestamp,
     requestAnimationFrame: callback => { const id = ++nextId; frames.set(id, callback); return id; },
     cancelAnimationFrame: id => frames.delete(id),
@@ -147,6 +147,24 @@ test('cached backdrop and logo still settle before entrance; failed logo has a r
   failed.logo.emit('error');
   assert.equal(failed.fallback.hidden, false);
   assert.equal(failed.logo.animations.length, 0);
+});
+
+test('boot-prepared artwork reuses decoded textures and only waits the normal entrance settle', () => {
+  const images = Object.fromEntries(getImageAssets().map(src => [src, { src, naturalWidth: 512, naturalHeight: 512 }]));
+  const state = setup({ cached: true, prepared: { criticalReady: true, images } });
+  assert.equal(state.images.length, 0, 'prepared background and ink never initiate another image request');
+  assert.equal(state.logo.animations.length, 0);
+  state.step(500);
+  assert.equal(state.logo.animations[0].options.duration, 1500);
+  assert.ok(state.inkCalls.some(call => call[0] === 'image' && call[1].includes('/effects/')));
+});
+
+test('simplified prepared mode does not restart failed decorative downloads', () => {
+  const state = setup({ cached: true, prepared: { criticalReady: true, simplified: true, images: {} } });
+  assert.equal(state.images.length, 0);
+  assert.equal(state.frames.size, 0);
+  state.step(500);
+  assert.equal(state.logo.animations.length, 1);
 });
 
 test('logo loaded on a hidden login screen waits and resumes on return', () => {
@@ -489,6 +507,26 @@ test('pointer and submit share one short pulse; keyboard submit also works', () 
   assert.equal(ripple.animations[0].state, 'cancelled');
   state.controller.setVisible(false);
   assert.equal(ripple.animations[1].state, 'cancelled');
+});
+
+test('touch gives the lettering a 250ms glow without preventing or delaying native submit', () => {
+  const state = setup();
+  const button = state.get('login-submit');
+  let prevented = false;
+  button.emit('pointerdown', { button: 0, pointerType: 'touch', preventDefault() { prevented = true; } });
+  assert.equal(button.classList.contains('login-submit-touch-glow'), true);
+  assert.equal(prevented, false);
+  let submitted = 0;
+  state.get('login-form-panel').addEventListener('submit', () => { submitted++; });
+  state.get('login-form-panel').emit('submit');
+  assert.equal(submitted, 1);
+  state.step(249);
+  assert.equal(button.classList.contains('login-submit-touch-glow'), true);
+  state.step(250);
+  assert.equal(button.classList.contains('login-submit-touch-glow'), false);
+  button.emit('pointerdown', { button: 0, pointerType: 'touch' });
+  state.controller.destroy();
+  assert.equal(button.classList.contains('login-submit-touch-glow'), false);
 });
 
 test('unsupported canvas and Web Animations retain login and progress updates', () => {

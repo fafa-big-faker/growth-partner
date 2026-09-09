@@ -44,9 +44,10 @@ function freshManager(options = {}) {
   return createAudioManager({ AudioCtor: FakeAudio, storage: createStorage(), ...options });
 }
 
-test('audio paths cover the supplied BGM and six effects', () => {
+test('audio paths cover the supplied BGM, six legacy effects and four reward cues', () => {
   assert.deepEqual(Object.keys(AUDIO_PATHS).sort(), [
-    'bgmMain', 'chopHit', 'forgeProcess', 'forgeSuccess', 'itemDrop', 'uiOpen', 'uiTap',
+    'bgmMain', 'chopHit', 'dropHigh', 'dropRare', 'forgeProcess', 'forgeSuccess',
+    'itemDrop', 'rewardReveal', 'skillTrigger', 'uiOpen', 'uiTap',
   ]);
   Object.values(AUDIO_PATHS).forEach(src => assert.match(src, /^assets\/runtime\/audio\//));
 });
@@ -60,6 +61,10 @@ test('category mix keeps UI feedback audible above the restrained BGM', () => {
     itemDrop: 0.62,
     forgeProcess: 0.38,
     forgeSuccess: 0.70,
+    dropRare: 0.64,
+    dropHigh: 0.68,
+    rewardReveal: 0.48,
+    skillTrigger: 0.68,
   });
 });
 
@@ -157,6 +162,125 @@ test('audio construction failures do not reject playback or login preload', asyn
   const manager = createAudioManager({ AudioCtor: ThrowingAudio, storage: createStorage() });
   assert.equal(await manager.playEffect('uiOpen'), false);
   const result = await manager.preload(1);
-  assert.equal(result.total, 7);
-  assert.equal(result.failed.length, 7);
+  assert.equal(result.total, 11);
+  assert.equal(result.failed.length, 11);
+});
+
+test('reward groups limit overlap without cutting already playing tails', async () => {
+  const manager = freshManager();
+  for (let i = 0; i < 3; i++) {
+    assert.equal(await manager.playEffect('rewardReveal', { group: 'reward-dialog' }), true);
+  }
+  assert.equal(await manager.playEffect('skillTrigger', { group: 'reward-dialog' }), false);
+  assert.equal(FakeAudio.instances.length, 3);
+  assert.ok(FakeAudio.instances.every(audio => !audio.paused));
+  assert.equal(await manager.playEffect('dropHigh', { group: 'scene' }), true);
+  FakeAudio.instances[0].onended();
+  assert.equal(FakeAudio.instances[0].onended, null);
+  assert.equal(FakeAudio.instances[0].onerror, null);
+  assert.equal(await manager.playEffect('skillTrigger', { group: 'reward-dialog' }), true);
+});
+
+test('cancelling one group clears its references without stopping other feedback or loops', async () => {
+  const manager = freshManager();
+  await manager.playEffect('rewardReveal', { group: 'reward-dialog' });
+  const reward = FakeAudio.instances.at(-1);
+  await manager.playEffect('chopHit', { group: 'scene' });
+  const chop = FakeAudio.instances.at(-1);
+  await manager.playBgm();
+  const bgm = FakeAudio.instances.at(-1);
+  await manager.startLoop('forgeProcess');
+  const loop = FakeAudio.instances.at(-1);
+  manager.stopEffects('reward-dialog');
+  assert.equal(reward.paused, true);
+  assert.equal(reward.currentTime, 0);
+  assert.equal(reward.onended, null);
+  assert.equal(reward.onerror, null);
+  assert.equal(chop.paused, false);
+  assert.equal(bgm.paused, false);
+  assert.equal(loop.paused, false);
+  manager.stopEffects();
+  assert.equal(chop.paused, true);
+  assert.equal(bgm.paused, false);
+  assert.equal(loop.paused, false);
+});
+
+test('volume and playback speed are bounded per effect without changing the shared mix', async () => {
+  const manager = freshManager();
+  await manager.playEffect('rewardReveal', { volumeScale: 0.5, playbackRate: 1.1 });
+  assert.equal(FakeAudio.instances.at(-1).volume, AUDIO_VOLUMES.rewardReveal * 0.5);
+  assert.equal(FakeAudio.instances.at(-1).playbackRate, 1.1);
+  await manager.playEffect('dropHigh', { volumeScale: 100, playbackRate: 100 });
+  assert.equal(FakeAudio.instances.at(-1).volume, 1);
+  assert.equal(FakeAudio.instances.at(-1).playbackRate, 2);
+  await manager.playEffect('skillTrigger', { volumeScale: -4, playbackRate: -4 });
+  assert.equal(FakeAudio.instances.at(-1).volume, 0);
+  assert.equal(FakeAudio.instances.at(-1).playbackRate, 0.5);
+  manager.stopEffects();
+  await manager.playEffect('itemDrop', { volumeScale: NaN, playbackRate: Infinity });
+  assert.equal(FakeAudio.instances.at(-1).volume, AUDIO_VOLUMES.itemDrop);
+  assert.equal(FakeAudio.instances.at(-1).playbackRate, 1);
+});
+
+test('global feedback limit is bounded even with unique groups', async () => {
+  const manager = freshManager();
+  for (let i = 0; i < 12; i++) {
+    assert.equal(await manager.playEffect('rewardReveal', { group: `item-${i}` }), true);
+  }
+  assert.equal(await manager.playEffect('rewardReveal', { group: 'extra' }), false);
+  assert.equal(FakeAudio.instances.length, 12);
+  manager.stopEffects();
+  assert.equal(await manager.playEffect('rewardReveal', { group: 'extra' }), true);
+});
+
+test('muting clears every group and unmuting never resumes one-shot cues', async () => {
+  const manager = freshManager();
+  await manager.playEffect('rewardReveal', { group: 'reward-dialog' });
+  await manager.playEffect('dropRare', { group: 'scene' });
+  const effects = [...FakeAudio.instances];
+  manager.setMuted(true);
+  assert.ok(effects.every(audio => audio.paused && audio.onended === null && audio.onerror === null));
+  assert.equal(await manager.playEffect('skillTrigger', { group: 'reward-dialog' }), false);
+  manager.setMuted(false);
+  assert.ok(effects.every(audio => audio.paused));
+  assert.equal(await manager.playEffect('skillTrigger', { group: 'reward-dialog' }), true);
+});
+
+test('group cancellation wins against a late successful play promise', async () => {
+  const complete = [];
+  class DeferredAudio extends FakeAudio {
+    play() {
+      return new Promise(resolve => complete.push(() => { this.paused = false; resolve(); }));
+    }
+  }
+  const manager = freshManager({ AudioCtor: DeferredAudio });
+  const pending = manager.playEffect('rewardReveal', { group: 'reward-dialog' });
+  const audio = FakeAudio.instances[0];
+  manager.stopEffects('reward-dialog');
+  complete[0]();
+  assert.equal(await pending, false);
+  assert.equal(audio.paused, true);
+  assert.equal(audio.onended, null);
+  assert.equal(audio.onerror, null);
+});
+
+test('audio errors and denied playback immediately release group capacity', async () => {
+  const manager = freshManager();
+  await manager.playEffect('rewardReveal', { group: 'reward-dialog' });
+  const audio = FakeAudio.instances[0];
+  audio.onerror();
+  assert.equal(audio.onended, null);
+  assert.equal(audio.onerror, null);
+  for (let i = 0; i < 3; i++) {
+    assert.equal(await manager.playEffect('rewardReveal', { group: 'reward-dialog' }), true);
+  }
+  class RejectingAudio extends FakeAudio {
+    play() { return Promise.reject(new Error('blocked')); }
+  }
+  const rejected = freshManager({ AudioCtor: RejectingAudio });
+  for (let i = 0; i < 4; i++) {
+    assert.equal(await rejected.playEffect('rewardReveal', { group: 'reward-dialog' }), false);
+  }
+  assert.equal(FakeAudio.instances.length, 4);
+  assert.ok(FakeAudio.instances.every(item => item.onended === null && item.onerror === null));
 });

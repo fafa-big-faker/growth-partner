@@ -57,6 +57,7 @@
     let progressFrom = 0;
     let progressStart = 0;
     let texturesStarted = false;
+    let touchGlowTimer = null;
     const textures = [];
     const imageRequests = [];
     const buttonArtwork = [buttonBrush, buttonLettering].filter(Boolean).map(image => ({ image, ready: false }));
@@ -151,6 +152,11 @@
     }
 
     function loadBackdrop() {
+      if (options.prepared?.criticalReady) {
+        backdropReady = true;
+        requestLogoReveal();
+        return;
+      }
       if (typeof host.Image !== 'function') {
         backdropReady = true;
         requestLogoReveal();
@@ -198,6 +204,11 @@
       if (texturesStarted || destroyed || !context || reduced || typeof host.Image !== 'function') return;
       texturesStarted = true;
       IMAGE_ASSETS.forEach((url, index) => {
+        if (options.prepared) {
+          const prepared = options.prepared.images?.[url];
+          if (prepared?.naturalWidth) textures[index] = prepared;
+          return;
+        }
         const image = new host.Image();
         image.decoding = 'async';
         image.onload = () => {
@@ -400,7 +411,21 @@
       ], { duration: 420, easing: 'cubic-bezier(.2,.65,.35,1)' });
     }
 
-    const onPointer = event => { if (!button.disabled && (event.button === undefined || event.button === 0)) pulse(); };
+    function clearTouchGlow() {
+      if (touchGlowTimer !== null) clearTimer(touchGlowTimer);
+      touchGlowTimer = null;
+      button?.classList.toggle('login-submit-touch-glow', false);
+    }
+
+    const onPointer = (event = {}) => {
+      if (button.disabled || (event.button !== undefined && event.button !== 0)) return;
+      if (event.pointerType === 'touch' || event.pointerType === 'pen') {
+        clearTouchGlow();
+        button.classList.add('login-submit-touch-glow');
+        touchGlowTimer = setTimer(clearTouchGlow, 250);
+      }
+      pulse();
+    };
     const onMedia = event => { reduced = event.matches; syncActivity(); };
     const onVisibility = () => syncActivity();
     const onResize = () => {
@@ -466,6 +491,7 @@
 
     function setVisible(nextVisible) {
       visible = Boolean(nextVisible);
+      if (!visible) clearTouchGlow();
       syncActivity();
     }
 
@@ -474,6 +500,7 @@
       stopFrame();
       cancelSettling();
       cancelBackdropDeadline();
+      clearTouchGlow();
       if (backdropImage) { backdropImage.onload = null; backdropImage.onerror = null; }
       logoAnimation?.cancel();
       floatAnimation?.cancel();

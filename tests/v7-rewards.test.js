@@ -140,13 +140,18 @@ test('both chop result surfaces share the renderer and keep close callbacks', ()
   const app = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
   const single = app.slice(app.indexOf('  _showRewardModal(item)'), app.indexOf('  // --- 任务页 ---'));
   const ten = app.slice(app.indexOf('  async doChopTen('), app.indexOf('  // 删除邮件'));
+  const controller = app.slice(app.indexOf('  _startRewardReveal('), app.indexOf('  async doChop()'));
   assert.match(single, /RewardPresentation\.createRenderer\(\{\s*items:\s*ITEMS,\s*quality:\s*QUALITY,\s*renderItemIcon,\s*escapeHtml\s*\}\)/);
   assert.match(single, /\.renderItem\(item,\s*\{\s*size:\s*'large'/);
   assert.match(single, /item\.extraDrop/);
-  assert.match(single, /收下/);
+  assert.match(single, /全部显示/);
+  assert.match(single, /this\._startRewardReveal\(overlay\)/);
+  assert.match(controller, /onComplete:[\s\S]*收下/);
+  assert.match(controller, /reveal\.finish\(\)/);
+  assert.match(controller, /reveal\.cancel\(\); overlay\.remove\(\)/);
   assert.match(ten, /RewardPresentation\.createRenderer/);
   assert.match(ten, /\.renderResults\(results\)/);
-  assert.match(ten, /remove\(\);PlayerView\.renderCultivate\(\)/);
+  assert.match(ten, /this\._startRewardReveal\(overlay\)/);
   assert.doesNotMatch(ten, /const itemsHtml = results\.map/);
 });
 

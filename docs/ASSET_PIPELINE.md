@@ -141,6 +141,13 @@ node scripts\normalize_audio.js
 - BGM 不参与 WAV 归一化，浏览器混音保持轻柔，关键操作音效必须清楚高于 BGM。
 - 修改目标峰值或 `audio-manager.js` 混音参数时，必须同步更新音频测试。
 
+### 奖励反馈音效（2026-09-09）
+
+- 原目录新增`奖励-逐项出现.wav`、`掉落-珍品.wav`、`掉落-神仙品.wav`、`斧技-发动.wav`，分别导出`reward-reveal.wav`、`drop-rare.wav`、`drop-high.wav`、`skill-trigger.wav`。
+- 运行`node scripts/normalize_audio.js --rewards-only`；加`--check`可不写入地验证确定性输出。原生PCM16、40kHz、双声道，时长0.2/0.5/0.8/0.4秒；峰值目标0.62/0.70/0.76/0.72，运行混音0.48/0.64/0.68/0.68。四文件共304,968字节，保留完整尾音；原有七文件不变。
+- `AudioManager.playEffect(name,{group,volumeScale,playbackRate})`每组最多3声、全局最多12声，满额不再叠加；`stopEffects(group)`立即取消该组，原始音频不可重复增益处理。测试`audio-reward-assets.test.js`校验来源、峰值、时长及旧文件指纹。
+- 登录预览`assets/runtime/v3/backgrounds/login-preview.webp`由原运行登录图缩为240x180，2398字节，仅首屏占位使用；完整背景、Logo、按钮及六墨纹保持原图与URL。初始圆环48px，无需新增AI资源。
+
 ## 8. 验证清单
 
 - 文件数量正确：砍树 54 帧，待机 36 帧。
@@ -194,7 +201,7 @@ node scripts\normalize_audio.js
 - 纸图是RGBA，透明区虽然保存了灰黑RGB但alpha为0，不可误判成黑色背景。按alpha>=5实测边界裁切，加12px安全边；两框不是用整张半幅直接拉伸。
 - 墨图是RGB近白底，按亮度转透明度并清掉近白噪点，不做粗暴去白。输出六张512x512透明墨纹，保留浓淡与飞白，色值统一为墨灰；这不是序列帧动画。
 - 运行图共8张，总计185,918字节。task-paper为960x200，slice上右下左86/61/51/122；shop-paper为960x199，slice56/130/122/61。两框都保留完整边角，内容区随文案延展。
-- 两张纸框进入游戏必需预载。六张墨纹使用`?v=xianlai-v5-20260908`，由LoginArt独立后台加载，不阻塞登录；首次载入缺图时不回退到程序水纹。
+- 两张纸框进入游戏必需预载。六张墨纹使用`?v=xianlai-v5-20260908`，正式入口由LoginBoot预备后注入LoginArt；失败可简化进入，不加入验证后的游戏加载队列，也不回退到程序水纹。
 - 校验`python tests/xianlai-v5-assets.test.py`、`node --test tests/v5-*.test.js`，再跑既有图片和功能测试。原图替换后重新量alpha范围、边界与slice，不能盲沿用当前常量。
 
 ## 13. V6 品质墨记与登录按钮

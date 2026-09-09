@@ -151,12 +151,19 @@
 
   function applyRewardMultipliers(drop, rolls, random = Math.random) {
     if (!drop) return drop;
-    const result = { ...drop };
+    const result = { ...drop, baseQuantity: drop.quantity, buffTriggers: [] };
     for (const roll of Array.isArray(rolls) ? rolls : []) {
       if (roll?.effectType !== 'reward_multiplier') continue;
       if (Number(roll.values?.value1) !== Number(result.quality)) continue;
       if (clampRandom(random()) * 100 >= Number(roll.values?.value2)) continue;
-      result.quantity *= Math.max(1, Number(roll.values?.value3) || 1);
+      const beforeQuantity = result.quantity;
+      const multiplier = Math.max(1, Number(roll.values?.value3) || 1);
+      result.quantity *= multiplier;
+      result.buffTriggers.push({
+        beforeQuantity, afterQuantity: result.quantity, multiplier,
+        skillId: roll.skillId ?? null, buffId: roll.buffId ?? null,
+        buffRowId: roll.buffRowId ?? null, buffQuality: roll.buffQuality ?? null,
+      });
     }
     return result;
   }

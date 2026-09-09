@@ -15,7 +15,7 @@ function slice(startText, endText) {
 }
 
 test('player navigation suppresses repeats and protects async renders with a version', () => {
-  const router = slice('const Router = {', '/* ================================================================\r\n   UI');
+  const router = slice('const Router = {', 'const UI = {');
   assert.match(router, /_playerRenderVersion:\s*0/);
   assert.match(router, /if \(this\.currentPlayerTab === tab && main\?\.dataset\.renderedTab === tab && !options\.force\) return/);
   assert.match(router, /const version = \+\+this\._playerRenderVersion/);

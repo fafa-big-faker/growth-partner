@@ -99,8 +99,41 @@ test('frozen multiplier and refund rolls evaluate without generating new values'
 
   assert.deepEqual(
     WeaponAffixes.applyRewardMultipliers({ itemId: '10001', quality: 1, quantity: 2 }, [multiplier], () => 0.2),
-    { itemId: '10001', quality: 1, quantity: 6 },
+    { itemId: '10001', quality: 1, quantity: 6, baseQuantity: 2,
+      buffTriggers: [{ beforeQuantity: 2, afterQuantity: 6, multiplier: 3, skillId: null, buffId: 1, buffRowId: null, buffQuality: null }] },
   );
   assert.equal(WeaponAffixes.rollRefund([refund], () => 0.49), 2);
   assert.equal(WeaponAffixes.rollRefund([refund], () => 0.5), 0);
+});
+
+test('multiplier metadata preserves ordered true quantities, skill sources and original RNG consumption', () => {
+  const rolls = [
+    { skillId: 11, buffId: 1, buffRowId: 3, buffQuality: 3, effectType: 'reward_multiplier', values: { value1: 1, value2: 80, value3: 3 } },
+    { skillId: 12, buffId: 2, effectType: 'reward_multiplier', values: { value1: 2, value2: 100, value3: 9 } },
+    { skillId: 13, buffId: 6, effectType: 'chop_refund', values: { value1: 100, value2: 1 } },
+    { skillId: 14, buffId: 1, buffRowId: 4, buffQuality: 4, effectType: 'reward_multiplier', values: { value1: 1, value2: 80, value3: 2 } },
+    { skillId: 15, buffId: 1, effectType: 'reward_multiplier', values: { value1: 1, value2: 10, value3: 7 } },
+  ];
+  const drop = { itemId: '10001', quality: 1, quantity: 2 };
+  const original = structuredClone({ rolls, drop });
+  let calls = 0;
+  const result = WeaponAffixes.applyRewardMultipliers(drop, rolls, () => { calls++; return 0.5; });
+  assert.equal(calls, 3, 'only matching multiplier effects consume their existing one random draw');
+  assert.equal(result.quantity, 12);
+  assert.equal(result.baseQuantity, 2);
+  assert.deepEqual(result.buffTriggers, [
+    { beforeQuantity: 2, afterQuantity: 6, multiplier: 3, skillId: 11, buffId: 1, buffRowId: 3, buffQuality: 3 },
+    { beforeQuantity: 6, afterQuantity: 12, multiplier: 2, skillId: 14, buffId: 1, buffRowId: 4, buffQuality: 4 },
+  ]);
+  assert.deepEqual({ rolls, drop }, original, 'recording feedback never modifies the reward input or frozen skills');
+});
+
+test('nontriggering multiplier metadata does not fabricate a bonus or consume additional randomness', () => {
+  let calls = 0;
+  const result = WeaponAffixes.applyRewardMultipliers({ quality: 2, quantity: 4 }, [
+    { effectType: 'reward_multiplier', values: { value1: 1, value2: 100, value3: 3 } },
+  ], () => { calls++; return 0; });
+  assert.deepEqual(result, { quality: 2, quantity: 4, baseQuantity: 4, buffTriggers: [] });
+  assert.equal(calls, 0);
+  assert.equal(WeaponAffixes.applyRewardMultipliers(null, [], () => { throw Error('unexpected'); }), null);
 });

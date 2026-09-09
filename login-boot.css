@@ -1,0 +1,89 @@
+#login-screen.login-boot-pending {
+  background-image: url('assets/runtime/v3/backgrounds/login-preview.webp');
+}
+
+#login-screen.login-boot-pending .login-shell {
+  opacity: 0;
+  pointer-events: none;
+}
+
+#login-screen.login-boot-pending #login-ink-canvas { visibility: hidden; }
+#login-screen.login-boot-pending #login-brand-image { visibility: hidden !important; }
+#login-screen .login-boot[hidden] { display: none; }
+
+#login-screen .login-boot {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 24px;
+  text-align: center;
+  color: #304b44;
+}
+
+#login-screen .login-boot-ring,
+#login-screen.login-boot-pending:not(.login-boot-mounted)::after {
+  display: block;
+  width: 48px;
+  height: 48px;
+  flex: 0 0 48px;
+  border: 2px solid rgba(64, 94, 83, .16);
+  border-top-color: #38574a;
+  border-right-color: rgba(56, 87, 74, .58);
+  border-radius: 50%;
+  box-sizing: border-box;
+  animation: login-boot-turn 1300ms linear infinite;
+}
+
+#login-screen.login-boot-pending:not(.login-boot-mounted)::after {
+  content: '';
+  position: absolute;
+  top: calc(50% - 74px);
+  left: calc(50% - 24px);
+}
+
+#login-screen #login-boot-status {
+  min-height: 24px;
+  margin: 0;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 24px;
+  overflow-wrap: anywhere;
+}
+
+#login-screen .login-boot-actions {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  min-height: 44px;
+}
+
+#login-screen .login-boot-actions button {
+  min-height: 44px;
+  padding: 6px 8px;
+  border: 0;
+  border-bottom: 1px solid #728a7c;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: #304b44;
+  font-size: 15px;
+  line-height: 1.4;
+  cursor: pointer;
+}
+
+#login-screen .login-boot-actions button[hidden] { display: none; }
+#login-screen .login-boot-actions button:hover { color: #142e27; border-color: currentColor; }
+#login-screen .login-boot-actions button:focus-visible { outline: 2px solid #4d7561; outline-offset: 3px; }
+#login-screen .login-boot[data-phase='error'] .login-boot-ring { animation-play-state: paused; opacity: .55; }
+
+@keyframes login-boot-turn { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  #login-screen .login-boot-ring,
+  #login-screen.login-boot-pending:not(.login-boot-mounted)::after { animation: none; }
+}

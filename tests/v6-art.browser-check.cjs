@@ -166,20 +166,17 @@ async function main() {
     for (const asset of ['login-brush.webp', 'login-lettering.webp']) {
       failedAsset = asset;
       await page.goto('http://v6.local');
-      await page.waitForFunction(failed => {
-        const images = ['login-submit-brush', 'login-submit-lettering'].map(id => document.getElementById(id));
-        return images.every(image => image?.complete) && images.some(image => image.src.includes(failed) && image.naturalWidth === 0);
-      }, asset);
-      await page.waitForFunction(() => {
-        const fallback = document.querySelector('.login-submit-fallback');
-        if (!fallback) return false;
-        const style = getComputedStyle(fallback);
-        return style.display !== 'none' && style.visibility !== 'hidden' && Number(style.opacity) > 0 && fallback.getBoundingClientRect().width > 0;
-      });
-      const text = await page.locator('.login-submit-fallback').textContent();
-      assert.ok(text.trim().length >= 2, 'failed artwork retains a meaningful text label');
+      await page.waitForFunction(() => LoginBoot.getState().phase === 'error');
+      assert.equal(await page.locator('.login-shell').evaluate(shell => shell.inert), true);
+      assert.equal(await page.locator('#login-boot-retry').isVisible(), true);
+      assert.equal(await page.locator('#login-boot-simple').isVisible(), false);
+      const text = await page.locator('#login-boot-status').textContent();
+      assert.ok(text.trim().length >= 2, 'failed critical art has a readable recovery state');
+      failedAsset = '';
+      await page.locator('#login-boot-retry').click();
+      await page.waitForFunction(() => LoginBoot.getState().phase === 'ready');
       await checkNativeLogin();
-      fallbacks.push({ failed: asset, text });
+      fallbacks.push({ failed: asset, text, recovered: true });
     }
     assert.deepEqual(pageErrors, []);
     console.log(JSON.stringify({ ok: true, viewports: results.length, images: 7, pageErrors, fallbacks, results }, null, 2));

@@ -120,6 +120,10 @@ async function main() {
 
     async function closeFromCurrentPosition(geometry) {
       await page.mouse.click(geometry.buttonPoint.x, geometry.buttonPoint.y);
+      if (await page.locator('.reward-reveal-confirm').count()) {
+        assert.equal(await page.locator('.reward-reveal-confirm').textContent(), '收下', 'first click reveals every reward before closing');
+        await page.mouse.click(geometry.buttonPoint.x, geometry.buttonPoint.y);
+      }
       assert.equal(await page.locator('.modal-overlay').count(), 0, 'direct pointer click closes without auto-scrolling');
     }
 
@@ -131,7 +135,8 @@ async function main() {
         document.getElementById('login-screen').style.display = 'none';
         AudioManager.playEffect = async () => {};
         PlayerView.renderCultivate = () => {};
-        window.v7ShowResults = new Function('results', tenRenderSource);
+        const executeTen = new Function('results', tenRenderSource);
+        window.v7ShowResults = results => executeTen.call(PlayerView, results);
         ITEMS['v7-long'] = { name: '这是用于检查长名称换行的限定仙斧', type: 3, quality: 5,
           icon: '', iconImage: 'assets/runtime/v4/items/55001.webp', desc: '本地模拟道具。' };
         window.v7Renderer = RewardPresentation.createRenderer({ items: ITEMS, quality: QUALITY, renderItemIcon, escapeHtml });
@@ -157,7 +162,7 @@ async function main() {
 
       await page.evaluate(() => PlayerView._showRewardModal({ kind: 'coin', quantity: 12, quality: 1 }));
       const compact = await inspectRewards(); assertFits(compact); assertFooter(compact, viewport);
-      assert.ok(compact.modal.width <= 320 && compact.modal.height <= 340, 'ordinary single result is a compact dialog');
+      assert.ok(compact.modal.width <= 320 && compact.modal.height <= 340, 'ordinary single result is a compact dialog: ' + JSON.stringify(compact.modal));
       assert.ok(compact.artWidth <= 104, 'single icon cannot return to oversized 168px artwork');
       await closeFromCurrentPosition(compact);
 

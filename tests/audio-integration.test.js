@@ -29,6 +29,7 @@ test('all supplied audio files are present and remain lightweight', () => {
   const files = [
     'bgm-main.mp3', 'ui-tap.wav', 'ui-open.wav', 'chop-hit.wav',
     'item-drop.wav', 'forge-process.wav', 'forge-success.wav',
+    'reward-reveal.wav', 'drop-rare.wav', 'drop-high.wav', 'skill-trigger.wav',
   ];
   let totalBytes = 0;
   files.forEach(file => {
@@ -49,6 +50,10 @@ test('runtime effects use the approved peak-normalized loudness targets', () => 
     'item-drop.wav': 0.68,
     'forge-process.wav': 0.72,
     'forge-success.wav': 0.76,
+    'reward-reveal.wav': 0.62,
+    'drop-rare.wav': 0.70,
+    'drop-high.wav': 0.76,
+    'skill-trigger.wav': 0.72,
   };
   Object.entries(targets).forEach(([file, target]) => {
     const contents = fs.readFileSync(path.join(root, 'assets', 'runtime', 'audio', file));
@@ -84,8 +89,20 @@ test('navigation and modal opening use the shared opening effect', () => {
 
 test('chopping, drops, and forging have semantic sound triggers', () => {
   assert.ok((app.match(/AudioManager\.playEffect\('chopHit'\)/g) || []).length >= 2);
-  assert.ok((app.match(/AudioManager\.playEffect\('itemDrop'\)/g) || []).length >= 2);
+  assert.ok((app.match(/this\.playDropSound\(item\)/g) || []).length >= 2);
+  assert.match(app, /AudioManager\.playEffect\(sound,\s*\{\s*group:\s*'chop-drops'\s*\}\)/);
   assert.match(app, /AudioManager\.startLoop\('forgeProcess'\)/);
   assert.match(app, /AudioManager\.stopLoop\('forgeProcess'\)/);
   assert.match(app, /AudioManager\.playEffect\('forgeSuccess'\)/);
+});
+
+test('confirmed drops select cues by actual reward quality, independently of item rarity', () => {
+  const body = app.match(/playDropSound\(item\) \{([\s\S]*?)\n  \},/)?.[1];
+  assert.ok(body, 'Shared confirmed-drop sound helper must exist');
+  const play = new Function('AudioManager', 'item', body);
+  const calls = [];
+  const audio = { playEffect: (name, options) => calls.push({ name, options }) };
+  for (const quality of [1, 2, 3, 4, 5]) play(audio, { quality, item: { quality: 1 } });
+  assert.deepEqual(calls.map(call => call.name), ['itemDrop', 'itemDrop', 'dropRare', 'dropHigh', 'dropHigh']);
+  assert.ok(calls.every(call => call.options.group === 'chop-drops'));
 });

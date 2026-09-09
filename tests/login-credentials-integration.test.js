@@ -6,6 +6,7 @@ const vm = require('node:vm');
 
 const appSource = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
 const authSource = appSource.slice(appSource.indexOf('const Auth = {'), appSource.indexOf('const Router = {'));
+const loadedAssets = total => ({ total, loaded: total, completed: total, failed: [], cancelled: [] });
 
 function setup(verify = async () => ({ playerRole: 'fixture-player' })) {
   const elements = new Map();
@@ -22,17 +23,18 @@ function setup(verify = async () => ({ playerRole: 'fixture-player' })) {
     AccountSession: { verify },
     UI: { toast: (...args) => toast.push(args), updateHeader() {} },
     DB: { setPlayerRole() {} },
-    PlayerView: { clearDataCaches() {} },
+    PlayerView: { clearDataCaches() {}, cancelChopPresentation() {} },
     AudioManager: { playBgm() {}, pauseBgm() {}, async preload() {} },
     CultivatorAnimator: { stop() {} },
     LoginArt: {
       setLoading: (...args) => artCalls.push(['loading', ...args]),
       setVisible: (...args) => artCalls.push(['visible', ...args]),
     },
+    LoginBoot: { async whenReady() { return { criticalReady: true }; } },
     Game: { state: null, inventory: [], async init() { this.state = { axeId: 'fixture-axe' }; } },
     getInitialGameImageAssets: () => [],
-    AssetPreloader: { async preload() {} },
-    async preloadAxeAnimation() {},
+    AssetPreloader: { async preload(urls) { return loadedAssets(urls.length); } },
+    async preloadAxeAnimation() { return loadedAssets(10); },
     Router: { playerTab: (...args) => routed.push(args), adminTab: (...args) => routed.push(args) },
     console: { error() {} },
   };
@@ -84,6 +86,10 @@ test('verification is locked before its first await and role cannot change mid-l
   const first = state.auth.doLogin();
   const second = state.auth.doLogin();
   state.auth.selectRole('admin');
+  assert.equal(state.auth._loggingIn, true);
+  assert.equal(state.getElement('login-submit').disabled, true);
+  assert.equal(attempts, 0, 'art readiness precedes verification while the lock is already held');
+  await new Promise(resolve => setImmediate(resolve));
   assert.equal(attempts, 1);
   assert.equal(state.auth.currentRole, 'player');
   assert.equal(state.getElement('login-form-panel').hidden, true);
@@ -97,8 +103,8 @@ test('verification is locked before its first await and role cannot change mid-l
 
 test('Auth forwards actual combined asset progress to LoginArt without writing a competing bar width', async () => {
   const state = setup();
-  state.scope.AssetPreloader.preload = async (_, progress) => progress({ percent: 40 });
-  state.scope.preloadAxeAnimation = async (_, progress) => progress({ percent: 60 });
+  state.scope.AssetPreloader.preload = async (_, progress) => { progress({ percent: 40 }); return loadedAssets(5); };
+  state.scope.preloadAxeAnimation = async (_, progress) => { progress({ percent: 60 }); return loadedAssets(10); };
   await state.auth.doLogin();
   assert.deepEqual(state.artCalls, [
     ['loading', true, 0], ['loading', true, 0], ['loading', true, 34],
@@ -113,7 +119,7 @@ test('completed image loading waits honestly for player data without timer progr
   state.scope.Game.init = () => new Promise(resolve => {
     finishInit = () => { state.scope.Game.state = { axeId: 'fixture-axe' }; resolve(); };
   });
-  state.scope.AssetPreloader.preload = async (_, progress) => progress({ percent: 100 });
+  state.scope.AssetPreloader.preload = async (_, progress) => { progress({ percent: 100 }); return loadedAssets(5); };
   const login = state.auth.doLogin();
   await new Promise(resolve => setImmediate(resolve));
   assert.equal(state.getElement('login-loading-status').textContent, '正在读取修行记录');
@@ -125,7 +131,7 @@ test('completed image loading waits honestly for player data without timer progr
   assert.equal(state.routed.length, 1);
 });
 
-test('completed player data updates the waiting status while optional audio settles', async () => {
+test('optional audio never blocks entry after player data and required images are ready', async () => {
   const state = setup();
   let finishInit;
   let finishAudio;
@@ -133,17 +139,17 @@ test('completed player data updates the waiting status while optional audio sett
     finishInit = () => { state.scope.Game.state = { axeId: 'fixture-axe' }; resolve(); };
   });
   state.scope.AudioManager.preload = () => new Promise(resolve => { finishAudio = resolve; });
-  state.scope.AssetPreloader.preload = async (_, progress) => progress({ percent: 100 });
+  state.scope.AssetPreloader.preload = async (_, progress) => { progress({ percent: 100 }); return loadedAssets(5); };
   const login = state.auth.doLogin();
   await new Promise(resolve => setImmediate(resolve));
   finishInit();
   await new Promise(resolve => setImmediate(resolve));
-  assert.equal(state.getElement('login-loading-status').textContent, '正在准备入境');
-  assert.deepEqual(state.artCalls.at(-1), ['loading', true, 85]);
-  assert.equal(state.routed.length, 0);
+  assert.deepEqual(state.artCalls.at(-1), ['visible', false]);
+  assert.equal(state.routed.length, 1);
+  assert.equal(state.auth._loggingIn, false);
+  assert.equal(typeof finishAudio, 'function');
   finishAudio();
   await login;
-  assert.equal(state.routed.length, 1);
 });
 
 test('both role dashboards stop login effects on entry and restore them on logout', async () => {
@@ -163,7 +169,7 @@ test('both role dashboards stop login effects on entry and restore them on logou
 test('a late preload update cannot hide the restored form after login initialization fails', async () => {
   const state = setup();
   let progress;
-  state.scope.AssetPreloader.preload = (_, callback) => { progress = callback; return Promise.resolve(); };
+  state.scope.AssetPreloader.preload = (_, callback) => { progress = callback; return Promise.resolve(loadedAssets(1)); };
   state.scope.Game.init = async () => { throw new Error('fixture failure'); };
   await state.auth.doLogin();
   assert.equal(state.getElement('login-form-panel').hidden, false);
@@ -183,6 +189,41 @@ test('a routing failure after animation hiding restores login visibility and eff
   assert.equal(state.getElement('login-form-panel').hidden, false);
   assert.ok(state.artCalls.some(call => call[0] === 'visible' && call[1] === true));
   assert.equal(state.saved.length, 0);
+});
+
+test('failed game artwork retries the missing URLs once and never opens a partial game', async () => {
+  for (const recover of [false, true]) {
+    const state = setup();
+    const calls = [];
+    state.scope.AssetPreloader.preload = async urls => {
+      calls.push([...urls]);
+      return calls.length === 2 && recover ? loadedAssets(1)
+        : { total: 2, loaded: 1, completed: 2, failed: ['missing.webp'], cancelled: [] };
+    };
+    await state.auth.doLogin();
+    assert.equal(calls.length, 2);
+    assert.deepEqual(calls[1], ['missing.webp']);
+    assert.equal(state.routed.length, recover ? 1 : 0);
+    assert.equal(state.saved.length, recover ? 1 : 0);
+    assert.equal(state.auth._loggingIn, false);
+  }
+});
+
+test('pending login readiness holds verification and release uses the locked original role', async () => {
+  const state = setup();
+  let ready;
+  let verifies = 0;
+  state.scope.LoginBoot.whenReady = () => new Promise(resolve => { ready = resolve; });
+  state.scope.AccountSession.verify = async () => { verifies++; return { playerRole: 'fixture-player' }; };
+  const login = state.auth.doLogin();
+  state.auth.selectRole('admin');
+  assert.equal(verifies, 0);
+  assert.equal(state.auth.currentRole, 'player');
+  assert.equal(state.getElement('login-submit').disabled, true);
+  ready({ criticalReady: true });
+  await login;
+  assert.equal(verifies, 1);
+  assert.deepEqual(state.saved[0], ['player', 'fixture-password']);
 });
 
 test('markup supports native managers and never submits a password to static hosting', () => {

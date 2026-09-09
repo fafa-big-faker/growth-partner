@@ -32,7 +32,12 @@
   .mobile-items-pane,
   .mobile-equipment-pane { position: relative; isolation: isolate; min-width: 0; min-height: 0; padding: 8px; }
   .mobile-inventory-columns::before { content: ''; position: absolute; inset: 0; z-index: -1; border: 0 solid transparent; border-image: url('assets/runtime/v7/ui/inventory-paper.webp?v=xianlai-v7-20260909') 124 183 114 217 fill / 8px / 0 stretch; pointer-events: none; }
-  .mobile-items-pane { display: flex; }
+  .mobile-items-pane { display: grid; grid-template-rows: minmax(0, 1fr) 44px; gap: 2px; padding-bottom: 3px; }
+  .mobile-items-pane #inventory-grid { grid-row: 1; }
+  .inventory-sort-button { grid-row: 2; justify-self: start; display: inline-flex; align-items: center; gap: 5px; width: 70px; height: 44px; padding: 8px 9px; color: #344a40; background: transparent; border: 0 solid transparent; border-image: url('assets/runtime/v3/ui/button-primary.webp') 36 48 36 48 fill / 10px / 0 stretch; font: 600 12px/1.4 'Noto Serif SC', SimSun, serif; cursor: pointer; touch-action: manipulation; transition: filter 140ms ease; }
+  .inventory-sort-button img { width: 15px; height: 15px; }
+  .inventory-sort-button:hover { filter: brightness(1.08); }
+  .inventory-sort-button:active { filter: brightness(.9); }
   .mobile-equipment-pane { display: grid; grid-template-rows: minmax(0, 1fr) 44px; gap: 3px; }
   #player-dashboard.mobile-cultivation #inventory-grid,
   #player-dashboard.mobile-cultivation #mobile-weapon-grid {
@@ -58,11 +63,11 @@
   #player-dashboard.mobile-cultivation .mobile-inventory-columns .item-new-badge { right: 4px; top: 4px; height: 11px; color: #a72e38; font-size: 9px; font-weight: 700; line-height: 11px; }
   #player-dashboard.mobile-cultivation .mobile-inventory-columns .item-lock-badge { right: 3px; top: 3px; width: 16px; height: 16px; }
   #player-dashboard.mobile-cultivation .mobile-inventory-columns .item-locked .item-new-badge { right: 21px; }
-  .weapon-slot-status { position: absolute; z-index: 3; top: 4px; right: 3px; width: 26px; display: grid; grid-template-columns: repeat(2, 12px); gap: 2px; justify-items: end; pointer-events: none; }
+  .weapon-slot-status { position: absolute; z-index: 3; top: 4px; right: 3px; width: 28px; display: grid; grid-template-columns: 12px 14px; gap: 2px; justify-items: end; pointer-events: none; }
   .mobile-current-badge { display: block; width: 12px; height: 12px; }
   .mobile-current-badge img { display: block; width: 12px; height: 12px; }
-  #player-dashboard.mobile-cultivation #mobile-weapon-grid .weapon-slot-status .item-lock-badge { position: static; width: 12px; height: 12px; padding: 0; }
-  #player-dashboard.mobile-cultivation #mobile-weapon-grid .weapon-slot-status .lock-badge-icon { width: 12px; height: 12px; }
+  #player-dashboard.mobile-cultivation #mobile-weapon-grid .weapon-slot-status .item-lock-badge { position: static; grid-column: 2; width: 14px; height: 14px; padding: 0; background: none; border: 0; box-shadow: none; }
+  #player-dashboard.mobile-cultivation #mobile-weapon-grid .weapon-slot-status .lock-badge-icon { width: 14px; height: 14px; filter: drop-shadow(0 1px 1px #fff); }
   #player-dashboard.mobile-cultivation #mobile-weapon-grid .weapon-slot-status .item-new-badge { position: static; grid-column: 1 / -1; height: 11px; line-height: 11px; }
   #player-dashboard.mobile-cultivation #mobile-weapon-grid .is-equipped { outline: 1px solid #5c836a; outline-offset: -2px; }
   .mobile-equipment-content { min-height: 0; min-width: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: #799085 transparent; text-align: center; padding: 0 3px 5px; }

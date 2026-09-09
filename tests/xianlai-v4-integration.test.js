@@ -67,7 +67,7 @@ test('preloads cover the complete V4 set without requesting replaced icons and f
 test('new resources and mobile controller load before app with a coherent release marker', () => {
   for (const file of ['xianlai-v4.css', 'mobile-cultivation.css', 'mobile-cultivation.js']) {
     const version = file === 'xianlai-v4.css' ? 'xianlai-v6-20260908'
-      : file === 'mobile-cultivation.css' ? 'weapon-ratings-20260909' : 'ink-controls-20260909';
+      : 'reward-login-20260909';
     assert.ok(html.includes(`${file}?v=${version}`));
     assert.ok(html.indexOf(file) < html.indexOf('src="app.js'));
   }

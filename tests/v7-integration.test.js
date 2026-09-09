@@ -27,9 +27,7 @@ test('every V7 image is preloaded with the exact runtime cache key', () => {
 
 test('new modules load before application and paper/quality style before scrollbar overrides', () => {
   for (const file of ['mobile-cultivation.js', 'reward-presentation.js', 'mobile-cultivation.css', 'reward-presentation.css', 'app.js']) {
-    const codeVersion = ['app.js', 'mobile-cultivation.css'].includes(file) ? 'weapon-ratings-20260909'
-      : file === 'reward-presentation.js' ? 'v7-layout-repair-20260909'
-      : file === 'reward-presentation.css' ? 'unified-layout-20260909' : 'ink-controls-20260909';
+    const codeVersion = 'reward-login-20260909';
     assert.ok(html.includes(`${file}?v=${codeVersion}`), file);
   }
   assert.ok(html.indexOf('src="reward-presentation.js') < html.indexOf('src="app.js'));

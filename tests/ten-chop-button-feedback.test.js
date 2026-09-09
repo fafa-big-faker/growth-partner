@@ -84,6 +84,9 @@ async function simulateTenChops(chops, started = true) {
   };
   const view = vm.runInNewContext(`({${method('doChopTen')}})`, context);
   context.PlayerView = view;
+  view._chopPresentationVersion = 0;
+  view._waitForChopFeedback = async () => true;
+  view._startRewardReveal = () => {};
   view._playChopButtonFeedback = (_button, speed) => events.push(['button', speed]);
   view.renderCultivate = () => {};
   let error;

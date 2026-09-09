@@ -237,7 +237,7 @@
       dual.className = 'mobile-inventory-columns';
       dual.hidden = true;
       dual.setAttribute('aria-label', '背包与装备');
-      dual.innerHTML = '<div class="mobile-items-pane"></div><section class="mobile-equipment-pane" aria-label="仙斧"><div id="mobile-equipment-content" class="mobile-equipment-content" tabindex="0" aria-label="当前装备"></div><div id="mobile-weapon-grid" class="mobile-weapon-grid inventory-grid weapons-grid" aria-label="武器库" hidden></div><button type="button" id="mobile-weapon-toggle" class="mobile-weapon-toggle" aria-controls="mobile-weapon-grid" aria-expanded="false">武器库</button></section>';
+      dual.innerHTML = '<div class="mobile-items-pane"><button type="button" class="inventory-sort-button" id="inventory-sort" title="按道具类型和道具编号整理" aria-label="整理道具背包"><img src="assets/runtime/ui/arrow-up-down.svg" alt=""><span>整理</span></button></div><section class="mobile-equipment-pane" aria-label="仙斧"><div id="mobile-equipment-content" class="mobile-equipment-content" tabindex="0" aria-label="当前装备"></div><div id="mobile-weapon-grid" class="mobile-weapon-grid inventory-grid weapons-grid" aria-label="武器库" hidden></div><button type="button" id="mobile-weapon-toggle" class="mobile-weapon-toggle" aria-controls="mobile-weapon-grid" aria-expanded="false">武器库</button></section>';
       inventory.before(dual);
       state = {
         main, dashboard: navigation.dashboard, inventory, equipment, grid, forge, chop, ten, dual,
@@ -260,6 +260,7 @@
       }
       grid.setAttribute('role', 'tabpanel');
       listen(state, state.modeButton, 'click', () => showMode(state.mode === 'library' ? 'equipment' : 'library'));
+      listen(state, dual.querySelector('#inventory-sort'), 'click', () => options.onSort?.());
       const canCapture = () => state && !state.transitioning && isEnabled() === state.mobile;
       listen(state, grid, 'scroll', () => {
         if (canCapture()) state.scroll[state.tab] = grid.scrollTop;
@@ -291,6 +292,7 @@
         if (!modal) return;
         if (event.key === 'Escape' && !modal.classList.contains('modal-locked')) {
           event.preventDefault();
+          modal._rewardReveal?.cancel();
           modal.remove();
           state.modeButton.focus({ preventScroll: true });
         } else if (event.key === 'Tab') {

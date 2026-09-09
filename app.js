@@ -246,6 +246,7 @@ const FEATURE_ICON_OVERRIDES = Object.freeze({
 function getFeatureIconPath(name) {
   if (name === 'icon-forge') return 'assets/runtime/v4/icons/icon-forge.webp';
   if (name === 'icon-close') return 'assets/runtime/ui/close.svg';
+  if (name === 'icon-lock') return 'assets/runtime/ui/lock-keyhole.svg';
   const replacement = FEATURE_ICON_OVERRIDES[name];
   return replacement ? `${V3_IMAGE_ROOT}/icons/${replacement}.webp` : `${V2_IMAGE_ROOT}/icons/${name}.webp`;
 }
@@ -305,7 +306,7 @@ function getInitialGameImageAssets(axeId = null) {
   const v2Files = [
     'backgrounds/cultivate.webp', 'backgrounds/tasks.webp',
     'backgrounds/reward.webp', 'trees/sprout.webp', 'trees/spirit.webp', 'trees/divine.webp',
-    ...['breakthrough', 'lock', 'tree-info', 'wallet']
+    ...['breakthrough', 'tree-info', 'wallet']
       .map(name => `icons/icon-${name}.webp`),
     ...['button-primary', 'button-secondary', 'checkbox-off', 'checkbox-on', 'chop-button-bg', 'panel-corner',
       'panel-divider', 'scroll-thumb',
@@ -323,7 +324,7 @@ function getInitialGameImageAssets(axeId = null) {
   const currentAxeFrames = axeId
     ? [...getAxeIdleFrames(axeId), ...getAxeChopFrames(axeId)]
     : [];
-  const feedbackFiles = ['assets/runtime/ui/close.svg', 'assets/runtime/ui/check.svg', 'assets/runtime/effects/leaf-ink.webp?v=ink-feedback-20260908',
+  const feedbackFiles = ['assets/runtime/ui/close.svg', 'assets/runtime/ui/check.svg', 'assets/runtime/ui/lock-keyhole.svg', 'assets/runtime/ui/arrow-up-down.svg', 'assets/runtime/effects/leaf-ink.webp?v=ink-feedback-20260908',
     ...['return-arrow', 'exp-track', 'exp-fill'].map(name => `assets/runtime/ink-controls/${name}.webp?v=ink-controls-20260909`)];
   const v5Files = ['assets/runtime/v5/ui/task-paper.webp', 'assets/runtime/v5/ui/shop-paper.webp'];
   const v6QualityFiles = [1, 2, 3, 4, 5].map(quality => `assets/runtime/v6/quality/quality-${quality}.webp?v=xianlai-v6-20260908`);
@@ -2183,9 +2184,9 @@ const Auth = {
   currentRole: 'player',
   _loggingIn: false,
   _credentials: null,
+  _warmup: null,
 
   init() {
-    if (typeof LoginArt !== 'undefined') LoginArt.init();
     this._credentials = LoginCredentials.create({
       usernameInput: document.getElementById('login-username'),
       passwordInput: document.getElementById('login-password'),
@@ -2197,6 +2198,16 @@ const Auth = {
     document.getElementById('login-form-panel').addEventListener('submit', event => {
       event.preventDefault();
       void this.doLogin();
+    });
+    const ready = typeof LoginBoot !== 'undefined' ? LoginBoot.start() : Promise.resolve(null);
+    if (typeof LoginBoot !== 'undefined') LoginBoot.markRuntimeReady?.();
+    void ready.then(prepared => {
+      if (prepared?.cancelled) return;
+      if (typeof LoginArt !== 'undefined') LoginArt.init({ prepared });
+      this._warmup = new AbortController();
+      void AssetPreloader.preload(getInitialGameImageAssets(), () => {}, {
+        signal: this._warmup.signal, timeoutMs: 8000,
+      });
     });
   },
 
@@ -2220,6 +2231,10 @@ const Auth = {
       : document.getElementById('login-password').value;
     let attemptActive = true;
     try {
+      if (typeof LoginBoot !== 'undefined') {
+        const prepared = await LoginBoot.whenReady();
+        if (!prepared.criticalReady) throw new Error('login artwork is not ready');
+      }
       this._setLoading(true, 0, '正在核验道号');
       const account = await AccountSession.verify(role, password);
       if (!account) {
@@ -2229,12 +2244,13 @@ const Auth = {
         return;
       }
       DB.setPlayerRole(account.playerRole);
+      this._warmup?.abort();
       PlayerView.clearDataCaches();
       if (role === 'player') void AudioManager.playBgm();
       else AudioManager.pauseBgm();
       this._setLoading(true, 0, '正在载入画卷');
       const staticAssets = getInitialGameImageAssets();
-      const audioPreload = AudioManager.preload();
+      void AudioManager.preload();
       let playerReady = false;
       let staticReady = false;
       const staticPreload = AssetPreloader.preload(
@@ -2248,17 +2264,26 @@ const Auth = {
           this._setLoading(true, progress.percent * 0.85, status);
         },
       );
-      await Promise.all([staticPreload, audioPreload, Game.init().then(() => {
+      const [staticResult] = await Promise.all([staticPreload, Game.init().then(() => {
         playerReady = true;
         if (attemptActive && staticReady) this._setLoading(true, 85, '正在准备入境');
       })]);
+      if (staticResult.failed.length) {
+        this._setLoading(true, staticResult.loaded / Math.max(1, staticResult.total) * 85, '正在重试缺失画卷');
+        const retried = await AssetPreloader.preload(staticResult.failed);
+        if (retried.failed.length) throw new Error('game artwork could not be loaded');
+      }
 
       if (!Game.state) throw new Error('player initialization failed');
       this._setLoading(true, 85, '正在准备角色');
-      await preloadAxeAnimation(
+      const actorResult = await preloadAxeAnimation(
         Game.state.axeId,
         progress => { if (attemptActive) this._setLoading(true, 85 + progress.percent * 0.15); },
       );
+      if (actorResult.failed.length) {
+        const retried = await AssetPreloader.preload(actorResult.failed);
+        if (retried.failed.length) throw new Error('character artwork could not be loaded');
+      }
       if (typeof LoginArt !== 'undefined') LoginArt.setVisible(false);
       if (role === 'admin') {
         document.getElementById('login-screen').style.display = 'none';
@@ -2309,6 +2334,7 @@ const Auth = {
   },
 
   logout() {
+    PlayerView.cancelChopPresentation();
     document.getElementById('player-dashboard').style.display = 'none';
     document.getElementById('admin-dashboard').style.display = 'none';
     document.getElementById('login-screen').style.display = 'flex';
@@ -2336,6 +2362,7 @@ const Router = {
   playerTab(tab, options = {}) {
     const main = document.getElementById('player-main');
     if (this.currentPlayerTab === tab && main?.dataset.renderedTab === tab && !options.force) return;
+    if (tab !== this.currentPlayerTab) PlayerView.cancelChopPresentation();
 
     if (typeof MobileCultivation !== 'undefined') MobileCultivation.setPage(tab);
 
@@ -2537,16 +2564,17 @@ const UI = {
       </div>
     `;
     overlay.querySelector('.modal-close')?.addEventListener('click', () => {
-      if (!overlay.classList.contains('modal-locked')) overlay.remove();
+      if (!overlay.classList.contains('modal-locked')) this.closeModal(overlay);
     });
     overlay.addEventListener('click', (e) => {
-      if (e.target === overlay && !overlay.classList.contains('modal-locked')) overlay.remove();
+      if (e.target === overlay && !overlay.classList.contains('modal-locked')) this.closeModal(overlay);
     });
     container.appendChild(overlay);
     return overlay;
   },
 
   closeModal(overlay) {
+    overlay?._rewardReveal?.cancel();
     if (overlay && overlay.parentNode) overlay.remove();
   },
 
@@ -2617,8 +2645,14 @@ const UI = {
   },
 
   // 播放掉落动画
+  playDropSound(item) {
+    const quality = Number(item?.quality);
+    const sound = quality >= 4 ? 'dropHigh' : quality === 3 ? 'dropRare' : 'itemDrop';
+    void AudioManager.playEffect(sound, { group: 'chop-drops' });
+  },
+
   playDropAnimation(item, treeElement) {
-    void AudioManager.playEffect('itemDrop');
+    this.playDropSound(item);
     const container = document.getElementById('floating-items-container');
     const el = document.createElement('div');
     el.className = 'falling-item';
@@ -2637,7 +2671,7 @@ const UI = {
   },
 
   playScatterAnimation(item, treeElement, index, durationMs = 600) {
-    void AudioManager.playEffect('itemDrop');
+    this.playDropSound(item);
     const container = document.getElementById('floating-items-container');
     const el = document.createElement('div');
     el.className = 'scatter-item';
@@ -2946,6 +2980,7 @@ const PlayerView = {
     if (typeof MobileCultivation !== 'undefined') {
       MobileCultivation.mount(mobileState || {}, {
         onModeChange: () => this.renderInventory(this.currentInvTab),
+        onSort: () => this.sortInventory(),
       });
       MobileCultivation.refreshEquipment(this.getMobileEquipmentPresentation());
     }
@@ -3078,6 +3113,29 @@ const PlayerView = {
 
   currentInvTab: 'items',
 
+  _inventoryOrderStore: null,
+  _inventoryOrderAccount: null,
+
+  getInventoryOrder() {
+    if (!this._inventoryOrderStore || this._inventoryOrderAccount !== DB.playerRole) {
+      let storage;
+      try { storage = window.localStorage; } catch (_) {}
+      this._inventoryOrderStore = InventoryOrder.createStore({ storage, accountId: DB.playerRole });
+      this._inventoryOrderAccount = DB.playerRole;
+    }
+    return this._inventoryOrderStore;
+  },
+
+  sortInventory() {
+    const materials = Game.inventory.filter(inv => ITEMS[inv.itemId]?.type >= 1 && ITEMS[inv.itemId]?.type <= 4);
+    this.getInventoryOrder().arrange(materials, ITEMS);
+    this.renderInventory(this.currentInvTab);
+    const grid = document.getElementById('inventory-grid');
+    if (grid) grid.scrollTop = 0;
+    if (typeof MobileCultivation !== 'undefined') MobileCultivation.beforeInventoryRender('items');
+    UI.toast('背包已整理');
+  },
+
   switchInvTab(tab) {
     this.currentInvTab = tab;
     document.querySelectorAll('.inv-tab-v').forEach(el => {
@@ -3131,10 +3189,10 @@ const PlayerView = {
 
     const items = isWeapons
       ? Game.weapons.filter(weapon => weapon.id !== Game.state.axeInstanceId)
-      : Game.inventory.filter(inv => {
+      : this.getInventoryOrder().order(Game.inventory.filter(inv => {
         const def = ITEMS[inv.itemId];
         return def && def.type >= 1 && def.type <= 4;
-      });
+      }));
 
     // 已占用格子数：道具每种占1格（数量显示角标），武器每把占1格
     const filledSlots = items.length;
@@ -3556,6 +3614,50 @@ const PlayerView = {
     }, rippleMs + 40);
   },
 
+  _chopPresentationVersion: 0,
+  _chopWait: null,
+
+  cancelChopPresentation() {
+    this._chopPresentationVersion += 1;
+    this._chopWait?.cancel();
+    this._chopWait = null;
+    document.querySelectorAll('.reward-dialog-overlay').forEach(overlay => UI.closeModal(overlay));
+    document.querySelectorAll('#floating-items-container .falling-item, #floating-items-container .scatter-item')
+      .forEach(element => element.remove());
+    AudioManager.stopEffects('chop-drops');
+  },
+
+  _waitForChopFeedback(ms, version) {
+    if (version !== this._chopPresentationVersion) return Promise.resolve(false);
+    return new Promise(resolve => {
+      const finish = valid => {
+        clearTimeout(timer);
+        if (this._chopWait === pending) this._chopWait = null;
+        resolve(valid && version === this._chopPresentationVersion);
+      };
+      const pending = { cancel: () => finish(false) };
+      const timer = setTimeout(() => finish(true), ms);
+      this._chopWait = pending;
+    });
+  },
+
+  _startRewardReveal(overlay) {
+    const button = overlay.querySelector('.reward-reveal-confirm');
+    let complete = false;
+    const reveal = RewardPresentation.playReveal(overlay, {
+      audio: AudioManager,
+      onComplete: () => {
+        complete = true;
+        button.textContent = '收下';
+      },
+    });
+    overlay._rewardReveal = reveal;
+    button.addEventListener('click', () => {
+      if (!complete) reveal.finish();
+      else { reveal.cancel(); overlay.remove(); }
+    });
+  },
+
   async doChop() {
     // 十连砍模式
     if (this._tenChopMode) {
@@ -3571,6 +3673,7 @@ const PlayerView = {
     const scene = document.getElementById('tree-area');
     const chopBtn = document.getElementById('chop-btn');
     const outcome = await UI.runLockedAction('chop', chopBtn, '', async () => {
+      const version = ++this._chopPresentationVersion;
       this._playChopButtonFeedback(chopBtn);
       void AudioManager.playEffect('chopHit');
       const characterAnimation = CultivatorAnimator.playChop();
@@ -3583,16 +3686,16 @@ const PlayerView = {
       try {
         const item = await Game.chop();
         await characterAnimation;
+        if (version !== this._chopPresentationVersion || !Game.state) return Boolean(item);
         if (item) {
           if (treeIcon) UI.playDropAnimation(item, treeIcon);
 
           if (item.extraDrop && treeIcon) {
-            setTimeout(() => UI.playDropAnimation(item.extraDrop, treeIcon), 180);
+            if (!await this._waitForChopFeedback(180, version)) return true;
+            UI.playDropAnimation(item.extraDrop, treeIcon);
           }
-
-          setTimeout(() => {
-            this._showRewardModal(item);
-          }, 800);
+          if (!await this._waitForChopFeedback(item.extraDrop ? 620 : 800, version)) return true;
+          this._showRewardModal(item);
         }
 
         this.renderCultivate();
@@ -3614,16 +3717,18 @@ const PlayerView = {
     const overlay = UI.modal(`
       <div class="reward-modal reward-modal-v7">
         ${rewards.renderItem(item, { size: 'large' })}
+        ${rewards.renderRefundTotal([item])}
         ${extraHtml}
       </div>
     `, {
       title: `${renderFeatureIcon('icon-reward', '', 'section-title-icon')} 获得物品`,
       footer: `<div class="modal-footer">
-        <button class="btn btn-primary btn-sm" onclick="this.closest('.modal-overlay').remove()">收下</button>
+        <button type="button" class="btn btn-primary btn-sm reward-reveal-confirm">全部显示</button>
       </div>`
     });
     overlay.classList.add('reward-dialog-overlay');
     overlay.querySelector('.modal').classList.add('reward-dialog', 'reward-dialog--single');
+    this._startRewardReveal(overlay);
   },
 
   // --- 任务页 ---
@@ -5143,6 +5248,7 @@ const PlayerView = {
     const scene = document.getElementById('tree-area');
     const outcome = await UI.runLockedAction('chop', chopBtn, '', async () => {
 
+    const version = ++this._chopPresentationVersion;
     const results = [];
     const scatterEls = [];
 
@@ -5150,6 +5256,7 @@ const PlayerView = {
     try {
       const chops = await Game.chopTen();
       if (!chops) return false;
+      if (version !== this._chopPresentationVersion || !Game.state) return true;
       for (let i = 0; i < 10; i++) {
         const timing = TenChopTimeline.getStep(i);
         this._playChopButtonFeedback(chopBtn, timing.speed);
@@ -5163,6 +5270,7 @@ const PlayerView = {
 
         const item = chops[i];
         await characterAnimation;
+        if (version !== this._chopPresentationVersion || !Game.state) return true;
         if (item) {
           results.push(item);
           if (treeIcon) {
@@ -5177,20 +5285,27 @@ const PlayerView = {
             }
           }
         }
-        await new Promise(resolve => setTimeout(resolve, timing.gapMs));
+        if (!await this._waitForChopFeedback(timing.gapMs, version)) return true;
       }
     } finally {
-      CultivatorAnimator.resumeIdle();
+      if (version === this._chopPresentationVersion && Game.state) CultivatorAnimator.resumeIdle();
+      else scatterEls.forEach(el => el?.remove());
     }
 
     // 等待一会儿让玩家看清地上的物品
-    await new Promise(r => setTimeout(r, 700));
+    if (!await this._waitForChopFeedback(700, version)) {
+      scatterEls.forEach(el => el?.remove());
+      return true;
+    }
 
     // 淡出所有散落物品
     scatterEls.forEach(el => {
       if (el) el.classList.add('scatter-fade');
     });
-    await new Promise(r => setTimeout(r, 500));
+    if (!await this._waitForChopFeedback(500, version)) {
+      scatterEls.forEach(el => el?.remove());
+      return true;
+    }
     scatterEls.forEach(el => { if (el) el.remove(); });
 
     // 显示结果弹窗
@@ -5199,11 +5314,12 @@ const PlayerView = {
     const overlay = UI.modal(rewards.renderResults(results), {
       title: `${renderFeatureIcon('icon-reward', '', 'section-title-icon')} 十连砍结果（共 ${results.length} 件）`,
       footer: `<div class="modal-footer">
-        <button class="btn btn-primary btn-sm" onclick="this.closest('.modal-overlay').remove();PlayerView.renderCultivate()">确定</button>
+        <button type="button" class="btn btn-primary btn-sm reward-reveal-confirm">全部显示</button>
       </div>`
     });
     overlay.classList.add('reward-dialog-overlay');
     overlay.querySelector('.modal').classList.add('reward-dialog', 'reward-dialog--ten');
+    this._startRewardReveal(overlay);
 
     PlayerView.renderCultivate();
     return true;
