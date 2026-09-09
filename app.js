@@ -4981,6 +4981,7 @@ const PlayerView = {
     `).join('');
 
     const overlay = UI.modal(`
+      <div class="forge-modal-content">
       <div class="forge-heading">
         <div class="forge-heading-title">锻造仙斧</div>
         <div class="forge-heading-copy">引灵火淬锻，静候仙斧成形</div>
@@ -4992,10 +4993,16 @@ const PlayerView = {
           <div id="forge-result-action" class="forge-result-action" aria-live="polite"></div>
         </div>
         <div id="forge-reveal-name" class="forge-reveal-name">器灵待启</div>
-        <div id="forge-reveal-status" class="forge-reveal-status">准备锻造</div>
-        <div class="forge-reveal-progress" role="progressbar" aria-label="锻造进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
-          <div class="forge-reveal-progress-fill"></div>
+        <div class="forge-reveal-information">
+          <div class="forge-reveal-running">
+            <div id="forge-reveal-status" class="forge-reveal-status">准备锻造</div>
+            <div class="forge-reveal-progress" role="progressbar" aria-label="锻造进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+              <div class="forge-reveal-progress-fill"></div>
+            </div>
+          </div>
+          <div id="forge-result-detail" class="forge-result-detail" role="region" aria-label="仙斧技能与文案" tabindex="0" hidden></div>
         </div>
+      </div>
       </div>
       <div class="forge-lower-panel">
         <div class="forge-material-cost" title="每次消耗 ${forgeCost} 个${forgeCostItem?.name || '锻造材料'}">
@@ -5005,7 +5012,6 @@ const PlayerView = {
           <button class="btn btn-primary btn-sm" id="forge-ok" ${forgeQty >= forgeCost ? '' : 'disabled'}>锻造</button>
         </div>
       </div>
-      <div id="forge-result-detail" class="forge-result-detail" hidden></div>
       <details class="forge-probability-details">
         <summary>查看概率详情</summary>
         <div class="forge-probability-list">${poolHtml}</div>
@@ -5038,7 +5044,10 @@ const PlayerView = {
       if (detail) {
         detail.hidden = true;
         detail.innerHTML = '';
+        detail.scrollTop = 0;
       }
+      const content = overlay.querySelector('.forge-modal-content');
+      if (content) content.scrollTop = 0;
       elements.art?.classList.remove('is-revealed');
       if (elements.progressFill) elements.progressFill.style.transition = 'none';
       ForgeReveal.setProgress(elements, 0);
@@ -5066,9 +5075,9 @@ const PlayerView = {
         if (detail) {
           detail.hidden = false;
           detail.innerHTML = `
-            <div class="forge-result-quality" style="color:${q.color}">${q.name}</div>
-            ${resultSkillHtml ? `<div class="forge-result-skill">斧技 · ${resultSkillHtml}</div>` : ''}
-            <div class="forge-result-copy">${result.item.desc || ''}</div>
+            <div class="forge-result-quality" style="color:${q.color}">${escapeHtml(q.name)}</div>
+            ${resultSkillHtml ? `<div class="forge-result-skill">斧技 · ${resultSkillHtml}</div>` : '<div class="forge-result-no-skill">暂无斧技</div>'}
+            <div class="forge-result-copy">${escapeHtml(result.item.desc || '')}</div>
           `;
         }
       } else if (outcome.started) {

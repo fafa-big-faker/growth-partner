@@ -145,9 +145,19 @@ test('forge frame keeps its action slot outside the swapping art and before the 
   assert.match(showForge, /const resultAction = overlay\.querySelector\('#forge-result-action'\)/);
   assert.match(showForge, /resultAction\.innerHTML = ''/);
   assert.ok(showForge.indexOf('id="forge-result-action"') < showForge.indexOf('id="forge-ok"'));
-  assert.ok(showForge.indexOf('id="forge-result-detail"') > showForge.indexOf('id="forge-ok"'));
+  assert.ok(showForge.indexOf('id="forge-result-detail"') < showForge.indexOf('id="forge-ok"'));
   assert.ok(showForge.indexOf('class="forge-probability-details"') > showForge.indexOf('id="forge-ok"'));
   assert.match(showForge, /overlay\.classList\.add\('forge-modal-overlay'\)/);
+});
+
+test('forge result replaces progress with prominent skills without appending another panel', () => {
+  const showForge = app.match(/\r?\n  showForge\(\) \{[\s\S]*?\r?\n  },\r?\n\r?\n  \/\/ 十连砍/)?.[0] || '';
+  assert.match(showForge, /class="forge-reveal-information"[\s\S]*class="forge-reveal-running"[\s\S]*id="forge-result-detail"/);
+  assert.match(showForge, /暂无斧技/);
+  assert.match(showForge, /escapeHtml\(result\.item\.desc/);
+  assert.match(styles, /\[data-state="result"\] \.forge-reveal-running\s*\{\s*display:\s*none/);
+  assert.match(styles, /\.forge-reveal-information\s*\{[^}]*height:\s*160px/s);
+  assert.match(styles, /\.forge-modal-content\s*\{[^}]*overflow-y:\s*auto/s);
 });
 
 test('forge eligibility renders an equip action or configured red requirement, never redundant copy', () => {

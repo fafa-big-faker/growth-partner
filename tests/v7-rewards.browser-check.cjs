@@ -110,7 +110,8 @@ async function main() {
       assert.ok(geometry.footer.y >= geometry.body.bottom - 1, 'footer never overlaps the scroll body');
       assert.ok(geometry.footer.bottom <= viewport.height - 11);
       assert.equal(geometry.buttonAccessible, true, 'confirmation is clickable before any scrolling');
-      assert.ok(geometry.buttonRect.height >= 44, 'reward confirmation retains its 44px click target');
+      // A hover translation can report 43.99994px for an unchanged 44px box.
+      assert.ok(geometry.buttonRect.height >= 43.99, 'reward confirmation retains its 44px click target');
       assert.ok(Math.abs(geometry.buttonTextOffset.x) <= 1,
         `${geometry.buttonLabel} text is horizontally centered: ${JSON.stringify(geometry.buttonTextOffset)}`);
       assert.ok(Math.abs(geometry.buttonTextOffset.y) <= 1,

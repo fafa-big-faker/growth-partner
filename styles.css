@@ -3197,17 +3197,34 @@ body {
 
 .modal-overlay.forge-modal-overlay {
   align-items: flex-start;
-  padding: 32px 12px;
+  padding: 16px 12px;
 }
 
 .modal.forge-modal {
-  width: min(440px, calc(100vw - 24px));
-  max-height: calc(100dvh - 64px);
-  padding: 22px 22px 20px 30px;
+  width: min(400px, calc(100vw - 24px));
+  max-height: calc(100dvh - 32px);
+  padding: 18px 18px 16px 24px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   overflow-anchor: none;
 }
 
+.forge-modal .modal-body {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.forge-modal-content {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+
 .forge-modal .modal-header {
+  flex: none;
   margin-bottom: 8px;
   padding-bottom: 6px;
 }
@@ -3233,7 +3250,7 @@ body {
 
 .forge-reveal-stage {
   position: relative;
-  padding: 12px 8px 10px;
+  padding: 10px 2px 8px;
   text-align: center;
 }
 
@@ -3245,8 +3262,8 @@ body {
 .forge-reveal-frame {
   position: relative;
   z-index: 1;
-  width: 174px;
-  height: 208px;
+  width: 144px;
+  height: 174px;
   margin: 0 auto 6px;
   padding: 6px;
   display: grid;
@@ -3267,8 +3284,8 @@ body {
 }
 
 .forge-reveal-art .forge-reveal-icon {
-  width: 126px;
-  height: 144px;
+  width: 100px;
+  height: 114px;
   max-height: 100%;
   object-fit: contain;
   filter: drop-shadow(0 7px 8px rgba(42, 48, 43, 0.2));
@@ -3292,15 +3309,31 @@ body {
 }
 
 .forge-reveal-name {
-  height: 48px;
+  height: 44px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 18px;
-  line-height: 24px;
+  font-size: 17px;
+  line-height: 22px;
   font-weight: 750;
   overflow-wrap: anywhere;
   transition: color 100ms linear;
+}
+
+.forge-reveal-information {
+  height: 160px;
+  min-width: 0;
+}
+
+.forge-reveal-running {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.forge-reveal-stage[data-state="result"] .forge-reveal-running {
+  display: none;
 }
 
 .forge-reveal-status {
@@ -3336,7 +3369,7 @@ body {
 .forge-reveal-flash {
   position: absolute;
   z-index: 0;
-  top: 108px;
+  top: 82px;
   left: 50%;
   width: 150px;
   height: 150px;
@@ -3352,11 +3385,17 @@ body {
 }
 
 .forge-result-detail {
-  margin: 14px auto 0;
-  max-width: 330px;
-  padding-top: 12px;
-  border-top: 1px solid rgba(75, 116, 102, 0.2);
+  height: 100%;
+  padding: 0 2px 2px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
   overflow-wrap: anywhere;
+}
+
+.forge-result-detail:focus-visible {
+  outline: 1px solid #527365;
+  outline-offset: -1px;
 }
 
 .forge-result-quality {
@@ -3365,14 +3404,21 @@ body {
 }
 
 .forge-result-skill {
-  margin-top: 8px;
+  margin-top: 7px;
   padding: 8px 10px;
-  border-left: 3px solid currentColor;
-  color: var(--accent);
+  border-left: 3px solid #668678;
+  color: #303b36;
   background: rgba(54, 102, 84, 0.08);
-  font-size: 13px;
+  font-size: 14px;
+  line-height: 1.65;
   font-weight: 650;
   text-align: left;
+}
+
+.forge-result-no-skill {
+  padding: 16px 0 8px;
+  color: #626762;
+  font-size: 13px;
 }
 
 .forge-result-copy {
@@ -3380,6 +3426,7 @@ body {
   color: var(--text-secondary);
   font-size: 12px;
   line-height: 1.65;
+  text-align: left;
 }
 
 .forge-result-action {
@@ -3400,12 +3447,17 @@ body {
 }
 
 .forge-lower-panel {
+  flex: none;
   padding-top: 8px;
   border-top: 1px solid rgba(75, 116, 102, 0.28);
 }
 
 .forge-probability-details {
-  margin: 12px 0 0;
+  flex: none;
+  max-height: min(176px, 30dvh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  margin: 8px 0 0;
   color: var(--text-secondary);
   font-size: 12px;
 }
@@ -3529,9 +3581,9 @@ body {
   .forge-modal .modal-header { margin-bottom: 4px; padding-bottom: 0; }
   .forge-heading-copy { display: none; }
   .forge-reveal-stage { padding-top: 8px; padding-bottom: 6px; }
-  .forge-reveal-frame { width: 156px; height: 178px; }
-  .forge-reveal-art .forge-reveal-icon { width: 108px; height: 120px; }
-  .forge-reveal-name { height: 44px; font-size: 17px; line-height: 22px; }
+  .forge-reveal-frame { width: 128px; height: 154px; }
+  .forge-reveal-art .forge-reveal-icon { width: 84px; height: 94px; }
+  .forge-reveal-name { font-size: 16px; }
 }
 
 @keyframes forge-item-shake {

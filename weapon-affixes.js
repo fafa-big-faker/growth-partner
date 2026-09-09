@@ -136,6 +136,19 @@
     return template;
   }
 
+  function getWeaponRating(weapon) {
+    let quality = 1;
+    for (const roll of Array.isArray(weapon?.skillRolls) ? weapon.skillRolls : []) {
+      if (!roll || typeof roll !== 'object' || Array.isArray(roll)) continue;
+      if (typeof roll.description !== 'string' || !roll.description.trim()) continue;
+      if (typeof roll.buffQuality !== 'number' && typeof roll.buffQuality !== 'string') continue;
+      const candidate = Number(roll.buffQuality);
+      if (!Number.isInteger(candidate) || candidate < 1 || candidate > 5) continue;
+      quality = Math.max(quality, candidate);
+    }
+    return { quality, label: ['B', 'A', 'S', 'SS', 'SSS'][quality - 1] };
+  }
+
   function applyRewardMultipliers(drop, rolls, random = Math.random) {
     if (!drop) return drop;
     const result = { ...drop };
@@ -164,6 +177,7 @@
     pickWeightedBuff,
     rollSkills,
     formatSkill,
+    getWeaponRating,
     applyRewardMultipliers,
     rollRefund,
   };
