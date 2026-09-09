@@ -3720,13 +3720,12 @@ const PlayerView = {
   _showRewardModal(item) {
     const rewards = RewardPresentation.createRenderer({ items: ITEMS, quality: QUALITY, renderItemIcon, escapeHtml });
     const extraHtml = item.extraDrop
-      ? rewards.renderResults([{ ...item.extraDrop, isExtra: true }], { notice: false }) : '';
+      ? rewards.renderResults([{ ...item.extraDrop, isExtra: true }]) : '';
 
     const overlay = UI.modal(`
       <div class="reward-modal reward-modal-v7">
         ${rewards.renderItem(item, { size: 'large' })}
         ${extraHtml}
-        ${rewards.renderNotice()}
       </div>
     `, {
       title: `${renderFeatureIcon('icon-reward', '', 'section-title-icon')} 获得物品`,

@@ -64,7 +64,7 @@ test('category mix keeps UI feedback audible above the restrained BGM', () => {
     dropRare: 0.64,
     dropHigh: 0.68,
     rewardReveal: 0.48,
-    skillTrigger: 0.68,
+    skillTrigger: 0.74,
   });
 });
 
@@ -203,6 +203,34 @@ test('cancelling one group clears its references without stopping other feedback
   assert.equal(chop.paused, true);
   assert.equal(bgm.paused, false);
   assert.equal(loop.paused, false);
+});
+
+test('new skill cue stays clear while replacing only its own reveal tail', async () => {
+  const manager = freshManager();
+  await manager.playBgm();
+  const bgm = FakeAudio.instances.at(-1);
+  await manager.playEffect('skillTrigger', { group: 'chop-refunds', volumeScale: .8 });
+  const refund = FakeAudio.instances.at(-1);
+  await manager.playEffect('rewardReveal', { group: 'reward-dialog' });
+  const tail = FakeAudio.instances.at(-1);
+  manager.stopEffects('reward-dialog');
+  await manager.playEffect('skillTrigger', { group: 'reward-dialog' });
+  const skill = FakeAudio.instances.at(-1);
+  assert.equal(tail.paused, true);
+  assert.equal(bgm.paused, false);
+  assert.equal(bgm.volume, .18);
+  assert.equal(refund.paused, false);
+  assert.equal(refund.volume, .74 * .8);
+  assert.equal(skill.src, 'assets/runtime/audio/skill-trigger.wav?v=skill-v2-20260909');
+  assert.equal(skill.volume, .74);
+  assert.equal(skill.playbackRate, 1);
+  manager.stopEffects('reward-dialog');
+  assert.equal(skill.paused, true);
+  assert.equal(refund.paused, false);
+  assert.equal(bgm.paused, false);
+  manager.setMuted(true);
+  assert.equal(refund.paused, true);
+  assert.equal(bgm.paused, true);
 });
 
 test('volume and playback speed are bounded per effect without changing the shared mix', async () => {

@@ -10,7 +10,7 @@
     dropRare: 'assets/runtime/audio/drop-rare.wav',
     dropHigh: 'assets/runtime/audio/drop-high.wav',
     rewardReveal: 'assets/runtime/audio/reward-reveal.wav',
-    skillTrigger: 'assets/runtime/audio/skill-trigger.wav',
+    skillTrigger: 'assets/runtime/audio/skill-trigger.wav?v=skill-v2-20260909',
   });
 
   const AUDIO_VOLUMES = Object.freeze({
@@ -24,7 +24,7 @@
     dropRare: 0.64,
     dropHigh: 0.68,
     rewardReveal: 0.48,
-    skillTrigger: 0.68,
+    skillTrigger: 0.74,
   });
 
   const MUTE_STORAGE_KEY = 'growth-partner-audio-muted';

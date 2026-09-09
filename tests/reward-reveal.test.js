@@ -73,28 +73,28 @@ test('explicit type 2 never enters multiplier metadata or the presentation timel
   assert.deepEqual(plan.events.map(event => event.type), ['reveal', 'complete-item']);
 });
 
-test('rendered output keeps final quantities, compact multiplier marks and one shared notice, without any refunds', () => {
+test('rendered output shows one actual quantity and no permanent multiplier or empty skill slot', () => {
   const renderer = Rewards.createRenderer({ renderItemIcon: (id, fallback, cls) => `<img data-id="${id}" class="${cls}">` });
   const html = renderer.renderResults([bonus, { itemId: '1', quantity: 2, refundChopping: 3 }, { quantity: 7, isExtra: true }]);
   assert.match(html, /reward-item-quantity-value">×12</);
-  assert.match(html, /aria-label="斧技增幅6倍">×6<\/span>/);
-  assert.doesNotMatch(html, /reward-item-feedback|reward-item-refund|reward-refund|返还|斧技发动/);
+  assert.doesNotMatch(html, /reward-item-buff|reward-skill-notice|reward-item-feedback|reward-item-refund|reward-refund|返还|斧技发动/);
   assert.match(html, /data-reward-reveal="\{&quot;quantity&quot;:12/);
-  assert.equal((html.match(/class="reward-skill-notice"/g) || []).length, 1);
-  assert.match(renderer.renderNotice(), /role="status" aria-live="polite"/);
-  assert.doesNotMatch(renderer.renderResults([bonus], { notice: false }), /reward-skill-notice/);
+  assert.equal((renderer.renderItem(bonus).match(/reward-item-quantity-value/g) || []).length, 1);
+  assert.equal(renderer.renderNotice, undefined);
+  assert.equal(Rewards.renderNotice, undefined);
   assert.ok(html.indexOf('reward-results-extra') > html.indexOf('reward-results-regular'));
 });
 
 function fixture(rewards, reduced = false) {
   let now = 0, id = 0;
-  const timers = new Map(), listeners = new Map(), observers = [], played = [], stopped = [];
-  const node = (height = 40) => ({ style: {}, innerHTML: '', textContent: '', getBoundingClientRect: () => ({ height }),
+  const timers = new Map(), listeners = new Map(), observers = [], played = [], stopped = [], audioActions = [];
+  const node = (height = 40) => ({ style: {}, innerHTML: '', textContent: '', attributes: new Map(), getBoundingClientRect: () => ({ height }),
+    setAttribute(name, value) { this.attributes.set(name, value); }, getAttribute(name) { return this.attributes.get(name) ?? null; }, removeAttribute(name) { this.attributes.delete(name); },
     classList: { values: new Set(), add(...names) { names.forEach(name => this.values.add(name)); }, remove(...names) { names.forEach(name => this.values.delete(name)); } } });
   const view = {
     setTimeout(callback, delay) { timers.set(++id, { callback, at: now + delay }); return id; },
     clearTimeout(timer) { timers.delete(timer); },
-    getComputedStyle: () => ({ display: 'block', visibility: 'visible' }),
+    getComputedStyle: () => ({ display: 'block', visibility: 'visible', fontSize: '12px' }),
     matchMedia: () => ({ matches: reduced }), addEventListener() {}, removeEventListener() {},
     MutationObserver: class { constructor(callback) { this.callback = callback; this.active = true; observers.push(this); } observe() {} disconnect() { this.active = false; } },
   };
@@ -104,21 +104,22 @@ function fixture(rewards, reduced = false) {
     const metadata = Rewards.getRewardMetadata(reward);
     const element = { ...node(), dataset: { rewardReveal: JSON.stringify(metadata), rewardQuality: '3' } };
     const quantity = node(); quantity.textContent = `×${metadata.quantity}`;
-    const buff = metadata.triggers.length ? node() : null;
-    if (buff) buff.innerHTML = '×6';
-    const reserves = [node(17)];
-    const selectors = { '.reward-item-quantity-value': quantity, '.reward-item-buff': buff,
-      '.reward-item-quantity': reserves[0] };
+    const name = node(35); name.textContent = reward.name || '锻造石';
+    name.setAttribute('title', '原道具说明');
+    const reserves = [name, node(17)];
+    const selectors = { '.reward-item-quantity-value': quantity, '.reward-item-name': name,
+      '.reward-item-quantity': reserves[1] };
     element.querySelector = selector => selectors[selector];
-    return { element, quantity, buff, reserves };
+    return { element, quantity, name, reserves };
   });
-  const notice = node(32);
+  const body = { ...node(), clientHeight: 0, scrollTop: 0 };
   const overlay = { ownerDocument: document, nodeType: 1, parentElement: null, isConnected: true, hidden: false, dataset: {},
-    querySelector: selector => selector === '.reward-skill-notice-text' ? notice : null,
+    querySelector: selector => selector === '.modal-body' ? body : null,
     querySelectorAll: () => entries.map(entry => entry.element) };
   return {
-    overlay, entries, notice, timers, document, observers, played, stopped,
-    audio: { playEffect(name, options) { played.push({ name, group: options.group, at: now }); return Promise.resolve(true); }, stopEffects(group) { stopped.push(group); } },
+    overlay, entries, body, timers, document, observers, played, stopped, audioActions,
+    audio: { playEffect(name, options) { played.push({ name, group: options.group, at: now }); audioActions.push({ type: 'play', name, group: options.group, at: now }); return Promise.resolve(true); },
+      stopEffects(group) { stopped.push(group); audioActions.push({ type: 'stop', group, at: now }); } },
     notify() { observers.filter(observer => observer.active).forEach(observer => observer.callback()); },
     visibility() { listeners.get('visibilitychange')?.(); },
     advance(target) {
@@ -138,9 +139,10 @@ test('controller displays base and true intermediate quantities, holds later ite
   const controller = Rewards.playReveal(f.overlay, { audio: f.audio, onComplete: () => completed++ });
   assert.equal(f.entries[0].quantity.textContent, '×2');
   assert.equal(f.entries[1].element.dataset.revealState, 'pending');
-  assert.equal(f.entries[0].reserves[0].style.minHeight, '17px');
-  f.advance(120); assert.equal(f.notice.textContent, '斧技发动 · 数量×3');
-  assert.equal(f.notice.classList.values.has('quality-3'), true);
+  assert.equal(f.entries[0].reserves[0].style.minHeight, '35px');
+  assert.equal(f.entries[0].reserves[1].style.minHeight, '17px');
+  f.advance(120); assert.equal(f.entries[0].name.textContent, '斧技·3倍');
+  assert.equal(f.entries[1].name.textContent, '锻造石');
   f.advance(419); assert.equal(f.entries[0].element.classList.values.has('is-count-shaking'), false);
   f.advance(420); assert.equal(f.entries[0].element.classList.values.has('is-count-shaking'), true);
   f.advance(919); assert.equal(f.entries[0].quantity.textContent, '×2');
@@ -148,7 +150,7 @@ test('controller displays base and true intermediate quantities, holds later ite
   assert.equal(f.entries[0].element.classList.values.has('is-count-shaking'), false);
   assert.equal(f.entries[0].element.classList.values.has('is-count-changing'), true);
   f.advance(1419); assert.equal(f.entries[0].element.classList.values.has('is-count-changing'), true);
-  f.advance(1420); assert.equal(f.notice.textContent, '斧技发动 · 数量×2');
+  f.advance(1420); assert.equal(f.entries[0].name.textContent, '斧技·2倍');
   assert.equal(f.entries[0].element.classList.values.has('is-count-changing'), false);
   f.advance(1719); assert.equal(f.entries[0].element.classList.values.has('is-count-shaking'), false);
   f.advance(1720); assert.equal(f.entries[0].element.classList.values.has('is-count-shaking'), true);
@@ -157,14 +159,54 @@ test('controller displays base and true intermediate quantities, holds later ite
   f.advance(2719); assert.equal(f.entries[0].element.classList.values.has('is-count-changing'), true);
   assert.equal(f.entries[1].element.dataset.revealState, 'pending');
   f.advance(2720); assert.equal(f.entries[1].element.dataset.revealState, 'revealing');
-  assert.equal(f.notice.textContent, '');
+  assert.equal(f.entries[0].name.textContent, '锻造石');
   f.advance(2940); assert.equal(completed, 1);
   assert.equal(f.timers.size, 0);
   assert.equal(f.overlay.dataset.rewardRevealState, 'complete');
-  assert.equal(f.stopped.length, 0, 'natural completion does not truncate audio tails');
+  assert.equal(f.stopped.length, 2, 'only each skill start truncates its own preceding reveal tail');
+  assert.ok(f.audioActions.filter(action => action.type === 'stop').every(action => [120, 1420].includes(action.at)));
   assert.equal(f.played.filter(sound => sound.name === 'skillTrigger').length, 2);
   controller.finish(); assert.equal(completed, 1);
-  controller.cancel(); assert.equal(f.stopped.length, 1, 'closing a completed presentation may stop remaining audio tails');
+  controller.cancel(); assert.equal(f.stopped.length, 3, 'closing a completed presentation may stop remaining audio tails');
+});
+
+test('each skill clears only its own group immediately before its cue', () => {
+  const f = fixture([bonus]);
+  Rewards.playReveal(f.overlay, { audio: f.audio });
+  f.advance(10000);
+  for (const [index, action] of f.audioActions.entries()) {
+    if (action.name !== 'skillTrigger') continue;
+    assert.deepEqual(f.audioActions[index - 1], { type: 'stop', group: action.group, at: action.at });
+  }
+  assert.ok(f.stopped.every(group => group === f.played[0].group));
+  assert.match(f.played[0].group, /^reward-dialog-\d+$/);
+});
+
+test('clipped rewards scroll only their modal body, including when the user scrolls away before a trigger', () => {
+  const f = fixture([bonus]);
+  f.body.clientHeight = 100;
+  f.body.getBoundingClientRect = () => ({ top: 100, bottom: 200, height: 100 });
+  f.entries[0].element.getBoundingClientRect = () => ({ top: 230 - f.body.scrollTop, bottom: 320 - f.body.scrollTop, height: 90 });
+  f.entries[0].reserves[1].getBoundingClientRect = () => ({ bottom: 320 - f.body.scrollTop, height: 17 });
+  f.entries[0].element.scrollIntoView = () => assert.fail('never scroll ancestors or the document');
+  const controller = Rewards.playReveal(f.overlay, { audio: f.audio });
+  assert.equal(f.body.scrollTop, 125);
+  f.body.scrollTop = 0;
+  f.advance(120);
+  assert.equal(f.body.scrollTop, 125);
+  controller.cancel();
+});
+
+test('an item taller than the entire body prioritizes its quantity without scrolling page ancestors', () => {
+  const f = fixture([bonus]);
+  f.body.clientHeight = 50;
+  f.body.getBoundingClientRect = () => ({ top: 100, bottom: 150, height: 50 });
+  f.entries[0].element.getBoundingClientRect = () => ({ top: 230 - f.body.scrollTop, bottom: 320 - f.body.scrollTop, height: 90 });
+  f.entries[0].reserves[1].getBoundingClientRect = () => ({ bottom: 320 - f.body.scrollTop, height: 17 });
+  const controller = Rewards.playReveal(f.overlay, { audio: f.audio });
+  assert.equal(f.body.scrollTop, 170);
+  assert.equal(f.entries[0].reserves[1].getBoundingClientRect().bottom, 150);
+  controller.cancel();
 });
 
 test('finish and cancel clear all future callbacks and owned audio without affecting grants', () => {
@@ -182,10 +224,13 @@ test('finish and cancel clear all future callbacks and owned audio without affec
     assert.equal(completed, mode === 'finish' ? 1 : 0);
     assert.equal(f.entries[0].quantity.textContent, '×12');
     assert.equal(f.entries[1].quantity.textContent, '×8');
-    assert.equal(f.entries[0].buff.innerHTML, '×6');
+    assert.equal(f.entries[0].name.textContent, '锻造石');
+    assert.equal(f.entries[0].name.getAttribute('title'), '原道具说明');
+    assert.equal(f.entries[0].name.getAttribute('aria-label'), null);
+    assert.equal(f.entries[0].name.style.fontSize, '');
     assert.equal(f.entries[0].reserves[0].style.minHeight, '');
-    assert.equal(f.notice.textContent, '');
-    assert.equal(f.stopped.length, 1);
+    assert.equal(f.entries[0].reserves[1].style.minHeight, '');
+    assert.equal(f.stopped.length, 2);
     assert.deepEqual(bonus, original);
   }
 });

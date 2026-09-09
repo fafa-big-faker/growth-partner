@@ -5,6 +5,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 const { createOperationGuard } = require('../operation-guard');
 const TenChopTimeline = require('../ten-chop-timeline');
+const RewardPresentation = require('../reward-presentation');
 
 const app = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
 function method(name) {
@@ -142,11 +143,7 @@ function fixture(options = {}) {
     MobileCultivation: { setPage: () => {}, unmount: () => {} },
     LoginArt: { setVisible: () => {} },
     RewardPresentation: {
-      createRenderer: () => ({
-        renderItem: () => 'item',
-        renderResults: (_items, { notice = true } = {}) => `results${notice ? '<p class="reward-notice">notice</p>' : ''}`,
-        renderNotice: () => '<p class="reward-notice">notice</p>',
-      }),
+      createRenderer: RewardPresentation.createRenderer,
       playReveal: (_overlay, settings) => {
         const controller = {
           finishCount: 0, cancelCount: 0,
@@ -158,7 +155,10 @@ function fixture(options = {}) {
         return controller;
       },
     },
-    ITEMS: {}, QUALITY: {}, renderItemIcon: () => '', renderFeatureIcon: () => '', escapeHtml: String,
+    ITEMS: {}, QUALITY: {}, renderItemIcon: () => '', renderFeatureIcon: () => '',
+    escapeHtml: value => String(value ?? '').replace(/[&<>"']/g, character => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+    })[character]),
     setTimeout: schedule, clearTimeout: id => timers.delete(id), requestAnimationFrame: callback => schedule(callback),
     console: { error: (...args) => events.push(['error', ...args]) },
   });
@@ -219,7 +219,11 @@ test('single chop remains guarded through feedback waiting and one collect click
   assert.equal(f.calls.batch, 0);
   assert.equal(f.overlays.length, 1);
   assert.equal(f.refunds[0].isConnected, false, 'the result dialog clears the scene refund feed');
-  assert.equal((f.overlays[0].innerHTML.match(/reward-notice/g) || []).length, 1);
+  assert.doesNotMatch(f.overlays[0].innerHTML, /reward-(?:skill-)?notice|reward-item-buff|refund-total/);
+  assert.deepEqual(
+    [...f.overlays[0].innerHTML.matchAll(/class="reward-item-quantity-value">([^<]*)</g)].map(match => match[1]),
+    ['×6'],
+  );
   const button = f.overlays[0].querySelector('.reward-reveal-confirm');
   assert.equal(button.textContent, '收下');
   button.click();
@@ -382,7 +386,7 @@ test('single refund waits for both the saved result and its character stroke', a
   assert.equal(await work, true);
 });
 
-test('a single extra reward keeps one notice and never adds a separate refund total', async () => {
+test('a single extra reward has only real quantities, no shared skill slot and one-click collect', async () => {
   const f = fixture();
   f.result.extraDrop = { itemId: '200', quantity: 1, quality: 1, isExtra: true, refundChopping: 99 };
   const work = f.view.doChop();
@@ -392,8 +396,24 @@ test('a single extra reward keeps one notice and never adds a separate refund to
   assert.equal(f.drops.length, 2);
   assert.equal(f.refunds.length, 1);
   assert.equal(f.refunds[0].quantity, 2);
-  assert.equal((f.overlays[0].innerHTML.match(/reward-notice/g) || []).length, 1);
-  assert.doesNotMatch(f.overlays[0].innerHTML, /refund-total/);
+  const overlay = f.overlays[0];
+  assert.doesNotMatch(overlay.innerHTML, /reward-(?:skill-)?notice|reward-item-buff|refund-total/);
+  assert.doesNotMatch(method('_showRewardModal'), /renderNotice|notice\s*:/);
+  assert.equal((overlay.innerHTML.match(/data-reward-item=/g) || []).length, 2);
+  assert.deepEqual(
+    [...overlay.innerHTML.matchAll(/class="reward-item-quantity-value">([^<]*)</g)].map(match => match[1]),
+    ['×6', '×1'],
+  );
+  assert.equal((overlay.innerHTML.match(/reward-item-quantity-value/g) || []).length, 2,
+    'each reward has one quantity without a permanent second multiplier');
+  const button = overlay.querySelector('.reward-reveal-confirm');
+  assert.equal(button.textContent, '收下');
+  button.click();
+  assert.equal(f.reveals[0].finishCount, 0);
+  assert.equal(f.reveals[0].cancelCount, 1);
+  assert.equal(overlay.isConnected, false);
+  assert.equal(f.calls.single, 1);
+  assert.equal(f.calls.batch, 0);
 });
 
 test('zero, missing and negative refunds never show an action hint', () => {

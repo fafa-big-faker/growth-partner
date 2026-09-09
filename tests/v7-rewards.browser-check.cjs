@@ -176,7 +176,7 @@ async function main() {
       const single = await inspectRewards(); assertFits(single); assertFooter(single, viewport);
       assert.equal(single.items.length, 2);
       assert.doesNotMatch(await page.locator('.reward-modal-v7').textContent(), /返还|掉落量/);
-      assert.equal(await page.locator('.reward-skill-notice').count(), 1, 'single reward with extras owns only one common notice');
+      assert.equal(await page.locator('.reward-skill-notice').count(), 0, 'single reward has no shared notice or permanent empty slot');
       await closeFromCurrentPosition(single);
 
       await page.evaluate(() => {
@@ -212,9 +212,9 @@ async function main() {
       });
       const allBuffs = await inspectRewards(); assertFits(allBuffs); assertFooter(allBuffs, viewport);
       assert.equal(allBuffs.bodyScrollTop, 0);
-      assert.equal(await page.locator('.reward-item-buff').count(), 10, 'all real multiplier chains retain compact marks');
+      assert.equal(await page.locator('.reward-item-buff').count(), 0, 'final quantities have no ambiguous adjacent multipliers');
       assert.equal(await page.locator('.reward-item-refund, .reward-refund-total, .reward-item-feedback').count(), 0, 'no per-cell feedback paragraphs or refund totals');
-      assert.equal(await page.locator('.reward-skill-notice').count(), 1);
+      assert.equal(await page.locator('.reward-skill-notice').count(), 0);
       assert.equal(allBuffs.regularRowGap, 10);
       if (viewport.height <= 390) assert.ok(allBuffs.bodyScrollHeight > allBuffs.bodyHeight, 'short landscape scrolls only the compact reward contents');
       await page.evaluate(() => { const body = document.querySelector('.reward-dialog .modal-body'); body.scrollTop = body.scrollHeight; });

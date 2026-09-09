@@ -19,8 +19,8 @@ const REWARD_SOURCES = Object.freeze({
     sha256: '953d0739be3dcb5598a4e778bb7e01ee677477402b5ea7d59a1c62fae7826baf',
   },
   'skill-trigger.wav': {
-    file: '斧技-发动.wav',
-    sha256: '7f12427514a8b386092d21949964f67a34ff0db28bf3521a5d2736e02ee4b0ec',
+    file: '斧技-发动V2.wav',
+    sha256: '810722dfcf26011473c2989e38fed3c8fd83953d44efb594dfcc7dab3e06395b',
   },
 });
 
@@ -118,12 +118,18 @@ function normalizePcm16(buffer, targetPeak) {
   };
 }
 
-function main(args = process.argv.slice(2)) {
-  if (args.some(arg => !['--rewards-only', '--check'].includes(arg))) {
-    throw new Error('Usage: normalize_audio.js [--rewards-only] [--check]');
+function selectAudioFiles(args = []) {
+  if (args.some(arg => !['--rewards-only', '--skill-only', '--check'].includes(arg))
+      || (args.includes('--rewards-only') && args.includes('--skill-only'))) {
+    throw new Error('Usage: normalize_audio.js [--rewards-only | --skill-only] [--check]');
   }
+  if (args.includes('--skill-only')) return ['skill-trigger.wav'];
+  return args.includes('--rewards-only') ? Object.keys(REWARD_SOURCES) : Object.keys(TARGET_PEAKS);
+}
+
+function main(args = process.argv.slice(2)) {
   const check = args.includes('--check');
-  const names = args.includes('--rewards-only') ? Object.keys(REWARD_SOURCES) : Object.keys(TARGET_PEAKS);
+  const names = selectAudioFiles(args);
   if (!check) fs.mkdirSync(OUTPUT_DIR, { recursive: true });
   names.forEach(fileName => {
     const targetPeak = TARGET_PEAKS[fileName];
@@ -153,4 +159,4 @@ function main(args = process.argv.slice(2)) {
 
 if (require.main === module) main();
 
-module.exports = { REWARD_SOURCES, TARGET_PEAKS, findChunk, inspectPcm16, normalizePcm16 };
+module.exports = { REWARD_SOURCES, TARGET_PEAKS, findChunk, inspectPcm16, normalizePcm16, selectAudioFiles };

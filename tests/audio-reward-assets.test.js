@@ -3,7 +3,8 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
-const { REWARD_SOURCES, TARGET_PEAKS, inspectPcm16, normalizePcm16 } = require('../scripts/normalize_audio');
+const { execFileSync } = require('node:child_process');
+const { REWARD_SOURCES, TARGET_PEAKS, inspectPcm16, normalizePcm16, selectAudioFiles } = require('../scripts/normalize_audio');
 const { AUDIO_PATHS } = require('../audio-manager');
 
 const root = path.join(__dirname, '..');
@@ -14,7 +15,7 @@ const expected = {
   'reward-reveal.wav': { name: '\u5956\u52b1-\u9010\u9879\u51fa\u73b0.wav', seconds: 0.2, peak: 0.62, cue: 'rewardReveal' },
   'drop-rare.wav': { name: '\u6389\u843d-\u73cd\u54c1.wav', seconds: 0.5, peak: 0.70, cue: 'dropRare' },
   'drop-high.wav': { name: '\u6389\u843d-\u795e\u4ed9\u54c1.wav', seconds: 0.8, peak: 0.76, cue: 'dropHigh' },
-  'skill-trigger.wav': { name: '\u65a7\u6280-\u53d1\u52a8.wav', seconds: 0.4, peak: 0.72, cue: 'skillTrigger' },
+  'skill-trigger.wav': { name: '\u65a7\u6280-\u53d1\u52a8V2.wav', seconds: 0.68, peak: 0.72, cue: 'skillTrigger', version: 'skill-v2-20260909' },
 };
 
 test('reward audio imports exactly the four supplied source mappings', () => {
@@ -22,7 +23,7 @@ test('reward audio imports exactly the four supplied source mappings', () => {
   for (const [name, spec] of Object.entries(expected)) {
     assert.equal(REWARD_SOURCES[name].file, spec.name);
     assert.equal(TARGET_PEAKS[name], spec.peak);
-    assert.equal(AUDIO_PATHS[spec.cue], `assets/runtime/audio/${name}`);
+    assert.equal(AUDIO_PATHS[spec.cue], `assets/runtime/audio/${name}${spec.version ? `?v=${spec.version}` : ''}`);
   }
 });
 
@@ -35,13 +36,14 @@ test('reward cues preserve PCM format, complete duration and bounded peaks', () 
     assert.equal(metrics.sampleRate, 40000);
     assert.equal(metrics.channels, 2);
     assert.equal(metrics.durationSeconds, spec.seconds);
-    assert.equal(metrics.frames, 40000 * spec.seconds);
+    assert.equal(metrics.frames, Math.round(40000 * spec.seconds));
     const measured = normalizePcm16(contents, spec.peak);
     assert.ok(Math.abs(measured.sourcePeak - spec.peak) < 0.001, name);
     assert.ok(measured.sourceRms > 0.06 && measured.sourceRms < 0.16, name);
     total += contents.length;
   }
-  assert.ok(total < 320 * 1024);
+  assert.equal(total, 349768);
+  assert.ok(total < 352 * 1024);
 });
 
 test('reward normalization is deterministic and changes sample amplitudes only', {
@@ -63,7 +65,7 @@ test('reward normalization is deterministic and changes sample amplitudes only',
   }
 });
 
-test('the seven existing audio files remain byte-for-byte unchanged', () => {
+test('the ten audio files outside the skill replacement remain byte-for-byte unchanged', () => {
   const previous = {
     'bgm-main.mp3': 'fcc89ed8b241fd48ce5e817dbd042f8598592b4abaa3d76ad1edd70ca478a55c',
     'chop-hit.wav': '1b981c8f57ba8c66bba48836c96b9ed2eaa508eb4c1327a4bcdd1788876694ca',
@@ -72,10 +74,56 @@ test('the seven existing audio files remain byte-for-byte unchanged', () => {
     'item-drop.wav': '2c19bdfdf5f53be6ab0f49e6396726495c903b805937b8d29254f4c1eec6256f',
     'ui-open.wav': '9167bac0424fcbda4a383faafae72053059c74a1411e118799503549b6b7132b',
     'ui-tap.wav': '5b44fa42c0add1585c906f5390bdcc6d9b779c92143d6bfedb02c7d6122b0a71',
+    'reward-reveal.wav': '43a90d3544b9811a030f33f0b856dbbdcb10fe56ea84e8ac13ee645bd7a835cb',
+    'drop-rare.wav': '055133aec460f47d4fdd90a1273061d8663a8edfa82df805d6c2804266dbba3a',
+    'drop-high.wav': '341fa77a2c640eb0b298fc9b8d8d184a13b12cf856bd315e83ed685ed3f2ba26',
   };
   for (const [name, sha256] of Object.entries(previous)) {
     assert.equal(hash(fs.readFileSync(path.join(runtimeDir, name))), sha256, name);
   }
+});
+
+test('skill-only selection cannot regenerate other files and rejects conflicting modes', () => {
+  assert.deepEqual(selectAudioFiles(['--skill-only']), ['skill-trigger.wav']);
+  assert.deepEqual(selectAudioFiles(['--check', '--skill-only']), ['skill-trigger.wav']);
+  assert.deepEqual(selectAudioFiles(['--rewards-only']), Object.keys(REWARD_SOURCES));
+  assert.deepEqual(selectAudioFiles(['--check']), Object.keys(TARGET_PEAKS));
+  assert.throws(() => selectAudioFiles(['--skill-only', '--rewards-only']), /Usage/);
+  assert.throws(() => selectAudioFiles(['--unknown']), /Usage/);
+});
+
+test('only the changed skill audio uses a new cache URL', () => {
+  const versioned = Object.entries(AUDIO_PATHS).filter(([, url]) => url.includes('?'));
+  assert.deepEqual(versioned, [['skillTrigger', 'assets/runtime/audio/skill-trigger.wav?v=skill-v2-20260909']]);
+});
+
+test('V2 skill measurements retain full duration and useful headroom', () => {
+  const runtime = fs.readFileSync(path.join(runtimeDir, 'skill-trigger.wav'));
+  const measured = normalizePcm16(runtime, .72);
+  assert.equal(runtime.length, 109042);
+  assert.equal(measured.frames, 27200);
+  assert.equal(measured.durationSeconds, .68);
+  assert.ok(Math.abs(measured.sourceRms - .1333742) < .00001);
+  assert.ok(Math.abs(measured.sourcePeak - .72) < .0001);
+  assert.ok(measured.sourcePeak * .74 < .54, 'default mixed peak retains headroom');
+});
+
+test('skill-only check is deterministic, does not write, and preserves both original versions', {
+  skip: !fs.existsSync(path.join(sourceDir, expected['skill-trigger.wav'].name)),
+}, () => {
+  const files = fs.readdirSync(runtimeDir);
+  const before = Object.fromEntries(files.map(name => [name, { hash: hash(fs.readFileSync(path.join(runtimeDir, name))),
+    modified: fs.statSync(path.join(runtimeDir, name)).mtimeMs }]));
+  const output = execFileSync(process.execPath, [path.join(root, 'scripts', 'normalize_audio.js'), '--skill-only', '--check'], { encoding: 'utf8' });
+  assert.equal(output.trim().split(/\r?\n/).length, 1);
+  assert.match(output, /^skill-trigger\.wav: 0\.680s, 40000Hz, 2ch;.*\(verified\)/);
+  for (const name of files) {
+    assert.equal(hash(fs.readFileSync(path.join(runtimeDir, name))), before[name].hash, name);
+    assert.equal(fs.statSync(path.join(runtimeDir, name)).mtimeMs, before[name].modified, name);
+  }
+  assert.equal(hash(fs.readFileSync(path.join(sourceDir, expected['skill-trigger.wav'].name))), REWARD_SOURCES['skill-trigger.wav'].sha256);
+  const old = path.join(sourceDir, '\u65a7\u6280-\u53d1\u52a8.wav');
+  if (fs.existsSync(old)) assert.equal(hash(fs.readFileSync(old)), '7f12427514a8b386092d21949964f67a34ff0db28bf3521a5d2736e02ee4b0ec');
 });
 
 test('normalization refuses unsupported formats and incomplete sample frames', () => {

@@ -39,7 +39,7 @@ test('all supplied audio files are present and remain lightweight', () => {
     if (file.endsWith('.wav')) assert.equal(contents.subarray(0, 4).toString('ascii'), 'RIFF');
     totalBytes += contents.length;
   });
-  assert.ok(totalBytes < 2 * 1024 * 1024, 'audio bundle should remain under 2 MiB');
+  assert.ok(totalBytes < 2.1 * 1024 * 1024, 'audio bundle should remain under 2.1 MiB with the complete V2 skill cue');
 });
 
 test('runtime effects use the approved peak-normalized loudness targets', () => {

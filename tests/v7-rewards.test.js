@@ -116,7 +116,8 @@ test('ten layout stays five columns, extras center, and art has no framed cards 
   assert.match(css, /\.reward-results-regular\s*\{[^}]*grid-template-columns:\s*repeat\(5,\s*minmax\(0,\s*1fr\)\)/s);
   assert.match(css, /\.reward-results-extra-items\s*\{[^}]*justify-content:\s*center/s);
   assert.match(css, /\.reward-results-extra-items\s*\{[^}]*flex-wrap:\s*wrap/s);
-  assert.match(css, /\.reward-skill-notice\s*\{[^}]*height:\s*32px;[^}]*min-height:\s*32px/s);
+  assert.match(css, /\.reward-item\.is-skill-active \.reward-item-name\s*\{[^}]*white-space:\s*nowrap/s);
+  assert.doesNotMatch(css, /reward-skill-notice|reward-item-buff/);
   assert.match(css, /\.reward-dialog > \.modal-body\s*\{[^}]*scrollbar-gutter:\s*auto;[^}]*scrollbar-width:\s*none/s);
   assert.match(css, /\.reward-dialog > \.modal-body::-webkit-scrollbar\s*\{[^}]*display:\s*none/s);
   assert.doesNotMatch(css, /reward-item-(?:feedback|refund)|reward-refund-total/);
@@ -150,8 +151,7 @@ test('both chop result surfaces share the renderer and keep close callbacks', ()
   assert.match(single, /reward-reveal-confirm">收下/);
   assert.doesNotMatch(single, /显示全部|全部显示|renderRefundTotal/);
   assert.match(single, /this\._startRewardReveal\(overlay,\s*\{\s*single:\s*true\s*\}\)/);
-  assert.match(single, /rewards\.renderNotice\(\)/);
-  assert.match(single, /notice:\s*false/);
+  assert.doesNotMatch(single, /renderNotice|notice:\s*false/);
   assert.match(controller, /onComplete:[\s\S]*收下/);
   assert.match(controller, /if\s*\(!single && !complete\) reveal\.finish\(\)/);
   assert.match(controller, /UI\.closeModal\(overlay\)/);

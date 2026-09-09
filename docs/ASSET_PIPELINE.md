@@ -143,8 +143,11 @@ node scripts\normalize_audio.js
 
 ### 奖励反馈音效（2026-09-09）
 
-- 原目录新增`奖励-逐项出现.wav`、`掉落-珍品.wav`、`掉落-神仙品.wav`、`斧技-发动.wav`，分别导出`reward-reveal.wav`、`drop-rare.wav`、`drop-high.wav`、`skill-trigger.wav`。
-- 运行`node scripts/normalize_audio.js --rewards-only`；加`--check`可不写入地验证确定性输出。原生PCM16、40kHz、双声道，时长0.2/0.5/0.8/0.4秒；峰值目标0.62/0.70/0.76/0.72，运行混音0.48/0.64/0.68/0.68。四文件共304,968字节，保留完整尾音；原有七文件不变。
+- 当前输入为`奖励-逐项出现.wav`、`掉落-珍品.wav`、`掉落-神仙品.wav`、`斧技-发动V2.wav`，分别导出`reward-reveal.wav`、`drop-rare.wav`、`drop-high.wav`、`skill-trigger.wav`。旧版`斧技-发动.wav`仍在原目录保留，不覆盖或删除。
+- 运行`node scripts/normalize_audio.js --rewards-only`；只替换斧技时使用`node scripts/normalize_audio.js --skill-only`，不会重写其他十个音频。任一命令加`--check`可不写入地验证确定性输出；两种限定模式不能同时指定。
+- 四条音效均为原生PCM16、40kHz、双声道，完整时长0.2/0.5/0.8/0.68秒；峰值目标0.62/0.70/0.76/0.72，运行混音0.48/0.64/0.68/0.74。四文件共349,768字节，全音频2,098,044字节（约2.001MiB），预算2.1MiB。V2技能109,042字节，比旧版增加44,800字节，不裁尾、不改变采样率或音调；其余十文件逐字节不变。
+- V2源SHA256为`810722dfcf26011473c2989e38fed3c8fd83953d44efb594dfcc7dab3e06395b`；源峰值0.273102、RMS0.050590，固定增益2.63638倍后峰值0.720001、RMS0.133374。默认播放混音0.74，有效峰值约0.5328、RMS约0.09870，相比旧版有效RMS增加约4.24dB。只给`skill-trigger.wav`添加`?v=skill-v2-20260909`缓存参数，其他音频URL和混音保持原样。
+- 斧技优先仅由奖励表现层在播放前停止当前奖励弹窗自身的旧尾音，不停止BGM或其他组，不增加全局压低BGM的逻辑。返还提示仍独立使用`chop-refunds`组及自身的限频/音量系数，全局静音仍立即停止所有音频。
 - `AudioManager.playEffect(name,{group,volumeScale,playbackRate})`每组最多3声、全局最多12声，满额不再叠加；`stopEffects(group)`立即取消该组，原始音频不可重复增益处理。测试`audio-reward-assets.test.js`校验来源、峰值、时长及旧文件指纹。
 - 登录预览`assets/runtime/v3/backgrounds/login-preview.webp`由原运行登录图缩为240x180，2398字节，仅首屏占位使用；完整背景、Logo、按钮及六墨纹保持原图与URL。初始圆环48px，无需新增AI资源。
 

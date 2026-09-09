@@ -36,6 +36,7 @@
   scrollbar-gutter: auto;
   scrollbar-width: none;
   -ms-overflow-style: none;
+  scroll-behavior: auto;
 }
 
 .reward-dialog > .modal-body::-webkit-scrollbar { display: none; width: 0; height: 0; }
@@ -152,20 +153,7 @@
 
 .reward-item-quantity-value { display: inline-block; max-width: 100%; }
 .reward-quantity-ticker { position: relative; display: inline-block; max-width: 100%; text-align: center; }
-.reward-item-buff { display: inline-block; margin-left: 4px; font-size: 10px; font-weight: 500; line-height: 1.4; }
-.reward-skill-notice {
-  position: sticky;
-  bottom: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 32px;
-  min-height: 32px;
-  margin-top: 4px;
-  background: rgba(236, 228, 212, .96);
-  pointer-events: none;
-}
-.reward-skill-notice-text { max-width: 100%; font-size: 12px; line-height: 20px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.reward-item.is-skill-active .reward-item-name { display: flex; align-items: center; justify-content: center; white-space: nowrap; overflow-wrap: normal; }
 
 .reward-item.is-reward-pending > * { opacity: 0; }
 .reward-item.is-reward-revealing .reward-art { animation: reward-ink-reveal 210ms ease-out both; }
@@ -230,7 +218,6 @@
 .reward-item--large .reward-item-quantity { margin-top: 4px; font-size: 13px; }
 .reward-item--large .reward-item-quantity { min-height: 20px; }
 .reward-item--large .reward-item-quality { display: inline; }
-.reward-item--large .reward-item-buff { font-size: 11px; }
 
 .reward-modal-v7 .reward-results-extra { margin-top: 12px; padding-top: 8px; }
 .reward-modal-v7 .reward-item--small { width: 64px; }

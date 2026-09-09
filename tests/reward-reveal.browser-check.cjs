@@ -25,8 +25,8 @@ async function main() {
       } catch { await route.fulfill({ status: 404, body: '' }); }
     });
 
-    async function start(single = false) {
-      return page.evaluate(async single => {
+    async function start(single = false, variant = 'normal') {
+      return page.evaluate(async ({ single, variant }) => {
         window.revealProbe?.observer.disconnect();
         window.revealProbe?.controller.cancel();
         document.getElementById('modal-container').replaceChildren();
@@ -34,20 +34,29 @@ async function main() {
           buffTriggers: [{ type: 1, beforeQuantity: 2, afterQuantity: 6, multiplier: 3, buffQuality: 3 }, { beforeQuantity: 6, afterQuantity: 12, multiplier: 2, buffQuality: 5 }] };
         const regular = [base, { itemId: '1', quantity: 1, quality: 1, refundChopping: 3 },
           ...Array.from({ length: 8 }, (_, index) => ({ itemId: '40001', quantity: index + 1, quality: index % 5 + 1 }))];
+        if (variant === 'long') {
+          regular[0] = { itemId: '40001', quantity: 2, quality: 3 };
+          ITEMS['reveal-long'] = { ...ITEMS['40001'], name: '检验长名称换行用锻造石' };
+          regular[8] = { itemId: 'reveal-long', baseQuantity: 2, quantity: 24690, quality: 4,
+            buffTriggers: [{ type: 1, beforeQuantity: 2, afterQuantity: 24690, multiplier: 12345 }] };
+        }
         const extra = { ...base, itemId: '0', quantity: 12, refundChopping: 0, isExtra: true };
         const input = single ? [base] : [extra, ...regular];
         const source = JSON.stringify(input);
         const rewards = RewardPresentation.createRenderer({ items: ITEMS, quality: QUALITY, renderItemIcon, escapeHtml });
-        const body = single ? rewards.renderItem(base, { size: 'large' }) + rewards.renderNotice() : rewards.renderResults(input);
+        const body = single ? rewards.renderItem(base, { size: 'large' }) : rewards.renderResults(input);
         const overlay = UI.modal(body, { title: single ? '获得物品' : '十连砍结果',
           footer: `<div class="modal-footer"><button class="btn btn-primary reward-reveal-confirm">${single ? '收下' : '显示全部'}</button></div>` });
         overlay.classList.add('reward-dialog-overlay');
         const modal = overlay.querySelector('.modal');
         modal.classList.add('reward-dialog', single ? 'reward-dialog--single' : 'reward-dialog--ten');
+        // Keep room for the 153px long-name item while its second row still starts outside the short body.
+        if (variant === 'long') modal.style.maxHeight = '330px';
         await Promise.all([...overlay.querySelectorAll('img')].map(image => image.decode()));
         await Promise.all(modal.getAnimations().map(animation => animation.finished.catch(() => {})));
         const button = overlay.querySelector('.reward-reveal-confirm');
-        const probe = { overlay, input, source, played: [], stopped: [], completed: 0, quantities: [], snapshots: [], animations: new Set(), states: [], phases: [], startedAt: 0 };
+        const probe = { overlay, input, source, played: [], stopped: [], audioActions: [], completed: 0, quantities: [], snapshots: [], animations: new Set(), states: [], phases: [], startedAt: 0,
+          originalNames: [...overlay.querySelectorAll('.reward-item-name')].map(name => name.textContent), pageY: window.scrollY };
         function capture() {
           const footer = button.getBoundingClientRect();
           const content = overlay.querySelector('.modal-body').getBoundingClientRect();
@@ -60,25 +69,29 @@ async function main() {
             const name = getComputedStyle(node).animationName;
             if (name !== 'none') probe.animations.add(name);
           }
-          const notice = overlay.querySelector('.reward-skill-notice');
-          const noticeText = notice.querySelector('.reward-skill-notice-text');
+          const name = items[0].querySelector('.reward-item-name');
           const countBox = items[0].querySelector('.reward-item-quantity').getBoundingClientRect();
-          const multiplierBox = items[0].querySelector('.reward-item-buff').getBoundingClientRect();
           if (probe.startedAt) probe.phases.push({ at: performance.now() - probe.startedAt, quantity,
-            notice: noticeText.textContent, color: getComputedStyle(noticeText).color,
+            label: name.textContent, fullLabel: name.getAttribute('aria-label'), color: getComputedStyle(name).color,
             shaking: items[0].classList.contains('is-count-shaking'), changing: items[0].classList.contains('is-count-changing'),
             duration: getComputedStyle(items[0].querySelector('.reward-item-quantity-value')).animationDuration });
           probe.snapshots.push({ buttonY: footer.y, buttonBottom: footer.bottom, bodyBottom: content.bottom,
             modalHeight: modal.getBoundingClientRect().height,
-            noticeHeight: notice.getBoundingClientRect().height, noticeTop: notice.getBoundingClientRect().top, noticeBottom: notice.getBoundingClientRect().bottom,
-            bodyTop: content.top, countHeight: countBox.height, multiplierTop: multiplierBox.top - countBox.top,
-            noticeFits: noticeText.scrollWidth <= noticeText.clientWidth + 1,
+            bodyTop: content.top, countHeight: countBox.height, pageY: window.scrollY,
+            bodyScrollTop: overlay.querySelector('.modal-body').scrollTop,
             scrollbarWidth: getComputedStyle(overlay.querySelector('.modal-body')).scrollbarWidth,
             scrollbarGutter: getComputedStyle(overlay.querySelector('.modal-body')).scrollbarGutter,
             footerTop: overlay.querySelector('.modal-footer').getBoundingClientRect().top,
             bodyOverflow: overlay.querySelector('.modal-body').scrollWidth > overlay.querySelector('.modal-body').clientWidth + 1,
             reachable: button.contains(document.elementFromPoint(footer.x + footer.width / 2, footer.y + footer.height / 2)),
-            items: items.map(item => { const box = item.getBoundingClientRect(); return { y: box.y, height: box.height }; }) });
+            items: items.map(item => {
+              const box = item.getBoundingClientRect(), name = item.querySelector('.reward-item-name'), nameBox = name.getBoundingClientRect();
+              const artBox = item.querySelector('.reward-art').getBoundingClientRect(), count = item.querySelector('.reward-item-quantity').getBoundingClientRect();
+              return { y: box.y, height: box.height, nameHeight: nameBox.height, active: item.classList.contains('is-skill-active'), label: name.textContent,
+                nameFits: name.scrollWidth <= name.clientWidth + 1, nameSize: parseFloat(getComputedStyle(name).fontSize),
+                imageVisible: artBox.top >= content.top - 1 && artBox.bottom <= content.bottom + 1,
+                countVisible: count.top >= content.top - 1 && count.bottom <= content.bottom + 1 };
+            }) });
         }
         capture();
         probe.baseline = probe.snapshots[0];
@@ -87,7 +100,8 @@ async function main() {
         probe.observer.observe(overlay, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['class', 'style', 'data-reveal-state'] });
         probe.startedAt = performance.now();
         probe.controller = RewardPresentation.playReveal(overlay, {
-          audio: { playEffect(name, options) { probe.played.push({ name, group: options.group, at: performance.now() - probe.startedAt }); return Promise.resolve(true); }, stopEffects(group) { probe.stopped.push(group); } },
+          audio: { playEffect(name, options) { probe.played.push({ name, group: options.group, at: performance.now() - probe.startedAt }); probe.audioActions.push({ type: 'play', name, group: options.group }); return Promise.resolve(true); },
+            stopEffects(group) { probe.stopped.push(group); probe.audioActions.push({ type: 'stop', group }); } },
           onComplete() { probe.completed++; button.textContent = '收下'; },
         });
         button.addEventListener('click', () => {
@@ -98,17 +112,19 @@ async function main() {
         capture();
         return { count: input.length, firstQuantity: probe.quantities[0], initialState: overlay.dataset.rewardRevealState,
           refunds: overlay.querySelectorAll('.reward-item-refund, .reward-refund-total').length,
-          notices: overlay.querySelectorAll('.reward-skill-notice').length, button: button.textContent };
-      }, single);
+          notices: overlay.querySelectorAll('.reward-skill-notice').length, multiplierMarks: overlay.querySelectorAll('.reward-item-buff').length,
+          targetClipped: !probe.baseline.items[8]?.countVisible, button: button.textContent };
+      }, { single, variant });
     }
 
     async function report() {
       return page.evaluate(() => {
         const probe = revealProbe;
-        return { completed: probe.completed, quantities: probe.quantities, played: probe.played, stopped: probe.stopped,
+        return { completed: probe.completed, quantities: probe.quantities, played: probe.played, stopped: probe.stopped, audioActions: probe.audioActions,
           snapshots: probe.snapshots, baseline: probe.baseline, animations: [...probe.animations], states: probe.states, phases: probe.phases,
           unchanged: probe.source === JSON.stringify(probe.input), state: probe.overlay.dataset.rewardRevealState,
           finalQuantities: [...probe.overlay.querySelectorAll('.reward-item-quantity-value')].map(node => node.textContent),
+          namesRestored: [...probe.overlay.querySelectorAll('.reward-item-name')].every((name, index) => name.textContent === probe.originalNames[index]),
           button: probe.overlay.querySelector('button.reward-reveal-confirm').textContent };
       });
     }
@@ -120,19 +136,24 @@ async function main() {
         assert.ok(snapshot.bodyBottom <= snapshot.footerTop + 1, 'body never overlaps footer');
         assert.equal(snapshot.bodyOverflow, false, 'long feedback remains inside the scroll body');
         assert.equal(snapshot.reachable, true, 'confirmation stays reachable during all animation phases');
-        assert.equal(snapshot.noticeHeight, 32, 'one shared notice retains stable compact height');
-        assert.ok(snapshot.noticeBottom <= snapshot.footerTop + 1, 'shared notice remains above the footer');
-        assert.ok(snapshot.noticeTop >= snapshot.bodyTop - 1, 'sticky notice stays visible even in short landscape');
-        assert.ok(snapshot.countHeight <= 20, 'ordinary quantity and its compact multiplier mark stay on one line');
-        assert.ok(snapshot.multiplierTop < 6, 'multiplier does not silently wrap below the quantity');
-        assert.equal(snapshot.noticeFits, true, 'skill notice fits on one line');
+        assert.equal(snapshot.pageY, result.baseline.pageY, 'the page never scrolls with a reward reveal');
+        assert.ok(Math.abs(snapshot.modalHeight - result.baseline.modalHeight) <= 1, 'no extra height is added for local skill text');
+        assert.ok(snapshot.countHeight <= 20, 'ordinary quantity stays on one line without a second multiplier');
+        for (const [index, item] of snapshot.items.entries()) {
+          assert.ok(Math.abs(item.nameHeight - result.baseline.items[index].nameHeight) <= 1, 'replacing a long name cannot collapse its existing area');
+          if (!item.active) continue;
+          assert.equal(item.nameFits, true, `skill label fits its own cell: ${JSON.stringify({ viewport, item })}`);
+          assert.ok(item.nameSize >= 11, 'local skill text stays readable in a 320px five-column layout');
+          assert.equal(item.imageVisible, true, 'active icon remains visible inside the body');
+          assert.equal(item.countVisible, true, 'active quantity remains visible inside the body: ' + JSON.stringify({ viewport, index, item, snapshot }));
+        }
         assert.equal(snapshot.scrollbarWidth, 'none', 'reward scrollbar track is hidden');
         assert.equal(snapshot.scrollbarGutter, 'auto', 'no empty scrollbar gutter is reserved');
       }
       assert.equal(result.unchanged, true, 'presentation does not mutate granted rewards');
     }
 
-    for (const viewport of [{ width: 360, height: 540 }, { width: 390, height: 844 }, { width: 844, height: 390 }, { width: 1440, height: 900 }]) {
+    for (const viewport of [{ width: 320, height: 568 }, { width: 360, height: 540 }, { width: 390, height: 844 }, { width: 844, height: 390 }, { width: 1440, height: 900 }]) {
       await page.emulateMedia({ reducedMotion: 'no-preference' });
       await page.setViewportSize(viewport);
       await page.goto('http://reveal.local');
@@ -141,7 +162,8 @@ async function main() {
       assert.equal(initial.firstQuantity, '×2');
       assert.equal(initial.initialState, 'running');
       assert.equal(initial.refunds, 0);
-      assert.equal(initial.notices, 1);
+      assert.equal(initial.notices, 0);
+      assert.equal(initial.multiplierMarks, 0);
       assert.equal(initial.button, '显示全部');
       await page.waitForFunction(() => revealProbe.completed === 1, null, { timeout: 6000 });
       const natural = await report();
@@ -152,9 +174,9 @@ async function main() {
       assert.ok(Math.abs(skillSounds[1].at - skillSounds[0].at - 1300) < 90, 'second trigger follows the full first 1300ms');
       for (const [index, expected] of [{ old: '×2', next: '×6', multiplier: 3 }, { old: '×6', next: '×12', multiplier: 2 }].entries()) {
         const at = skillSounds[index].at;
-        const phase = natural.phases.find(entry => entry.notice === `斧技发动 · 数量×${expected.multiplier}`);
-        assert.ok(phase && phase.quantity === expected.old && !phase.shaking && !phase.changing, 'notice starts with the unchanged still quantity');
-        assert.equal(phase.color, 'rgb(124, 76, 168)', 'notice uses active item quality, not the skill rarity');
+        const phase = natural.phases.find(entry => entry.fullLabel === `斧技·${expected.multiplier}倍`);
+        assert.ok(phase && phase.quantity === expected.old && !phase.shaking && !phase.changing, 'local name replacement starts with the unchanged still quantity');
+        assert.equal(phase.color, 'rgb(124, 76, 168)', 'local label uses active item quality, not the skill rarity');
         const shaking = natural.phases.find(entry => entry.at >= at && entry.shaking && entry.quantity === expected.old);
         assert.ok(shaking && Math.abs(shaking.at - at - 300) < 90, 'old quantity begins a 500ms shake after the notice hold');
         assert.equal(shaking.duration, '0.5s');
@@ -166,7 +188,11 @@ async function main() {
         assert.ok(settled && Math.abs(settled.at - at - 1300) < 90, 'new quantity settles only after its full 500ms');
       }
       assert.equal(new Set(natural.played.map(sound => sound.group)).size, 1, 'one modal owns one audio group');
-      assert.equal(natural.stopped.length, 0, 'natural completion lets the last audio tail finish');
+      assert.equal(natural.stopped.length, 2, 'only skill starts stop their preceding reveal tails');
+      for (const [index, action] of natural.audioActions.entries()) {
+        if (action.name === 'skillTrigger') assert.deepEqual(natural.audioActions[index - 1], { type: 'stop', group: action.group });
+      }
+      assert.equal(natural.namesRestored, true);
       assert.ok(natural.animations.includes('reward-skill-ink'), 'real ink pulse is active');
       assert.ok(natural.animations.includes('reward-count-shake'), 'old number has a real dedicated shake');
       assert.ok(natural.animations.includes('reward-count-arrive'), 'new number has a real scale-and-settle animation');
@@ -175,6 +201,18 @@ async function main() {
       assert.equal(natural.button, '收下');
       const firstLaterReveal = natural.states.find(states => states[1] !== 'pending' && states[0] !== 'final');
       assert.equal(firstLaterReveal[0], 'complete', 'next item starts only after every type-1 presentation completes');
+
+      const longInitial = await start(false, 'long');
+      assert.equal(longInitial.targetClipped, true, 'long-name trigger starts outside the short body');
+      await page.waitForFunction(() => revealProbe.overlay.querySelectorAll('.reward-item')[8].classList.contains('is-skill-active'));
+      await page.waitForTimeout(850);
+      const longRunning = await report();
+      assertStable(longRunning, viewport);
+      const longActive = longRunning.snapshots.flatMap(snapshot => snapshot.items).find(item => item.active);
+      assert.ok(longActive && longActive.nameFits && longActive.nameSize >= 11, 'long multiplier is exact, readable, local and single-line');
+      assert.ok(longRunning.snapshots.some(snapshot => snapshot.bodyScrollTop > 0), 'the clipped item is brought into view by body scrolling');
+      await page.evaluate(() => revealProbe.controller.finish());
+      assert.equal((await report()).namesRestored, true);
 
       const immediate = await start(true);
       assert.equal(immediate.button, '收下');
@@ -200,6 +238,7 @@ async function main() {
         assert.ok(result.stopped.includes(action.group), 'owned group is stopped');
         assert.equal(result.completed, ['finish', 'hidden'].includes(mode) ? 1 : 0);
         assert.equal(result.finalQuantities[0], '×12');
+        assert.equal(result.namesRestored, true);
         assert.equal(result.unchanged, true);
         if (mode === 'finish') {
           assertStable(result, viewport);

@@ -81,16 +81,18 @@
     activeReveals.get(overlay)?.cancel();
     const document = overlay?.ownerDocument;
     const view = document?.defaultView || root;
-    const notice = overlay?.querySelector('.reward-skill-notice-text');
+    const body = overlay?.querySelector('.modal-body');
     const entries = [...(overlay?.querySelectorAll('.reward-item[data-reward-reveal]') || [])].map(element => {
       let metadata;
       try { metadata = JSON.parse(element.dataset.rewardReveal); } catch { metadata = null; }
       metadata = metadata && Array.isArray(metadata.triggers) ? metadata : getRewardMetadata();
       const quantity = element.querySelector('.reward-item-quantity-value');
-      const buff = element.querySelector('.reward-item-buff');
-      const reserves = [element.querySelector('.reward-item-quantity')]
+      const name = element.querySelector('.reward-item-name');
+      const reserves = [name, element.querySelector('.reward-item-quantity')]
         .filter(Boolean).map(node => ({ node, original: node.style.minHeight || '', height: node.getBoundingClientRect().height }));
-      return { element, metadata, quantity, buff, buffVisibility: buff?.style.visibility || '', reserves };
+      return { element, metadata, quantity, name, originalName: name?.textContent || '',
+        nameFontSize: name?.style.fontSize || '', nameTitle: name?.getAttribute('title'),
+        nameLabel: name?.getAttribute('aria-label'), reserves };
     });
     const group = `reward-dialog-${++revealId}`;
     const timers = new Set();
@@ -101,6 +103,51 @@
     function stopAudio() { try { audio?.stopEffects?.(group); } catch {} }
     function cue(name) {
       try { Promise.resolve(audio?.playEffect?.(name, { group })).catch(() => {}); } catch {}
+    }
+    function restoreName(entry) {
+      if (!entry.name) return;
+      entry.name.textContent = entry.originalName;
+      entry.name.style.fontSize = entry.nameFontSize;
+      for (const [attribute, value] of [['title', entry.nameTitle], ['aria-label', entry.nameLabel]]) {
+        if (value == null) entry.name.removeAttribute(attribute);
+        else entry.name.setAttribute(attribute, value);
+      }
+    }
+    function showSkillName(entry, multiplier) {
+      if (!entry.name) return;
+      const name = entry.name;
+      const full = `斧技·${multiplier}倍`;
+      const compact = multiplier >= 100000000 && multiplier % 100000000 === 0 ? `${multiplier / 100000000}亿`
+        : multiplier >= 10000 && multiplier % 10000 === 0 ? `${multiplier / 10000}万` : String(multiplier);
+      const fontSize = parseFloat(view.getComputedStyle?.(name).fontSize) || 12;
+      const width = name.getBoundingClientRect().width;
+      name.setAttribute('title', full);
+      name.setAttribute('aria-label', full);
+      for (const label of [full, `斧技${compact}倍`, `×${compact}`]) {
+        name.style.fontSize = `${fontSize}px`;
+        name.textContent = label;
+        const measured = name.scrollWidth;
+        if (!width || !measured || measured <= width) return;
+        const fitted = fontSize * (width - 1) / measured;
+        if (fitted >= 11) { name.style.fontSize = `${fitted}px`; return; }
+      }
+      // Unusually long exact values must still remain inside this name's existing line.
+      if (width && name.scrollWidth > width) name.style.fontSize = `${fontSize * (width - 1) / name.scrollWidth}px`;
+    }
+    function revealInBody(entry) {
+      if (!body || !body.clientHeight) return;
+      const viewport = body.getBoundingClientRect();
+      const item = entry.element.getBoundingClientRect();
+      const quantity = entry.element.querySelector('.reward-item-quantity')?.getBoundingClientRect();
+      const bottom = quantity?.bottom ?? item.bottom;
+      const available = viewport.bottom - viewport.top;
+      const itemHeight = bottom - item.top;
+      const padding = Math.min(6, Math.max(0, (available - itemHeight) / 2));
+      let delta = 0;
+      if (itemHeight > available) delta = bottom - viewport.bottom;
+      else if (item.top < viewport.top + padding) delta = item.top - viewport.top - padding;
+      else if (bottom > viewport.bottom - padding) delta = bottom - viewport.bottom + padding;
+      if (delta) body.scrollTop = Math.max(0, body.scrollTop + delta);
     }
     function hidden() {
       if (!overlay || overlay.isConnected === false || document?.hidden) return true;
@@ -120,12 +167,11 @@
       if (activeReveals.get(overlay) === controller) activeReveals.delete(overlay);
     }
     function finalState() {
-      if (notice) notice.textContent = '';
       for (const entry of entries) {
         entry.element.classList.remove('is-reward-pending', 'is-reward-revealing', 'is-skill-active', 'is-count-shaking', 'is-count-changing');
         entry.element.dataset.revealState = 'complete';
         if (entry.quantity) entry.quantity.textContent = `×${entry.metadata.quantity}`;
-        if (entry.buff) entry.buff.style.visibility = entry.buffVisibility;
+        restoreName(entry);
         entry.reserves.forEach(({ node, original }) => { node.style.minHeight = original; });
       }
     }
@@ -157,15 +203,13 @@
         entry.element.classList.remove('is-reward-pending');
         entry.element.classList.add('is-reward-revealing');
         entry.element.dataset.revealState = 'revealing';
-        if (entry.buff && !entry.metadata.triggers.length) entry.buff.style.visibility = entry.buffVisibility;
+        revealInBody(entry);
         cue('rewardReveal');
       } else if (event.type === 'trigger') {
         entry.element.classList.add('is-skill-active');
-        if (notice) {
-          notice.classList.remove(...QUALITY_NAMES.map((name, index) => `quality-${index + 1}`));
-          notice.classList.add(`quality-${qualityId(entry.element.dataset.rewardQuality)}`);
-          notice.textContent = `斧技发动 · 数量×${entry.metadata.triggers[event.triggerIndex].multiplier}`;
-        }
+        showSkillName(entry, entry.metadata.triggers[event.triggerIndex].multiplier);
+        revealInBody(entry);
+        stopAudio();
         cue('skillTrigger');
       } else if (event.type === 'shake') {
         entry.element.classList.add('is-count-shaking');
@@ -176,8 +220,7 @@
         cue('rewardReveal');
       } else if (event.type === 'settle') {
         entry.element.classList.remove('is-skill-active', 'is-count-shaking', 'is-count-changing');
-        if (notice) notice.textContent = '';
-        if (entry.buff && event.triggerIndex === entry.metadata.triggers.length - 1) entry.buff.style.visibility = entry.buffVisibility;
+        restoreName(entry);
       } else if (event.type === 'complete-item') {
         entry.element.classList.remove('is-reward-revealing');
         entry.element.dataset.revealState = 'complete';
@@ -193,7 +236,6 @@
       entry.element.dataset.revealState = 'pending';
       entry.reserves.forEach(({ node, height }) => { node.style.minHeight = `${height}px`; });
       if (entry.quantity) entry.quantity.textContent = `×${entry.metadata.baseQuantity}`;
-      if (entry.buff) entry.buff.style.visibility = 'hidden';
     }
     function schedule(callback, delay) {
       if (delay === 0) { callback(); return; }
@@ -232,19 +274,17 @@
       const icon = typeof renderIcon === 'function' && id
         ? renderIcon(id, definition.icon || '', 'reward-item-icon')
         : '<span class="reward-item-fallback" aria-hidden="true">物</span>';
-      const multiplier = metadata.triggers.reduce((total, trigger) => total * trigger.multiplier, 1);
-      const buff = metadata.triggers.length ? `<span class="reward-item-buff quality-item-name quality-${rank}" aria-label="斧技增幅${escape(multiplier)}倍">×${escape(multiplier)}</span>` : '';
       return `<div class="reward-item reward-item--${size}" data-reward-item="${escape(id)}" data-reward-quality="${rank}" data-reward-reveal="${escape(JSON.stringify(metadata))}">
         <div class="reward-art">
           <img class="reward-quality-ink" src="${ART_BASE}/quality-${rank}.webp?v=${ART_VERSION}" alt="" aria-hidden="true" decoding="async">
           <div class="reward-art-icon">${icon}</div>
         </div>
         <div class="reward-item-name quality-item-name quality-${rank}">${escape(name)}</div>
-        <div class="reward-item-quantity"><span class="reward-item-quality">${escape(rankName)} · </span><span class="reward-quantity-ticker"><span class="reward-item-quantity-value">×${escape(quantity)}</span></span>${buff}</div>
+        <div class="reward-item-quantity"><span class="reward-item-quality">${escape(rankName)} · </span><span class="reward-quantity-ticker"><span class="reward-item-quantity-value">×${escape(quantity)}</span></span></div>
       </div>`;
     }
 
-    function renderResults(results, { notice = true } = {}) {
+    function renderResults(results) {
       const { regular, extra } = groupResults(results);
       if (!regular.length && !extra.length) return '';
       return `<div class="reward-results">
@@ -253,14 +293,10 @@
           <div class="reward-results-extra-title">额外奖励</div>
           <div class="reward-results-extra-items">${extra.map(reward => renderItem(reward, { size: 'small' })).join('')}</div>
         </section>` : ''}
-      </div>${notice ? renderNotice() : ''}`;
+      </div>`;
     }
 
-    function renderNotice() {
-      return '<div class="reward-skill-notice" role="status" aria-live="polite" aria-atomic="true"><span class="reward-skill-notice-text quality-item-name"></span></div>';
-    }
-
-    return { renderItem, renderResults, renderNotice };
+    return { renderItem, renderResults };
   }
 
   const defaultRenderer = createRenderer();
