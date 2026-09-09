@@ -21,7 +21,9 @@ function fixture() {
     renderFeatureIcon: () => '<img alt="">',
     renderWeaponSkills: () => '<strong>Skill value</strong>',
     escapeHtml: text => String(text),
+    WeaponAffixes: require('../weapon-affixes'),
   };
+  vm.runInNewContext(app.match(/^function renderWeaponRating\([^]*?^\}/m)[0], context);
   return context;
 }
 

@@ -1,0 +1,211 @@
+{
+  "script": "scripts/import_weapon_ratings.py",
+  "minimumAlpha": 5,
+  "source": {
+    "file": "`仙来-仙斧评级字标图集.png",
+    "size": [
+      1536,
+      1024
+    ],
+    "mode": "RGBA",
+    "alphaRange": [
+      0,
+      254
+    ],
+    "sha256": "e768f3d402b123b847e99b67eb87e69d477f042d2f3cd8402dcbd0a85b31fb9b",
+    "bytes": 1291342,
+    "emptyCell": [
+      1024,
+      512,
+      1536,
+      1024
+    ]
+  },
+  "assets": {
+    "rating-b": {
+      "path": "assets/images/weapon-ratings/rating-b.png",
+      "size": [
+        192,
+        96
+      ],
+      "alphaRange": [
+        0,
+        255
+      ],
+      "alphaBounds": [
+        68,
+        12,
+        124,
+        84
+      ],
+      "normalization": {
+        "glyphHeight": 72,
+        "baseline": 84,
+        "alignment": "center",
+        "scaling": "uniform"
+      },
+      "bytes": 5713,
+      "cell": [
+        0,
+        0,
+        512,
+        512
+      ],
+      "contentBounds": [
+        148,
+        112,
+        399,
+        432
+      ],
+      "scale": 0.225
+    },
+    "rating-a": {
+      "path": "assets/images/weapon-ratings/rating-a.png",
+      "size": [
+        192,
+        96
+      ],
+      "alphaRange": [
+        0,
+        255
+      ],
+      "alphaBounds": [
+        61,
+        12,
+        130,
+        84
+      ],
+      "normalization": {
+        "glyphHeight": 72,
+        "baseline": 84,
+        "alignment": "center",
+        "scaling": "uniform"
+      },
+      "bytes": 5380,
+      "cell": [
+        512,
+        0,
+        1024,
+        512
+      ],
+      "contentBounds": [
+        631,
+        104,
+        942,
+        428
+      ],
+      "scale": 0.2222222222222222
+    },
+    "rating-s": {
+      "path": "assets/images/weapon-ratings/rating-s.png",
+      "size": [
+        192,
+        96
+      ],
+      "alphaRange": [
+        0,
+        255
+      ],
+      "alphaBounds": [
+        66,
+        12,
+        125,
+        84
+      ],
+      "normalization": {
+        "glyphHeight": 72,
+        "baseline": 84,
+        "alignment": "center",
+        "scaling": "uniform"
+      },
+      "bytes": 4916,
+      "cell": [
+        1024,
+        0,
+        1536,
+        512
+      ],
+      "contentBounds": [
+        1139,
+        92,
+        1411,
+        426
+      ],
+      "scale": 0.2155688622754491
+    },
+    "rating-ss": {
+      "path": "assets/images/weapon-ratings/rating-ss.png",
+      "size": [
+        192,
+        96
+      ],
+      "alphaRange": [
+        0,
+        255
+      ],
+      "alphaBounds": [
+        48,
+        12,
+        143,
+        84
+      ],
+      "normalization": {
+        "glyphHeight": 72,
+        "baseline": 84,
+        "alignment": "center",
+        "scaling": "uniform"
+      },
+      "bytes": 8459,
+      "cell": [
+        0,
+        512,
+        512,
+        1024
+      ],
+      "contentBounds": [
+        62,
+        613,
+        447,
+        905
+      ],
+      "scale": 0.2465753424657534
+    },
+    "rating-sss": {
+      "path": "assets/images/weapon-ratings/rating-sss.png",
+      "size": [
+        192,
+        96
+      ],
+      "alphaRange": [
+        0,
+        255
+      ],
+      "alphaBounds": [
+        37,
+        12,
+        154,
+        84
+      ],
+      "normalization": {
+        "glyphHeight": 72,
+        "baseline": 84,
+        "alignment": "center",
+        "scaling": "uniform"
+      },
+      "bytes": 11198,
+      "cell": [
+        512,
+        512,
+        1024,
+        1024
+      ],
+      "contentBounds": [
+        534,
+        617,
+        993,
+        900
+      ],
+      "scale": 0.254416961130742
+    }
+  }
+}

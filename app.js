@@ -209,6 +209,15 @@ function renderWeaponSkills(weapon, emptyText = '此仙斧暂无特殊技能。'
   return lines.length > 0 ? lines.join('; ') : emptyText;
 }
 
+function renderWeaponRating(weapon, context = 'inline') {
+  const { quality, label } = WeaponAffixes.getWeaponRating(weapon);
+  const placement = context === 'slot' ? 'slot' : 'inline';
+  return `<span class="weapon-rating weapon-rating-${placement}" data-rating="${label}" data-rating-quality="${quality}" role="img" aria-label="技能评级：${label}" title="技能评级：${label}">
+    <img class="weapon-rating-image" src="assets/runtime/weapon-ratings/rating-${label.toLowerCase()}.webp?v=weapon-ratings-20260909" width="192" height="96" alt="" decoding="async" onerror="this.hidden=true;this.nextElementSibling.hidden=false">
+    <span class="weapon-rating-fallback" aria-hidden="true" hidden>${label}</span>
+  </span>`;
+}
+
 const V2_IMAGE_ROOT = 'assets/runtime/v2';
 
 const TREE_APPEARANCES = Object.freeze({
@@ -314,13 +323,15 @@ function getInitialGameImageAssets(axeId = null) {
   const currentAxeFrames = axeId
     ? [...getAxeIdleFrames(axeId), ...getAxeChopFrames(axeId)]
     : [];
-  const feedbackFiles = ['assets/runtime/ui/close.svg', 'assets/runtime/effects/leaf-ink.webp?v=ink-feedback-20260908',
+  const feedbackFiles = ['assets/runtime/ui/close.svg', 'assets/runtime/ui/check.svg', 'assets/runtime/effects/leaf-ink.webp?v=ink-feedback-20260908',
     ...['return-arrow', 'exp-track', 'exp-fill'].map(name => `assets/runtime/ink-controls/${name}.webp?v=ink-controls-20260909`)];
   const v5Files = ['assets/runtime/v5/ui/task-paper.webp', 'assets/runtime/v5/ui/shop-paper.webp'];
   const v6QualityFiles = [1, 2, 3, 4, 5].map(quality => `assets/runtime/v6/quality/quality-${quality}.webp?v=xianlai-v6-20260908`);
   const v7Files = ['ui/inventory-paper.webp', ...[1, 2, 3, 4, 5].map(quality => `rewards/quality-${quality}.webp`)]
     .map(path => `assets/runtime/v7/${path}?v=xianlai-v7-20260909`);
-  return AssetPreloader.collect([itemImages, configuredImages, currentAxeFrames, v2Files, v3Files, v4Files, feedbackFiles, v5Files, v6QualityFiles, v7Files]);
+  const ratingFiles = ['b', 'a', 's', 'ss', 'sss']
+    .map(label => `assets/runtime/weapon-ratings/rating-${label}.webp?v=weapon-ratings-20260909`);
+  return AssetPreloader.collect([itemImages, configuredImages, currentAxeFrames, v2Files, v3Files, v4Files, feedbackFiles, v5Files, v6QualityFiles, v7Files, ratingFiles]);
 }
 
 function preloadAxeAnimation(itemId, onProgress = () => {}) {
@@ -2916,6 +2927,7 @@ const PlayerView = {
           <div class="equip-name-row">
             <span class="equip-name">${axeDef.name}</span>
             ${UI.qualityTag(axeDef.quality)}
+            ${renderWeaponRating(Game.equippedWeapon)}
           </div>
           ${equippedSkillHtml ? `<div class="equip-skill">斧技 · ${equippedSkillHtml}</div>` : ''}
         </div>
@@ -3139,6 +3151,7 @@ const PlayerView = {
         html += `
           <div class="item-slot weapon-slot quality-${def.quality} ${axeLocked ? 'item-locked' : ''}" onclick="PlayerView.showItemDetail('${inv.itemId}','${inv.id}')">
             <div class="item-icon">${renderItemIcon(inv.itemId, def.icon)}</div>
+            ${renderWeaponRating(inv, 'slot')}
             ${isNew ? '<span class="item-new-badge">新</span>' : ''}
             ${axeLocked ? `<div class="item-lock-badge">${renderFeatureIcon('icon-lock', '仙阶未解锁', 'lock-badge-icon')}</div>` : ''}
           </div>
@@ -3177,7 +3190,7 @@ const PlayerView = {
         ${renderItemIcon(current?.itemId || Game.state.axeId, def.icon, 'mobile-equipped-image')}
       </button>
       <div class="mobile-equipped-title quality-item-name quality-${def.quality}">${escapeHtml(def.name)}</div>
-      <div class="mobile-equipped-quality">${UI.qualityTag(def.quality)}</div>
+      <div class="mobile-equipped-quality">${UI.qualityTag(def.quality)}${renderWeaponRating(current)}</div>
       <div class="mobile-equipped-skills">${skillHtml || '暂无特殊技能'}</div>`;
     const weapons = [...Game.weapons].sort((a, b) => Number(b.id === Game.state.axeInstanceId) - Number(a.id === Game.state.axeInstanceId));
     const weaponsHtml = weapons.map(weapon => {
@@ -3186,12 +3199,16 @@ const PlayerView = {
       const isCurrent = weapon.id === Game.state.axeInstanceId;
       const locked = !canEquipAxeQuality(item.quality, Game.state.realmLevel);
       const isNew = InventoryNewState.isWeaponNew(weapon.id);
+      const ratingLabel = WeaponAffixes.getWeaponRating(weapon).label;
       return `<button type="button" class="item-slot weapon-slot quality-${item.quality}${locked ? ' item-locked' : ''}${isCurrent ? ' is-equipped' : ''}"
-          onclick="PlayerView.showItemDetail('${weapon.itemId}','${weapon.id}')" aria-label="${isCurrent ? '当前装备：' : ''}${escapeHtml(item.name)}">
+          onclick="PlayerView.showItemDetail('${weapon.itemId}','${weapon.id}')" aria-label="${isCurrent ? '当前装备：' : ''}${escapeHtml(item.name)}，技能评级${ratingLabel}" title="${isCurrent ? '当前装备：' : ''}${escapeHtml(item.name)} · 技能评级${ratingLabel}">
         <span class="item-icon">${renderItemIcon(weapon.itemId, item.icon)}</span>
-        ${isCurrent ? '<span class="mobile-current-badge">当前</span>' : ''}
-        ${isNew ? '<span class="item-new-badge">新</span>' : ''}
-        ${locked ? `<span class="item-lock-badge">${renderFeatureIcon('icon-lock', '仙阶未解锁', 'lock-badge-icon')}</span>` : ''}
+        ${renderWeaponRating(weapon, 'slot')}
+        <span class="weapon-slot-status" aria-hidden="true">
+          ${isCurrent ? '<span class="mobile-current-badge" title="当前装备"><img src="assets/runtime/ui/check.svg" alt=""></span>' : ''}
+          ${locked ? `<span class="item-lock-badge">${renderFeatureIcon('icon-lock', '仙阶未解锁', 'lock-badge-icon')}</span>` : ''}
+          ${isNew ? '<span class="item-new-badge">新</span>' : ''}
+        </span>
       </button>`;
     }).join('') || '<p class="mobile-library-empty">暂无仙斧</p>';
     return { html, weaponsHtml };
@@ -5075,7 +5092,7 @@ const PlayerView = {
         if (detail) {
           detail.hidden = false;
           detail.innerHTML = `
-            <div class="forge-result-quality" style="color:${q.color}">${escapeHtml(q.name)}</div>
+            <div class="forge-result-quality" style="color:${q.color}"><span>${escapeHtml(q.name)}</span>${renderWeaponRating(result.weapon)}</div>
             ${resultSkillHtml ? `<div class="forge-result-skill">斧技 · ${resultSkillHtml}</div>` : '<div class="forge-result-no-skill">暂无斧技</div>'}
             <div class="forge-result-copy">${escapeHtml(result.item.desc || '')}</div>
           `;

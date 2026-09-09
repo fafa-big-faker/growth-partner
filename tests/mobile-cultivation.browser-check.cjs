@@ -61,7 +61,8 @@ function checkWeaponRows(cells) {
     assert.ok(cell.slot.width <= 80.5, 'weapon library cells stay bounded on desktop and fullscreen');
     assert.ok(Math.abs(cell.slot.height - cell.slot.width * 4 / 3) < 1, 'weapon slot keeps 3:4 geometry: ' + JSON.stringify(cell));
     assert.ok(isInside(cell.slot, cell.icon), 'weapon icon stays inside its slot: ' + JSON.stringify(cell));
-    assert.ok(cell.icon.width >= 35, 'library axes do not fall back to legacy 28px icons');
+    // The bottom rating reserves 18px without enlarging the weapon cell.
+    assert.ok(cell.icon.width >= 32 && cell.icon.height >= 40, 'library axes remain legible above the rating');
     if (index % 2 === 1) {
       assert.ok(Math.abs(cell.slot.y - cells[index - 1].slot.y) < 1, 'two weapon columns align');
       assert.ok(cell.slot.x >= cells[index - 1].slot.right + 2, 'weapon columns do not overlap');

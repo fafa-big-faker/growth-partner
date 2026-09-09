@@ -225,3 +225,13 @@ node scripts\normalize_audio.js
 - 运行路径为`assets/runtime/ink-controls/return-arrow.webp`、`exp-track.webp`、`exp-fill.webp`，三张合计17604字节（约17.2KiB）。空槽6784字节，满槽6428字节；均quality90、保留无损透明通道。运行manifest保存精确尺寸、alpha边界、体积与切片参数。
 - 经验槽九宫格slice按上/右/下/左，源图`8/61/8/61`，运行`6/44/6/44`。两层在任何进度均使用相同完整槽尺寸；先固定纹理/端帽，再用裁切揭示填充，不能随进度压缩整张满槽图而移动左端、改变纹理或缩小右端帽。网页显示高度与文字由布局决定，不烘焙数字进图片。
 - 校验`python tests/ink-controls-assets.test.py`与脚本`--check`，覆盖准确三图、来源指纹、逐像素裁切、运行alpha保留、两槽对齐、墨色对比及体积。新素材实际URL和预载应使用完全相同缓存版本；原V7六张资源不得被覆盖。
+
+## 16. 仙斧评级字标
+
+- 源图在仓库同级`美术风格参考V7`，名字为仙来-仙斧评级字标图集.png且开头实际带一个反引号，保留用户原名，精确名称和SHA见`assets/images/weapon-ratings/source-manifest.json`。原图1536x1024、RGBA、3列2行，第一行B/A/S，第二行SS/SSS/空。
+- 运行`python scripts/import_weapon_ratings.py`仅输出此组PNG/WebP/manifest；`--check`无写入重建校验。仅清alpha小于5的噪点，不按预览黑色RGB去黑。真实字标边界由脚本逐项校验，源图换了必须重新测量，不盲目使用原坐标。
+- 原始五款轮廓依次251x320、311x324、272x334、385x292、459x283。等比统一成可见字高72px、底线y=84，放在192x96透明画布；最终可见宽56/69/59/95/117px。B/A/S不横向拉宽到SSS，不把整格512px直接缩小。
+- 正式图位于`assets/runtime/weapon-ratings/rating-b.webp`、`rating-a.webp`、`rating-s.webp`、`rating-ss.webp`、`rating-sss.webp`，5张共18,736字节，WebP质量90、保留透明通道；PNG导出和源记录在`assets/images/weapon-ratings`。
+- 运行URL与首登预载均使用`?v=weapon-ratings-20260909`。格底36x18px占位（实际字高13.5px），行内48x24px（实际字高18px）；所有评级用同一画布比例，不靠改变不同等级字体尺寸来制造稀有度差异。
+- 装备对勾为Lucide Static0.468.0的`assets/runtime/ui/check.svg`，仅修改墨绿描边，同目录ISC许可证沿用；它属于状态图标，不是评级美术，不增加底板。
+- `python tests/weapon-rating-assets.test.py`验证5款数量、尺寸、透明安全边、字高/基线、源指纹、重建、色彩和40KiB预算；图片到位后不得再把本组标记为“待生成”。

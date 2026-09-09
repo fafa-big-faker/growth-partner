@@ -50,7 +50,7 @@
   #player-dashboard.mobile-cultivation #inventory-grid .item-icon-img { width: 100%; height: 100%; object-fit: contain; }
   /* Keep image intrinsic height out of the implicit grid-row calculation. */
   #player-dashboard.mobile-cultivation #mobile-weapon-grid .item-slot { aspect-ratio: 3 / 4; overflow: hidden; }
-  #player-dashboard.mobile-cultivation #mobile-weapon-grid .item-icon { position: absolute; inset: 0; width: 100%; height: 100%; padding: 5px 4px 12px; }
+  #player-dashboard.mobile-cultivation #mobile-weapon-grid .item-icon { position: absolute; inset: 0; width: 100%; height: 100%; padding: 5px 4px 22px; }
   #player-dashboard.mobile-cultivation #mobile-weapon-grid .item-icon-img { width: auto; height: 100%; max-width: 100%; object-fit: contain; }
   #player-dashboard.mobile-cultivation .mobile-inventory-columns .item-slot::after { left: 4px; top: 5px; width: 8px; height: 18px; }
   #player-dashboard.mobile-cultivation .mobile-inventory-columns :is(.item-count, .item-new-badge) { min-width: 0; min-height: 0; padding: 0; background: none; border: 0; border-radius: 0; box-shadow: none; text-shadow: 0 1px 2px #fff, 1px 0 1px #fff, -1px 0 1px #fff; pointer-events: none; }
@@ -58,13 +58,18 @@
   #player-dashboard.mobile-cultivation .mobile-inventory-columns .item-new-badge { right: 4px; top: 4px; height: 11px; color: #a72e38; font-size: 9px; font-weight: 700; line-height: 11px; }
   #player-dashboard.mobile-cultivation .mobile-inventory-columns .item-lock-badge { right: 3px; top: 3px; width: 16px; height: 16px; }
   #player-dashboard.mobile-cultivation .mobile-inventory-columns .item-locked .item-new-badge { right: 21px; }
-  .mobile-current-badge { position: absolute; z-index: 3; bottom: 4px; left: 50%; transform: translateX(-50%); white-space: nowrap; padding: 1px 4px; color: #fff; background: #4c705e; border-radius: 3px; font-size: 10px; line-height: 16px; }
+  .weapon-slot-status { position: absolute; z-index: 3; top: 4px; right: 3px; width: 26px; display: grid; grid-template-columns: repeat(2, 12px); gap: 2px; justify-items: end; pointer-events: none; }
+  .mobile-current-badge { display: block; width: 12px; height: 12px; }
+  .mobile-current-badge img { display: block; width: 12px; height: 12px; }
+  #player-dashboard.mobile-cultivation #mobile-weapon-grid .weapon-slot-status .item-lock-badge { position: static; width: 12px; height: 12px; padding: 0; }
+  #player-dashboard.mobile-cultivation #mobile-weapon-grid .weapon-slot-status .lock-badge-icon { width: 12px; height: 12px; }
+  #player-dashboard.mobile-cultivation #mobile-weapon-grid .weapon-slot-status .item-new-badge { position: static; grid-column: 1 / -1; height: 11px; line-height: 11px; }
   #player-dashboard.mobile-cultivation #mobile-weapon-grid .is-equipped { outline: 1px solid #5c836a; outline-offset: -2px; }
   .mobile-equipment-content { min-height: 0; min-width: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: #799085 transparent; text-align: center; padding: 0 3px 5px; }
   .mobile-equipped-art { display: flex; width: 100%; height: 88px; min-height: 44px; align-items: center; justify-content: center; padding: 2px 8px; background: none; border: 0; cursor: pointer; }
   .mobile-equipped-image { display: block; width: auto; height: 100%; max-width: 100%; object-fit: contain; }
   .mobile-equipped-title { font-size: 13px; line-height: 1.5; font-weight: 700; overflow-wrap: anywhere; }
-  .mobile-equipped-quality { font-size: 12px; line-height: 1.7; }
+  .mobile-equipped-quality { display: flex; align-items: center; justify-content: center; gap: 2px; flex-wrap: wrap; min-width: 0; font-size: 12px; line-height: 1.7; }
   .mobile-equipped-quality .tag { padding: 2px 7px; font-size: 10px; line-height: 16px; border-radius: 3px; }
   .mobile-equipped-skills { padding-top: 5px; margin-top: 5px; border-top: 1px solid rgb(75 100 85 / 18%); text-align: left; color: #3f4d45; font-size: 12px; line-height: 1.7; overflow-wrap: anywhere; }
   .mobile-equipped-skills .weapon-skill { margin: 0 0 6px; }
@@ -151,9 +156,9 @@
 
 @media (max-width: 719px) {
   .mobile-equipment-content { display: grid; grid-template-columns: 44px minmax(0, 1fr); align-content: start; column-gap: 4px; }
-  .mobile-equipped-art { grid-column: 1; grid-row: 1 / 3; height: 48px; padding: 0; }
+  .mobile-equipped-art { grid-column: 1; grid-row: 1; height: 48px; padding: 0; }
   .mobile-equipped-title { grid-column: 2; align-self: end; text-align: left; font-size: 12px; }
-  .mobile-equipped-quality { grid-column: 2; text-align: left; }
+  .mobile-equipped-quality { grid-column: 1 / -1; margin-top: 2px; }
   .mobile-equipped-skills { grid-column: 1 / -1; }
 }
 

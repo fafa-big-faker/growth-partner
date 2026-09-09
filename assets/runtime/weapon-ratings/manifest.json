@@ -1,0 +1,122 @@
+{
+  "rating-b": {
+    "path": "assets/runtime/weapon-ratings/rating-b.webp",
+    "size": [
+      192,
+      96
+    ],
+    "alphaRange": [
+      0,
+      255
+    ],
+    "alphaBounds": [
+      68,
+      12,
+      124,
+      84
+    ],
+    "normalization": {
+      "glyphHeight": 72,
+      "baseline": 84,
+      "alignment": "center",
+      "scaling": "uniform"
+    },
+    "bytes": 2512
+  },
+  "rating-a": {
+    "path": "assets/runtime/weapon-ratings/rating-a.webp",
+    "size": [
+      192,
+      96
+    ],
+    "alphaRange": [
+      0,
+      255
+    ],
+    "alphaBounds": [
+      61,
+      12,
+      130,
+      84
+    ],
+    "normalization": {
+      "glyphHeight": 72,
+      "baseline": 84,
+      "alignment": "center",
+      "scaling": "uniform"
+    },
+    "bytes": 2906
+  },
+  "rating-s": {
+    "path": "assets/runtime/weapon-ratings/rating-s.webp",
+    "size": [
+      192,
+      96
+    ],
+    "alphaRange": [
+      0,
+      255
+    ],
+    "alphaBounds": [
+      66,
+      12,
+      125,
+      84
+    ],
+    "normalization": {
+      "glyphHeight": 72,
+      "baseline": 84,
+      "alignment": "center",
+      "scaling": "uniform"
+    },
+    "bytes": 2572
+  },
+  "rating-ss": {
+    "path": "assets/runtime/weapon-ratings/rating-ss.webp",
+    "size": [
+      192,
+      96
+    ],
+    "alphaRange": [
+      0,
+      255
+    ],
+    "alphaBounds": [
+      48,
+      12,
+      143,
+      84
+    ],
+    "normalization": {
+      "glyphHeight": 72,
+      "baseline": 84,
+      "alignment": "center",
+      "scaling": "uniform"
+    },
+    "bytes": 4392
+  },
+  "rating-sss": {
+    "path": "assets/runtime/weapon-ratings/rating-sss.webp",
+    "size": [
+      192,
+      96
+    ],
+    "alphaRange": [
+      0,
+      255
+    ],
+    "alphaBounds": [
+      37,
+      12,
+      154,
+      84
+    ],
+    "normalization": {
+      "glyphHeight": 72,
+      "baseline": 84,
+      "alignment": "center",
+      "scaling": "uniform"
+    },
+    "bytes": 6354
+  }
+}
