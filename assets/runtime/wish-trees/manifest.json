@@ -20,6 +20,7 @@
     "sha256": "985559d3a134e0a6bd46689997e65ebb8c7f22dfabc632f06c0a17e61261e05b",
     "tree": "tree_01",
     "kind": "tree",
+    "density": 1,
     "anchors": {
       "strike": [
         0.4583333333,
@@ -71,6 +72,7 @@
     "sha256": "0a0cd3bb4b0a5e3b8d788baa52141ba83efc5453a5a7f47d2b79740557dc02a9",
     "tree": "tree_01",
     "kind": "light",
+    "density": 1,
     "anchors": {
       "strike": [
         0.4583333333,
@@ -101,6 +103,110 @@
     },
     "quality": 90
   },
+  "tree_01@2x": {
+    "path": "assets/runtime/wish-trees/tree_01@2x.webp",
+    "size": [
+      768,
+      768
+    ],
+    "alphaRange": [
+      0,
+      255
+    ],
+    "alphaBounds": [
+      228,
+      250,
+      610,
+      720
+    ],
+    "visiblePixels": 76462,
+    "bytes": 88110,
+    "sha256": "60ad11b4677fe28d18d171f908efd319df9a52f7603ae447e0a419a29c80a56a",
+    "tree": "tree_01",
+    "kind": "tree",
+    "density": 2,
+    "anchors": {
+      "strike": [
+        0.4583333333,
+        0.7083333333
+      ],
+      "ground": [
+        0.5133333333,
+        0.9375
+      ],
+      "crown": [
+        0.57,
+        0.4141666667
+      ]
+    },
+    "canvasAnchors": {
+      "strike": [
+        352.0,
+        544.0
+      ],
+      "ground": [
+        394.24,
+        720.0
+      ],
+      "crown": [
+        437.76,
+        318.08
+      ]
+    },
+    "quality": 95
+  },
+  "light-01@2x": {
+    "path": "assets/runtime/wish-trees/light-01@2x.webp",
+    "size": [
+      768,
+      768
+    ],
+    "alphaRange": [
+      0,
+      181
+    ],
+    "alphaBounds": [
+      270,
+      272,
+      559,
+      703
+    ],
+    "visiblePixels": 5912,
+    "bytes": 24368,
+    "sha256": "2a3b0852b51724c3c8c695c74459d85934a29b684971186749871b2f0f283e61",
+    "tree": "tree_01",
+    "kind": "light",
+    "density": 2,
+    "anchors": {
+      "strike": [
+        0.4583333333,
+        0.7083333333
+      ],
+      "ground": [
+        0.5133333333,
+        0.9375
+      ],
+      "crown": [
+        0.57,
+        0.4141666667
+      ]
+    },
+    "canvasAnchors": {
+      "strike": [
+        352.0,
+        544.0
+      ],
+      "ground": [
+        394.24,
+        720.0
+      ],
+      "crown": [
+        437.76,
+        318.08
+      ]
+    },
+    "quality": 95
+  },
   "tree_02": {
     "path": "assets/runtime/wish-trees/tree_02.webp",
     "size": [
@@ -122,6 +228,7 @@
     "sha256": "fea705433ee6c558db49dea4bffe878b302c357ffbc4098bb8e5fd4af64760d5",
     "tree": "tree_02",
     "kind": "tree",
+    "density": 1,
     "anchors": {
       "strike": [
         0.4583333333,
@@ -173,6 +280,7 @@
     "sha256": "1f4360f75b63641fb4ddc4ae0693e3a5cd426a9ceac89ea5efc9e44ebc287e6f",
     "tree": "tree_02",
     "kind": "light",
+    "density": 1,
     "anchors": {
       "strike": [
         0.4583333333,
@@ -203,6 +311,110 @@
     },
     "quality": 90
   },
+  "tree_02@2x": {
+    "path": "assets/runtime/wish-trees/tree_02@2x.webp",
+    "size": [
+      768,
+      768
+    ],
+    "alphaRange": [
+      0,
+      255
+    ],
+    "alphaBounds": [
+      139,
+      214,
+      608,
+      720
+    ],
+    "visiblePixels": 121409,
+    "bytes": 125470,
+    "sha256": "7f0f6e60bc4da784dc9dac1cc026e11fe953a1246ac51103577cc9a3053e57c7",
+    "tree": "tree_02",
+    "kind": "tree",
+    "density": 2,
+    "anchors": {
+      "strike": [
+        0.4583333333,
+        0.7083333333
+      ],
+      "ground": [
+        0.485,
+        0.9375
+      ],
+      "crown": [
+        0.5283333333,
+        0.3975
+      ]
+    },
+    "canvasAnchors": {
+      "strike": [
+        352.0,
+        544.0
+      ],
+      "ground": [
+        372.48,
+        720.0
+      ],
+      "crown": [
+        405.76,
+        305.28
+      ]
+    },
+    "quality": 95
+  },
+  "light-02@2x": {
+    "path": "assets/runtime/wish-trees/light-02@2x.webp",
+    "size": [
+      768,
+      768
+    ],
+    "alphaRange": [
+      0,
+      184
+    ],
+    "alphaBounds": [
+      159,
+      233,
+      562,
+      705
+    ],
+    "visiblePixels": 10126,
+    "bytes": 39086,
+    "sha256": "2b5075b8493126dc8be0f95d3897c624cdb09397da0fa99e8e2b698cb9a31b64",
+    "tree": "tree_02",
+    "kind": "light",
+    "density": 2,
+    "anchors": {
+      "strike": [
+        0.4583333333,
+        0.7083333333
+      ],
+      "ground": [
+        0.485,
+        0.9375
+      ],
+      "crown": [
+        0.5283333333,
+        0.3975
+      ]
+    },
+    "canvasAnchors": {
+      "strike": [
+        352.0,
+        544.0
+      ],
+      "ground": [
+        372.48,
+        720.0
+      ],
+      "crown": [
+        405.76,
+        305.28
+      ]
+    },
+    "quality": 95
+  },
   "tree_03": {
     "path": "assets/runtime/wish-trees/tree_03.webp",
     "size": [
@@ -224,6 +436,7 @@
     "sha256": "a1b3ff180cc13ab09df908d79f73eb71940cef70a346f40e53d225805a37cb88",
     "tree": "tree_03",
     "kind": "tree",
+    "density": 1,
     "anchors": {
       "strike": [
         0.4583333333,
@@ -275,6 +488,7 @@
     "sha256": "f40bdbafee5aa0fe9cae20f3113eba4fafaa22d58f471517c87f025448ca4578",
     "tree": "tree_03",
     "kind": "light",
+    "density": 1,
     "anchors": {
       "strike": [
         0.4583333333,
@@ -305,6 +519,110 @@
     },
     "quality": 90
   },
+  "tree_03@2x": {
+    "path": "assets/runtime/wish-trees/tree_03@2x.webp",
+    "size": [
+      768,
+      768
+    ],
+    "alphaRange": [
+      0,
+      255
+    ],
+    "alphaBounds": [
+      108,
+      159,
+      655,
+      720
+    ],
+    "visiblePixels": 173151,
+    "bytes": 166394,
+    "sha256": "ba84a9fb85bd4fb577b9ddfde64745ec03959e6d0556f7070c5cd371dfb41ee4",
+    "tree": "tree_03",
+    "kind": "tree",
+    "density": 2,
+    "anchors": {
+      "strike": [
+        0.4583333333,
+        0.7083333333
+      ],
+      "ground": [
+        0.505,
+        0.9375
+      ],
+      "crown": [
+        0.4766666667,
+        0.3291666667
+      ]
+    },
+    "canvasAnchors": {
+      "strike": [
+        352.0,
+        544.0
+      ],
+      "ground": [
+        387.84,
+        720.0
+      ],
+      "crown": [
+        366.08,
+        252.8
+      ]
+    },
+    "quality": 95
+  },
+  "light-03@2x": {
+    "path": "assets/runtime/wish-trees/light-03@2x.webp",
+    "size": [
+      768,
+      768
+    ],
+    "alphaRange": [
+      0,
+      182
+    ],
+    "alphaBounds": [
+      151,
+      167,
+      604,
+      696
+    ],
+    "visiblePixels": 21624,
+    "bytes": 66712,
+    "sha256": "ceeb073972d9a8c438a411f4db22da660101f671cfb849d72edc597b43ce742b",
+    "tree": "tree_03",
+    "kind": "light",
+    "density": 2,
+    "anchors": {
+      "strike": [
+        0.4583333333,
+        0.7083333333
+      ],
+      "ground": [
+        0.505,
+        0.9375
+      ],
+      "crown": [
+        0.4766666667,
+        0.3291666667
+      ]
+    },
+    "canvasAnchors": {
+      "strike": [
+        352.0,
+        544.0
+      ],
+      "ground": [
+        387.84,
+        720.0
+      ],
+      "crown": [
+        366.08,
+        252.8
+      ]
+    },
+    "quality": 95
+  },
   "tree_04": {
     "path": "assets/runtime/wish-trees/tree_04.webp",
     "size": [
@@ -326,6 +644,7 @@
     "sha256": "e47448888ef71b02580349d31c652935dd942cb8e83ba5748b193a916e1903b1",
     "tree": "tree_04",
     "kind": "tree",
+    "density": 1,
     "anchors": {
       "strike": [
         0.4583333333,
@@ -377,6 +696,7 @@
     "sha256": "e42cb376d3ba86053266c8e1515470d4681db65e58479bd124c6fbd403eddaa2",
     "tree": "tree_04",
     "kind": "light",
+    "density": 1,
     "anchors": {
       "strike": [
         0.4583333333,
@@ -407,6 +727,110 @@
     },
     "quality": 90
   },
+  "tree_04@2x": {
+    "path": "assets/runtime/wish-trees/tree_04@2x.webp",
+    "size": [
+      768,
+      768
+    ],
+    "alphaRange": [
+      0,
+      255
+    ],
+    "alphaBounds": [
+      70,
+      108,
+      690,
+      719
+    ],
+    "visiblePixels": 213515,
+    "bytes": 203622,
+    "sha256": "c030b8b51fef8eff14650faa46cd67eadf7f5c860bce379bfd22cf58d518c889",
+    "tree": "tree_04",
+    "kind": "tree",
+    "density": 2,
+    "anchors": {
+      "strike": [
+        0.4583333333,
+        0.7083333333
+      ],
+      "ground": [
+        0.4933333333,
+        0.9375
+      ],
+      "crown": [
+        0.4816666667,
+        0.2825
+      ]
+    },
+    "canvasAnchors": {
+      "strike": [
+        352.0,
+        544.0
+      ],
+      "ground": [
+        378.88,
+        720.0
+      ],
+      "crown": [
+        369.92,
+        216.96
+      ]
+    },
+    "quality": 95
+  },
+  "light-04@2x": {
+    "path": "assets/runtime/wish-trees/light-04@2x.webp",
+    "size": [
+      768,
+      768
+    ],
+    "alphaRange": [
+      0,
+      182
+    ],
+    "alphaBounds": [
+      121,
+      131,
+      640,
+      703
+    ],
+    "visiblePixels": 30705,
+    "bytes": 85998,
+    "sha256": "ad73570ffc256ce5cbc2a74ae1ebecaf424ee28d95853ddc201979aa0b84f2fc",
+    "tree": "tree_04",
+    "kind": "light",
+    "density": 2,
+    "anchors": {
+      "strike": [
+        0.4583333333,
+        0.7083333333
+      ],
+      "ground": [
+        0.4933333333,
+        0.9375
+      ],
+      "crown": [
+        0.4816666667,
+        0.2825
+      ]
+    },
+    "canvasAnchors": {
+      "strike": [
+        352.0,
+        544.0
+      ],
+      "ground": [
+        378.88,
+        720.0
+      ],
+      "crown": [
+        369.92,
+        216.96
+      ]
+    },
+    "quality": 95
+  },
   "tree_05": {
     "path": "assets/runtime/wish-trees/tree_05.webp",
     "size": [
@@ -428,6 +852,7 @@
     "sha256": "90060406722300b3c58cbb27c7f9b0cc72fc8df46c333fee5a4e0b76eca254e1",
     "tree": "tree_05",
     "kind": "tree",
+    "density": 1,
     "anchors": {
       "strike": [
         0.4583333333,
@@ -479,6 +904,7 @@
     "sha256": "d1a50309f5a5d330d4fa38a9f4abb42d3da237dd9ec19c9cf3cae4d62891f853",
     "tree": "tree_05",
     "kind": "light",
+    "density": 1,
     "anchors": {
       "strike": [
         0.4583333333,
@@ -508,5 +934,109 @@
       ]
     },
     "quality": 90
+  },
+  "tree_05@2x": {
+    "path": "assets/runtime/wish-trees/tree_05@2x.webp",
+    "size": [
+      768,
+      768
+    ],
+    "alphaRange": [
+      0,
+      255
+    ],
+    "alphaBounds": [
+      52,
+      95,
+      746,
+      720
+    ],
+    "visiblePixels": 240845,
+    "bytes": 235566,
+    "sha256": "cc9b9c7a75b1aa5ba1ea1ec473a1a019deaf52ec36e202ec197e407a078a45f9",
+    "tree": "tree_05",
+    "kind": "tree",
+    "density": 2,
+    "anchors": {
+      "strike": [
+        0.4583333333,
+        0.7083333333
+      ],
+      "ground": [
+        0.4966666667,
+        0.9375
+      ],
+      "crown": [
+        0.5033333333,
+        0.2725
+      ]
+    },
+    "canvasAnchors": {
+      "strike": [
+        352.0,
+        544.0
+      ],
+      "ground": [
+        381.44,
+        720.0
+      ],
+      "crown": [
+        386.56,
+        209.28
+      ]
+    },
+    "quality": 95
+  },
+  "light-05@2x": {
+    "path": "assets/runtime/wish-trees/light-05@2x.webp",
+    "size": [
+      768,
+      768
+    ],
+    "alphaRange": [
+      0,
+      184
+    ],
+    "alphaBounds": [
+      87,
+      97,
+      722,
+      710
+    ],
+    "visiblePixels": 44054,
+    "bytes": 124770,
+    "sha256": "2e7a130af0e872f7d971d6b81cb6d295f896517bd72b3cffe4e983241cbe9164",
+    "tree": "tree_05",
+    "kind": "light",
+    "density": 2,
+    "anchors": {
+      "strike": [
+        0.4583333333,
+        0.7083333333
+      ],
+      "ground": [
+        0.4966666667,
+        0.9375
+      ],
+      "crown": [
+        0.5033333333,
+        0.2725
+      ]
+    },
+    "canvasAnchors": {
+      "strike": [
+        352.0,
+        544.0
+      ],
+      "ground": [
+        381.44,
+        720.0
+      ],
+      "crown": [
+        386.56,
+        209.28
+      ]
+    },
+    "quality": 95
   }
 }

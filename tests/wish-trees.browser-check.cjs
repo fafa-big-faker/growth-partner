@@ -4,7 +4,10 @@ const fs = require('node:fs/promises');
 const path = require('node:path');
 
 const SKINS = ['tree_01', 'tree_02', 'tree_03', 'tree_04', 'tree_05'];
-const CANVAS_SIZE = [384, 384];
+const DEVICE_DPR = Number(process.argv.find(argument => argument.startsWith('--dpr='))?.split('=')[1] || 1);
+assert.ok([1, 2, 3, 4].includes(DEVICE_DPR), '--dpr must be 1, 2, 3, or 4 (default 1)');
+const ASSET_SUFFIX = DEVICE_DPR > 1 ? '@2x' : '';
+const CANVAS_SIZE = DEVICE_DPR > 1 ? [768, 768] : [384, 384];
 const ANCHORS = { strike: [176 / 384, 272 / 384], ground: [176 / 384, 360 / 384] };
 const VIEWPORTS = [
   { width: 320, height: 568 },
@@ -172,7 +175,7 @@ function assertScene(snapshot, key, initial, canvasSize, preloads, expectedAncho
   assert.equal(snapshot.decoded, true, `${key}: tree bitmap decodes`);
   assert.deepEqual(snapshot.size, canvasSize, `${key}: tree keeps the common transparent canvas`);
   assert.ok(snapshot.opaquePixels > 1000, `${key}: actual tree artwork is nonempty`);
-  assert.ok(snapshot.source.includes(`/wish-trees/${key}.webp?`), `${key}: configured skin is rendered`);
+  assert.ok(snapshot.source.includes(`/wish-trees/${key}${ASSET_SUFFIX}.webp?`), `${key}: configured skin and selected density are rendered`);
   assert.ok(preloads.includes(snapshot.source), `${key}: preload matches the exact rendered URL`);
   for (let coordinate = 0; coordinate < 2; coordinate++) close(snapshot.anchorData.strike[coordinate], ANCHORS.strike[coordinate], `${key}: strike data uses the measured normalized anchor`, .000001);
   assert.ok(snapshot.anchorData.crown.every(value => Number.isFinite(value) && value > 0 && value < 1), `${key}: crown metadata is normalized`);
@@ -206,6 +209,7 @@ function assertScene(snapshot, key, initial, canvasSize, preloads, expectedAncho
     const light = snapshot.light;
     assert.equal(light.decoded, true, `${key}: highlight image decodes`);
     assert.deepEqual(light.size, canvasSize);
+    assert.ok(light.src.includes(`/wish-trees/light-${key.slice(-2)}${ASSET_SUFFIX}.webp?`), `${key}: light uses the selected density`);
     assert.ok(preloads.includes(light.src), `${key}: light preload has the exact runtime URL`);
     assert.equal(light.pointer, 'none');
     assert.equal(light.filter, 'none', `${key}: no whole-sprite lighting filter`);
@@ -442,8 +446,8 @@ async function main() {
   const playwright = require(process.env.PLAYWRIGHT_MODULE || 'C:/Users/Administrator/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
   const browser = await playwright.chromium.launch({ headless: true,
     executablePath: process.env.BROWSER_EXECUTABLE || 'C:/Program Files/Google/Chrome/Application/chrome.exe' });
-  const page = await browser.newPage();
-  const errors = [], requests = [], checks = [];
+  const page = await browser.newPage({ deviceScaleFactor: DEVICE_DPR });
+  const errors = [], requests = [], checks = [], treeRequests = [];
   page.on('pageerror', error => errors.push(error.message));
   try {
     await page.route('**/*', async route => {
@@ -454,6 +458,7 @@ async function main() {
         return route.abort();
       }
       if (url.origin !== 'http://wish-trees.local') return route.abort();
+      if (url.pathname.startsWith('/assets/runtime/wish-trees/')) treeRequests.push(url.href);
       const relative = decodeURIComponent(url.pathname).replace(/^\//, '') || 'index.html';
       const file = path.resolve(root, relative);
       if (!file.startsWith(root + path.sep)) return route.abort();
@@ -466,12 +471,17 @@ async function main() {
     });
 
     for (const viewport of viewports) {
+      treeRequests.length = 0;
       await page.setViewportSize(viewport);
       await page.goto('http://wish-trees.local');
+      assert.equal(await page.evaluate(() => devicePixelRatio), DEVICE_DPR, 'browser uses the requested real device pixel ratio');
       const fixture = await setupFixture(page);
       assert.deepEqual([...new Set(fixture.realmSkins)].sort(), SKINS, 'the real configuration includes all five tree skins');
       assert.equal(fixture.preloads.length, 10, 'all five trees and five extracted light layers are preloaded');
       assert.equal(new Set(fixture.preloads).size, fixture.preloads.length, 'tree preloads have no duplicate URLs');
+      assert.ok(fixture.preloads.every(url => url.includes('@2x') === (DEVICE_DPR > 1)),
+        'preloading selects one density for both trees and lights');
+      await page.evaluate(async urls => { await AssetPreloader.preload(urls); }, fixture.preloads);
       const states = [];
       const hints = [];
       let initial = null;
@@ -484,7 +494,7 @@ async function main() {
         await clickTreeDetail(page, snapshot.trunkClick, snapshot.source);
         const effects = await checkHitEffects(page, snapshot);
         hints.push(await checkUpgradeHint(page, key));
-        states.push({ key, strike: snapshot.strike, ground: snapshot.ground,
+        states.push({ key, size: snapshot.size, image: snapshot.image, strike: snapshot.strike, ground: snapshot.ground,
           characterFeet: snapshot.characterFeet, lightCoverage: snapshot.light?.visibleFraction || 0,
           effectSteps: effects });
       }
@@ -498,7 +508,7 @@ async function main() {
         CultivatorAnimator.stop();
       });
       await settle(page);
-      assert.ok((await page.locator('#tree-icon .tree-img').getAttribute('src')).includes('/tree_01.webp?'),
+      assert.ok((await page.locator('#tree-icon .tree-img').getAttribute('src')).includes(`/tree_01${ASSET_SUFFIX}.webp?`),
         'tree appearance follows its configured realm, independently of numerical reward-pool level');
       await renderSkin(page, 'tree_05');
       const resized = viewport.width === 390 && viewport.height === 844 ? await checkLiveResize(page, manifest, fixture.preloads) : null;
@@ -506,11 +516,18 @@ async function main() {
       assert.deepEqual(await page.evaluate(() => ({ coin: Game.state.coin, choppingCount: Game.state.choppingCount,
         exp: Game.state.exp, inventory: Game.inventory, weapons: Game.weapons.length })),
       { coin: 1234, choppingCount: 50, exp: 0, inventory: [], weapons: 1 }, 'art and detail checks do not change resources');
-      checks.push({ viewport, skins: states, hints, resized, detailClicks: await page.evaluate(() => wishTreeFixture.detailCalls), aliases, lifecycle });
+      const requestedTrees = [...new Set(treeRequests)].sort();
+      assert.deepEqual(requestedTrees, fixture.preloads.map(url => new URL(url, 'http://wish-trees.local').href).sort(),
+        'actual preload, scene, and detail requests share exactly ten selected URLs without fetching both densities');
+      checks.push({ viewport, devicePixelRatio: DEVICE_DPR, requestedTrees: requestedTrees.length,
+        skins: states, hints, resized, detailClicks: await page.evaluate(() => wishTreeFixture.detailCalls), aliases, lifecycle });
     }
     assert.deepEqual(errors, []);
     assert.deepEqual(requests, [], 'no player/account/database requests are attempted');
-    const summary = checks.map(check => ({ viewport: check.viewport, skins: check.skins.map(skin => skin.key),
+    const summary = checks.map(check => ({ viewport: check.viewport, devicePixelRatio: check.devicePixelRatio,
+      canvasSize: CANVAS_SIZE, selectedDensityRequests: check.requestedTrees,
+      sceneImageWidth: check.skins[0].image.width, strike: check.skins[0].strike,
+      skins: check.skins.map(skin => skin.key),
       detailClicks: check.detailClicks,
       maxStrikeShift: Math.max(...check.skins.flatMap(skin => ['x', 'y'].map(axis => Math.abs(skin.strike[axis] - check.skins[0].strike[axis])))),
       groundOffsets: check.skins.map(skin => Math.round((skin.ground.y - skin.characterFeet) * 10) / 10),

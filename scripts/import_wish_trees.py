@@ -22,6 +22,7 @@ SCALE = 0.64
 STRIKE = (176, 272)
 GROUND_Y = 360
 RUNTIME_BUDGET = 400 * 1024
+HD_RUNTIME_BUDGET = int(1.4 * 1024 * 1024)
 ASSETS = {
     "tree_01": {"cell": (0, 0, 512, 490), "bounds": (142, 101, 441, 468),
                 "strikeX": 239, "rootX": 272, "crown": (306, 154)},
@@ -62,7 +63,9 @@ def normalized_anchors(name: str) -> dict:
             for key, point in source_anchors(name).items()}
 
 
-def make_tree(image: Image.Image, name: str) -> Image.Image:
+def make_tree(image: Image.Image, name: str, density: int = 1) -> Image.Image:
+    if density not in (1, 2):
+        raise ValueError(f"Unsupported wish-tree density: {density}")
     spec = ASSETS[name]
     cell = spec["cell"]
     cleaned = clean_alpha(image.crop(cell))
@@ -76,15 +79,17 @@ def make_tree(image: Image.Image, name: str) -> Image.Image:
     left, top, right, bottom = measured
     anchors = source_anchors(name)
     strike_x, strike_y = anchors["strike"]
-    # Two-times sampling followed by Lanczos keeps one uniform scale and exact
-    # fractional anchors, without rounding each different tree to a new scale.
+    # Preserve the published 1x pipeline byte-for-byte. The 2x image instead
+    # retains this direct source-atlas sample, without a downsample/upscale cycle.
     factor = 2
     output = crop.transform((CANVAS_SIZE[0] * factor, CANVAS_SIZE[1] * factor),
                             Image.Transform.AFFINE,
                             (1 / (SCALE * factor), 0, strike_x - STRIKE[0] / SCALE - left,
                              0, 1 / (SCALE * factor), strike_y - STRIKE[1] / SCALE - top),
                             resample=Image.Resampling.BICUBIC)
-    output = clean_alpha(output.resize(CANVAS_SIZE, Image.Resampling.LANCZOS))
+    if density == 1:
+        output = output.resize(CANVAS_SIZE, Image.Resampling.LANCZOS)
+    output = clean_alpha(output)
     predicted = [canvas_point(name, (left, top)), canvas_point(name, (right, bottom))]
     if min(predicted[0]) < 8 or max(predicted[1]) > 376:
         raise ValueError(f"Tree {name} would lose its transparent safety margin")
@@ -125,28 +130,38 @@ def build_outputs() -> dict[Path, bytes]:
         original = source.copy()
     if original.mode != "RGBA" or original.size != (1536, 1024) or fingerprint != SOURCE_SHA256:
         raise ValueError("Source wish-tree atlas changed; remeasure before importing")
-    source_assets, runtime_assets, outputs = {}, {}, {}
+    source_assets, runtime_assets, outputs, densities = {}, {}, {}, {}
     for name, spec in ASSETS.items():
-        tree = make_tree(original, name)
-        light_name = f"light-{name[-2:]}"
-        for asset_name, image, kind in [(name, tree, "tree"), (light_name, make_light(tree), "light")]:
-            png_path, webp_path = OUTPUT_ROOT / f"{asset_name}.png", RUNTIME_ROOT / f"{asset_name}.webp"
-            png = encode(image, "PNG", optimize=True)
-            webp = encode(image, "WEBP", quality=90, method=6, exact=True)
-            metadata = {"tree": name, "kind": kind, "anchors": normalized_anchors(name),
-                        "canvasAnchors": {key: canvas_point(name, point)
-                                          for key, point in source_anchors(name).items()}}
-            source_assets[asset_name] = {**image_spec(image, png_path, png), **metadata,
-                                         "cell": list(spec["cell"]), "contentBounds": list(spec["bounds"]),
-                                         "sourceAnchors": source_anchors(name), "scale": SCALE}
-            runtime_assets[asset_name] = {**image_spec(image, webp_path, webp), **metadata, "quality": 90}
-            outputs[png_path], outputs[webp_path] = png, webp
+        for density in (1, 2):
+            tree = make_tree(original, name, density)
+            light_name = f"light-{name[-2:]}"
+            suffix, quality = ("", 90) if density == 1 else ("@2x", 95)
+            for base_name, image, kind in [(name, tree, "tree"), (light_name, make_light(tree), "light")]:
+                asset_name = base_name + suffix
+                png_path, webp_path = OUTPUT_ROOT / f"{asset_name}.png", RUNTIME_ROOT / f"{asset_name}.webp"
+                png = encode(image, "PNG", optimize=True)
+                webp = encode(image, "WEBP", quality=quality, method=6, exact=True)
+                metadata = {"tree": name, "kind": kind, "density": density,
+                            "anchors": normalized_anchors(name),
+                            "canvasAnchors": {key: [round(v * density, 6) for v in canvas_point(name, point)]
+                                              for key, point in source_anchors(name).items()}}
+                source_assets[asset_name] = {**image_spec(image, png_path, png), **metadata,
+                                             "cell": list(spec["cell"]), "contentBounds": list(spec["bounds"]),
+                                             "sourceAnchors": source_anchors(name), "scale": SCALE * density,
+                                             "resampling": "bicubic+lanczos" if density == 1 else "single-affine-bicubic"}
+                runtime_assets[asset_name] = {**image_spec(image, webp_path, webp), **metadata, "quality": quality}
+                outputs[png_path], outputs[webp_path] = png, webp
+    for density, budget in [(1, RUNTIME_BUDGET), (2, HD_RUNTIME_BUDGET)]:
+        density_bytes = sum(spec["bytes"] for spec in runtime_assets.values() if spec["density"] == density)
+        if density_bytes > budget:
+            raise ValueError(f"Wish-tree {density}x assets exceed budget: {density_bytes}")
+        densities[str(density)] = {"canvasSize": [value * density for value in CANVAS_SIZE],
+                                  "scale": SCALE * density, "runtimeBytes": density_bytes,
+                                  "runtimeBudgetBytes": budget}
     total = sum(spec["bytes"] for spec in runtime_assets.values())
-    if total > RUNTIME_BUDGET:
-        raise ValueError(f"Wish-tree assets exceed budget: {total}")
     trace = {"script": "scripts/import_wish_trees.py", "minimumAlpha": MINIMUM_ALPHA,
              "canvasSize": list(CANVAS_SIZE), "scale": SCALE, "runtimeBytes": total,
-             "runtimeBudgetBytes": RUNTIME_BUDGET,
+             "runtimeBudgetBytes": RUNTIME_BUDGET + HD_RUNTIME_BUDGET, "densities": densities,
              "source": {"file": SOURCE_PATH.name, "size": list(original.size), "mode": original.mode,
                         "alphaRange": list(original.getchannel("A").getextrema()),
                         "bytes": len(payload), "sha256": fingerprint},
@@ -171,7 +186,7 @@ def main() -> None:
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_bytes(payload)
     total = sum(len(payload) for path, payload in outputs.items() if path.suffix == ".webp")
-    print(f"Wish trees: 5 trees + 5 original-art lights, {total} runtime bytes; "
+    print(f"Wish trees: 5 trees + 5 original-art lights at 1x and 2x, {total} runtime bytes; "
           + ("verified" if args.check else "generated"))
 
 

@@ -8,11 +8,12 @@ const app = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
 const css = fs.readFileSync(path.join(__dirname, '..', 'styles.css'), 'utf8');
 const treeManifest = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'assets/runtime/wish-trees/manifest.json'), 'utf8'));
 
-function treeAppearanceRuntime() {
+function treeAppearanceRuntime(devicePixelRatio) {
   const start = app.indexOf('const TREE_APPEARANCES =');
   const end = app.indexOf('const V3_IMAGE_ROOT =', start);
   assert.ok(start >= 0 && end > start, 'tree appearance resolver must remain independently evaluable');
-  return vm.runInNewContext(`${app.slice(start, end)}; ({ appearances: TREE_APPEARANCES, getTreeAppearance });`);
+  const context = devicePixelRatio === undefined ? {} : { window: { devicePixelRatio } };
+  return vm.runInNewContext(`${app.slice(start, end)}; ({ appearances: TREE_APPEARANCES, getTreeAppearance });`, context);
 }
 
 
@@ -114,6 +115,31 @@ test('tree appearance is configuration-driven with a safe fallback', () => {
   assert.match(detail, /src="\$\{treeAppearance\.src\}"/);
   assert.match(app, /Object\.values\(TREE_APPEARANCES\)\.flatMap\(tree => \[tree\.src, tree\.light\]\)/);
   assert.doesNotMatch(app, /treeLevel >= 13|treeLevel >= 6/);
+});
+
+test('high density screens use source-derived HD trees without changing scene anchors', () => {
+  const standard = treeAppearanceRuntime(1).appearances;
+  for (const density of [1, 1.25, 2, 3, 4]) {
+    const { appearances, getTreeAppearance } = treeAppearanceRuntime(density);
+    const suffix = density > 1 ? '@2x' : '';
+    const version = density > 1 ? 'wish-trees-hd-20260910' : 'wish-trees-20260909';
+    const preloads = Object.values(appearances).flatMap(tree => [tree.src, tree.light]);
+    assert.equal(new Set(preloads).size, 10, 'preload only the selected density, once per tree/light pair');
+    for (const key of Object.keys(appearances)) {
+      const skin = getTreeAppearance({ appearance: key });
+      const tree = treeManifest[`${key}${suffix}`];
+      const light = treeManifest[`light-${key.slice(-2)}${suffix}`];
+      assert.equal(skin.src, `${tree.path}?v=${version}`);
+      assert.equal(skin.light, `${light.path}?v=${version}`);
+      assert.ok(preloads.includes(skin.src) && preloads.includes(skin.light));
+      for (const asset of [tree, light]) {
+        assert.ok(fs.existsSync(path.join(__dirname, '..', asset.path)));
+      }
+      assert.deepEqual(Array.from(skin.strike), Array.from(standard[key].strike));
+      assert.deepEqual(Array.from(skin.crown), Array.from(standard[key].crown));
+      assert.equal(skin.crownTop, standard[key].crownTop);
+    }
+  }
 });
 
 test('tree light observation follows scene mounting and route cleanup', () => {

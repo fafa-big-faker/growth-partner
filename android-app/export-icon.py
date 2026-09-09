@@ -3,15 +3,19 @@ from pathlib import Path
 import argparse
 import hashlib
 import json
+import runpy
 from PIL import Image
 
 ROOT = Path(__file__).resolve().parent
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("source", nargs="?", type=Path,
-                    default=ROOT.parent / "assets/runtime/v3/icons/icon-cultivate.webp")
+                    help="Custom icon source; omit to regenerate the approved official icon.")
 parser.add_argument("--full-bleed", action="store_true",
                     help="Keep a square icon's full background; fully opaque sources select this automatically.")
 args = parser.parse_args()
+if args.source is None:
+    runpy.run_path(str(ROOT / "import-official-icon.py"), run_name="__main__")
+    raise SystemExit(0)
 source = args.source.resolve()
 with Image.open(source) as image:
     image = image.convert("RGBA")

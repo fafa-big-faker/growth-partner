@@ -226,9 +226,11 @@ const TREE_APPEARANCES = Object.freeze({
     [0.4816666667, 0.2825], [0.5033333333, 0.2725],
   ].map((crown, index) => {
     const suffix = String(index + 1).padStart(2, '0');
+    const density = typeof window !== 'undefined' && window.devicePixelRatio > 1 ? '@2x' : '';
+    const version = density ? 'wish-trees-hd-20260910' : 'wish-trees-20260909';
     return [`tree_${suffix}`, {
-      src: `assets/runtime/wish-trees/tree_${suffix}.webp?v=wish-trees-20260909`,
-      light: `assets/runtime/wish-trees/light-${suffix}.webp?v=wish-trees-20260909`,
+      src: `assets/runtime/wish-trees/tree_${suffix}${density}.webp?v=${version}`,
+      light: `assets/runtime/wish-trees/light-${suffix}${density}.webp?v=${version}`,
       strike: [176 / 384, 272 / 384], crown,
       crownTop: [126, 108, 80, 55, 47][index] / 384,
     }];
