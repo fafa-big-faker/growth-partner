@@ -1,5 +1,6 @@
 /* Game artwork behaves like an app surface; editing remains browser-native. */
 :is(#login-screen, #player-dashboard, #admin-dashboard, #modal-container, #toast-container, #floating-items-container) {
+  -webkit-tap-highlight-color: transparent;
   -webkit-touch-callout: none;
   -webkit-user-select: none;
   user-select: none;

@@ -77,6 +77,6 @@ test('surface styles preserve native editing, scrolling and zoom and entry loads
   assert.match(css, /touch-action:\s*manipulation/);
   assert.doesNotMatch(css, /touch-action:\s*none|pointer-events:\s*none/);
   assert.doesNotMatch(html, /user-scalable\s*=\s*no|maximum-scale\s*=\s*1/);
-  assert.match(html, /web-interactions\.css\?v=android-entry-20260909/);
+  assert.match(html, /web-interactions\.css\?v=tap-feedback-20260909/);
   assert.match(html, /web-interactions\.js\?v=android-entry-20260909/);
 });
