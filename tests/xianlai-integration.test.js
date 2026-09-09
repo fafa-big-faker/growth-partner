@@ -46,7 +46,8 @@ test('login and UI art resources load before the application starts', () => {
     assert.ok(html.indexOf(file) < html.indexOf('src="app.js'));
   }
   assert.match(html, /<title>仙来/);
-  assert.match(html, /rel="preload" as="image" href="assets\/runtime\/v3\/ui\/logo.webp"/);
+  assert.match(html, /id="login-brand-image" data-boot-src="assets\/runtime\/v3\/ui\/logo.webp"/);
+  assert.ok(html.indexOf('src="boot-assets.js') < html.indexOf('src="login-boot.js'));
   assert.match(app, /LoginArt\.init\(\{ prepared \}\)/);
 });
 

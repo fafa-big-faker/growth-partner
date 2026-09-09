@@ -1,12 +1,5 @@
-#login-screen.login-boot-pending {
-  background-image: url('assets/runtime/v3/backgrounds/login-preview.webp');
-}
-
-#login-screen.login-boot-pending .login-shell {
-  opacity: 0;
-  pointer-events: none;
-}
-
+#login-screen.login-boot-pending { background: #eeeee2; }
+#login-screen.login-boot-pending .login-shell { opacity: 0; pointer-events: none; }
 #login-screen.login-boot-pending #login-ink-canvas { visibility: hidden; }
 #login-screen.login-boot-pending #login-brand-image { visibility: hidden !important; }
 #login-screen .login-boot[hidden] { display: none; }
@@ -15,75 +8,75 @@
   position: absolute;
   inset: 0;
   z-index: 3;
+  display: grid;
+  place-items: center;
+  padding: max(24px, env(safe-area-inset-top)) 24px max(24px, env(safe-area-inset-bottom));
+  box-sizing: border-box;
+  overflow: auto;
+  background: #eeeee2;
+  color: #33413c;
+  text-align: center;
+}
+#login-screen .login-boot.has-art {
+  background: #eeeee2 url('assets/runtime/entry-preparation/background.webp?v=entry-preparation-20260910') center / cover no-repeat;
+}
+.login-boot-content { width: min(100%, 360px); margin: auto; }
+#login-screen .login-boot-brand {
+  margin: 0 0 30px;
+  color: #37473d;
+  font: 600 28px/1.3 "STKaiti", "KaiTi", "Noto Serif SC", serif;
+  letter-spacing: .24em;
+  text-indent: .24em;
+}
+.login-boot-kicker { font-size: 11px; letter-spacing: .32em; color: #647065; }
+#login-boot-quote {
+  margin: 18px 0 42px;
+  min-height: 3.8em;
+  font: 500 clamp(19px, 5.3vw, 23px)/1.9 "STKaiti", "KaiTi", "Noto Serif SC", serif;
+  letter-spacing: .07em;
+  white-space: pre-line;
+  transition: opacity 180ms ease;
+}
+#login-boot-quote.is-changing { opacity: 0; }
+.login-boot-preparation { width: min(100%, 284px); margin: 0 auto; }
+#login-boot-track { height: 6px; overflow: hidden; border-radius: 1px; background: #69796a24; }
+#login-boot-fill { display: block; width: 0; height: 100%; background: #5a7160; transition: width 140ms linear; }
+.has-track-art #login-boot-track { background: url('assets/runtime/ink-controls/exp-track.webp?v=ink-controls-20260909') center / 100% 100%; }
+.has-track-art #login-boot-fill { background: #5a7160 url('assets/runtime/ink-controls/exp-fill.webp?v=ink-controls-20260909') left center / auto 100%; }
+.login-boot-meta { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-top: 11px; text-align: left; }
+#login-screen #login-boot-status { margin: 0; font-size: 12px; line-height: 1.7; color: #566255; overflow-wrap: anywhere; }
+#login-boot-percent { flex: none; font-size: 12px; line-height: 1.7; font-variant-numeric: tabular-nums; color: #465747; }
+.login-boot-actions { display: flex; justify-content: center; gap: 20px; margin-top: 12px; }
+.login-boot-actions button { min-height: 40px; padding: 6px 8px; border: 0; border-bottom: 1px solid #728a7c; border-radius: 0; background: transparent; box-shadow: none; color: #304b44; font-size: 14px; cursor: pointer; }
+.login-boot-actions button[hidden] { display: none; }
+.login-boot-actions button:hover { color: #142e27; border-color: currentColor; }
+.login-boot-actions button:focus-visible { outline: 2px solid #4d7561; outline-offset: 3px; }
+
+#login-submit .login-submit-busy { display: none; }
+#login-submit.is-busy .login-submit-lettering,
+#login-submit.is-busy .login-submit-fallback { visibility: hidden; }
+#login-submit.is-busy { opacity: 1; cursor: wait; }
+#login-submit.is-busy .login-submit-busy {
+  position: absolute;
+  inset: 0;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 16px;
-  padding: 24px;
-  text-align: center;
-  color: #304b44;
+  z-index: 3;
+  padding: 8px 28px;
+  color: #f5f0d9;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: .16em;
+  text-shadow: 0 1px 4px #1c332e;
 }
-
-#login-screen .login-boot-ring,
-#login-screen.login-boot-pending:not(.login-boot-mounted)::after {
-  display: block;
-  width: 48px;
-  height: 48px;
-  flex: 0 0 48px;
-  border: 2px solid rgba(64, 94, 83, .16);
-  border-top-color: #38574a;
-  border-right-color: rgba(56, 87, 74, .58);
-  border-radius: 50%;
-  box-sizing: border-box;
-  animation: login-boot-turn 1300ms linear infinite;
+#login-submit.is-busy .login-submit-busy::after { content: '…'; width: 1em; animation: login-entry-breathe 1.4s ease-in-out infinite; }
+@keyframes login-entry-breathe { 50% { opacity: .35; } }
+@media (max-height: 440px) {
+  #login-screen .login-boot-brand { margin-bottom: 14px; font-size: 24px; }
+  #login-boot-quote { margin: 10px 0 22px; font-size: 19px; }
 }
-
-#login-screen.login-boot-pending:not(.login-boot-mounted)::after {
-  content: '';
-  position: absolute;
-  top: calc(50% - 74px);
-  left: calc(50% - 24px);
-}
-
-#login-screen #login-boot-status {
-  min-height: 24px;
-  margin: 0;
-  font-size: 15px;
-  font-weight: 500;
-  line-height: 24px;
-  overflow-wrap: anywhere;
-}
-
-#login-screen .login-boot-actions {
-  display: flex;
-  justify-content: center;
-  gap: 20px;
-  min-height: 44px;
-}
-
-#login-screen .login-boot-actions button {
-  min-height: 44px;
-  padding: 6px 8px;
-  border: 0;
-  border-bottom: 1px solid #728a7c;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-  color: #304b44;
-  font-size: 15px;
-  line-height: 1.4;
-  cursor: pointer;
-}
-
-#login-screen .login-boot-actions button[hidden] { display: none; }
-#login-screen .login-boot-actions button:hover { color: #142e27; border-color: currentColor; }
-#login-screen .login-boot-actions button:focus-visible { outline: 2px solid #4d7561; outline-offset: 3px; }
-#login-screen .login-boot[data-phase='error'] .login-boot-ring { animation-play-state: paused; opacity: .55; }
-
-@keyframes login-boot-turn { to { transform: rotate(360deg); } }
-
 @media (prefers-reduced-motion: reduce) {
-  #login-screen .login-boot-ring,
-  #login-screen.login-boot-pending:not(.login-boot-mounted)::after { animation: none; }
+  #login-boot-quote, #login-boot-fill { transition: none; }
+  #login-submit.is-busy .login-submit-busy::after { animation: none; }
 }

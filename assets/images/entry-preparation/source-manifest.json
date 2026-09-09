@@ -1,0 +1,21 @@
+{
+  "source": "仙来-入境准备背景.png",
+  "source_size": [
+    1536,
+    1024
+  ],
+  "source_mode": "RGB",
+  "source_alpha": [
+    255,
+    255
+  ],
+  "source_bytes": 1992787,
+  "source_sha256": "9a2b557b6f0eb11894276b237436aa417a9354337c079abad36aa077b3a5edb5",
+  "output_size": [
+    1536,
+    1024
+  ],
+  "png_bytes": 1653759,
+  "png_sha256": "3698a41576e1e6b7e7d696c08c6dcb3ed99380d6bbd82ce9aaeaf48d1d80ca81",
+  "treatment": "Whole image; uniform scaling only; no crop, added artwork, text or color replacement."
+}

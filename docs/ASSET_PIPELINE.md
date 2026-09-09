@@ -267,3 +267,14 @@ node scripts\normalize_audio.js
 - 两份manifest按`density:1/2`标记资产，2x键增加`@2x`，`canvasAnchors`为实际像素、`anchors`为共享归一化坐标；源manifest的`densities`分别记录尺寸、scale、实际体积与预算。`--check`从同一指纹原atlas确定性重建两套及两份manifest。前端DPR大于1使用2x，其余使用原1x；本次加载仅预载所选密度的五树与五亮层，显示、详情和预载使用同一密度及缓存版本，避免下载两套。
 - 亮层只从规范化原图中亮度高于190、alpha至少64的真实亮部提取，RGB不变，仅按亮度调整alpha；覆盖树有效轮廓7.3%至17.8%。不绘制光圈、射线、外部粒子或额外模糊。亮层与树完全同尺寸同锚点，可用低opacity的screen叠合制造少量明暗呼吸；不能对整个树加亮或重新缩放亮层。隐藏、离页或减少动态时保持静态，装饰不拦截点击。
 - `python tests/wish-tree-assets.test.py`验证每种格式精确二十图、两套尺寸/预算、主干实体打击点、密度间锚点及轮廓对齐、五树根部同底线、自然增长、原画完整分区和每个可见像素仅导出一次、亮层仅含本密度原亮像素且覆盖不足25%、无损alpha、来源指纹、确定性重建与独立输出。旧1x二十个PNG/WebP的组合SHA固定为`c945ab06e0b0515f42d81e423dab04c0d16a3e8b59f1285f03348a8e0f8ec014`；HD构建测试禁止调用resize，并验证其保留旧384px简单放大中不存在的原画细节。实际使用路径与预载路径保持同一缓存版本。
+
+## 19. 入境准备背景与启动资源清单
+
+- 原图位于仓库同级`美术风格参考V7/仙来-入境准备背景.png`，实际1536×1024、RGB不透明，SHA256为`9a2b557b6f0eb11894276b237436aa417a9354337c079abad36aa077b3a5edb5`。源文件保持不变，中央纸面、左上松枝及下方远山全部保留，不裁画、不补文字或新图形。
+- 执行`python scripts/import_entry_art.py`生成`assets/images/entry-preparation/background.png`、来源manifest及`assets/runtime/entry-preparation/background.webp`和运行manifest；`--check`在内存中重新生成后逐字节核对，不写文件。原图替换会先因指纹不一致停止，必须先检查新原图再更新测量约定。
+- 当前WebP保持原生1536×1024，quality84、method6、51,498字节（约50.3KiB），预算100KiB。PNG归档与原图逐像素相同；RGB源不额外建立alpha平面。运行URL固定为`assets/runtime/entry-preparation/background.webp?v=entry-preparation-20260910`，显示时保持3:2比例，不把整图拉伸成窄屏比例。
+- `node scripts/build_boot_assets.cjs`生成`boot-assets.js`，禁止手改。脚本在隔离环境中执行`game-config.js`和`app.js`资源定义前缀，止于`dbClient`初始化前；只创建空的动画实例，不运行Supabase、Auth、登录或玩家读写。图像URL来自真实`getInitialGameImageAssets`、九武器待机/砍树函数、LoginBoot关键/装饰/入境清单；声音来自AudioManager实际`AUDIO_PATHS`。
+- 清单导出`BootAssetManifest={version,assets}`，每项记录精确`url`（保留原query）、`bytes`、`sha256`、`kind:image/audio`与`density:all/1/2`。新背景和经验槽两图固定排在最前，其余URL按字典序稳定排列；version为整个有序清单JSON的SHA256。改变任意实际资源文件、URL、配置图标映射或运行资源解析器后，必须重新生成并运行`node scripts/build_boot_assets.cjs --check`。
+- 当前共222项：九武器90动作帧、11音频、公共与登录图，以及两套各10张树图。仅树图分density1/2，其他all；按当前DPR选择后均为212项，1x为6,788,157字节，2x为7,618,839字节。准备阶段完整下载但不同时解码90帧；普通屏幕不额外下载高清树图，高清屏幕也不下载旧1x树图。
+- 清单严格限制为`assets/runtime/`下的实际图片/音频，拒绝路径穿越、外站、原始图集及代码/JSON数据。不按目录遍历把历史素材塞进启动包，不加入玩家数据或凭据。ResourcePack只缓存这些静态文件，代码、配置、HTML和数据库保持原加载方式。
+- 校验`python tests/entry-art-assets.test.py`（原图指纹、完整像素、质量、预算、重建）和`node --test tests/boot-assets.test.js`（真实文件字节、首项优先级、90帧/11音频、两密度精确资源集合、UMD导出与路径边界），再运行两脚本`--check`。这些检查不截图、不登录真实账号、不读写数据库。

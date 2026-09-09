@@ -11,7 +11,14 @@ const loadedAssets = total => ({ total, loaded: total, completed: total, failed:
 function setup(verify = async () => ({ playerRole: 'fixture-player' })) {
   const elements = new Map();
   const getElement = id => {
-    if (!elements.has(id)) elements.set(id, { value: 'fixture-password', style: {}, hidden: false });
+    if (!elements.has(id)) {
+      const classes = new Set();
+      elements.set(id, { value: 'fixture-password', style: {}, attrs: {}, hidden: false,
+        setAttribute(name, value) { this.attrs[name] = value; },
+        classList: { toggle(name, on) { if (on) classes.add(name); else classes.delete(name); }, contains: name => classes.has(name) },
+        querySelector: () => getElement('busy-copy'),
+      });
+    }
     return elements.get(id);
   };
   const saved = [];
@@ -33,6 +40,7 @@ function setup(verify = async () => ({ playerRole: 'fixture-player' })) {
     LoginBoot: { async whenReady() { return { criticalReady: true }; } },
     Game: { state: null, inventory: [], async init() { this.state = { axeId: 'fixture-axe' }; } },
     getInitialGameImageAssets: () => [],
+    getCurrentSceneImageAssets: () => ['current-scene.webp'],
     AssetPreloader: { async preload(urls) { return loadedAssets(urls.length); } },
     async preloadAxeAnimation() { return loadedAssets(10); },
     Router: { playerTab: (...args) => routed.push(args), adminTab: (...args) => routed.push(args) },
@@ -92,24 +100,27 @@ test('verification is locked before its first await and role cannot change mid-l
   await new Promise(resolve => setImmediate(resolve));
   assert.equal(attempts, 1);
   assert.equal(state.auth.currentRole, 'player');
-  assert.equal(state.getElement('login-form-panel').hidden, true);
-  assert.equal(state.getElement('login-loading').hidden, false);
-  assert.equal(state.getElement('login-loading-status').textContent, '正在核验道号');
-  assert.deepEqual(state.artCalls, [['loading', true, 0]]);
+  assert.equal(state.getElement('login-form-panel').hidden, false);
+  assert.equal(state.getElement('login-loading').hidden, true);
+  assert.equal(state.getElement('login-submit').attrs['aria-label'], '正在核验道号');
+  assert.equal(state.getElement('login-submit').classList.contains('is-busy'), true);
+  assert.equal(state.getElement('busy-copy').textContent, '正在入境');
+  assert.equal(state.getElement('login-password').readOnly, true);
+  assert.deepEqual(state.artCalls, []);
   finish({ playerRole: 'fixture-player' });
   await Promise.all([first, second]);
   assert.equal(state.saved.length, 1);
 });
 
-test('Auth forwards actual combined asset progress to LoginArt without writing a competing bar width', async () => {
+test('Auth reuses prepared artwork and only decodes the current scene and actor without another loading panel', async () => {
   const state = setup();
-  state.scope.AssetPreloader.preload = async (_, progress) => { progress({ percent: 40 }); return loadedAssets(5); };
+  let publicLoads = 0;
+  state.scope.AssetPreloader.preload = async () => { publicLoads++; return loadedAssets(5); };
   state.scope.preloadAxeAnimation = async (_, progress) => { progress({ percent: 60 }); return loadedAssets(10); };
   await state.auth.doLogin();
-  assert.deepEqual(state.artCalls, [
-    ['loading', true, 0], ['loading', true, 0], ['loading', true, 34],
-    ['loading', true, 85], ['loading', true, 94], ['visible', false],
-  ]);
+  assert.deepEqual(state.artCalls, [['visible', false]]);
+  assert.equal(publicLoads, 1);
+  assert.equal(state.getElement('login-loading').hidden, true);
   assert.equal(state.getElement('login-loading-bar').style.width, undefined);
 });
 
@@ -122,16 +133,17 @@ test('completed image loading waits honestly for player data without timer progr
   state.scope.AssetPreloader.preload = async (_, progress) => { progress({ percent: 100 }); return loadedAssets(5); };
   const login = state.auth.doLogin();
   await new Promise(resolve => setImmediate(resolve));
-  assert.equal(state.getElement('login-loading-status').textContent, '正在读取修行记录');
-  assert.equal(state.getElement('login-form-panel').hidden, true);
+  assert.equal(state.getElement('login-submit').attrs['aria-label'], '正在读取修行记录');
+  assert.equal(state.getElement('login-form-panel').hidden, false);
   assert.equal(state.routed.length, 0);
-  assert.deepEqual(state.artCalls.at(-1), ['loading', true, 85]);
+  assert.equal(state.getElement('login-submit').disabled, true);
+  assert.deepEqual(state.artCalls, []);
   finishInit();
   await login;
   assert.equal(state.routed.length, 1);
 });
 
-test('optional audio never blocks entry after player data and required images are ready', async () => {
+test('login does not redownload the audio prepared at entry', async () => {
   const state = setup();
   let finishInit;
   let finishAudio;
@@ -147,8 +159,7 @@ test('optional audio never blocks entry after player data and required images ar
   assert.deepEqual(state.artCalls.at(-1), ['visible', false]);
   assert.equal(state.routed.length, 1);
   assert.equal(state.auth._loggingIn, false);
-  assert.equal(typeof finishAudio, 'function');
-  finishAudio();
+  assert.equal(finishAudio, undefined);
   await login;
 });
 
@@ -162,15 +173,16 @@ test('both role dashboards stop login effects on entry and restore them on logou
     state.auth.logout();
     assert.equal(state.getElement('login-screen').style.display, 'flex');
     assert.equal(state.getElement('login-form-panel').hidden, false);
-    assert.deepEqual(state.artCalls.slice(-2), [['visible', true], ['loading', false, 0]]);
+    assert.deepEqual(state.artCalls.at(-1), ['visible', true]);
+    assert.equal(state.getElement('login-submit').classList.contains('is-busy'), false);
+    assert.equal(state.getElement('login-password').readOnly, false);
   }
 });
 
 test('a late preload update cannot hide the restored form after login initialization fails', async () => {
   const state = setup();
   let progress;
-  state.scope.AssetPreloader.preload = (_, callback) => { progress = callback; return Promise.resolve(loadedAssets(1)); };
-  state.scope.Game.init = async () => { throw new Error('fixture failure'); };
+  state.scope.preloadAxeAnimation = (_, callback) => { progress = callback; return Promise.reject(new Error('fixture failure')); };
   await state.auth.doLogin();
   assert.equal(state.getElement('login-form-panel').hidden, false);
   const before = state.artCalls.length;
@@ -191,18 +203,20 @@ test('a routing failure after animation hiding restores login visibility and eff
   assert.equal(state.saved.length, 0);
 });
 
-test('failed game artwork retries the missing URLs once and never opens a partial game', async () => {
+test('failed actor decoding retries the missing URLs once and never opens a partial game', async () => {
   for (const recover of [false, true]) {
     const state = setup();
     const calls = [];
+    state.scope.preloadAxeAnimation = async () => ({ total: 2, loaded: 1, completed: 2, failed: ['missing.webp'], cancelled: [] });
     state.scope.AssetPreloader.preload = async urls => {
+      if (urls[0] === 'current-scene.webp') return loadedAssets(1);
       calls.push([...urls]);
-      return calls.length === 2 && recover ? loadedAssets(1)
+      return recover ? loadedAssets(1)
         : { total: 2, loaded: 1, completed: 2, failed: ['missing.webp'], cancelled: [] };
     };
     await state.auth.doLogin();
-    assert.equal(calls.length, 2);
-    assert.deepEqual(calls[1], ['missing.webp']);
+    assert.equal(calls.length, 1);
+    assert.deepEqual(calls[0], ['missing.webp']);
     assert.equal(state.routed.length, recover ? 1 : 0);
     assert.equal(state.saved.length, recover ? 1 : 0);
     assert.equal(state.auth._loggingIn, false);

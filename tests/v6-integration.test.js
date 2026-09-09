@@ -37,7 +37,7 @@ test('game preload includes the exact five mark URLs but never waits on login de
   assert.equal(context.assets.some(url => url.includes('/v6/ui/login-')), false);
 });
 
-test('native login button keeps accessible text and independently preloaded image layers', () => {
+test('native login button keeps accessible text and defers both image layers to verified entry preparation', () => {
   const button = html.match(/<button[^>]*id="login-submit"[^>]*>[\s\S]*?<\/button>/)?.[0] || '';
   assert.match(button, /type="submit"/);
   assert.match(button, /aria-label="踏入仙途"/);
@@ -45,13 +45,13 @@ test('native login button keeps accessible text and independently preloaded imag
   for (const layer of ['brush', 'lettering']) {
     const url = `assets/runtime/v6/ui/login-${layer}.webp?v=${version}`;
     assert.ok(button.includes(`id="login-submit-${layer}"`));
-    assert.ok(button.includes(`src="${url}"`));
-    assert.ok(html.includes(`rel="preload" as="image" href="${url}"`));
+    assert.ok(button.includes(`data-boot-src="${url}"`));
+    assert.ok(!html.includes(`rel="preload" as="image" href="${url}"`));
     assert.ok(fs.statSync(path.join(root, url.split('?')[0])).size > 0);
   }
   for (const file of ['app.js', 'login-art.js', 'login-art.css', 'xianlai-v4.css']) {
     const codeVersion = file === 'xianlai-v4.css' ? version
-      : file === 'app.js' ? 'first-chop-guide-20260910' : 'reward-login-20260909';
+      : file === 'app.js' ? 'entry-preparation-20260910' : 'reward-login-20260909';
     assert.ok(html.includes(`${file}?v=${codeVersion}`));
   }
 });

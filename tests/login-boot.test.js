@@ -1,10 +1,10 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { create, getCriticalAssets, getDecorationAssets } = require('../login-boot');
+const { create, getCriticalAssets, getDecorationAssets, getEntryAssets } = require('../login-boot');
 
 const flush = async () => { for (let index = 0; index < 16; index++) await Promise.resolve(); };
 
-function fixture({ reduced = false, waitForRuntime = false } = {}) {
+function fixture({ reduced = false, waitForRuntime = false, resourcePack, manifest, requireResourcePack = false } = {}) {
   const elements = new Map();
   const calls = [];
   const timers = new Map();
@@ -12,7 +12,7 @@ function fixture({ reduced = false, waitForRuntime = false } = {}) {
   function element() {
     const classes = new Set();
     const listeners = new Map();
-    return { attrs: {}, children: [], dataset: {}, hidden: false, complete: true, naturalWidth: 100,
+    return { attrs: {}, children: [], dataset: {}, style: {}, hidden: false, complete: true, naturalWidth: 100,
       classList: { add(...names) { names.forEach(name => classes.add(name)); },
         remove(...names) { names.forEach(name => classes.delete(name)); },
         contains(name) { return classes.has(name); },
@@ -33,14 +33,14 @@ function fixture({ reduced = false, waitForRuntime = false } = {}) {
   for (const id of ['login-brand-image', 'login-submit-brush', 'login-submit-lettering']) elements.set(id, element());
   const preloader = {
     preload(urls, progress, settings) {
-      return new Promise(resolve => calls.push({ urls, settings, resolve(failed = []) {
+      return new Promise((resolve, reject) => calls.push({ urls, settings, progress, reject, resolve(failed = []) {
         resolve({ failed, cancelled: [], total: urls.length, loaded: urls.length - failed.length });
       } }));
     },
     getImage(src) { return { src, naturalWidth: 512 }; },
   };
   const boot = create({ document: { createElement: element, getElementById: id => elements.get(id) },
-    window: { matchMedia: () => ({ matches: reduced }) }, preloader, waitForRuntime,
+    window: { matchMedia: () => ({ matches: reduced }) }, preloader, waitForRuntime, resourcePack, manifest, requireResourcePack,
     setTimeout(callback) { timers.set(++timerId, callback); return timerId; },
     clearTimeout(id) { timers.delete(id); },
   });
@@ -186,4 +186,111 @@ test('early runtime readiness still waits for every required image', async () =>
   state.calls[1].resolve();
   assert.equal((await ready).criticalReady, true);
   assert.equal(state.shell.inert, false);
+});
+
+test('entry downloads all resources before decoding public images and enabling login', async () => {
+  let complete, report;
+  const state = fixture({ waitForRuntime: true, manifest: { assets: [] }, resourcePack: {
+    prepare(_, progress) { report = progress; return new Promise(resolve => { complete = resolve; }); },
+  } });
+  const ready = state.boot.start();
+  state.boot.markRuntimeReady({ imageAssets: ['scene.webp', 'item.webp', 'scene.webp'] });
+  assert.equal(state.calls.length, 0);
+  report({ percent: 50 });
+  assert.equal(state.get('login-boot-percent').textContent, '47%');
+  assert.equal(state.get('login-boot-track').attrs['aria-valuenow'], '47');
+  complete({ ready: true, persistent: true, failed: [], cancelled: [] });
+  await flush();
+  state.calls[0].resolve();
+  await flush();
+  state.calls[1].resolve();
+  await flush();
+  assert.deepEqual(state.calls[2].urls, ['scene.webp', 'item.webp']);
+  assert.equal(state.shell.inert, true);
+  assert.ok(state.boot.getState().percent < 100);
+  state.calls[2].progress({ percent: 50 });
+  assert.equal(state.boot.getState().percent, 98);
+  state.calls[2].resolve();
+  const result = await ready;
+  assert.equal(result.resourcesReady, true);
+  assert.equal(result.persistent, true);
+  assert.equal(state.boot.getState().percent, 100);
+  assert.equal(state.shell.inert, false);
+  assert.equal(state.timers.size, 0);
+});
+
+test('failed resource packs cannot be bypassed and retry keeps the form locked', async () => {
+  const attempts = [];
+  const state = fixture({ manifest: { assets: [] }, resourcePack: {
+    prepare() { return new Promise(resolve => attempts.push(resolve)); },
+  } });
+  state.boot.start();
+  attempts[0]({ ready: false, failed: ['sound.mp3'], cancelled: [] });
+  await flush();
+  assert.equal(state.boot.getState().phase, 'error');
+  assert.equal(state.get('login-boot-simple').hidden, true);
+  state.boot.enterSimplified();
+  assert.equal(state.shell.inert, true);
+  state.boot.retry();
+  state.boot.retry();
+  assert.equal(attempts.length, 2);
+  assert.equal(state.calls.length, 0);
+  state.boot.destroy();
+  attempts[1]({ ready: true, failed: [], cancelled: [] });
+  await flush();
+  assert.equal(state.calls.length, 0);
+});
+
+test('public image decode rejection recovers to retry instead of hanging', async () => {
+  const state = fixture({ reduced: true, waitForRuntime: true });
+  state.boot.start();
+  state.boot.markRuntimeReady({ imageAssets: ['scene.webp'] });
+  state.calls[0].resolve();
+  await flush();
+  state.calls[1].reject(new Error('decode failed'));
+  await flush();
+  assert.equal(state.boot.getState().phase, 'error');
+  assert.equal(state.shell.inert, true);
+  assert.equal(state.get('login-boot-retry').hidden, false);
+  state.boot.destroy();
+});
+
+test('long preparation rotates one quiet quote and destroy cancels the pending swap', () => {
+  const state = fixture();
+  state.boot.start();
+  const quote = state.get('login-boot-quote');
+  const first = quote.textContent;
+  state.expire();
+  assert.equal(quote.classList.contains('is-changing'), true);
+  state.expire();
+  assert.notEqual(quote.textContent, first);
+  assert.equal(quote.classList.contains('is-changing'), false);
+  state.boot.destroy();
+  assert.equal(state.timers.size, 0);
+});
+
+test('production entry cannot silently bypass a missing resource manifest', async () => {
+  const state = fixture({ requireResourcePack: true });
+  state.boot.start();
+  await flush();
+  assert.equal(state.boot.getState().phase, 'error');
+  assert.equal(state.calls.length, 0);
+  assert.equal(state.shell.inert, true);
+  assert.equal(state.get('login-boot-simple').hidden, true);
+  state.boot.destroy();
+});
+
+test('entry background waits for cache takeover even when its bytes finish first', () => {
+  let report;
+  const state = fixture({ manifest: { assets: [] }, resourcePack: {
+    prepare(_, progress) { report = progress; return new Promise(() => {}); },
+  } });
+  state.boot.start();
+  for (const url of getEntryAssets()) report({ url, ok: true, percent: 3, persistent: false });
+  assert.equal(state.get('login-boot').classList.contains('has-art'), false);
+  assert.equal(state.get('login-boot').classList.contains('has-track-art'), false);
+  report({ percent: 4, persistent: true });
+  assert.equal(state.get('login-boot').classList.contains('has-art'), true);
+  assert.equal(state.get('login-boot').classList.contains('has-track-art'), true);
+  state.boot.destroy();
 });

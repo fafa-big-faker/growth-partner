@@ -358,6 +358,17 @@ function preloadAxeAnimation(itemId, onProgress = () => {}) {
   );
 }
 
+// 文件已在入境准备时下载；只保留小型公共图的解码，避免同时展开所有场景和树皮肤。
+function getEntryDecodeImageAssets() {
+  return getInitialGameImageAssets().filter(url => !/\/(?:backgrounds|wish-trees|character)\//.test(url));
+}
+
+function getCurrentSceneImageAssets(state) {
+  const realm = TREE_REALMS.find(tree => tree.level == state.treeRealm) || TREE_REALMS[0];
+  const tree = getTreeAppearance(realm);
+  return [`${V2_IMAGE_ROOT}/backgrounds/cultivate.webp`, tree.src, tree.light];
+}
+
 // 仙阶表 → 从飞书表格配置合并生成（game-config.js）
 // 飞书表提供: reqLevel, realmId, name, maxAxeQuality, characterImage, reqItems(数字ID), icon
 // 道具ID直接使用飞书道具表的5位数字ID，无需映射
@@ -2201,7 +2212,6 @@ const Auth = {
   session: null,
   _loggingIn: false,
   _credentials: null,
-  _warmup: null,
 
   init() {
     this._credentials = LoginCredentials.create({
@@ -2217,14 +2227,10 @@ const Auth = {
       void this.doLogin();
     });
     const ready = typeof LoginBoot !== 'undefined' ? LoginBoot.start() : Promise.resolve(null);
-    if (typeof LoginBoot !== 'undefined') LoginBoot.markRuntimeReady?.();
+    if (typeof LoginBoot !== 'undefined') LoginBoot.markRuntimeReady?.({ imageAssets: getEntryDecodeImageAssets() });
     void ready.then(prepared => {
       if (prepared?.cancelled) return;
       if (typeof LoginArt !== 'undefined') LoginArt.init({ prepared });
-      this._warmup = new AbortController();
-      void AssetPreloader.preload(getInitialGameImageAssets(), () => {}, {
-        signal: this._warmup.signal, timeoutMs: 8000,
-      });
     });
   },
 
@@ -2261,45 +2267,24 @@ const Auth = {
         return;
       }
       DB.setPlayerRole(account.playerRole);
-      this._warmup?.abort();
       PlayerView.clearDataCaches();
       if (role === 'player') void AudioManager.playBgm();
       else AudioManager.pauseBgm();
-      this._setLoading(true, 0, '正在载入画卷');
-      const staticAssets = getInitialGameImageAssets();
-      void AudioManager.preload();
-      let playerReady = false;
-      let staticReady = false;
-      const staticPreload = AssetPreloader.preload(
-        staticAssets,
-        progress => {
-          if (!attemptActive) return;
-          staticReady = progress.percent >= 100;
-          const status = progress.percent >= 100
-            ? (playerReady ? '正在准备入境' : '正在读取修行记录')
-            : '正在载入画卷';
-          this._setLoading(true, progress.percent * 0.85, status);
-        },
-      );
-      const [staticResult] = await Promise.all([staticPreload, Game.init().then(() => {
-        playerReady = true;
-        if (attemptActive && staticReady) this._setLoading(true, 85, '正在准备入境');
-      })]);
-      if (staticResult.failed.length) {
-        this._setLoading(true, staticResult.loaded / Math.max(1, staticResult.total) * 85, '正在重试缺失画卷');
-        const retried = await AssetPreloader.preload(staticResult.failed);
-        if (retried.failed.length) throw new Error('game artwork could not be loaded');
-      }
-
+      this._setLoading(true, 0, '正在读取修行记录');
+      await Game.init();
       if (!Game.state) throw new Error('player initialization failed');
+      if (role === 'player') {
+        const scene = await AssetPreloader.preload(getCurrentSceneImageAssets(Game.state), () => {}, { retries: 1 });
+        if (scene.failed.length || scene.cancelled?.length) throw new Error('current scene artwork could not be decoded');
+      }
       this._setLoading(true, 85, '正在准备角色');
       const actorResult = await preloadAxeAnimation(
         Game.state.axeId,
         progress => { if (attemptActive) this._setLoading(true, 85 + progress.percent * 0.15); },
       );
-      if (actorResult.failed.length) {
-        const retried = await AssetPreloader.preload(actorResult.failed);
-        if (retried.failed.length) throw new Error('character artwork could not be loaded');
+      if (actorResult.failed.length || actorResult.cancelled?.length) {
+        const retried = await AssetPreloader.preload([...actorResult.failed, ...(actorResult.cancelled || [])]);
+        if (retried.failed.length || retried.cancelled?.length) throw new Error('character artwork could not be loaded');
       }
       this.session = account;
       if (typeof LoginArt !== 'undefined') LoginArt.setVisible(false);
@@ -2339,18 +2324,19 @@ const Auth = {
     const form = document.getElementById('login-form-panel');
     const panel = document.getElementById('login-loading');
     const submit = document.getElementById('login-submit');
-    const bar = document.getElementById('login-loading-bar');
-    const label = document.getElementById('login-loading-percent');
-    const statusLabel = document.getElementById('login-loading-status');
-    if (form) form.hidden = loading;
-    if (panel) panel.hidden = !loading;
-    if (submit) submit.disabled = loading;
-    if (statusLabel && (!loading || status)) statusLabel.textContent = loading ? status : '正在入境';
-    if (typeof LoginArt !== 'undefined') LoginArt.setLoading(loading, percent);
-    else {
-      if (bar) bar.style.width = `${Math.min(100, Math.max(0, percent))}%`;
-      if (label) label.textContent = `${Math.round(percent)}%`;
+    if (form) { form.hidden = false; form.setAttribute?.('aria-busy', String(loading)); }
+    if (panel) panel.hidden = true;
+    if (submit) {
+      submit.disabled = loading;
+      submit.classList?.toggle('is-busy', loading);
+      submit.setAttribute?.('aria-busy', String(loading));
+      submit.setAttribute?.('aria-label', loading ? (status || '正在入境') : '踏入仙途');
+      const busy = submit.querySelector?.('.login-submit-busy');
+      if (busy) busy.textContent = loading ? '正在入境' : '';
     }
+    document.querySelectorAll('.role-card').forEach(control => { control.disabled = loading; });
+    const password = document.getElementById('login-password');
+    if (password) password.readOnly = loading;
   },
 
   logout() {
@@ -5511,7 +5497,7 @@ const AdminView = {
       <div class="page-title page-title-art">${renderFeatureIcon('icon-tasks', '', 'page-title-icon')}<span>任务管理</span></div>
       <div class="page-subtitle">发布和管理修仙任务</div>
 
-      <button class="btn btn-primary btn-block" style="margin-bottom:16px" onclick="AdminView.showCreateTask()">
+      <button class="btn btn-primary btn-block" style="margin-bottom:16px" onclick="AdminView.showCreateTask(this)">
         ${renderFeatureIcon('icon-tasks', '', 'button-feature-icon')}新建任务
       </button>
 
@@ -5607,11 +5593,41 @@ const AdminView = {
     list.innerHTML = html;
   },
 
-  showCreateTask() {
+  _getOngoingTaskThemes(tasks, today = localDateStr()) {
+    const groups = new Map();
+    tasks.forEach(task => {
+      if (task.taskType !== 'theme' || task.status !== 'published' || !task.themeName) return;
+      if (!groups.has(task.themeName)) {
+        groups.set(task.themeName, { name: task.themeName, start: task.themeStart, end: task.themeEnd, periods: [] });
+      }
+      const theme = groups.get(task.themeName);
+      if (task.themeStart && task.themeEnd) theme.periods.push({ start: task.themeStart, end: task.themeEnd });
+      // 与玩家端保持一致：同名主题合并为一个活动，沿用最宽日期范围。
+      if (task.themeStart && (!theme.start || task.themeStart < theme.start)) theme.start = task.themeStart;
+      if (task.themeEnd && (!theme.end || task.themeEnd > theme.end)) theme.end = task.themeEnd;
+    });
+    return [...groups.values()]
+      .filter(theme => theme.periods.some(period => period.start <= today && today <= period.end))
+      .sort((a, b) => b.start.localeCompare(a.start) || a.name.localeCompare(b.name, 'zh-CN'));
+  },
+
+  async showCreateTask(control) {
+    if (this._createTaskOverlay?.isConnected) return this._createTaskOverlay;
+    const outcome = await UI.runLockedAction('task-create-open', control, '读取中...', async () => {
+      const tasks = await DB.getAllTasks();
+      // 离开任务管理后不再弹出迟到的表单。
+      if (control && !control.isConnected) return false;
+      return this._showCreateTaskForm(tasks);
+    });
+    return outcome.value;
+  },
+
+  _showCreateTaskForm(tasks) {
+    const themes = this._getOngoingTaskThemes(tasks);
     const overlay = UI.modal(`
       <div class="form-group">
         <label>任务类型</label>
-        <select id="new-task-type" onchange="PlayerView._onCreateTaskTypeChange(this.closest('.modal-overlay'))">
+        <select id="new-task-type" onchange="AdminView._onCreateTaskTypeChange(this.closest('.modal-overlay'))">
           <option value="weekly">每周任务</option>
           <option value="daily">每日任务</option>
           <option value="theme">主题任务（周期活动）</option>
@@ -5645,8 +5661,16 @@ const AdminView = {
           道具ID：40001(锻造石) / 30001(期石) / 30101(望石) / 30201(待石) / 20001(铜珠) / 20101(银锭) / 20201(金元宝) / 20301(灵玉)
         </div>
       </div>
-      <div style="border-top:1px solid var(--border);margin:12px 0;padding-top:12px" id="new-task-theme-box">
+      <div style="display:none;border-top:1px solid var(--border);margin:12px 0;padding-top:12px" id="new-task-theme-box">
         <div style="font-weight:600;margin-bottom:8px;font-size:13px">主题设置<span id="theme-required-hint" style="color:var(--danger);display:none">（主题任务必填）</span></div>
+        <div class="form-group">
+          <label for="new-task-theme-source">选择主题</label>
+          <select id="new-task-theme-source" onchange="AdminView._onCreateTaskThemeChange(this.closest('.modal-overlay'))">
+            <option value="">新建主题</option>
+            ${themes.map((theme, index) => `<option value="${index}">${escapeHtml(theme.name)} · ${escapeHtml(theme.start)} 至 ${escapeHtml(theme.end)}（进行中）</option>`).join('')}
+          </select>
+          <div id="new-task-theme-source-hint" style="font-size:12px;color:var(--text-light);margin-top:4px">${themes.length ? '可选进行中的主题追加任务，或新建主题。' : '暂无正在进行的主题，可填写下方信息新建。'}</div>
+        </div>
         <div class="form-group">
           <label>主题名称（如：开学季）</label>
           <input type="text" id="new-task-theme" placeholder="比如：开学季 · 收心行动">
@@ -5680,23 +5704,44 @@ const AdminView = {
       </div>`
     });
 
-    overlay.querySelector('#create-task-ok').addEventListener('click', async () => {
-      const taskType = document.getElementById('new-task-type').value;
-      const title = document.getElementById('new-task-title').value.trim();
-      const desc = document.getElementById('new-task-desc').value.trim();
-      const difficulty = document.getElementById('new-task-diff').value;
-      const rewardChopping = parseInt(document.getElementById('new-task-chopping').value) || 0;
-      const itemsStr = document.getElementById('new-task-items').value.trim();
-      const themeName = document.getElementById('new-task-theme').value.trim() || null;
-      const themeStart = document.getElementById('new-task-theme-start').value || null;
-      const themeEnd = document.getElementById('new-task-theme-end').value || null;
-      const status = document.getElementById('new-task-status').value;
+    this._createTaskOverlay = overlay;
+    overlay._ongoingTaskThemes = themes;
+    const createButton = overlay.querySelector('#create-task-ok');
+    createButton.addEventListener('click', () => this._createTaskFromForm(overlay, createButton));
+    this._onCreateTaskTypeChange(overlay);
+    return overlay;
+  },
+
+  async _createTaskFromForm(overlay, button) {
+    return UI.runLockedAction('task-create', button, '创建中...', async () => {
+      if (!overlay.isConnected || overlay._taskCreated) return false;
+      const field = id => overlay.querySelector(`#${id}`).value;
+      const taskType = field('new-task-type');
+      const title = field('new-task-title').trim();
+      const desc = field('new-task-desc').trim();
+      const difficulty = field('new-task-diff');
+      const rewardChopping = parseInt(field('new-task-chopping')) || 0;
+      const itemsStr = field('new-task-items').trim();
+      let themeName = field('new-task-theme').trim() || null;
+      let themeStart = field('new-task-theme-start') || null;
+      let themeEnd = field('new-task-theme-end') || null;
+      const status = field('new-task-status');
 
       if (!title) { UI.toast('请填写任务名称', 'warn'); return; }
 
       // 主题任务：主题名 + 起止时间必填；非主题任务强制清空主题字段
       let finalThemeName = null, finalThemeStart = null, finalThemeEnd = null;
       if (taskType === 'theme') {
+        const source = field('new-task-theme-source');
+        if (source !== '') {
+          const theme = overlay._ongoingTaskThemes[Number(source)];
+          const today = localDateStr();
+          if (!theme || !theme.periods.some(period => period.start <= today && today <= period.end)) {
+            UI.toast('所选主题已不在活动期内，请重新打开表单选择主题', 'warn');
+            return false;
+          }
+          themeName = theme.name; themeStart = theme.start; themeEnd = theme.end;
+        }
         if (!themeName) { UI.toast('请填写主题名称', 'warn'); return; }
         if (!themeStart || !themeEnd) { UI.toast('请设置主题活动的起止日期', 'warn'); return; }
         if (themeEnd < themeStart) { UI.toast('结束日期不能早于开始日期', 'warn'); return; }
@@ -5711,7 +5756,7 @@ const AdminView = {
         }).filter(i => i.item_id && ITEMS[i.item_id]);
       }
 
-      await DB.createTask({
+      const created = await DB.createTask({
         taskType,
         title,
         description: desc,
@@ -5724,14 +5769,16 @@ const AdminView = {
         themeEnd: finalThemeEnd,
         sortOrder: this._adminTasks.length,
       });
-
+      if (!created) {
+        UI.toast('任务创建失败，请重试', 'error');
+        return false;
+      }
+      overlay._taskCreated = true;
       UI.closeModal(overlay);
       UI.toast(taskType === 'theme' ? '主题任务创建成功' : '任务创建成功', 'success');
-      this.renderTaskManage();
+      await this.renderTaskManage();
+      return true;
     });
-
-    // 初始化主题必填提示的显隐
-    this._onCreateTaskTypeChange(overlay);
   },
 
   // 创建任务弹窗：切换任务类型时，主题任务高亮主题设置为必填
@@ -5743,6 +5790,27 @@ const AdminView = {
     if (!typeEl || !hint) return;
     const isTheme = typeEl.value === 'theme';
     hint.style.display = isTheme ? 'inline' : 'none';
+    const box = ov.querySelector('#new-task-theme-box');
+    if (box) box.style.display = isTheme ? '' : 'none';
+  },
+
+  _onCreateTaskThemeChange(overlay) {
+    if (!overlay) return;
+    const source = overlay.querySelector('#new-task-theme-source').value;
+    const fields = ['new-task-theme', 'new-task-theme-start', 'new-task-theme-end']
+      .map(id => overlay.querySelector(`#${id}`));
+    const theme = source === '' ? null : overlay._ongoingTaskThemes[Number(source)];
+    if (theme) {
+      if (!overlay._existingTaskThemeSelected) overlay._newTaskThemeDraft = fields.map(field => field.value);
+      [theme.name, theme.start, theme.end].forEach((value, index) => { fields[index].value = value; });
+    } else if (overlay._existingTaskThemeSelected) {
+      (overlay._newTaskThemeDraft || ['', '', '']).forEach((value, index) => { fields[index].value = value; });
+    }
+    fields.forEach(field => { field.readOnly = !!theme; });
+    overlay._existingTaskThemeSelected = !!theme;
+    overlay.querySelector('#new-task-theme-source-hint').textContent = theme
+      ? '将追加到所选主题，名称和活动日期沿用原设置。'
+      : (overlay._ongoingTaskThemes.length ? '可选进行中的主题追加任务，或新建主题。' : '暂无正在进行的主题，可填写下方信息新建。');
   },
 
   deleteTask(id) {
