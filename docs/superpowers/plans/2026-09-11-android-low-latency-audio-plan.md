@@ -72,4 +72,4 @@
 - [x] Run the full Node, Python, JVM, syntax, asset, and diff checks.
 - [x] Build the APK and verify package ID, ZIP alignment, v2/v3 signature continuity, bundled effects, and Internet-only permission.
 - [x] Record the APK size and SHA-256 and leave real-device latency as the explicit acceptance check.
-- [ ] Commit and push the Android release changes.
+- [x] Commit and push the Android release changes.

@@ -49,4 +49,4 @@
 - [x] Verify fresh reads and updates retain `.eq('audience_role', this.playerRole)` and `.eq('status', 'draft')`.
 - [x] Bump the `app.js` delivery version so installed and browser clients cannot retain the pre-fix authoring UI.
 - [x] Run the full Node suite, syntax checks, and `git diff --check`.
-- [ ] Commit, push `main`, wait for the exact Pages SHA, and compare changed online files byte-for-byte.
+- [x] Commit, push `main`, wait for the exact Pages SHA, and compare changed online files byte-for-byte.
