@@ -1,6 +1,6 @@
 # 项目开发与发布手册
 
-音频低延迟约定（2026-09-10）：短音效含锻造循环统一使用 `AudioManager` 的 interactive AudioContext 与复用解码缓冲，不能在每次点击时临时下载/解码音效。`LoginBoot` 在公共资源准备完毕后调用 `prepareEffects()`，有超时和媒体播放回退；BGM 继续单实例串流。pointerdown/keydown 解锁，click 捕获阶段触发按钮音。静音、切后台、关闭奖励弹窗必须保留分组取消及异步取消保护；手机外放最终延迟需要实机确认，浏览器调度耗时不等于扬声器延迟。回归入口：`tests/audio-web.test.js` 与 `tests/audio-web.browser-check.cjs`。
+音频低延迟约定（2026-09-10）：浏览器短音效含锻造循环统一使用 `AudioManager` 的 interactive AudioContext 与复用解码缓冲；Android 1.0.3+ 优先走固定白名单的原生 `SoundPool`，不可用时自动回退同一 Web Audio 路径。BGM 继续网页单实例串流。`LoginBoot` 调用 `prepareEffects()`，pointerdown/keydown 解锁，click 捕获阶段触发按钮音。静音、切后台、关闭奖励弹窗必须保留分组取消及异步取消保护；手机外放最终延迟需实机确认。回归入口：`tests/audio-web.test.js`、`tests/native-audio-bridge.test.js` 与 `tests/audio-web.browser-check.cjs`。
 
 这份手册记录日常开发中最容易重复、遗漏或卡住的流程。项目总体说明仍以 `HANDOVER.md` 为准。
 
@@ -8,7 +8,7 @@
 
 - `web-interactions.js/css`仅在登录、两种账号界面与游戏弹窗/浮层关闭原生图片保存菜单、文字误选和拖拽。输入框、textarea、select、contenteditable及`data-native-interaction`保留长按编辑与粘贴；动态节点使用事件委托，不反复绑定。不得阻止touchmove或关闭双指缩放。
 - 游戏区域统一使用`-webkit-tap-highlight-color: transparent`去掉浏览器/WebView自带的蓝色点击闪框，由子元素继承；不能用删除outline或focus-visible的方式代替，游戏自己的按压动效和键盘焦点提示继续保留。
-- `app-shell.js`向安卓容器提供`window.XianlaiShell.handleBack()`及`setBackgrounded(boolean)`，前者同步返回是否已处理，后者控制宿主前后台音频。没有原生对象注入网页。返回调用既有弹窗关闭按钮与Router流程，进行中的资源操作不得被系统返回中途跳走。
+- `app-shell.js`向安卓容器提供`window.XianlaiShell.handleBack()`及`setBackgrounded(boolean)`，前者同步返回是否已处理，后者控制宿主前后台音频。Android另注入只含固定音效播放/停止的`XianlaiNativeAudio`与只含精确资源查询的`XianlaiBundledAssets`，禁止扩展为文件或网络接口。返回调用既有弹窗关闭按钮与Router流程，进行中的资源操作不得被系统返回中途跳走。
 - `OperationGuard.isBusy()`只读当前是否存在任何资源操作，不修改锁或任务。`AudioManager.setSuspended()`暂停后台声音且不改用户静音偏好；回前台不补播旧音效或旧锻造循环。
 - 安卓工程及构建说明在`android-app/`。固定应用ID`cn.xianlai.game`、名称“仙来”，主入口仍为现有GitHub Pages。图标初期复用已批准的修仙图标，新图提示词在`docs/art-prompts/仙来-应用图标.md`。
 - 服务端存档由Supabase和原账号决定，打包不复制或迁移玩家数据。安卓WebView与浏览器的本地登录状态独立，首次使用需登录；重新打包覆盖安装须保持应用ID与签名、增加版本号。签名文件和密码只能保存在仓库外，禁止提交或在日志中输出。

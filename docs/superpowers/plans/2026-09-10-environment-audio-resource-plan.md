@@ -100,9 +100,9 @@
 - Consumes: Tasks 1-3 tested commits and the existing signing identity.
 - Produces: published Pages commit and signed upgrade APK.
 
-- [ ] Set versionName 1.0.3/versionCode 4 in both Android declarations.
-- [ ] Run all Node tests, Python tests, JS/Python syntax, asset/sprite verification and `git diff --check`.
-- [ ] Build with `node android-app/build-android.cjs`; verify signature continuity, v2/v3 signing, ZIP alignment, package ID and Internet-only permission.
-- [ ] Inspect staged diff for credentials and unrelated files; preserve untracked `supabase/`.
+- [x] Set versionName 1.0.3/versionCode 4 in both Android declarations.
+- [x] Run all Node tests, Python tests, JS/Python syntax, asset/sprite verification and `git diff --check`.
+- [x] Build with `node android-app/build-android.cjs`; verify signature continuity, v2/v3 signing, ZIP alignment, package ID and Internet-only permission.
+- [x] Inspect staged diff for credentials and unrelated files; preserve untracked `supabase/`.
 - [ ] Commit documentation/version outputs, push `main`, wait for the exact Pages SHA and compare online changed files byte-for-byte.
 - [ ] Report APK path/size/checksum, web URL, migration counts, browser measured request reduction, and the two remaining real-device checks.

@@ -283,8 +283,9 @@ node scripts\normalize_audio.js
 - 执行`python scripts/import_entry_art.py`生成`assets/images/entry-preparation/background.png`、来源manifest及`assets/runtime/entry-preparation/background.webp`和运行manifest；`--check`在内存中重新生成后逐字节核对，不写文件。原图替换会先因指纹不一致停止，必须先检查新原图再更新测量约定。
 - 当前WebP保持原生1536×1024，quality84、method6、51,498字节（约50.3KiB），预算100KiB。PNG归档与原图逐像素相同；RGB源不额外建立alpha平面。运行URL固定为`assets/runtime/entry-preparation/background.webp?v=entry-preparation-20260910`，显示时保持3:2比例，不把整图拉伸成窄屏比例。
 - `node scripts/build_boot_assets.cjs`生成`boot-assets.js`，禁止手改。脚本在隔离环境中执行`game-config.js`和`app.js`资源定义前缀，止于`dbClient`初始化前；只创建空的动画实例，不运行Supabase、Auth、登录或玩家读写。图像URL来自真实`getInitialGameImageAssets`、九武器待机/砍树函数、LoginBoot关键/装饰/入境清单；声音来自AudioManager实际`AUDIO_PATHS`。
-- 清单导出`BootAssetManifest={version,assets}`，每项记录精确`url`（保留原query）、`bytes`、`sha256`、`kind:image/audio`与`density:all/1/2`。新背景和经验槽两图固定排在最前，其余URL按字典序稳定排列；version为整个有序清单JSON的SHA256。改变任意实际资源文件、URL、配置图标映射或运行资源解析器后，必须重新生成并运行`node scripts/build_boot_assets.cjs --check`。
-- 当前共226项：九武器90动作帧、13音频、公共与登录图、两张奖励特效图集，以及两套各10张树图。仅树图分density1/2，其他all；按当前DPR选择后均为216项，1x为7,424,453字节，2x为8,255,135字节。准备阶段完整下载但不同时解码90帧；普通屏幕不额外下载高清树图，高清屏幕也不下载旧1x树图。
+- 清单导出`BootAssetManifest={version,assets}`，每项记录精确`url`（保留原query）、`bytes`、`sha256`、`kind:image/audio`、`density:all/1/2`与`phase:boot/deferred`。新背景和经验槽两图固定排在最前，其余URL按字典序稳定排列；version为整个有序清单JSON的SHA256。改变任意实际资源文件、URL、配置图标映射或运行资源解析器后，必须重新生成并运行`node scripts/build_boot_assets.cjs --check`。
+- 当前完整清单共226项：九武器90动作帧、13音频、公共与登录图、两张奖励特效图集，以及两套各10张树图。APK构建时全部内置；普通浏览器登录前只准备116项`boot`资源，90帧武器动作和所选密度10张仙树资源标记为`deferred`，登录后仅加载当前树2张与当前武器10帧。普通屏幕不下载高清树，高清屏幕也不下载旧1x树。
+- Android构建器把精确URL、字节数和SHA-256映射连同资源放进APK。网页清单完全匹配时`ResourcePack`直接计为本地完成，不发HTTP请求、不做CacheStorage重复写入；资源URL或内容变化时由WebView自动回退网络，继续支持线上更新。打包媒体必须使用ZIP正斜杠且短音效保持Stored，供`SoundPool.openFd`读取。
 - 清单严格限制为`assets/runtime/`下的实际图片/音频，拒绝路径穿越、外站、原始图集及代码/JSON数据。不按目录遍历把历史素材塞进启动包，不加入玩家数据或凭据。ResourcePack只缓存这些静态文件，代码、配置、HTML和数据库保持原加载方式。
 - 校验`python tests/entry-art-assets.test.py`（原图指纹、完整像素、质量、预算、重建）和`node --test tests/boot-assets.test.js`（真实文件字节、首项优先级、90帧/13音频、两密度精确资源集合、UMD导出与路径边界），再运行两脚本`--check`。这些检查不截图、不登录真实账号、不读写数据库。
 

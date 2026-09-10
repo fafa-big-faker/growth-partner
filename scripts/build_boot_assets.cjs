@@ -120,6 +120,7 @@ function main() {
       'boot-assets.js is stale. Run node scripts/build_boot_assets.cjs after changing runtime resources or their URLs.');
   } else fs.writeFileSync(target, output);
   const selected = density => manifest.assets.filter(asset => asset.density === 'all' || asset.density === density);
+  const bootSelected = density => selected(density).filter(asset => asset.phase === 'boot');
   console.log(JSON.stringify({ checked: process.argv.includes('--check'), version: manifest.version,
     assets: manifest.assets.length, audio: manifest.assets.filter(asset => asset.kind === 'audio').length,
     frames: manifest.assets.filter(asset => /\/character\/(?:idle-axes|axes)\//.test(asset.url)).length,
@@ -127,6 +128,8 @@ function main() {
     deferred: manifest.assets.filter(asset => asset.phase === 'deferred').length,
     density1: { files: selected(1).length, bytes: selected(1).reduce((sum, asset) => sum + asset.bytes, 0) },
     density2: { files: selected(2).length, bytes: selected(2).reduce((sum, asset) => sum + asset.bytes, 0) },
+    bootDensity1: { files: bootSelected(1).length, bytes: bootSelected(1).reduce((sum, asset) => sum + asset.bytes, 0) },
+    bootDensity2: { files: bootSelected(2).length, bytes: bootSelected(2).reduce((sum, asset) => sum + asset.bytes, 0) },
   }));
 }
 
