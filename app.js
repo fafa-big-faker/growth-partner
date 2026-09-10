@@ -854,7 +854,9 @@ const DB = {
 
   // --- 任务 ---
   async getTasks(type = null) {
-    let query = dbClient.from('xiu_tasks').select('*').eq('status', 'published');
+    let query = dbClient.from('xiu_tasks').select('*')
+      .eq('audience_role', this.playerRole)
+      .eq('status', 'published');
     if (type) query = query.eq('task_type', type);
     const { data, error } = await query.order('sort_order', { ascending: true });
     if (error) { console.error('DB getTasks error:', error); return []; }
@@ -875,7 +877,7 @@ const DB = {
   },
 
   async getAllTasks(type = null, { strict = false } = {}) {
-    let query = dbClient.from('xiu_tasks').select('*');
+    let query = dbClient.from('xiu_tasks').select('*').eq('audience_role', this.playerRole);
     if (type) query = query.eq('task_type', type);
     const { data, error } = await query.order('sort_order', { ascending: true });
     if (error) {
@@ -909,45 +911,27 @@ const DB = {
       reward_items: task.rewardItems || [],
       status: task.status || 'draft',
       sort_order: task.sortOrder || 0,
+      audience_role: this.playerRole,
+      theme_name: task.themeName || null,
+      theme_start: task.themeStart || null,
+      theme_end: task.themeEnd || null,
+      theme_extra_reward: task.themeExtraReward || [],
     };
 
-    // 尝试带主题字段插入
-    try {
-      const { data, error } = await dbClient
-        .from('xiu_tasks')
-        .insert({
-          ...insertData,
-          theme_name: task.themeName || null,
-          theme_start: task.themeStart || null,
-          theme_end: task.themeEnd || null,
-          theme_extra_reward: task.themeExtraReward || [],
-        })
-        .select()
-        .single();
-      if (!error) return data;
-      // 如果是字段不存在错误，走降级插入
-      if (error.message && error.message.includes('does not exist')) {
-        // fall through to fallback
-      } else {
-        console.error('DB createTask error:', error);
-        return null;
-      }
-    } catch (e) {}
-
-    // 降级：不带主题字段插入
-    const { data: data2, error: err2 } = await dbClient
+    const { data, error } = await dbClient
       .from('xiu_tasks')
       .insert(insertData)
       .select()
       .single();
-    if (err2) { console.error('DB createTask fallback error:', err2); return null; }
-    return data2;
+    if (error) { console.error('DB createTask error:', error); return null; }
+    return data;
   },
 
   async updateTaskStatus(id, status) {
-    const { error } = await dbClient.from('xiu_tasks').update({ status }).eq('id', id);
+    const { data, error } = await dbClient.from('xiu_tasks').update({ status })
+      .eq('id', id).eq('audience_role', this.playerRole).select('id');
     if (error) { console.error('DB updateTaskStatus error:', error); return false; }
-    return true;
+    return data?.length === 1;
   },
 
   async updateDraftTask(id, task) {
@@ -962,7 +946,7 @@ const DB = {
       theme_name: task.themeName || null,
       theme_start: task.themeStart || null,
       theme_end: task.themeEnd || null,
-    }).eq('id', id).eq('status', 'draft').select('id');
+    }).eq('id', id).eq('audience_role', this.playerRole).eq('status', 'draft').select('id');
     if (error) {
       console.error('DB updateDraftTask error:', error);
       return { ok: false, code: 'save_failed' };
@@ -971,9 +955,10 @@ const DB = {
   },
 
   async deleteTask(id) {
-    const { error } = await dbClient.from('xiu_tasks').delete().eq('id', id);
+    const { data, error } = await dbClient.from('xiu_tasks').delete()
+      .eq('id', id).eq('audience_role', this.playerRole).select('id');
     if (error) { console.error('DB deleteTask error:', error); return false; }
-    return true;
+    return data?.length === 1;
   },
 
   // --- 任务提交 ---

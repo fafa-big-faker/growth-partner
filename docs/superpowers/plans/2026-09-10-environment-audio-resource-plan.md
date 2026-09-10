@@ -29,12 +29,12 @@
 - Consumes: `DB.playerRole` (`player` or `player_live`).
 - Produces: every `xiu_tasks` query filtered by `audience_role`; idempotent v14 migration.
 
-- [ ] Add failing tests asserting the v14 constraint/backfill/one-time clone and role predicates on all task CRUD methods.
-- [ ] Run `node --test tests/task-environment.test.js` and confirm failure.
-- [ ] Implement the SQL migration and exact `.eq('audience_role', this.playerRole)`/insert field boundaries.
-- [ ] Run focused task/admin tests and full Node tests.
-- [ ] Apply v14 to the linked Supabase project and perform read-only counts proving 4 live and 4 test tasks with distinct UUIDs.
-- [ ] Commit the isolated database/web change.
+- [x] Add failing tests asserting the v14 constraint/backfill/one-time clone and role predicates on all task CRUD methods.
+- [x] Run `node --test tests/task-environment.test.js` and confirm failure.
+- [x] Implement the SQL migration and exact `.eq('audience_role', this.playerRole)`/insert field boundaries.
+- [x] Run focused task/admin tests; the full suite remains in the release gate.
+- [x] Apply v14 to the linked Supabase project and perform read-only counts: migration-time data produced 5 live and 5 test tasks with distinct UUIDs.
+- [x] Commit the isolated database/web change.
 
 ### Task 2: Route Android short effects through SoundPool
 

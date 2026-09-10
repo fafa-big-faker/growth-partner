@@ -240,8 +240,11 @@ test('database edit performs one conditional update and never changes identity, 
       select(...args) { calls.push(['select', ...args]); return Promise.resolve(result); } };
     const context = vm.createContext({ dbClient: { from(table) { calls.push(['from', table]); return query; } }, console: { error() {} } });
     vm.runInContext(`globalThis.DB = {${taskDbSource}}`, context);
+    context.DB.playerRole = 'player';
     const outcome = await context.DB.updateDraftTask('original-id', draft({ status: 'published', id: 'new-id', sortOrder: 99 }));
-    assert.deepEqual(calls.filter(call => call[0] === 'eq'), [['eq', 'id', 'original-id'], ['eq', 'status', 'draft']]);
+    assert.deepEqual(calls.filter(call => call[0] === 'eq'), [
+      ['eq', 'id', 'original-id'], ['eq', 'audience_role', 'player'], ['eq', 'status', 'draft'],
+    ]);
     assert.deepEqual(calls.at(-1), ['select', 'id']);
     const written = calls.find(call => call[0] === 'update')[1];
     for (const field of ['id', 'sort_order', 'status', 'theme_extra_reward']) assert.equal(field in written, false);
@@ -257,6 +260,7 @@ test('strict edit reads fail explicitly while existing list callers retain their
   const query = { select() { return this; }, eq() { return this; }, order() { return Promise.resolve({ data: null, error }); } };
   const context = vm.createContext({ dbClient: { from: () => query }, console: { error() {} } });
   vm.runInContext(`globalThis.DB = {${taskDbSource}}`, context);
+  context.DB.playerRole = 'player';
   assert.deepEqual(plain(await context.DB.getAllTasks()), []);
   await assert.rejects(context.DB.getAllTasks(null, { strict: true }), failure => failure === error);
 });
