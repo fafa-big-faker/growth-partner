@@ -3380,6 +3380,7 @@ const PlayerView = {
               <h2 style="color:${q.color}">${def.name}</h2>
               <div class="weapon-detail-meta">
                 <span class="tag" style="background:${q.color}20;color:${q.color};border-color:${q.color}55">${q.name}</span>
+                ${renderWeaponRating(weapon)}
               </div>
             </div>
           </header>
