@@ -29,6 +29,7 @@
     const manifest = options.manifest || root.BootAssetManifest;
     const transition = options.transition || root.SceneTransition;
     let onReveal = options.onReveal;
+    let prepareAudio = options.prepareAudio;
     const requireResourcePack = !!options.requireResourcePack;
     const setTimer = options.setTimeout || root.setTimeout.bind(root);
     const clearTimer = options.clearTimeout || root.clearTimeout.bind(root);
@@ -173,7 +174,7 @@
     }
 
     async function finish(simplified = false) {
-      if (destroyed || !criticalReady || ['ready', 'revealing', 'decoding-game'].includes(phase)) return;
+      if (destroyed || !criticalReady || ['ready', 'revealing', 'decoding-game', 'decoding-audio'].includes(phase)) return;
       if (!runtimeReady) {
         pendingFinish = simplified;
         update('runtime', '正在连接仙途');
@@ -206,6 +207,13 @@
           update('error', '部分画卷未展开，请重试');
           return;
         }
+      }
+      if (prepareAudio) {
+        update('decoding-audio', '正在唤醒仙音');
+        // Audio preparation is bounded by the audio manager. A codec failure
+        // falls back to media playback and must never strand the login screen.
+        try { await prepareAudio(); } catch { /* Sound is optional for entering. */ }
+        if (destroyed || version !== currentAttempt) return;
       }
       const images = Object.fromEntries([...CRITICAL_ASSETS, ...DECORATION_ASSETS]
         .map(src => [src, preloader.getImage?.(src)]).filter(([, image]) => image));
@@ -251,6 +259,7 @@
       runtimeReady = true;
       gameAssets = [...new Set(settings.imageAssets || [])];
       if (typeof settings.onReveal === 'function') onReveal = settings.onReveal;
+      if (typeof settings.prepareAudio === 'function') prepareAudio = settings.prepareAudio;
       clearTimer(runtimeTimer);
       if (pendingFinish !== null) {
         const simplified = pendingFinish;

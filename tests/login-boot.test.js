@@ -188,6 +188,40 @@ test('early runtime readiness still waits for every required image', async () =>
   assert.equal(state.shell.inert, false);
 });
 
+test('login waits for sound decoding after downloads and images, before its entrance', async () => {
+  const state = fixture({ reduced: true, waitForRuntime: true });
+  let decode;
+  const ready = state.boot.start();
+  state.boot.markRuntimeReady({ prepareAudio: () => new Promise(resolve => { decode = resolve; }) });
+  assert.equal(decode, undefined);
+  state.calls[0].resolve();
+  await flush();
+  assert.equal(state.boot.getState().phase, 'decoding-audio');
+  assert.equal(state.shell.inert, true);
+  decode({ total: 12, failed: [] });
+  await ready;
+  assert.equal(state.shell.inert, false);
+});
+
+test('failed audio preparation does not strand login and late decoding cannot revive a destroyed screen', async () => {
+  const state = fixture({ reduced: true, waitForRuntime: true });
+  const ready = state.boot.start();
+  state.boot.markRuntimeReady({ prepareAudio: async () => { throw new Error('codec'); } });
+  state.calls[0].resolve();
+  assert.equal((await ready).criticalReady, true);
+  const cancelled = fixture({ reduced: true, waitForRuntime: true });
+  let decode;
+  const pending = cancelled.boot.start();
+  cancelled.boot.markRuntimeReady({ prepareAudio: () => new Promise(resolve => { decode = resolve; }) });
+  cancelled.calls[0].resolve();
+  await flush();
+  cancelled.boot.destroy();
+  decode();
+  assert.equal((await pending).cancelled, true);
+  await flush();
+  assert.equal(cancelled.shell.inert, true);
+});
+
 test('entry downloads all resources before decoding public images and enabling login', async () => {
   let complete, report;
   const state = fixture({ waitForRuntime: true, manifest: { assets: [] }, resourcePack: {

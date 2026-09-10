@@ -2261,6 +2261,7 @@ const Auth = {
     const ready = typeof LoginBoot !== 'undefined' ? LoginBoot.start() : Promise.resolve(null);
     if (typeof LoginBoot !== 'undefined') LoginBoot.markRuntimeReady?.({
       imageAssets: getEntryDecodeImageAssets(),
+      prepareAudio: () => AudioManager.prepareEffects(),
       onReveal: prepared => initLoginArt(prepared, 360),
     });
     void ready.then(prepared => {

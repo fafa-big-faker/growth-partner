@@ -44,6 +44,12 @@
     const AudioCtor = options.AudioCtor || root.Audio;
     const storage = options.storage || root.localStorage;
     const documentRef = options.documentRef || root.document;
+    const ContextCtor = options.AudioContextCtor || root.AudioContext || root.webkitAudioContext;
+    const fetchAudio = options.fetch || root.fetch?.bind(root);
+    const buffers = new Map();
+    const decoding = new Map();
+    let context = null;
+    let contextUnavailable = false;
     const loops = new Map();
     const activeEffects = new Map();
     const playRequests = new WeakMap();
@@ -59,7 +65,118 @@
       muted = false;
     }
 
+    function getContext() {
+      if (context || contextUnavailable || !ContextCtor || !fetchAudio) return context;
+      try {
+        context = new ContextCtor({ latencyHint: 'interactive' });
+      } catch {
+        contextUnavailable = true;
+      }
+      return context;
+    }
+
+    function unlock() {
+      if (suspended) return;
+      const ctx = getContext();
+      if (ctx && ctx.state !== 'running' && ctx.state !== 'closed') {
+        // Run resume inside the trusted input handler, before any async game work.
+        try { void ctx.resume().catch(() => {}); } catch { /* Media fallback remains available. */ }
+      }
+    }
+
+    async function prepareEffects(timeoutMs = 8000) {
+      const names = Object.keys(AUDIO_PATHS).filter(name => name !== 'bgmMain');
+      const ctx = getContext();
+      if (!ctx) return { total: names.length, failed: names.map(name => AUDIO_PATHS[name]) };
+      const results = await Promise.all(names.map(name => {
+        if (buffers.has(name)) return true;
+        if (decoding.has(name)) return decoding.get(name);
+        const pending = new Promise(resolve => {
+          const controller = root.AbortController ? new root.AbortController() : null;
+          let settled = false;
+          const finish = buffer => {
+            if (settled) return;
+            settled = true;
+            clearTimeout(timer);
+            if (buffer) buffers.set(name, buffer);
+            else controller?.abort();
+            resolve(!!buffer);
+          };
+          const timer = setTimeout(() => finish(null), timeoutMs);
+          // ResourcePack has already cached these exact URLs; reuse its bytes.
+          Promise.resolve().then(() => fetchAudio(AUDIO_PATHS[name], { signal: controller?.signal }))
+            .then(response => {
+              if (!response.ok) throw new Error('Audio download failed');
+              return response.arrayBuffer();
+            })
+            .then(bytes => ctx.decodeAudioData(bytes))
+            .then(finish, () => finish(null));
+        }).finally(() => decoding.delete(name));
+        decoding.set(name, pending);
+        return pending;
+      }));
+      return { total: names.length, failed: names.filter((_, index) => !results[index]).map(name => AUDIO_PATHS[name]) };
+    }
+
+    function createBufferedAudio(name) {
+      const buffer = buffers.get(name);
+      if (!buffer || !context || context.state === 'closed') return null;
+      let source = null;
+      let gain = null;
+      let generation = 0;
+      const audio = {
+        volume: AUDIO_VOLUMES[name] ?? 0.3,
+        playbackRate: 1,
+        loop: false,
+        currentTime: 0,
+        paused: true,
+        onended: null,
+        onerror: null,
+        pause() {
+          generation++;
+          audio.paused = true;
+          if (source) {
+            source.onended = null;
+            try { source.stop(); } catch { /* Already ended. */ }
+            source.disconnect();
+            source = null;
+          }
+          gain?.disconnect();
+          gain = null;
+        },
+        async play() {
+          audio.pause();
+          const request = generation;
+          // Already unlocked: start synchronously, without creating a media
+          // element, fetching, decoding or waiting for a rendering frame.
+          if (context.state !== 'running') await context.resume();
+          if (request !== generation || muted || suspended || context.state !== 'running') {
+            throw new Error('Audio playback cancelled');
+          }
+          source = context.createBufferSource();
+          gain = context.createGain();
+          source.buffer = buffer;
+          source.loop = audio.loop;
+          source.playbackRate.value = audio.playbackRate;
+          gain.gain.value = audio.volume;
+          source.connect(gain);
+          gain.connect(context.destination);
+          source.onended = () => {
+            audio.pause();
+            audio.onended?.();
+          };
+          source.start(0);
+          audio.paused = false;
+        },
+      };
+      return audio;
+    }
+
     function createAudio(name) {
+      if (name !== 'bgmMain') {
+        const buffered = createBufferedAudio(name);
+        if (buffered) return buffered;
+      }
       const src = AUDIO_PATHS[name];
       if (!src || !AudioCtor) return null;
       try {
@@ -254,7 +371,10 @@
         return;
       }
       controlsBound = true;
+      documentRef.addEventListener('pointerdown', unlock, { capture: true, passive: true });
+      documentRef.addEventListener('keydown', unlock, { capture: true });
       documentRef.addEventListener('click', event => {
+        unlock();
         if (wantsBgm && bgm?.paused) void safePlay(bgm);
         const target = event.target?.closest?.('button, .nav-item, .status-mail, .cult-tree, .filter-chip, .inventory-tab');
         if (!target || target.matches?.(':disabled') || target.getAttribute?.('aria-disabled') === 'true') return;
@@ -264,7 +384,7 @@
           return;
         }
         void playEffect('uiTap');
-      });
+      }, { capture: true });
       syncControls();
     }
 
@@ -280,6 +400,7 @@
       toggleMuted,
       isMuted: () => muted,
       preload,
+      prepareEffects,
       bindControls,
       syncControls,
     };

@@ -83,6 +83,7 @@ test('audio manager loads before the game and both dashboards expose mute contro
 
 test('entry preparation owns full audio downloads while login owns BGM lifecycle', () => {
   assert.doesNotMatch(app, /AudioManager\.preload\(\)/);
+  assert.match(app, /prepareAudio:\s*\(\) => AudioManager\.prepareEffects\(\)/);
   assert.ok(html.indexOf('src="resource-pack.js') < html.indexOf('src="login-boot.js'));
   assert.ok(html.indexOf('src="boot-assets.js') < html.indexOf('src="login-boot.js'));
   assert.match(app, /AudioManager\.playBgm\(\)/);

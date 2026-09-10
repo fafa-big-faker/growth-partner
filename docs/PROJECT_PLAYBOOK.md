@@ -1,5 +1,7 @@
 # 项目开发与发布手册
 
+音频低延迟约定（2026-09-10）：短音效含锻造循环统一使用 `AudioManager` 的 interactive AudioContext 与复用解码缓冲，不能在每次点击时临时下载/解码音效。`LoginBoot` 在公共资源准备完毕后调用 `prepareEffects()`，有超时和媒体播放回退；BGM 继续单实例串流。pointerdown/keydown 解锁，click 捕获阶段触发按钮音。静音、切后台、关闭奖励弹窗必须保留分组取消及异步取消保护；手机外放最终延迟需要实机确认，浏览器调度耗时不等于扬声器延迟。回归入口：`tests/audio-web.test.js` 与 `tests/audio-web.browser-check.cjs`。
+
 这份手册记录日常开发中最容易重复、遗漏或卡住的流程。项目总体说明仍以 `HANDOVER.md` 为准。
 
 ## 安卓入口与触摸交互
