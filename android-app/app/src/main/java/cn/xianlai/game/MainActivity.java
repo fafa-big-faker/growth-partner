@@ -225,6 +225,7 @@ public final class MainActivity extends Activity {
         handler.removeCallbacks(loadDeadline);
         webView.setVisibility(View.VISIBLE);
         errorPanel.setVisibility(View.GONE);
+        if (nativeAudio != null) nativeAudio.initializeAsync();
         setPageBackgrounded(paused);
     }
 

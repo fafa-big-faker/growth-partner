@@ -21,39 +21,75 @@ public final class NativeAudioBridge {
     private static final int MAX_VOICES = 12;
 
     private final Object lifecycleLock = new Object();
+    private final Context applicationContext;
     private final Map<String, Integer> soundIds = new LinkedHashMap<>();
     private final PcmMixer mixer = new PcmMixer(MAX_VOICES);
     private final int sampleRate;
     private final int framesPerBuffer;
     private AudioTrack audioTrack;
     private Thread writerThread;
+    private volatile boolean initializing;
     private volatile boolean ready;
     private volatile boolean failed;
     private volatile boolean foreground;
+    private volatile boolean foregroundRequested;
     private volatile boolean released;
     private volatile int writerGeneration;
 
     public NativeAudioBridge(Context context) {
+        applicationContext = context.getApplicationContext();
         AudioManager manager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
         sampleRate = boundedProperty(manager, AudioManager.PROPERTY_OUTPUT_SAMPLE_RATE, 48000, 8000, 192000);
         framesPerBuffer = boundedProperty(manager, AudioManager.PROPERTY_OUTPUT_FRAMES_PER_BUFFER, 192, 16, 2048);
+    }
+
+    /** Starts optional audio preparation away from the WebView/UI startup path. */
+    public void initializeAsync() {
+        synchronized (lifecycleLock) {
+            if (initializing || ready || failed || released) return;
+            initializing = true;
+        }
+        Thread initializer = new Thread(this::initialize, "XianlaiAudioInit");
+        initializer.setDaemon(true);
+        initializer.start();
+    }
+
+    private void initialize() {
+        AudioTrack preparedTrack = null;
         try {
-            loadEffects(context);
-            audioTrack = createTrack();
-            ready = soundIds.size() == MAX_VOICES && audioTrack.getState() == AudioTrack.STATE_INITIALIZED;
-            if (!ready) throw new IllegalStateException("Low-latency AudioTrack did not initialize");
-            setForeground(true);
+            Map<String, PcmWave.Clip> clips = loadEffects(applicationContext);
+            preparedTrack = createTrack();
+            if (clips.size() != MAX_VOICES || preparedTrack.getState() != AudioTrack.STATE_INITIALIZED) {
+                throw new IllegalStateException("Low-latency AudioTrack did not initialize");
+            }
+            synchronized (lifecycleLock) {
+                if (released) {
+                    preparedTrack.release();
+                    initializing = false;
+                    return;
+                }
+                int soundId = 1;
+                for (Map.Entry<String, PcmWave.Clip> entry : clips.entrySet()) {
+                    mixer.register(soundId, entry.getValue().samples);
+                    soundIds.put(entry.getKey(), soundId++);
+                }
+                audioTrack = preparedTrack;
+                preparedTrack = null;
+                ready = true;
+                initializing = false;
+                if (foregroundRequested) startWriterLocked();
+            }
         } catch (IOException | RuntimeException error) {
-            failed = true;
-            ready = false;
-            if (audioTrack != null) {
-                audioTrack.release();
-                audioTrack = null;
+            if (preparedTrack != null) preparedTrack.release();
+            synchronized (lifecycleLock) {
+                initializing = false;
+                failed = true;
+                ready = false;
             }
         }
     }
 
-    private void loadEffects(Context context) throws IOException {
+    private Map<String, PcmWave.Clip> loadEffects(Context context) throws IOException {
         Map<String, String> files = new LinkedHashMap<>();
         files.put("uiTap", "ui-tap.wav");
         files.put("uiOpen", "ui-open.wav");
@@ -67,14 +103,14 @@ public final class NativeAudioBridge {
         files.put("rewardRare", "reward-arrival-rare.wav");
         files.put("rewardHigh", "reward-arrival-high.wav");
         files.put("skillTrigger", "skill-trigger.wav");
-        int soundId = 1;
+        Map<String, PcmWave.Clip> clips = new LinkedHashMap<>();
         for (Map.Entry<String, String> entry : files.entrySet()) {
             try (InputStream input = context.getAssets().open(AUDIO_ROOT + entry.getValue())) {
                 PcmWave.Clip clip = PcmWave.read(input, sampleRate);
-                mixer.register(soundId, clip.samples);
-                soundIds.put(entry.getKey(), soundId++);
+                clips.put(entry.getKey(), clip);
             }
         }
+        return clips;
     }
 
     private AudioTrack createTrack() {
@@ -130,23 +166,28 @@ public final class NativeAudioBridge {
     }
 
     public void setForeground(boolean active) {
+        foregroundRequested = active;
         if (!active) {
             stopWriter();
             return;
         }
         synchronized (lifecycleLock) {
-            if (!ready || failed || released || foreground || audioTrack == null) return;
-            foreground = true;
-            int generation = ++writerGeneration;
-            try {
-                audioTrack.play();
-                writerThread = new Thread(() -> writeLoop(generation), "XianlaiAudio");
-                writerThread.setDaemon(true);
-                writerThread.start();
-            } catch (RuntimeException error) {
-                foreground = false;
-                failed = true;
-            }
+            startWriterLocked();
+        }
+    }
+
+    private void startWriterLocked() {
+        if (!ready || failed || released || foreground || !foregroundRequested || audioTrack == null) return;
+        foreground = true;
+        int generation = ++writerGeneration;
+        try {
+            audioTrack.play();
+            writerThread = new Thread(() -> writeLoop(generation), "XianlaiAudio");
+            writerThread.setDaemon(true);
+            writerThread.start();
+        } catch (RuntimeException error) {
+            foreground = false;
+            failed = true;
         }
     }
 
@@ -195,6 +236,7 @@ public final class NativeAudioBridge {
 
     public void release() {
         if (released) return;
+        foregroundRequested = false;
         stopWriter();
         synchronized (lifecycleLock) {
             released = true;

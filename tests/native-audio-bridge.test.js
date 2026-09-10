@@ -55,10 +55,19 @@ test('only bounded playback, diagnosis and stopping are exposed to trusted page 
 test('Activity keeps the bridge warm only in foreground while existing lifecycle still suspends the page', () => {
   assert.match(activity, /nativeAudio = new NativeAudioBridge\(this\)/);
   assert.match(activity, /addJavascriptInterface\(nativeAudio, "XianlaiNativeAudio"\)/);
+  assert.match(activity, /revealPage[\s\S]*nativeAudio\.initializeAsync\(\)/);
   assert.match(activity, /nativeAudio\.release\(\)/);
   assert.match(activity, /nativeAudio\.setForeground\(false\)/);
   assert.match(activity, /nativeAudio\.setForeground\(true\)/);
   assert.match(activity, /setPageBackgrounded\(true\)/);
+});
+
+test('native audio preparation cannot block WebView construction or initial navigation', () => {
+  const constructor = bridge.match(/public NativeAudioBridge\(Context context\) \{([\s\S]*?)\n    \}/)?.[1] || '';
+  assert.doesNotMatch(constructor, /loadEffects|createTrack|setForeground|AudioTrack\.Builder/);
+  assert.match(bridge, /public void initializeAsync\(\)/);
+  assert.match(bridge, /new Thread\(this::initialize, "XianlaiAudioInit"\)/);
+  assert.match(activity, /webView\.loadUrl\([\s\S]*NavigationPolicy\.HOME_URL/);
 });
 
 test('browser manager has explicit native preference and Web Audio fallback', () => {
