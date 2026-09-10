@@ -5736,10 +5736,11 @@ const AdminView = {
     list.innerHTML = html;
   },
 
-  _getOngoingTaskThemes(tasks, today = localDateStr()) {
+  _getReusableTaskThemes(tasks, today = localDateStr()) {
     const groups = new Map();
     tasks.forEach(task => {
-      if (task.taskType !== 'theme' || task.status !== 'published' || !task.themeName) return;
+      if (task.taskType !== 'theme' || !['draft', 'published'].includes(task.status)
+          || !task.themeName || !task.themeStart || !task.themeEnd || task.themeEnd < today) return;
       if (!groups.has(task.themeName)) {
         groups.set(task.themeName, { name: task.themeName, start: task.themeStart, end: task.themeEnd, periods: [] });
       }
@@ -5750,8 +5751,11 @@ const AdminView = {
       if (task.themeEnd && (!theme.end || task.themeEnd > theme.end)) theme.end = task.themeEnd;
     });
     return [...groups.values()]
-      .filter(theme => theme.periods.some(period => period.start <= today && today <= period.end))
-      .sort((a, b) => b.start.localeCompare(a.start) || a.name.localeCompare(b.name, 'zh-CN'));
+      .map(theme => ({ ...theme,
+        state: theme.periods.some(period => period.start <= today && today <= period.end) ? 'ongoing' : 'upcoming',
+      }))
+      .sort((a, b) => (a.state === b.state ? 0 : (a.state === 'ongoing' ? -1 : 1))
+        || a.start.localeCompare(b.start) || a.name.localeCompare(b.name, 'zh-CN'));
   },
 
   async showCreateTask(control) {
@@ -5787,7 +5791,7 @@ const AdminView = {
   },
 
   _showCreateTaskForm(tasks, editingTask = null) {
-    const themes = this._getOngoingTaskThemes(tasks);
+    const themes = this._getReusableTaskThemes(tasks);
     const overlay = UI.modal(`
       <div class="form-group">
         <label>任务类型</label>
@@ -5828,9 +5832,9 @@ const AdminView = {
           <label for="new-task-theme-source">选择主题</label>
           <select id="new-task-theme-source" onchange="AdminView._onCreateTaskThemeChange(this.closest('.modal-overlay'))">
             <option value="">${editingTask ? '保留或修改原主题' : '新建主题'}</option>
-            ${themes.map((theme, index) => `<option value="${index}">${escapeHtml(theme.name)} · ${escapeHtml(theme.start)} 至 ${escapeHtml(theme.end)}（进行中）</option>`).join('')}
+            ${themes.map((theme, index) => `<option value="${index}">${escapeHtml(theme.name)} · ${escapeHtml(theme.start)} 至 ${escapeHtml(theme.end)}（${theme.state === 'ongoing' ? '进行中' : '即将开始'}）</option>`).join('')}
           </select>
-          <div id="new-task-theme-source-hint" style="font-size:12px;color:var(--text-light);margin-top:4px">${themes.length ? '可选进行中的主题追加任务，或新建主题。' : '暂无正在进行的主题，可填写下方信息新建。'}</div>
+          <div id="new-task-theme-source-hint" style="font-size:12px;color:var(--text-light);margin-top:4px">${themes.length ? '可选进行中或即将开始的主题追加任务，也可以新建主题。' : '暂无可复用主题，可填写下方信息新建。'}</div>
         </div>
         <div class="form-group">
           <label>主题名称（如：开学季）</label>
@@ -5866,7 +5870,7 @@ const AdminView = {
     });
 
     this._createTaskOverlay = overlay;
-    overlay._ongoingTaskThemes = themes;
+    overlay._reusableTaskThemes = themes;
     overlay._editingTask = editingTask;
     if (editingTask) {
       const values = {
@@ -5915,10 +5919,10 @@ const AdminView = {
       if (taskType === 'theme') {
         const source = field('new-task-theme-source');
         if (source !== '') {
-          const theme = overlay._ongoingTaskThemes[Number(source)];
+          const theme = overlay._reusableTaskThemes[Number(source)];
           const today = localDateStr();
-          if (!theme || !theme.periods.some(period => period.start <= today && today <= period.end)) {
-            UI.toast('所选主题已不在活动期内，请重新打开表单选择主题', 'warn');
+          if (!theme || theme.end < today) {
+            UI.toast('所选主题已经结束，请重新打开表单选择主题', 'warn');
             return false;
           }
           themeName = theme.name; themeStart = theme.start; themeEnd = theme.end;
@@ -5992,7 +5996,7 @@ const AdminView = {
     const source = overlay.querySelector('#new-task-theme-source').value;
     const fields = ['new-task-theme', 'new-task-theme-start', 'new-task-theme-end']
       .map(id => overlay.querySelector(`#${id}`));
-    const theme = source === '' ? null : overlay._ongoingTaskThemes[Number(source)];
+    const theme = source === '' ? null : overlay._reusableTaskThemes[Number(source)];
     if (theme) {
       if (!overlay._existingTaskThemeSelected) overlay._newTaskThemeDraft = fields.map(field => field.value);
       [theme.name, theme.start, theme.end].forEach((value, index) => { fields[index].value = value; });
@@ -6003,7 +6007,7 @@ const AdminView = {
     overlay._existingTaskThemeSelected = !!theme;
     overlay.querySelector('#new-task-theme-source-hint').textContent = theme
       ? '将追加到所选主题，名称和活动日期沿用原设置。'
-      : (overlay._ongoingTaskThemes.length ? '可选进行中的主题追加任务，或新建主题。' : '暂无正在进行的主题，可填写下方信息新建。');
+      : (overlay._reusableTaskThemes.length ? '可选进行中或即将开始的主题追加任务，也可以新建主题。' : '暂无可复用主题，可填写下方信息新建。');
   },
 
   deleteTask(id, control) {

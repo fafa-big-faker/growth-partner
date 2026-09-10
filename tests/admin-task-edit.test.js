@@ -211,6 +211,59 @@ test('task management only offers edit for drafts and escapes edited task text',
   assert.doesNotMatch(h.list.innerHTML, /<changed>|<script>|<theme>/);
 });
 
+test('theme chooser includes ongoing and upcoming themes from published or draft rows but excludes ended themes', () => {
+  const h = harness();
+  const themes = h.admin._getReusableTaskThemes([
+    draft({ id: 'ongoing-draft', themeName: '开学季', themeStart: '2026-09-01', themeEnd: '2026-09-30' }),
+    draft({ id: 'ongoing-published', status: 'published', themeName: '开学季', themeStart: '2026-09-05', themeEnd: '2026-10-01' }),
+    draft({ id: 'upcoming-draft', themeName: '迎新周', themeStart: '2026-09-12', themeEnd: '2026-11-30' }),
+    draft({ id: 'upcoming-published', status: 'published', themeName: '迎新周', themeStart: '2026-09-12', themeEnd: '2026-11-30' }),
+    draft({ id: 'ended', status: 'published', themeName: '暑期', themeStart: '2026-08-01', themeEnd: '2026-08-31' }),
+    draft({ id: 'normal', taskType: 'weekly', themeName: '错误主题', themeStart: '2026-09-01', themeEnd: '2026-12-01' }),
+  ], '2026-09-11');
+  assert.deepEqual(plain(themes.map(theme => ({ name: theme.name, start: theme.start, end: theme.end, state: theme.state }))), [
+    { name: '开学季', start: '2026-09-01', end: '2026-10-01', state: 'ongoing' },
+    { name: '迎新周', start: '2026-09-12', end: '2026-11-30', state: 'upcoming' },
+  ]);
+});
+
+test('an upcoming existing theme can be selected when creating another task', async () => {
+  const h = harness([
+    draft({ id: 'upcoming-theme', status: 'published', themeName: '开学季·开工咯', themeStart: '2026-09-12', themeEnd: '2026-11-30' }),
+  ]);
+  const overlay = h.admin._showCreateTaskForm(h.admin._adminTasks);
+  assert.match(overlay.content, /开学季·开工咯[\s\S]*即将开始/);
+  h.field(overlay, 'new-task-type').value = 'theme';
+  h.field(overlay, 'new-task-title').value = '认识一位新同学';
+  h.field(overlay, 'new-task-theme-source').value = '0';
+  const result = await h.submit(overlay);
+  assert.equal(result.value, true);
+  assert.equal(h.state.creates[0].themeName, '开学季·开工咯');
+  assert.equal(h.state.creates[0].themeStart, '2026-09-12');
+  assert.equal(h.state.creates[0].themeEnd, '2026-11-30');
+});
+
+test('every displayed publishing-pool task exposes edit in every compatible management filter', () => {
+  const drafts = [
+    draft({ id: 'weekly-draft', taskType: 'weekly' }),
+    draft({ id: 'daily-draft', taskType: 'daily' }),
+    draft({ id: 'theme-draft', taskType: 'theme' }),
+  ];
+  const h = harness([...drafts, draft({ id: 'published-id', status: 'published', taskType: 'theme' })]);
+  for (const [filter, visibleIds] of [
+    ['all', ['weekly-draft', 'daily-draft', 'theme-draft']],
+    ['draft', ['weekly-draft', 'daily-draft', 'theme-draft']],
+    ['weekly', ['weekly-draft']],
+    ['daily', ['daily-draft']],
+    ['theme', ['theme-draft']],
+  ]) {
+    h.admin._adminTaskFilter = filter;
+    h.admin._renderAdminTaskList();
+    for (const id of visibleIds) assert.match(h.list.innerHTML, new RegExp(`showEditTask\\('${id}',this\\)`), `${filter}:${id}`);
+    assert.doesNotMatch(h.list.innerHTML, /showEditTask\('published-id'/);
+  }
+});
+
 test('list refresh preserves filters and ignores stale generations, sessions, hidden pages or navigation', async () => {
   const requests = [];
   const h = harness(undefined, { read() { const next = deferred(); requests.push(next); return next.promise; } });
