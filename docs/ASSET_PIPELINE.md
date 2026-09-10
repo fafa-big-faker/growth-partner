@@ -144,12 +144,20 @@ node scripts\normalize_audio.js
 ### 奖励反馈音效（2026-09-09）
 
 - 当前输入为`奖励-逐项出现.wav`、`掉落-珍品.wav`、`掉落-神仙品.wav`、`斧技-发动V2.wav`，分别导出`reward-reveal.wav`、`drop-rare.wav`、`drop-high.wav`、`skill-trigger.wav`。旧版`斧技-发动.wav`仍在原目录保留，不覆盖或删除。
-- 运行`node scripts/normalize_audio.js --rewards-only`；只替换斧技时使用`node scripts/normalize_audio.js --skill-only`，不会重写其他十个音频。任一命令加`--check`可不写入地验证确定性输出；两种限定模式不能同时指定。
-- 四条音效均为原生PCM16、40kHz、双声道，完整时长0.2/0.5/0.8/0.68秒；峰值目标0.62/0.70/0.76/0.72，运行混音0.48/0.64/0.68/0.74。四文件共349,768字节，全音频2,098,044字节（约2.001MiB），预算2.1MiB。V2技能109,042字节，比旧版增加44,800字节，不裁尾、不改变采样率或音调；其余十文件逐字节不变。
+- 运行`node scripts/normalize_audio.js --rewards-only`；只替换斧技时使用`node scripts/normalize_audio.js --skill-only`。两者均不涉及新增的珍稀出场音效；任一命令加`--check`可不写入地验证确定性输出，所有限定模式互斥。
+- 原四条音效均为原生PCM16、40kHz、双声道，完整时长0.2/0.5/0.8/0.68秒；峰值目标0.62/0.70/0.76/0.72，运行混音0.48/0.64/0.68/0.74。四文件共349,768字节；V2技能109,042字节，比旧版增加44,800字节，不裁尾、不改变采样率或音调。
 - V2源SHA256为`810722dfcf26011473c2989e38fed3c8fd83953d44efb594dfcc7dab3e06395b`；源峰值0.273102、RMS0.050590，固定增益2.63638倍后峰值0.720001、RMS0.133374。默认播放混音0.74，有效峰值约0.5328、RMS约0.09870，相比旧版有效RMS增加约4.24dB。只给`skill-trigger.wav`添加`?v=skill-v2-20260909`缓存参数，其他音频URL和混音保持原样。
 - 斧技优先仅由奖励表现层在播放前停止当前奖励弹窗自身的旧尾音，不停止BGM或其他组，不增加全局压低BGM的逻辑。返还提示仍独立使用`chop-refunds`组及自身的限频/音量系数，全局静音仍立即停止所有音频。
 - `AudioManager.playEffect(name,{group,volumeScale,playbackRate})`每组最多3声、全局最多12声，满额不再叠加；`stopEffects(group)`立即取消该组，原始音频不可重复增益处理。测试`audio-reward-assets.test.js`校验来源、峰值、时长及旧文件指纹。
 - 登录预览`assets/runtime/v3/backgrounds/login-preview.webp`由原运行登录图缩为240x180，2398字节，仅首屏占位使用；完整背景、Logo、按钮及六墨纹保持原图与URL。初始圆环48px，无需新增AI资源。
+
+### 珍稀奖励出场音效（2026-09-10）
+
+- 输入`掉落出场-珍品.wav`与`掉落出场-神仙品.wav`，对应运行文件`reward-arrival-rare.wav`和`reward-arrival-high.wav`，AudioManager名称为`rewardRare`及`rewardHigh`。它们只用于结果墨团/道具出场，砍树过程原`dropRare/dropHigh`保持独立，珍稀出场不再叠普通`rewardReveal`音。
+- 仅运行`node scripts/normalize_audio.js --arrivals-only`导入这两条，`--arrivals-only --check`逐字节重建验证且不写文件；不覆盖源文件，不重写其他十一条声音。源SHA256分别为`4e78a81a2109967bda601a592bbeeecd71d5a6408b204f469d54b5e8cae9e599`与`4a74b282fddc4ec2a652fe2619c1a028f060361a8adc5b59c1901ad65ab7d0ec`，替换源文件时先重新测量再更新指纹。
+- 两条均保留PCM16、40kHz、双声道和完整0.8/1.1秒，分别128,242与176,242字节，不循环、不改变音调、不硬裁尾。固定增益后目标峰值0.70/0.76，RMS约0.076173/0.104360；默认混音0.72/0.76，有效峰值约0.504/0.578。珍品重音在0.60–0.68秒、高档在0.85–0.98秒，图标落稳应与实测重音衔接，不能照提示词假定0.5/0.75秒。
+- 两新文件合计304,484字节（约297.3KiB）；当前十三条全音频2,402,528字节（约2.291MiB），预算2.4MiB。原十一条文件、音量与缓存URL均不变；新文件使用独立路径，无需统一更新旧声音版本。更改音频映射后由`build_boot_assets.cjs`更新启动清单。
+- 出场与斧技共用当前弹窗声音组，跳过/关闭/隐藏取消自身组，不停BGM或砍树音。静音/播放失败不得阻塞演出；后续斧技发动仍仅停止本弹窗尾音。音频测试覆盖完整PCM格式、来源和旧文件指纹、确定性限定导入、混音峰值、声音分组取消。
 
 ## 8. 验证清单
 
@@ -275,6 +283,6 @@ node scripts\normalize_audio.js
 - 当前WebP保持原生1536×1024，quality84、method6、51,498字节（约50.3KiB），预算100KiB。PNG归档与原图逐像素相同；RGB源不额外建立alpha平面。运行URL固定为`assets/runtime/entry-preparation/background.webp?v=entry-preparation-20260910`，显示时保持3:2比例，不把整图拉伸成窄屏比例。
 - `node scripts/build_boot_assets.cjs`生成`boot-assets.js`，禁止手改。脚本在隔离环境中执行`game-config.js`和`app.js`资源定义前缀，止于`dbClient`初始化前；只创建空的动画实例，不运行Supabase、Auth、登录或玩家读写。图像URL来自真实`getInitialGameImageAssets`、九武器待机/砍树函数、LoginBoot关键/装饰/入境清单；声音来自AudioManager实际`AUDIO_PATHS`。
 - 清单导出`BootAssetManifest={version,assets}`，每项记录精确`url`（保留原query）、`bytes`、`sha256`、`kind:image/audio`与`density:all/1/2`。新背景和经验槽两图固定排在最前，其余URL按字典序稳定排列；version为整个有序清单JSON的SHA256。改变任意实际资源文件、URL、配置图标映射或运行资源解析器后，必须重新生成并运行`node scripts/build_boot_assets.cjs --check`。
-- 当前共222项：九武器90动作帧、11音频、公共与登录图，以及两套各10张树图。仅树图分density1/2，其他all；按当前DPR选择后均为212项，1x为6,788,157字节，2x为7,618,839字节。准备阶段完整下载但不同时解码90帧；普通屏幕不额外下载高清树图，高清屏幕也不下载旧1x树图。
+- 当前共224项：九武器90动作帧、13音频、公共与登录图，以及两套各10张树图。仅树图分density1/2，其他all；按当前DPR选择后均为214项，1x为7,092,641字节，2x为7,923,323字节。准备阶段完整下载但不同时解码90帧；普通屏幕不额外下载高清树图，高清屏幕也不下载旧1x树图。
 - 清单严格限制为`assets/runtime/`下的实际图片/音频，拒绝路径穿越、外站、原始图集及代码/JSON数据。不按目录遍历把历史素材塞进启动包，不加入玩家数据或凭据。ResourcePack只缓存这些静态文件，代码、配置、HTML和数据库保持原加载方式。
-- 校验`python tests/entry-art-assets.test.py`（原图指纹、完整像素、质量、预算、重建）和`node --test tests/boot-assets.test.js`（真实文件字节、首项优先级、90帧/11音频、两密度精确资源集合、UMD导出与路径边界），再运行两脚本`--check`。这些检查不截图、不登录真实账号、不读写数据库。
+- 校验`python tests/entry-art-assets.test.py`（原图指纹、完整像素、质量、预算、重建）和`node --test tests/boot-assets.test.js`（真实文件字节、首项优先级、90帧/13音频、两密度精确资源集合、UMD导出与路径边界），再运行两脚本`--check`。这些检查不截图、不登录真实账号、不读写数据库。

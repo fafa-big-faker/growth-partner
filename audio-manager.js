@@ -10,6 +10,8 @@
     dropRare: 'assets/runtime/audio/drop-rare.wav',
     dropHigh: 'assets/runtime/audio/drop-high.wav',
     rewardReveal: 'assets/runtime/audio/reward-reveal.wav',
+    rewardRare: 'assets/runtime/audio/reward-arrival-rare.wav',
+    rewardHigh: 'assets/runtime/audio/reward-arrival-high.wav',
     skillTrigger: 'assets/runtime/audio/skill-trigger.wav?v=skill-v2-20260909',
   });
 
@@ -24,6 +26,8 @@
     dropRare: 0.64,
     dropHigh: 0.68,
     rewardReveal: 0.48,
+    rewardRare: 0.72,
+    rewardHigh: 0.76,
     skillTrigger: 0.74,
   });
 

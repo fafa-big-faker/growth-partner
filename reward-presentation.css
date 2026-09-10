@@ -94,7 +94,7 @@
   flex-shrink: 0;
 }
 
-.reward-quality-ink {
+.reward-quality-ink, .reward-quality-echo {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -102,6 +102,8 @@
   object-fit: contain;
   pointer-events: none;
 }
+
+.reward-quality-echo { opacity: 0; }
 
 .reward-art-icon {
   position: absolute;
@@ -158,6 +160,13 @@
 .reward-item.is-reward-pending > * { opacity: 0; }
 .reward-item.is-reward-revealing .reward-art { animation: reward-ink-reveal 210ms ease-out both; }
 .reward-item.is-reward-revealing :is(.reward-item-name, .reward-item-quantity) { animation: reward-copy-reveal 160ms ease-out both; }
+.reward-item.is-reward-ink { --reward-arrival-duration: 800ms; }
+.reward-item.is-reward-ink:is([data-reward-quality="4"], [data-reward-quality="5"]) { --reward-arrival-duration: 1100ms; }
+.reward-item.is-reward-ink .reward-quality-ink { animation: reward-rare-ink var(--reward-arrival-duration) cubic-bezier(.18,.68,.28,1) both; }
+.reward-item.is-reward-ink .reward-quality-echo { animation: reward-ink-echo 880ms 220ms ease-out both; }
+.reward-item.is-reward-ink:not(.is-reward-icon) :is(.reward-art-icon, .reward-item-name, .reward-item-quantity) { opacity: 0; }
+.reward-item.is-reward-icon .reward-art-icon { animation: reward-rare-icon 320ms cubic-bezier(.2,.7,.3,1) both; }
+.reward-item.is-reward-icon :is(.reward-item-name, .reward-item-quantity) { animation: reward-copy-reveal 180ms ease-out both; }
 .reward-item.is-skill-active .reward-quality-ink { animation: reward-skill-ink 280ms ease-out both; }
 .reward-item.is-count-shaking .reward-item-quantity-value { animation: reward-count-shake 500ms linear both; }
 .reward-item.is-count-changing .reward-item-quantity-value { animation: reward-count-arrive 500ms cubic-bezier(.18,.72,.3,1) both; }
@@ -170,6 +179,22 @@
 @keyframes reward-copy-reveal {
   from { opacity: 0; }
   to { opacity: 1; }
+}
+@keyframes reward-rare-ink {
+  0% { opacity: 0; transform: scale(.24) rotate(-9deg); }
+  28% { opacity: .6; transform: scale(.56) rotate(-5deg); }
+  70% { opacity: 1; transform: scale(1.09) rotate(1deg); }
+  100% { opacity: 1; transform: scale(1) rotate(0); }
+}
+@keyframes reward-ink-echo {
+  0% { opacity: 0; transform: scale(.58) rotate(8deg); }
+  45% { opacity: .2; }
+  100% { opacity: 0; transform: scale(1.15) rotate(3deg); }
+}
+@keyframes reward-rare-icon {
+  0% { opacity: 0; transform: translateY(5px) scale(.7); }
+  50% { opacity: 1; transform: translateY(-1px) scale(1.1); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
 }
 @keyframes reward-count-arrive {
   0% { transform: scale(1.55); }
@@ -227,9 +252,10 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .reward-item.is-reward-pending > * { opacity: 1; }
   .reward-item.is-reward-revealing .reward-art,
   .reward-item.is-reward-revealing :is(.reward-item-name, .reward-item-quantity),
+  .reward-item.is-reward-ink :is(.reward-quality-ink, .reward-quality-echo),
+  .reward-item.is-reward-icon :is(.reward-art-icon, .reward-item-name, .reward-item-quantity),
   .reward-item.is-count-shaking .reward-item-quantity-value,
   .reward-item.is-count-changing .reward-item-quantity-value,
   .reward-item.is-skill-active .reward-quality-ink { animation: none; }

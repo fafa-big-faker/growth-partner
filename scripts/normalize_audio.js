@@ -24,6 +24,17 @@ const REWARD_SOURCES = Object.freeze({
   },
 });
 
+const ARRIVAL_SOURCES = Object.freeze({
+  'reward-arrival-rare.wav': {
+    file: '掉落出场-珍品.wav',
+    sha256: '4e78a81a2109967bda601a592bbeeecd71d5a6408b204f469d54b5e8cae9e599',
+  },
+  'reward-arrival-high.wav': {
+    file: '掉落出场-神仙品.wav',
+    sha256: '4a74b282fddc4ec2a652fe2619c1a028f060361a8adc5b59c1901ad65ab7d0ec',
+  },
+});
+
 const TARGET_PEAKS = Object.freeze({
   'ui-tap.wav': 0.62,
   'ui-open.wav': 0.60,
@@ -35,6 +46,8 @@ const TARGET_PEAKS = Object.freeze({
   'drop-rare.wav': 0.70,
   'drop-high.wav': 0.76,
   'skill-trigger.wav': 0.72,
+  'reward-arrival-rare.wav': 0.70,
+  'reward-arrival-high.wav': 0.76,
 });
 
 function findChunk(buffer, expectedId) {
@@ -119,11 +132,13 @@ function normalizePcm16(buffer, targetPeak) {
 }
 
 function selectAudioFiles(args = []) {
-  if (args.some(arg => !['--rewards-only', '--skill-only', '--check'].includes(arg))
-      || (args.includes('--rewards-only') && args.includes('--skill-only'))) {
-    throw new Error('Usage: normalize_audio.js [--rewards-only | --skill-only] [--check]');
+  const modes = ['--rewards-only', '--skill-only', '--arrivals-only'];
+  if (args.some(arg => ![...modes, '--check'].includes(arg))
+      || modes.filter(mode => args.includes(mode)).length > 1) {
+    throw new Error('Usage: normalize_audio.js [--rewards-only | --skill-only | --arrivals-only] [--check]');
   }
   if (args.includes('--skill-only')) return ['skill-trigger.wav'];
+  if (args.includes('--arrivals-only')) return Object.keys(ARRIVAL_SOURCES);
   return args.includes('--rewards-only') ? Object.keys(REWARD_SOURCES) : Object.keys(TARGET_PEAKS);
 }
 
@@ -133,7 +148,7 @@ function main(args = process.argv.slice(2)) {
   if (!check) fs.mkdirSync(OUTPUT_DIR, { recursive: true });
   names.forEach(fileName => {
     const targetPeak = TARGET_PEAKS[fileName];
-    const mapping = REWARD_SOURCES[fileName];
+    const mapping = REWARD_SOURCES[fileName] || ARRIVAL_SOURCES[fileName];
     const sourcePath = path.join(SOURCE_DIR, mapping?.file || fileName);
     const outputPath = path.join(OUTPUT_DIR, fileName);
     const source = fs.readFileSync(sourcePath);
@@ -159,4 +174,4 @@ function main(args = process.argv.slice(2)) {
 
 if (require.main === module) main();
 
-module.exports = { REWARD_SOURCES, TARGET_PEAKS, findChunk, inspectPcm16, normalizePcm16, selectAudioFiles };
+module.exports = { REWARD_SOURCES, ARRIVAL_SOURCES, TARGET_PEAKS, findChunk, inspectPcm16, normalizePcm16, selectAudioFiles };

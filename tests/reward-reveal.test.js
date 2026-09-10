@@ -37,9 +37,9 @@ test('reveal plan staggers ordinary rewards and finishes both true skill transit
   assert.deepEqual(plan.events.filter(event => event.type === 'quantity').map(event => [event.at, event.quantity, event.triggerIndex]), [[1100, 6, 0], [2400, 12, 1]]);
   assert.deepEqual(plan.events.filter(event => event.type === 'settle').map(event => event.at), [1600, 2900]);
   assert.equal(plan.events.some(event => event.type.startsWith('refund')), false);
-  assert.equal(plan.duration, 3120);
+  assert.equal(plan.duration, 3210);
   const ordinary = Rewards.getRevealPlan(Array.from({ length: 10 }, () => Rewards.getRewardMetadata({ quantity: 1 })));
-  assert.deepEqual(ordinary.events.filter(event => event.type === 'reveal').map(event => event.at), Array.from({ length: 10 }, (_, index) => index * 120));
+  assert.deepEqual(ordinary.events.filter(event => event.type === 'reveal').map(event => event.at), Array.from({ length: 10 }, (_, index) => index * 210));
 });
 
 test('every skill in the batch gets all 1300ms and refund-only items do not pause or animate', () => {
@@ -70,9 +70,9 @@ test('explicit type 2 never enters multiplier metadata or the presentation timel
     buffTriggers: [{ type: 2, beforeQuantity: 1, afterQuantity: 2, multiplier: 2 }] }).triggers, []);
   const plan = Rewards.getRevealPlan([{ quantity: 2, baseQuantity: 1,
     triggers: [{ type: 2, beforeQuantity: 1, afterQuantity: 2, multiplier: 2 }], refund: 20 }]);
-  assert.deepEqual(plan.events.map(event => event.type), ['reveal', 'complete-item']);
-  assert.deepEqual(plan.events.map(event => event.at), [0, 120]);
-  assert.equal(plan.duration, 220, 'a directly supplied type-2 trigger must not add the multiplier lead-in');
+  assert.deepEqual(plan.events.map(event => event.type), ['reveal', 'arrival-settled', 'complete-item']);
+  assert.deepEqual(plan.events.map(event => event.at), [0, 210, 210]);
+  assert.equal(plan.duration, 310, 'a directly supplied type-2 trigger must not add the multiplier lead-in');
 });
 
 test('rendered output shows one actual quantity and no permanent multiplier or empty skill slot', () => {
@@ -118,7 +118,7 @@ function fixture(rewards, reduced = false) {
     addEventListener(name, callback) { listeners.set(name, callback); }, removeEventListener(name) { listeners.delete(name); } };
   const entries = rewards.map(reward => {
     const metadata = Rewards.getRewardMetadata(reward);
-    const element = { ...node(), dataset: { rewardReveal: JSON.stringify(metadata), rewardQuality: '3' } };
+    const element = { ...node(), dataset: { rewardReveal: JSON.stringify(metadata), rewardQuality: String(reward.quality || 1) } };
     const quantity = node();
     const renderedQuantity = Rewards.renderItem(reward).match(/<span class="(reward-item-quantity-value[^"]*)">([^<]*)<\/span>/);
     assert.ok(renderedQuantity);
@@ -143,6 +143,11 @@ function fixture(rewards, reduced = false) {
       stopEffects(group) { stopped.push(group); audioActions.push({ type: 'stop', group, at: now }); } },
     notify() { observers.filter(observer => observer.active).forEach(observer => observer.callback()); },
     visibility() { listeners.get('visibilitychange')?.(); },
+    stallTo(target) { now = target; },
+    runDelayed() {
+      const next = [...timers.entries()].sort((a, b) => a[1].at - b[1].at || a[0] - b[0])[0];
+      if (next) { timers.delete(next[0]); next[1].callback(); }
+    },
     advance(target) {
       while (true) {
         const next = [...timers.entries()].filter(([, entry]) => entry.at <= target).sort((a, b) => a[1].at - b[1].at || a[0] - b[0])[0];
@@ -337,7 +342,7 @@ test('controller displays base and true intermediate quantities, holds later ite
   assert.equal(f.entries[1].element.dataset.revealState, 'pending');
   f.advance(2900); assert.equal(f.entries[1].element.dataset.revealState, 'revealing');
   assert.equal(f.entries[0].name.textContent, '锻造石');
-  f.advance(3120); assert.equal(completed, 1);
+  f.advance(3210); assert.equal(completed, 1);
   assert.equal(f.timers.size, 0);
   assert.equal(f.overlay.dataset.rewardRevealState, 'complete');
   assert.equal(f.stopped.length, 2, 'only each skill start truncates its own preceding reveal tail');
@@ -438,14 +443,95 @@ test('refund-only awards have no skill cue and combined refunds never add result
   }
 });
 
-test('reduced motion shows final quantities immediately without sounds or timers', () => {
-  const f = fixture([bonus], true);
+test('reduced motion keeps sequential reward and skill information instead of skipping to the final result', () => {
+  const f = fixture([bonus, { quantity: 1 }], true);
   let completed = 0;
   Rewards.playReveal(f.overlay, { audio: f.audio, onComplete: () => completed++ });
-  assert.equal(completed, 1);
+  assert.equal(completed, 0);
+  assert.equal(f.entries[0].quantity.textContent, '×2');
+  assert.equal(f.entries[1].element.dataset.revealState, 'pending');
+  f.advance(300);
+  assert.equal(f.entries[0].name.textContent, '斧技·3倍！！');
+  assert.equal(f.entries[1].element.dataset.revealState, 'pending');
+  f.advance(3210);
   assert.equal(f.entries[0].quantity.textContent, '×12！');
-  assert.equal(f.played.length, 0);
+  assert.equal(completed, 1);
   assert.equal(f.timers.size, 0);
+});
+
+test('rare arrivals use item quality, reveal ink before the icon, then hold the settled name for 300ms', () => {
+  for (const [quality, iconAt, settledAt, sound] of [[3, 480, 800, 'rewardRare'], [4, 780, 1100, 'rewardHigh'], [5, 780, 1100, 'rewardHigh']]) {
+    const f = fixture([{ ...mixedQualityBonus, quality }, { quantity: 1 }]);
+    Rewards.playReveal(f.overlay, { audio: f.audio });
+    const entry = f.entries[0];
+    assert.equal(entry.element.dataset.revealState, 'ink');
+    assert.deepEqual(f.played.map(cue => cue.name), [sound]);
+    f.advance(iconAt - 1);
+    assert.equal(entry.element.classList.contains('is-reward-icon'), false);
+    f.advance(iconAt);
+    assert.equal(entry.element.classList.contains('is-reward-icon'), true);
+    f.advance(settledAt);
+    assert.equal(entry.element.dataset.revealState, 'settled');
+    assert.equal(entry.element.classList.contains('is-reward-ink'), false);
+    f.advance(settledAt + 299);
+    assert.equal(entry.name.textContent, '锻造石');
+    assertQuantity(entry, '×2');
+    f.advance(settledAt + 300);
+    assert.equal(entry.name.textContent, '斧技·3倍！！');
+    assert.deepEqual(buffClasses(entry.name), ['buff-quality-5']);
+    assert.equal(f.entries[1].element.dataset.revealState, 'pending');
+    f.advance(settledAt + 300 + 2600);
+    assert.equal(f.entries[1].element.dataset.revealState, 'revealing');
+  }
+});
+
+test('rare rewards without skills and extra rewards keep the same arrival and name hold without adding skill effects', () => {
+  const f = fixture([{ quantity: 1, quality: 3 }, { ...mixedQualityBonus, quality: 5, isExtra: true }]);
+  Rewards.playReveal(f.overlay, { audio: f.audio });
+  f.advance(1099);
+  assert.equal(f.entries[1].element.dataset.revealState, 'pending');
+  f.advance(1100);
+  assert.equal(f.entries[1].element.dataset.revealState, 'ink');
+  f.advance(2600);
+  assert.deepEqual(f.played.map(cue => cue.name), ['rewardRare', 'rewardHigh']);
+  assert.equal(f.overlay.dataset.rewardRevealState, 'complete');
+  assertQuantity(f.entries[1], '×12');
+});
+
+test('a stalled event loop cannot flush future reveal stages together', () => {
+  const f = fixture(Array.from({ length: 11 }, () => ({ quantity: 1 })));
+  Rewards.playReveal(f.overlay, { audio: f.audio });
+  assert.equal(f.timers.size, 1);
+  f.stallTo(5000);
+  f.runDelayed();
+  assert.equal(f.entries[1].element.dataset.revealState, 'revealing');
+  assert.ok(f.entries.slice(2).every(entry => entry.element.dataset.revealState === 'pending'));
+  assert.equal(f.timers.size, 1);
+  assert.ok([...f.timers.values()].every(timer => timer.at > 5000));
+  f.advance(5209);
+  assert.equal(f.entries[2].element.dataset.revealState, 'pending');
+  f.advance(5210);
+  assert.equal(f.entries[2].element.dataset.revealState, 'revealing');
+});
+
+test('all rewards stay hidden until two render frames and closing before either frame prevents sounds', () => {
+  for (const framesBeforeClose of [0, 1, 2]) {
+    const f = fixture([{ quantity: 1, quality: 5 }]);
+    const frames = new Map();
+    let id = 0;
+    f.document.defaultView.requestAnimationFrame = callback => { frames.set(++id, callback); return id; };
+    f.document.defaultView.cancelAnimationFrame = frame => frames.delete(frame);
+    const controller = Rewards.playReveal(f.overlay, { audio: f.audio });
+    assert.equal(f.entries[0].element.dataset.revealState, 'pending');
+    assert.equal(f.played.length, 0);
+    for (let n = 0; n < framesBeforeClose; n++) {
+      const [key, callback] = [...frames][0]; frames.delete(key); callback();
+    }
+    assert.equal(f.played.length, framesBeforeClose === 2 ? 1 : 0);
+    controller.cancel();
+    assert.equal(frames.size, 0);
+    assert.equal(f.timers.size, 0);
+  }
 });
 
 test('a new reveal on the same overlay cancels the previous controller and rejected audio never blocks it', async () => {

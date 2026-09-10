@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const { execFileSync } = require('node:child_process');
-const { REWARD_SOURCES, TARGET_PEAKS, inspectPcm16, normalizePcm16, selectAudioFiles } = require('../scripts/normalize_audio');
+const { REWARD_SOURCES, ARRIVAL_SOURCES, TARGET_PEAKS, inspectPcm16, normalizePcm16, selectAudioFiles } = require('../scripts/normalize_audio');
 const { AUDIO_PATHS } = require('../audio-manager');
 
 const root = path.join(__dirname, '..');
@@ -17,6 +17,12 @@ const expected = {
   'drop-high.wav': { name: '\u6389\u843d-\u795e\u4ed9\u54c1.wav', seconds: 0.8, peak: 0.76, cue: 'dropHigh' },
   'skill-trigger.wav': { name: '\u65a7\u6280-\u53d1\u52a8V2.wav', seconds: 0.68, peak: 0.72, cue: 'skillTrigger', version: 'skill-v2-20260909' },
 };
+const arrivalExpected = {
+  'reward-arrival-rare.wav': { name: '掉落出场-珍品.wav', seconds: 0.8, peak: 0.70, cue: 'rewardRare' },
+  'reward-arrival-high.wav': { name: '掉落出场-神仙品.wav', seconds: 1.1, peak: 0.76, cue: 'rewardHigh' },
+};
+const allExpected = { ...expected, ...arrivalExpected };
+const allSources = { ...REWARD_SOURCES, ...ARRIVAL_SOURCES };
 
 test('reward audio imports exactly the four supplied source mappings', () => {
   assert.deepEqual(Object.keys(REWARD_SOURCES).sort(), Object.keys(expected).sort());
@@ -27,9 +33,20 @@ test('reward audio imports exactly the four supplied source mappings', () => {
   }
 });
 
+test('rare arrival sounds are distinct from physical drop sounds', () => {
+  assert.deepEqual(Object.keys(ARRIVAL_SOURCES).sort(), Object.keys(arrivalExpected).sort());
+  for (const [name, spec] of Object.entries(arrivalExpected)) {
+    assert.equal(ARRIVAL_SOURCES[name].file, spec.name);
+    assert.equal(TARGET_PEAKS[name], spec.peak);
+    assert.equal(AUDIO_PATHS[spec.cue], `assets/runtime/audio/${name}`);
+  }
+  assert.notEqual(AUDIO_PATHS.rewardRare, AUDIO_PATHS.dropRare);
+  assert.notEqual(AUDIO_PATHS.rewardHigh, AUDIO_PATHS.dropHigh);
+});
+
 test('reward cues preserve PCM format, complete duration and bounded peaks', () => {
   let total = 0;
-  for (const [name, spec] of Object.entries(expected)) {
+  for (const [name, spec] of Object.entries(allExpected)) {
     const contents = fs.readFileSync(path.join(runtimeDir, name));
     const metrics = inspectPcm16(contents);
     assert.equal(metrics.bitsPerSample, 16);
@@ -42,17 +59,17 @@ test('reward cues preserve PCM format, complete duration and bounded peaks', () 
     assert.ok(measured.sourceRms > 0.06 && measured.sourceRms < 0.16, name);
     total += contents.length;
   }
-  assert.equal(total, 349768);
-  assert.ok(total < 352 * 1024);
+  assert.equal(total, 654252);
+  assert.ok(total < 650 * 1024);
 });
 
 test('reward normalization is deterministic and changes sample amplitudes only', {
-  skip: !Object.values(expected).every(spec => fs.existsSync(path.join(sourceDir, spec.name))),
+  skip: !Object.values(allExpected).every(spec => fs.existsSync(path.join(sourceDir, spec.name))),
 }, () => {
-  for (const [name, spec] of Object.entries(expected)) {
+  for (const [name, spec] of Object.entries(allExpected)) {
     const sourcePath = path.join(sourceDir, spec.name);
     const original = fs.readFileSync(sourcePath);
-    assert.equal(hash(original), REWARD_SOURCES[name].sha256, 'Original source must not change');
+    assert.equal(hash(original), allSources[name].sha256, 'Original source must not change');
     const result = normalizePcm16(original, spec.peak);
     const runtime = fs.readFileSync(path.join(runtimeDir, name));
     assert.deepEqual(runtime, result.output);
@@ -61,11 +78,11 @@ test('reward normalization is deterministic and changes sample amplitudes only',
     assert.deepEqual(runtime.subarray(0, info.dataOffset), original.subarray(0, info.dataOffset));
     assert.deepEqual(runtime.subarray(info.dataOffset + info.dataBytes), original.subarray(info.dataOffset + info.dataBytes));
     assert.deepEqual(inspectPcm16(runtime), info);
-    assert.equal(hash(fs.readFileSync(sourcePath)), REWARD_SOURCES[name].sha256);
+    assert.equal(hash(fs.readFileSync(sourcePath)), allSources[name].sha256);
   }
 });
 
-test('the ten audio files outside the skill replacement remain byte-for-byte unchanged', () => {
+test('all eleven previous audio files remain byte-for-byte unchanged', () => {
   const previous = {
     'bgm-main.mp3': 'fcc89ed8b241fd48ce5e817dbd042f8598592b4abaa3d76ad1edd70ca478a55c',
     'chop-hit.wav': '1b981c8f57ba8c66bba48836c96b9ed2eaa508eb4c1327a4bcdd1788876694ca',
@@ -77,19 +94,44 @@ test('the ten audio files outside the skill replacement remain byte-for-byte unc
     'reward-reveal.wav': '43a90d3544b9811a030f33f0b856dbbdcb10fe56ea84e8ac13ee645bd7a835cb',
     'drop-rare.wav': '055133aec460f47d4fdd90a1273061d8663a8edfa82df805d6c2804266dbba3a',
     'drop-high.wav': '341fa77a2c640eb0b298fc9b8d8d184a13b12cf856bd315e83ed685ed3f2ba26',
+    'skill-trigger.wav': '176fb1daefc3207fe61f6556b6d9348bc4db31f1657cbe6cae98e97e94666c43',
   };
   for (const [name, sha256] of Object.entries(previous)) {
     assert.equal(hash(fs.readFileSync(path.join(runtimeDir, name))), sha256, name);
   }
 });
 
-test('skill-only selection cannot regenerate other files and rejects conflicting modes', () => {
+test('scoped selections cannot regenerate other files and reject conflicting modes', () => {
   assert.deepEqual(selectAudioFiles(['--skill-only']), ['skill-trigger.wav']);
   assert.deepEqual(selectAudioFiles(['--check', '--skill-only']), ['skill-trigger.wav']);
   assert.deepEqual(selectAudioFiles(['--rewards-only']), Object.keys(REWARD_SOURCES));
+  assert.deepEqual(selectAudioFiles(['--arrivals-only']), Object.keys(ARRIVAL_SOURCES));
+  assert.deepEqual(selectAudioFiles(['--check', '--arrivals-only']), Object.keys(ARRIVAL_SOURCES));
   assert.deepEqual(selectAudioFiles(['--check']), Object.keys(TARGET_PEAKS));
   assert.throws(() => selectAudioFiles(['--skill-only', '--rewards-only']), /Usage/);
+  assert.throws(() => selectAudioFiles(['--arrivals-only', '--rewards-only']), /Usage/);
+  assert.throws(() => selectAudioFiles(['--skill-only', '--arrivals-only']), /Usage/);
   assert.throws(() => selectAudioFiles(['--unknown']), /Usage/);
+});
+
+test('arrival-only verification preserves original sources and all runtime files', {
+  skip: !Object.values(arrivalExpected).every(spec => fs.existsSync(path.join(sourceDir, spec.name))),
+}, () => {
+  const files = fs.readdirSync(runtimeDir);
+  const before = Object.fromEntries(files.map(name => [name, {
+    hash: hash(fs.readFileSync(path.join(runtimeDir, name))), modified: fs.statSync(path.join(runtimeDir, name)).mtimeMs,
+  }]));
+  const output = execFileSync(process.execPath, [path.join(root, 'scripts', 'normalize_audio.js'), '--arrivals-only', '--check'], { encoding: 'utf8' });
+  assert.equal(output.trim().split(/\r?\n/).length, 2);
+  assert.match(output, /reward-arrival-rare\.wav: 0\.800s, 40000Hz, 2ch;.*\(verified\)/);
+  assert.match(output, /reward-arrival-high\.wav: 1\.100s, 40000Hz, 2ch;.*\(verified\)/);
+  for (const name of files) {
+    assert.equal(hash(fs.readFileSync(path.join(runtimeDir, name))), before[name].hash, name);
+    assert.equal(fs.statSync(path.join(runtimeDir, name)).mtimeMs, before[name].modified, name);
+  }
+  for (const [name, spec] of Object.entries(arrivalExpected)) {
+    assert.equal(hash(fs.readFileSync(path.join(sourceDir, spec.name))), ARRIVAL_SOURCES[name].sha256);
+  }
 });
 
 test('only the changed skill audio uses a new cache URL', () => {

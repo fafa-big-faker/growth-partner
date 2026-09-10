@@ -44,10 +44,10 @@ function freshManager(options = {}) {
   return createAudioManager({ AudioCtor: FakeAudio, storage: createStorage(), ...options });
 }
 
-test('audio paths cover the supplied BGM, six legacy effects and four reward cues', () => {
+test('audio paths cover the supplied BGM, six legacy effects and six reward cues', () => {
   assert.deepEqual(Object.keys(AUDIO_PATHS).sort(), [
     'bgmMain', 'chopHit', 'dropHigh', 'dropRare', 'forgeProcess', 'forgeSuccess',
-    'itemDrop', 'rewardReveal', 'skillTrigger', 'uiOpen', 'uiTap',
+    'itemDrop', 'rewardHigh', 'rewardRare', 'rewardReveal', 'skillTrigger', 'uiOpen', 'uiTap',
   ]);
   Object.values(AUDIO_PATHS).forEach(src => assert.match(src, /^assets\/runtime\/audio\//));
 });
@@ -64,6 +64,8 @@ test('category mix keeps UI feedback audible above the restrained BGM', () => {
     dropRare: 0.64,
     dropHigh: 0.68,
     rewardReveal: 0.48,
+    rewardRare: 0.72,
+    rewardHigh: 0.76,
     skillTrigger: 0.74,
   });
 });
@@ -162,8 +164,29 @@ test('audio construction failures do not reject playback or login preload', asyn
   const manager = createAudioManager({ AudioCtor: ThrowingAudio, storage: createStorage() });
   assert.equal(await manager.playEffect('uiOpen'), false);
   const result = await manager.preload(1);
-  assert.equal(result.total, 11);
-  assert.equal(result.failed.length, 11);
+  assert.equal(result.total, 13);
+  assert.equal(result.failed.length, 13);
+});
+
+test('rare arrivals play one complete phrase and cancellation leaves scene sounds and BGM alone', async () => {
+  for (const cue of ['rewardRare', 'rewardHigh']) {
+    const manager = freshManager();
+    await manager.playBgm();
+    const bgm = FakeAudio.instances.at(-1);
+    await manager.playEffect('dropHigh', { group: 'scene' });
+    const scene = FakeAudio.instances.at(-1);
+    await manager.playEffect(cue, { group: 'reward-dialog' });
+    const arrival = FakeAudio.instances.at(-1);
+    assert.equal(arrival.src, AUDIO_PATHS[cue]);
+    assert.equal(arrival.volume, AUDIO_VOLUMES[cue]);
+    assert.equal(arrival.loop, false);
+    assert.equal(arrival.playbackRate, 1);
+    manager.stopEffects('reward-dialog');
+    assert.equal(arrival.paused, true);
+    assert.equal(arrival.currentTime, 0);
+    assert.equal(scene.paused, false);
+    assert.equal(bgm.paused, false);
+  }
 });
 
 test('reward groups limit overlap without cutting already playing tails', async () => {

@@ -57,7 +57,7 @@ async function main() {
         await Promise.all([...overlay.querySelectorAll('img')].map(image => image.decode()));
         await Promise.all(modal.getAnimations().map(animation => animation.finished.catch(() => {})));
         const button = overlay.querySelector('.reward-reveal-confirm');
-        const probe = { overlay, input, source, played: [], stopped: [], audioActions: [], completed: 0, quantities: [], snapshots: [], animations: new Set(), states: [], phases: [], startedAt: 0,
+        const probe = { overlay, input, source, played: [], stopped: [], audioActions: [], completed: 0, quantities: [], snapshots: [], animations: new Set(), states: [], phases: [], startedAt: 0, arrivals: [],
           originalNames: [...overlay.querySelectorAll('.reward-item-name')].map(name => name.textContent),
           originalNameClasses: [...overlay.querySelectorAll('.reward-item-name')].map(name => name.className),
           originalNameColors: [...overlay.querySelectorAll('.reward-item-name')].map(name => getComputedStyle(name).color),
@@ -71,7 +71,7 @@ async function main() {
           if (probe.quantities.at(-1) !== quantity) probe.quantities.push(quantity);
           const values = items.map(item => item.dataset.revealState || 'final');
           if (JSON.stringify(probe.states.at(-1)) !== JSON.stringify(values)) probe.states.push(values);
-          for (const node of overlay.querySelectorAll('.reward-quality-ink, .reward-item-quantity-value')) {
+          for (const node of overlay.querySelectorAll('.reward-quality-ink, .reward-quality-echo, .reward-art-icon, .reward-item-quantity-value')) {
             const name = getComputedStyle(node).animationName;
             if (name !== 'none') probe.animations.add(name);
           }
@@ -81,7 +81,14 @@ async function main() {
             label: name.textContent, fullLabel: name.getAttribute('aria-label'), color: getComputedStyle(name).color,
             quantityColor: getComputedStyle(quantityNode).color, quantityClasses: quantityNode.className,
             shaking: items[0].classList.contains('is-count-shaking'), changing: items[0].classList.contains('is-count-changing'),
-            duration: getComputedStyle(items[0].querySelector('.reward-item-quantity-value')).animationDuration });
+            duration: getComputedStyle(items[0].querySelector('.reward-item-quantity-value')).animationDuration,
+            revealState: items[0].dataset.revealState,
+            iconOpacity: +getComputedStyle(items[0].querySelector('.reward-art-icon')).opacity });
+          if (probe.startedAt) items.forEach((item, index) => {
+            if (item.dataset.revealState && item.dataset.revealState !== 'pending' && !probe.arrivals.some(entry => entry.index === index)) {
+              probe.arrivals.push({ index, at: performance.now() - probe.startedAt, quality: +item.dataset.rewardQuality });
+            }
+          });
           probe.snapshots.push({ buttonY: footer.y, buttonBottom: footer.bottom, bodyBottom: content.bottom,
             modalHeight: modal.getBoundingClientRect().height,
             bodyTop: content.top, countHeight: countBox.height, pageY: window.scrollY,
@@ -89,7 +96,8 @@ async function main() {
             scrollbarWidth: getComputedStyle(overlay.querySelector('.modal-body')).scrollbarWidth,
             scrollbarGutter: getComputedStyle(overlay.querySelector('.modal-body')).scrollbarGutter,
             footerTop: overlay.querySelector('.modal-footer').getBoundingClientRect().top,
-            bodyOverflow: overlay.querySelector('.modal-body').scrollWidth > overlay.querySelector('.modal-body').clientWidth + 1,
+            bodyOverflowX: getComputedStyle(overlay.querySelector('.modal-body')).overflowX,
+            bodyWidth: content.width,
             reachable: button.contains(document.elementFromPoint(footer.x + footer.width / 2, footer.y + footer.height / 2)),
             items: items.map(item => {
               const box = item.getBoundingClientRect(), name = item.querySelector('.reward-item-name'), nameBox = name.getBoundingClientRect();
@@ -98,6 +106,7 @@ async function main() {
                 fullLabel: name.getAttribute('aria-label'), title: name.getAttribute('title'),
                 nameFits: name.scrollWidth <= name.clientWidth + 1, nameSize: parseFloat(getComputedStyle(name).fontSize),
                 nameWidth: nameBox.width, nameScrollWidth: name.scrollWidth, nameClientWidth: name.clientWidth,
+                textInsideBody: nameBox.left >= content.left - 1 && nameBox.right <= content.right + 1 && count.left >= content.left - 1 && count.right <= content.right + 1,
                 imageVisible: artBox.top >= content.top - 1 && artBox.bottom <= content.bottom + 1,
                 countVisible: count.top >= content.top - 1 && count.bottom <= content.bottom + 1 };
             }) });
@@ -108,7 +117,7 @@ async function main() {
         probe.observer = new MutationObserver(capture);
         probe.observer.observe(overlay, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['class', 'style', 'data-reveal-state'] });
         probe.startedAt = performance.now();
-        // Register before the controller's 300ms trigger so this sample remains ordered before it even in a delayed timer batch.
+        // During rare ink gathering, the underlying real name/base quantity must remain intact.
         probe.preSkillTimer = window.setTimeout(() => {
           const item = overlay.querySelector('.reward-item');
           const name = item.querySelector('.reward-item-name');
@@ -138,7 +147,7 @@ async function main() {
       return page.evaluate(() => {
         const probe = revealProbe;
         return { completed: probe.completed, connected: probe.overlay.isConnected, quantities: probe.quantities, played: probe.played, stopped: probe.stopped, audioActions: probe.audioActions,
-          snapshots: probe.snapshots, baseline: probe.baseline, animations: [...probe.animations], states: probe.states, phases: probe.phases,
+          snapshots: probe.snapshots, baseline: probe.baseline, animations: [...probe.animations], states: probe.states, phases: probe.phases, arrivals: probe.arrivals,
           preSkillAt299: probe.preSkillAt299, originalNames: probe.originalNames,
           unchanged: probe.source === JSON.stringify(probe.input), state: probe.overlay.dataset.rewardRevealState,
           finalQuantities: [...probe.overlay.querySelectorAll('.reward-item-quantity-value')].map(node => node.textContent),
@@ -155,12 +164,14 @@ async function main() {
         assert.ok(Math.abs(snapshot.buttonY - result.baseline.buttonY) <= 1, 'reveal must not move the footer: ' + JSON.stringify({ viewport, baseline: result.baseline, snapshot }));
         assert.ok(snapshot.buttonBottom <= viewport.height - 11, 'confirmation remains onscreen');
         assert.ok(snapshot.bodyBottom <= snapshot.footerTop + 1, 'body never overlaps footer');
-        assert.equal(snapshot.bodyOverflow, false, 'long feedback remains inside the scroll body');
+        assert.equal(snapshot.bodyOverflowX, 'hidden', 'temporary ink overshoot never exposes a horizontal scrollbar');
+        assert.ok(Math.abs(snapshot.bodyWidth - result.baseline.bodyWidth) <= 1, 'ink overshoot cannot expand the result layout');
         assert.equal(snapshot.reachable, true, 'confirmation stays reachable during all animation phases');
         assert.equal(snapshot.pageY, result.baseline.pageY, 'the page never scrolls with a reward reveal');
         assert.ok(Math.abs(snapshot.modalHeight - result.baseline.modalHeight) <= 1, 'no extra height is added for local skill text');
         assert.ok(snapshot.countHeight <= 20, 'ordinary quantity stays on one line without a second multiplier');
         for (const [index, item] of snapshot.items.entries()) {
+          assert.equal(item.textInsideBody, true, 'name and actual quantity remain inside the scroll body');
           assert.ok(Math.abs(item.nameHeight - result.baseline.items[index].nameHeight) <= 1, 'replacing a long name cannot collapse its existing area');
           if (!item.active) continue;
           assert.equal(item.nameFits, true, `skill label fits its own cell: ${JSON.stringify({ viewport, item })}`);
@@ -185,8 +196,9 @@ async function main() {
       const skillSounds = result.played.filter(sound => sound.name === 'skillTrigger');
       assert.equal(skillSounds.length, 2, 'only true multiplier skills animate in results; refunds do not');
       assert.deepEqual(result.preSkillAt299, { name: result.originalNames[0], active: false, quantity: '×2' }, '299ms still shows the original item name and plain base quantity');
-      assert.ok(Math.abs(skillSounds[0].at - 300) < 90, 'first skill follows the original-name 300ms hold');
-      assert.ok(Math.abs(skillSounds[1].at - 1600) < 90, 'a subsequent skill on the same item starts immediately after the first 1300ms');
+      const firstArrival = result.played.find(sound => sound.name === 'rewardRare');
+      assert.ok(firstArrival, 'the rare item uses its own complete arrival phrase');
+      assert.ok(Math.abs(skillSounds[0].at - firstArrival.at - 1100) < 120, 'first skill follows the rare800ms arrival and full300ms real-name hold');
       assert.ok(Math.abs(skillSounds[1].at - skillSounds[0].at - 1300) < 90, 'second trigger follows the full first 1300ms');
       for (const [index, expected] of [{ old: '×2', next: '×6！', multiplier: 3 }, { old: '×6！', next: '×12！', multiplier: 2 }].entries()) {
         const at = skillSounds[index].at;
@@ -202,14 +214,12 @@ async function main() {
         assert.equal(shaking.quantityColor, oldColor);
         const changed = result.phases.find(entry => entry.at >= at && entry.changing && entry.quantity === expected.next);
         assert.ok(changed && Math.abs(changed.at - at - 800) < 90, 'new quantity appears only after all 300+500ms');
-        assert.ok(Math.abs(changed.at - [1100, 2400][index]) < 90, 'absolute quantity timing includes exactly one original-name hold');
         assert.equal(changed.duration, '0.5s');
         assert.equal(changed.quantityColor, nextColor, 'new number and current rarity color change together at +800ms');
         assert.match(changed.quantityClasses, new RegExp(`\\bbuff-quality-${rarities[index]}\\b`));
         assert.ok(result.phases.filter(entry => entry.at >= at && entry.at < changed.at).every(entry => entry.quantity === expected.old && entry.quantityColor === oldColor), 'old value and old color remain unchanged until the quantity event');
         const settled = result.phases.find(entry => entry.at > changed.at && !entry.changing && entry.quantity === expected.next);
         assert.ok(settled && Math.abs(settled.at - at - 1300) < 90, 'new quantity settles only after its full 500ms');
-        assert.ok(Math.abs(settled.at - [1600, 2900][index]) < 90, 'absolute settling does not insert a second name hold');
       }
       assert.equal(result.finalQuantities[0], '×12！');
       assert.equal(result.finalQuantityColors[0], buffColors[rarities[1]], 'final color uses the last actual trigger, never maximum rarity');
@@ -232,14 +242,20 @@ async function main() {
       assert.equal(initial.notices, 0);
       assert.equal(initial.multiplierMarks, 0);
       assert.equal(initial.button, '显示全部');
-      await page.waitForFunction(() => revealProbe.completed === 1, null, { timeout: 6000 });
+      await page.waitForFunction(() => revealProbe.completed === 1, null, { timeout: 18000 });
       const natural = await report();
       assertStable(natural, viewport);
       assertSkillSequence(natural, [2, 5]);
-      const ordinaryCues = natural.played.filter(sound => sound.name === 'rewardReveal').slice(3);
-      for (let index = 1; index < ordinaryCues.length; index++) {
-        assert.ok(Math.abs(ordinaryCues[index].at - ordinaryCues[index - 1].at - 120) < 70, 'ordinary rewards keep their 120ms cadence');
+      assert.deepEqual(natural.arrivals.map(entry => entry.quality), [3, 1, 1, 2, 3, 4, 5, 1, 2, 3, 3]);
+      for (let index = 1; index < natural.arrivals.length; index++) {
+        const preceding = natural.arrivals[index - 1];
+        const expected = index === 1 ? 3700 : preceding.quality >= 4 ? 1400 : preceding.quality === 3 ? 1100 : 210;
+        assert.ok(Math.abs(natural.arrivals[index].at - preceding.at - expected) < 200,
+          `next item follows its predecessor's completed rarity/skill presentation: ${JSON.stringify({ index, expected, arrivals: natural.arrivals })}`);
       }
+      assert.equal(natural.played.filter(sound => sound.name === 'rewardRare').length, 4);
+      assert.equal(natural.played.filter(sound => sound.name === 'rewardHigh').length, 2);
+      assert.ok(natural.phases.some(phase => phase.revealState === 'ink' && phase.iconOpacity === 0), 'real rare ink begins with its item icon hidden');
       assert.equal(new Set(natural.played.map(sound => sound.group)).size, 1, 'one modal owns one audio group');
       assert.equal(natural.stopped.length, 2, 'only skill starts stop their preceding reveal tails');
       for (const [index, action] of natural.audioActions.entries()) {
@@ -247,6 +263,9 @@ async function main() {
       }
       assert.equal(natural.namesRestored, true);
       assert.ok(natural.animations.includes('reward-skill-ink'), 'real ink pulse is active');
+      assert.ok(natural.animations.includes('reward-rare-ink'), 'rare ink spreads as a separate layer');
+      assert.ok(natural.animations.includes('reward-rare-icon'), 'rare icon has its own delayed entrance');
+      assert.ok(natural.animations.includes('reward-ink-echo'), 'high rarity has a restrained second ink layer');
       assert.ok(natural.animations.includes('reward-count-shake'), 'old number has a real dedicated shake');
       assert.ok(natural.animations.includes('reward-count-arrive'), 'new number has a real scale-and-settle animation');
       assert.equal(natural.animations.includes('reward-refund-reveal'), false);
@@ -268,7 +287,7 @@ async function main() {
 
       const longInitial = await start(false, 'long');
       assert.equal(longInitial.targetClipped, true, 'long-name trigger starts outside the short body');
-      await page.waitForFunction(() => revealProbe.overlay.querySelectorAll('.reward-item')[8].classList.contains('is-skill-active'));
+      await page.waitForFunction(() => revealProbe.overlay.querySelectorAll('.reward-item')[8].classList.contains('is-skill-active'), null, { timeout: 18000 });
       await page.waitForTimeout(850);
       const longRunning = await report();
       // An artificial five-digit multiplier checks exact fit; normal triggers above still require at least 11px.
@@ -291,6 +310,7 @@ async function main() {
       const modes = [];
       for (const mode of ['finish', 'cancel', 'removed', 'hidden']) {
         await start(true);
+        await page.waitForFunction(() => revealProbe.played.length > 0);
         const action = await page.evaluate(mode => {
           const probe = revealProbe;
           if (mode === 'removed') probe.overlay.remove();
@@ -322,9 +342,14 @@ async function main() {
 
       await page.emulateMedia({ reducedMotion: 'reduce' });
       const reduced = await start();
-      assert.equal(reduced.initialState, 'complete');
+      assert.equal(reduced.initialState, 'running');
+      await page.waitForFunction(() => revealProbe.overlay.querySelector('.reward-item').classList.contains('is-skill-active'), null, { timeout: 5000 });
+      const reducedRunning = await report();
+      assert.ok(reducedRunning.states.some(states => states.slice(1).every(state => state === 'pending')), 'reduced motion still presents one result at a time');
+      assert.ok(reducedRunning.played.some(sound => sound.name === 'skillTrigger'), 'reduced motion retains skill information and audio');
+      assert.equal(reducedRunning.animations.length, 0, 'reduced motion removes reward movement and scaling');
+      await page.evaluate(() => revealProbe.controller.finish());
       const staticResult = await report();
-      assert.equal(staticResult.played.length, 0);
       assert.equal(staticResult.completed, 1);
       assert.equal(staticResult.finalQuantities[0], '×12！');
       assert.equal(staticResult.finalQuantityColors[0], buffColors[5]);
@@ -332,7 +357,7 @@ async function main() {
       assertStable(staticResult, viewport);
       checks.push({ viewport, realQuantityStages: natural.quantities, mixedRarities: ['2→5', '5→2'], originalNameHold: 300, checkedAt299: true,
         skillCues: 2, triggerDuration: 1300, animations: natural.animations,
-        stableSnapshots: natural.snapshots.length, cancellationModes: modes, reducedMotion: 'final without audio' });
+        stableSnapshots: natural.snapshots.length, cancellationModes: modes, reducedMotion: 'sequential information without movement' });
     }
     assert.deepEqual(errors, []);
     assert.deepEqual(writes, []);

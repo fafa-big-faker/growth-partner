@@ -55,7 +55,7 @@ test('each density includes exactly the live common and login resources plus all
   }
   assert.ok(frames.every(asset => asset.density === 'all'));
   const sounds = manifest.assets.filter(asset => asset.kind === 'audio');
-  assert.equal(sounds.length, 11);
+  assert.equal(sounds.length, 13);
   assert.deepEqual(sounds.map(asset => asset.url).sort(), [...Object.values(audio.AUDIO_PATHS)].sort());
   assert.ok(sounds.every(asset => asset.density === 'all'));
 });

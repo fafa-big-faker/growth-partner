@@ -2,7 +2,7 @@
 (function (root) {
   'use strict';
   const manifest = {
-  "version": "237a9d5ecca91fd0d8e9313af5e44fdd6760f2b1786ab63c56a9e85085187e96",
+  "version": "2905f1767da4d1ffc6c926ce6bc7c7d8a6dd34301681babc7d4901dca7f356da",
   "assets": [
     {
       "url": "assets/runtime/entry-preparation/background.webp?v=entry-preparation-20260910",
@@ -71,6 +71,20 @@
       "url": "assets/runtime/audio/item-drop.wav",
       "bytes": 48242,
       "sha256": "2c19bdfdf5f53be6ab0f49e6396726495c903b805937b8d29254f4c1eec6256f",
+      "kind": "audio",
+      "density": "all"
+    },
+    {
+      "url": "assets/runtime/audio/reward-arrival-high.wav",
+      "bytes": 176242,
+      "sha256": "e5ab3dbb63eb2550b644a882188bcd9fd151885abbfcee5d93465191085e6d69",
+      "kind": "audio",
+      "density": "all"
+    },
+    {
+      "url": "assets/runtime/audio/reward-arrival-rare.wav",
+      "bytes": 128242,
+      "sha256": "1734ae5ec92f5fffc000245c11bb875b8d8b728337153f4f052f62498bfd0aa1",
       "kind": "audio",
       "density": "all"
     },

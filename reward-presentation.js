@@ -73,9 +73,14 @@
     const events = [];
     let cursor = 0;
     for (const [itemIndex, reward] of metadata.entries()) {
+      const rank = qualityId(reward.quality);
+      const arrivalMs = rank >= 4 ? 1100 : rank === 3 ? 800 : 210;
       events.push({ at: cursor, type: 'reveal', itemIndex });
+      if (rank >= 3) events.push({ at: cursor + (rank >= 4 ? 780 : 480), type: 'icon', itemIndex });
+      events.push({ at: cursor + arrivalMs, type: 'arrival-settled', itemIndex });
       const hasMultiplier = reward.triggers.some(trigger => trigger.type == null || Number(trigger.type) === 1);
-      cursor += hasMultiplier ? 300 : 120;
+      // Rare names enter with the icon; let that arrival settle before the full name hold.
+      cursor += rank >= 3 ? arrivalMs + 300 : hasMultiplier ? 300 : arrivalMs;
       for (const [triggerIndex, trigger] of reward.triggers.entries()) {
         if (trigger.type != null && Number(trigger.type) !== 1) continue;
         events.push({ at: cursor, type: 'trigger', itemIndex, triggerIndex });
@@ -98,6 +103,7 @@
       let metadata;
       try { metadata = JSON.parse(element.dataset.rewardReveal); } catch { metadata = null; }
       metadata = metadata && Array.isArray(metadata.triggers) ? metadata : getRewardMetadata();
+      metadata = { ...metadata, quality: qualityId(element.dataset.rewardQuality) };
       const quantity = element.querySelector('.reward-item-quantity-value');
       const name = element.querySelector('.reward-item-name');
       const reserves = [name, element.querySelector('.reward-item-quantity')]
@@ -111,6 +117,7 @@
     let done = false;
     let observer;
     let controller;
+    let startFrame;
 
     function stopAudio() { try { audio?.stopEffects?.(group); } catch {} }
     function cue(name) {
@@ -193,6 +200,8 @@
     function cleanup(stop = true) {
       timers.forEach(timer => view.clearTimeout(timer));
       timers.clear();
+      if (startFrame != null) view.cancelAnimationFrame?.(startFrame);
+      startFrame = null;
       observer?.disconnect();
       document?.removeEventListener?.('visibilitychange', visibilityChanged);
       view.removeEventListener?.('pagehide', cancel);
@@ -201,7 +210,7 @@
     }
     function finalState() {
       for (const entry of entries) {
-        entry.element.classList.remove('is-reward-pending', 'is-reward-revealing', 'is-skill-active', 'is-count-shaking', 'is-count-changing');
+        entry.element.classList.remove('is-reward-pending', 'is-reward-revealing', 'is-reward-ink', 'is-reward-icon', 'is-skill-active', 'is-count-shaking', 'is-count-changing');
         entry.element.dataset.revealState = 'complete';
         showQuantity(entry, entry.metadata.quantity, entry.metadata.triggers.at(-1));
         restoreName(entry);
@@ -233,11 +242,18 @@
       if (hidden()) { visibilityChanged(); return; }
       const entry = entries[event.itemIndex];
       if (event.type === 'reveal') {
+        const rank = entry.metadata.quality;
         entry.element.classList.remove('is-reward-pending');
-        entry.element.classList.add('is-reward-revealing');
-        entry.element.dataset.revealState = 'revealing';
+        entry.element.classList.add(rank >= 3 ? 'is-reward-ink' : 'is-reward-revealing');
+        entry.element.dataset.revealState = rank >= 3 ? 'ink' : 'revealing';
         revealInBody(entry);
-        cue('rewardReveal');
+        cue(rank >= 4 ? 'rewardHigh' : rank === 3 ? 'rewardRare' : 'rewardReveal');
+      } else if (event.type === 'icon') {
+        entry.element.classList.add('is-reward-icon');
+        entry.element.dataset.revealState = 'revealing';
+      } else if (event.type === 'arrival-settled') {
+        entry.element.classList.remove('is-reward-revealing', 'is-reward-ink', 'is-reward-icon');
+        entry.element.dataset.revealState = 'settled';
       } else if (event.type === 'trigger') {
         entry.element.classList.add('is-skill-active');
         showSkillName(entry, entry.metadata.triggers[event.triggerIndex]);
@@ -262,7 +278,7 @@
     controller = { finish, cancel };
     if (overlay) activeReveals.set(overlay, controller);
     if (hidden()) { visibilityChanged(); return controller; }
-    if (!entries.length || view.matchMedia?.('(prefers-reduced-motion: reduce)').matches) { finish(); return controller; }
+    if (!entries.length) { finish(); return controller; }
     overlay.dataset.rewardRevealState = 'running';
     for (const entry of entries) {
       entry.element.classList.add('is-reward-pending');
@@ -276,8 +292,17 @@
       timers.add(timer);
     }
     const plan = getRevealPlan(entries.map(entry => entry.metadata));
-    for (const event of plan.events) schedule(() => apply(event), event.at);
-    schedule(() => complete(false), plan.duration);
+    // Only queue the next stage. A busy main thread must not flush every future reward at once.
+    function nextStage(index, previousAt) {
+      if (done) return;
+      const event = plan.events[index];
+      if (!event) { schedule(() => complete(false), plan.duration - previousAt); return; }
+      schedule(() => {
+        let next = index;
+        while (!done && next < plan.events.length && plan.events[next].at === event.at) apply(plan.events[next++]);
+        nextStage(next, event.at);
+      }, event.at - previousAt);
+    }
     const MutationObserver = view.MutationObserver;
     if (MutationObserver && document?.documentElement) {
       observer = new MutationObserver(visibilityChanged);
@@ -285,6 +310,13 @@
     }
     document?.addEventListener?.('visibilitychange', visibilityChanged);
     view.addEventListener?.('pagehide', cancel);
+    // Hide synchronously, then let the real modal and cultivation redraw reach the screen first.
+    if (view.requestAnimationFrame) {
+      startFrame = view.requestAnimationFrame(() => {
+        if (done) return;
+        startFrame = view.requestAnimationFrame(() => { startFrame = null; nextStage(0, 0); });
+      });
+    } else nextStage(0, 0);
     return controller;
   }
 
@@ -312,6 +344,7 @@
       return `<div class="reward-item reward-item--${size}" data-reward-item="${escape(id)}" data-reward-quality="${rank}" data-reward-reveal="${escape(JSON.stringify(metadata))}">
         <div class="reward-art">
           <img class="reward-quality-ink" src="${ART_BASE}/quality-${rank}.webp?v=${ART_VERSION}" alt="" aria-hidden="true" decoding="async">
+          ${rank >= 4 ? `<img class="reward-quality-echo" src="${ART_BASE}/quality-${rank}.webp?v=${ART_VERSION}" alt="" aria-hidden="true" decoding="async">` : ''}
           <div class="reward-art-icon">${icon}</div>
         </div>
         <div class="reward-item-name quality-item-name quality-${rank}">${escape(name)}</div>
