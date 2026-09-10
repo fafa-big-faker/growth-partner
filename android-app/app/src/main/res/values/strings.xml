@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">仙来</string>
-    <string name="connecting">正在连接仙途…</string>
     <string name="connection_error">暂时无法连接仙途</string>
     <string name="retry_hint">请检查网络后重试。进度保存在云端。</string>
     <string name="retry">重新连接</string>

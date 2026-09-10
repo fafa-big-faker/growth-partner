@@ -4031,3 +4031,32 @@ body {
   border: 0;
 }
 
+/* Admin reward selection shares the current item art with the player views. */
+.admin-reward-rows { display: grid; gap: 10px; margin-bottom: 10px; }
+.admin-reward-row {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) 72px 48px;
+  align-items: center;
+  gap: 8px;
+}
+.admin-reward-row select,
+.admin-reward-row input { width: 100%; min-width: 0; box-sizing: border-box; }
+.admin-reward-row .admin-reward-count { margin: 0; font-size: 11px; color: var(--text-secondary); }
+.admin-reward-count input { display: block; margin-top: 3px; }
+.admin-reward-remove { padding: 8px 6px; }
+.admin-item-preview { display: inline-flex; align-items: center; justify-content: center; min-width: 32px; }
+.admin-item-preview img { width: auto; max-width: 32px; max-height: 44px; object-fit: contain; }
+.admin-gm-item-preview { margin-top: 10px; }
+.admin-gm-item-preview:empty { display: none; }
+.admin-reward-empty,
+.admin-reward-hint { margin: 6px 0 10px; color: var(--text-light); font-size: 12px; }
+.admin-reward-hint { margin-bottom: 0; }
+.admin-inventory-item { display: inline-flex; align-items: center; gap: 8px; }
+@media (max-width: 420px) {
+  .admin-reward-row { grid-template-columns: 36px minmax(0, 1fr) 56px; }
+  .admin-reward-row .admin-reward-item { grid-column: 2 / 4; }
+  .admin-reward-row .admin-reward-count { grid-column: 2; display: flex; align-items: center; gap: 8px; }
+  .admin-reward-count input { max-width: 80px; margin: 0; }
+  .admin-reward-row .admin-reward-remove { grid-column: 3; }
+}
+

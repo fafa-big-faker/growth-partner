@@ -12,13 +12,15 @@
 
 脚本依次执行导航策略的 JVM 测试、资源编译、Java 编译、DEX 转换、打包、对齐、正式签名和签名验证。无第三方运行依赖，包内不包含游戏数据、Supabase 密钥或原生 JavaScript 对象。`app/` 同时是标准 Android 工程，可用 Android Studio 打开（Gradle 路径需要 JDK 17、Gradle 8.9；零下载脚本使用现有 JDK 11）。
 
-当前 1.0.1 使用仓库同级 `美术风格参考V7/仙来-应用图标.png` 正式原图（1254×1254、不透明）。运行 `python android-app/import-official-icon.py` 或不带参数的 `python android-app/export-icon.py` 可确定性重新导出。脚本核对源指纹，实测仙字与朱印轮廓，把整幅原画等比缩到 226×226 后置于 324×324 前景，并用原图边缘镜像延展纸纹。实测主体半径 94.7612px，小于 Android 99px 保证安全半径；圆形和圆角方形裁切均不丢失主体像素。原画保留不改。
+从 1.0.1 起使用仓库同级 `美术风格参考V7/仙来-应用图标.png` 正式原图（1254×1254、不透明）。运行 `python android-app/import-official-icon.py` 或不带参数的 `python android-app/export-icon.py` 可确定性重新导出。脚本核对源指纹，实测仙字与朱印轮廓，把整幅原画等比缩到 226×226 后置于 324×324 前景，并用原图边缘镜像延展纸纹。实测主体半径 94.7612px，小于 Android 99px 保证安全半径；圆形和圆角方形裁切均不丢失主体像素。原画保留不改。
 
 同一布局同时导出 `assets/runtime/app-icon/favicon.png`（64×64）和 `apple-touch-icon.png`（180×180），以及本地忽略目录中的图标裁切检查图。来源、布局参数与产物指纹在 `icon-source.json` 和网页目录的 `manifest.json`。替换新的正式原图时必须重新测量主体与裁切范围，不能照搬当前参数。
 
 通用导出器仍接受显式新路径：`python android-app/export-icon.py path/to/icon.png`。透明主体图按 alpha 边界等比放进安全区；符合中央62%安全区的满幅方图可用 `--full-bleed`，不预先烘焙圆角。当前正式原图的朱印超出该约定，所以必须走专用导入脚本，不能直接套用满幅模式。1.0.1 的 versionCode 为 2，使用原证书，可覆盖安装 1.0.0，旧 APK 保留。
 
 ## 原生与网页接口
+
+当前交付1.0.2（versionCode 3）。删除APK自建的“仙字图标＋正在连接仙途＋转圈”连接占位页，启动即交给网页的入境准备；连接前窗口使用相同纸面底色。原生面板仅在真正的网络/引擎错误时显示重试，重试时不会先闪出上次失败的网页。原包名、签名和本地存储不变，直接覆盖安装1.0.1，无需卸载；网页更新不能替换旧安装包的原生启动页。
 
 应用只加载 `https://fafa-big-faker.github.io/growth-partner/` 范围内的页面。其他 HTTP(S) 链接交给系统浏览器，其余 scheme 拦截。资源的正常跨站请求（例如 Supabase 和外部 SDK）保持网页行为；关闭明文通信、本地文件访问、混合内容和第三方 Cookie，不绕过证书错误。
 

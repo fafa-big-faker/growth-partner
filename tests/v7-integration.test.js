@@ -30,7 +30,7 @@ test('new modules load before application and paper/quality style before scrollb
   for (const file of ['mobile-cultivation.js', 'reward-presentation.js', 'mobile-cultivation.css', 'reward-presentation.css', 'audio-manager.js', 'app.js']) {
     const codeVersion = file.startsWith('mobile-cultivation.') ? 'reward-login-20260909'
       : file === 'reward-presentation.js' ? 'skill-quality-20260909'
-        : file === 'app.js' ? 'entry-preparation-20260910'
+        : file === 'app.js' ? 'admin-rewards-20260910'
           : file === 'audio-manager.js' ? 'android-entry-20260909' : 'local-skill-20260909';
     assert.ok(html.includes(`${file}?v=${codeVersion}`), file);
   }

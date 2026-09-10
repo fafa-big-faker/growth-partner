@@ -27,21 +27,18 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Button;
 import android.widget.FrameLayout;
-import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
 public final class MainActivity extends Activity {
-    private static final int PAPER = Color.rgb(244, 241, 232);
+    private static final int PAPER = Color.rgb(238, 238, 226);
     private static final int INK = Color.rgb(53, 74, 66);
     private final Handler handler = new Handler(Looper.getMainLooper());
     private FrameLayout root;
-    private LinearLayout loading;
+    private LinearLayout errorPanel;
     private TextView title;
     private TextView detail;
-    private ProgressBar spinner;
     private Button retry;
     private WebView webView;
     private boolean failed;
@@ -62,7 +59,7 @@ public final class MainActivity extends Activity {
         root.setBackgroundColor(PAPER);
         configureInsets();
         setContentView(root);
-        createLoadingView();
+        createErrorView();
         connect();
     }
 
@@ -85,36 +82,33 @@ public final class MainActivity extends Activity {
         return Math.round(value * getResources().getDisplayMetrics().density);
     }
 
-    private void createLoadingView() {
-        loading = new LinearLayout(this);
-        loading.setOrientation(LinearLayout.VERTICAL);
-        loading.setGravity(Gravity.CENTER);
-        loading.setPadding(dp(28), dp(24), dp(28), dp(24));
-        loading.setBackgroundColor(PAPER);
-        ImageView mark = new ImageView(this);
-        mark.setImageResource(R.drawable.launcher_foreground);
-        mark.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
-        loading.addView(mark, new LinearLayout.LayoutParams(dp(128), dp(128)));
+    private void createErrorView() {
+        // LoginBoot in the web page owns normal startup. This panel is only for failures.
+        errorPanel = new LinearLayout(this);
+        errorPanel.setOrientation(LinearLayout.VERTICAL);
+        errorPanel.setGravity(Gravity.CENTER);
+        errorPanel.setPadding(dp(28), dp(24), dp(28), dp(24));
+        errorPanel.setBackgroundColor(PAPER);
+        errorPanel.setVisibility(View.GONE);
         title = new TextView(this);
         title.setTextColor(INK);
         title.setTextSize(20);
         title.setGravity(Gravity.CENTER);
+        title.setText(R.string.connection_error);
         title.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
-        loading.addView(title, new LinearLayout.LayoutParams(-1, -2));
+        errorPanel.addView(title, new LinearLayout.LayoutParams(-1, -2));
         detail = new TextView(this);
         detail.setTextColor(INK);
         detail.setTextSize(14);
         detail.setGravity(Gravity.CENTER);
         detail.setPadding(0, dp(12), 0, dp(12));
-        loading.addView(detail, new LinearLayout.LayoutParams(-1, -2));
-        spinner = new ProgressBar(this);
-        loading.addView(spinner, new LinearLayout.LayoutParams(dp(32), dp(32)));
+        errorPanel.addView(detail, new LinearLayout.LayoutParams(-1, -2));
         retry = new Button(this);
         retry.setText(R.string.retry);
         retry.setMinHeight(dp(48));
         retry.setOnClickListener(view -> connect());
-        loading.addView(retry, new LinearLayout.LayoutParams(dp(200), dp(52)));
-        root.addView(loading, new FrameLayout.LayoutParams(-1, -1));
+        errorPanel.addView(retry, new LinearLayout.LayoutParams(dp(200), dp(52)));
+        root.addView(errorPanel, new FrameLayout.LayoutParams(-1, -1));
     }
 
     @SuppressWarnings("deprecation")
@@ -195,16 +189,13 @@ public final class MainActivity extends Activity {
 
     private void connect() {
         failed = false;
-        loading.setVisibility(View.VISIBLE);
-        loading.bringToFront();
-        title.setText(R.string.connecting);
-        detail.setVisibility(View.GONE);
-        spinner.setVisibility(View.VISIBLE);
-        retry.setVisibility(View.GONE);
+        errorPanel.setVisibility(View.GONE);
         try {
+            boolean firstDocument = webView == null;
             if (webView == null) createWebView();
             webView.stopLoading();
-            webView.setVisibility(View.INVISIBLE);
+            // Never flash the previous failed document during a retry.
+            webView.setVisibility(firstDocument ? View.VISIBLE : View.INVISIBLE);
             handler.removeCallbacks(loadDeadline);
             handler.postDelayed(loadDeadline, 30000);
             // Revalidate the entry document on every fresh launch or explicit retry, without clearing user storage.
@@ -218,7 +209,7 @@ public final class MainActivity extends Activity {
         if (failed || webView == null || !NavigationPolicy.isTrusted(url)) return;
         handler.removeCallbacks(loadDeadline);
         webView.setVisibility(View.VISIBLE);
-        loading.setVisibility(View.GONE);
+        errorPanel.setVisibility(View.GONE);
         setPageBackgrounded(paused);
     }
 
@@ -230,12 +221,11 @@ public final class MainActivity extends Activity {
             webView.stopLoading();
             webView.setVisibility(View.INVISIBLE);
         }
-        loading.setVisibility(View.VISIBLE);
-        loading.bringToFront();
+        errorPanel.setVisibility(View.VISIBLE);
+        errorPanel.bringToFront();
         title.setText(R.string.connection_error);
         detail.setText(message);
         detail.setVisibility(View.VISIBLE);
-        spinner.setVisibility(View.GONE);
         retry.setVisibility(View.VISIBLE);
     }
 

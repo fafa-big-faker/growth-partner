@@ -5488,6 +5488,93 @@ const PlayerView = {
    天道视图
    ================================================================ */
 const AdminView = {
+  _renderAdminItemOptions(selectedId = '', includeChopping = false) {
+    const typeNames = { 0: '游戏币', 1: '合成材料', 2: '兑现道具', 3: '突破道具', 4: '锻造道具', 5: '仙斧装备', 6: '砍树次数' };
+    const canonicalItems = new Map();
+    Object.entries(ITEMS).forEach(([key, item]) => {
+      const id = String(item.id ?? key);
+      if (!includeChopping && (id === '1' || Number(item.type) === 6)) return;
+      if (!canonicalItems.has(id)) canonicalItems.set(id, { ...item, id });
+    });
+    const groups = new Map();
+    [...canonicalItems.values()].sort((a, b) => Number(a.type || 0) - Number(b.type || 0)
+      || Number(a.quality || 0) - Number(b.quality || 0) || String(a.name || a.id).localeCompare(String(b.name || b.id), 'zh-CN'))
+      .forEach(item => {
+        const type = Number(item.type || 0);
+        if (!groups.has(type)) groups.set(type, []);
+        groups.get(type).push(item);
+      });
+    return '<option value="">请选择道具</option>' + [...groups].map(([type, items]) =>
+      `<optgroup label="${escapeHtml(typeNames[type] || '其他道具')}">${items.map(item => {
+        const qualityName = QUALITY[item.quality]?.name;
+        return `<option value="${escapeHtml(item.id)}"${String(selectedId) === item.id ? ' selected' : ''}>${escapeHtml(item.name || '未命名道具')}${qualityName ? ` · ${escapeHtml(qualityName)}` : ''}</option>`;
+      }).join('')}</optgroup>`).join('');
+  },
+
+  _renderRewardEditor(id) {
+    return `<div class="admin-reward-editor" id="${escapeHtml(id)}">
+      <div class="admin-reward-rows"></div>
+      <p class="admin-reward-empty">尚未添加道具奖励</p>
+      <button type="button" class="btn btn-outline btn-sm" onclick="AdminView._addRewardRow(this.closest('.admin-reward-editor'))">添加道具</button>
+      <p class="admin-reward-hint">选择道具并填写数量；相同道具会合并发放。</p>
+    </div>`;
+  },
+
+  _addRewardRow(editor, reward = {}) {
+    if (!editor) return;
+    const row = document.createElement('div');
+    row.className = 'admin-reward-row';
+    row.setAttribute('data-reward-row', '');
+    row.innerHTML = `
+      <span class="admin-item-preview" aria-hidden="true"></span>
+      <select class="admin-reward-item" aria-label="奖励道具" onchange="AdminView._updateAdminItemPreview(this)">${this._renderAdminItemOptions(reward.item_id)}</select>
+      <label class="admin-reward-count">数量<input class="admin-reward-quantity" type="number" min="1" step="1" inputmode="numeric" value="${escapeHtml(String(reward.quantity ?? 1))}" aria-label="奖励数量"></label>
+      <button type="button" class="btn btn-outline btn-sm admin-reward-remove" aria-label="删除这项奖励" onclick="AdminView._removeRewardRow(this)">删除</button>`;
+    editor.querySelector('.admin-reward-rows').appendChild(row);
+    editor.querySelector('.admin-reward-empty').hidden = true;
+    const select = row.querySelector('.admin-reward-item');
+    this._updateAdminItemPreview(select);
+    select.focus();
+    return row;
+  },
+
+  _removeRewardRow(button) {
+    const editor = button.closest('.admin-reward-editor');
+    button.closest('[data-reward-row]')?.remove();
+    if (editor) editor.querySelector('.admin-reward-empty').hidden = editor.querySelectorAll('[data-reward-row]').length > 0;
+  },
+
+  _updateAdminItemPreview(select) {
+    const preview = select.closest('.admin-reward-row, .admin-item-choice')?.querySelector('.admin-item-preview');
+    if (!preview) return;
+    const itemId = select.value;
+    const item = Object.hasOwn(ITEMS, itemId) ? ITEMS[itemId] : null;
+    preview.innerHTML = item ? renderItemIcon(String(item.id ?? itemId), escapeHtml(item.name || ''), 'item-icon-sm') : '';
+  },
+
+  _readRewardItems(editor) {
+    const merged = new Map();
+    for (const row of editor.querySelectorAll('[data-reward-row]')) {
+      const selectedId = row.querySelector('.admin-reward-item').value;
+      const item = Object.hasOwn(ITEMS, selectedId) ? ITEMS[selectedId] : null;
+      if (!item || selectedId === '1' || Number(item.type) === 6) return { error: '请为每项奖励选择道具，或删除空行' };
+      const rawQuantity = row.querySelector('.admin-reward-quantity').value.trim();
+      const quantity = Number(rawQuantity);
+      if (!/^\d+$/.test(rawQuantity) || !Number.isSafeInteger(quantity) || quantity <= 0) return { error: '道具数量须为正整数' };
+      const itemId = String(item.id ?? selectedId);
+      const total = (merged.get(itemId) || 0) + quantity;
+      if (!Number.isSafeInteger(total)) return { error: '同一道具的奖励总数过大，请减少数量' };
+      merged.set(itemId, total);
+    }
+    return { items: [...merged].map(([item_id, quantity]) => ({ item_id, quantity })) };
+  },
+
+  _readRewardChopping(input) {
+    const raw = input.value.trim() || '0';
+    const quantity = Number(raw);
+    return /^\d+$/.test(raw) && Number.isSafeInteger(quantity) ? quantity : null;
+  },
+
   // --- 任务管理 ---
   async renderTaskManage() {
     const main = document.getElementById('admin-main');
@@ -5550,10 +5637,10 @@ const AdminView = {
     tasks.forEach(task => {
       const rewardItems = task.rewardItems || [];
       let rewardHtml = '';
-      if (task.rewardChopping > 0) rewardHtml += `<span class="reward-chopping" style="display:inline-flex;align-items:center;gap:3px">${renderItemIcon('1', '🪓', 'item-icon-xs')} ×${task.rewardChopping}</span>`;
+      if (task.rewardChopping > 0) rewardHtml += `<span class="reward-chopping" style="display:inline-flex;align-items:center;gap:3px">${renderItemIcon('1', '砍树次数', 'item-icon-xs')} ×${task.rewardChopping}</span>`;
       rewardItems.forEach(ri => {
         const def = ITEMS[ri.item_id];
-        if (def) rewardHtml += `<span style="display:inline-flex;align-items:center;gap:2px;font-size:14px">${renderItemIcon(ri.item_id, def.icon, 'item-icon-xs')}×${ri.quantity}</span>`;
+        if (def) rewardHtml += `<span style="display:inline-flex;align-items:center;gap:2px;font-size:14px">${renderItemIcon(def.id || ri.item_id, escapeHtml(def.name), 'item-icon-xs')}×${ri.quantity}</span>`;
       });
 
       const statusBadge = task.status === 'draft'
@@ -5652,14 +5739,11 @@ const AdminView = {
       </div>
       <div class="form-group">
         <label>奖励砍树次数</label>
-        <input type="number" id="new-task-chopping" value="3" min="0">
+        <input type="number" id="new-task-chopping" value="3" min="0" step="1" inputmode="numeric">
       </div>
       <div class="form-group">
-        <label>奖励道具（格式：道具ID:数量，用逗号分隔）</label>
-        <input type="text" id="new-task-items" placeholder="比如：40001:2,20001:1">
-        <div style="font-size:11px;color:var(--text-light);margin-top:4px">
-          道具ID：40001(锻造石) / 30001(期石) / 30101(望石) / 30201(待石) / 20001(铜珠) / 20101(银锭) / 20201(金元宝) / 20301(灵玉)
-        </div>
+        <label>奖励道具（选填）</label>
+        ${this._renderRewardEditor('new-task-items')}
       </div>
       <div style="display:none;border-top:1px solid var(--border);margin:12px 0;padding-top:12px" id="new-task-theme-box">
         <div style="font-weight:600;margin-bottom:8px;font-size:13px">主题设置<span id="theme-required-hint" style="color:var(--danger);display:none">（主题任务必填）</span></div>
@@ -5720,8 +5804,7 @@ const AdminView = {
       const title = field('new-task-title').trim();
       const desc = field('new-task-desc').trim();
       const difficulty = field('new-task-diff');
-      const rewardChopping = parseInt(field('new-task-chopping')) || 0;
-      const itemsStr = field('new-task-items').trim();
+      const rewardChopping = this._readRewardChopping(overlay.querySelector('#new-task-chopping'));
       let themeName = field('new-task-theme').trim() || null;
       let themeStart = field('new-task-theme-start') || null;
       let themeEnd = field('new-task-theme-end') || null;
@@ -5748,13 +5831,10 @@ const AdminView = {
         finalThemeName = themeName; finalThemeStart = themeStart; finalThemeEnd = themeEnd;
       }
 
-      let rewardItems = [];
-      if (itemsStr) {
-        rewardItems = itemsStr.split(',').map(s => {
-          const [itemId, qty] = s.trim().split(':');
-          return { item_id: itemId.trim(), quantity: parseInt(qty) || 1 };
-        }).filter(i => i.item_id && ITEMS[i.item_id]);
-      }
+      if (rewardChopping === null) { UI.toast('砍树次数须为非负整数', 'warn'); return false; }
+      const rewards = this._readRewardItems(overlay.querySelector('#new-task-items'));
+      if (rewards.error) { UI.toast(rewards.error, 'warn'); return false; }
+      const rewardItems = rewards.items;
 
       const created = await DB.createTask({
         taskType,
@@ -5976,11 +6056,11 @@ const AdminView = {
       const overlay = UI.modal(`
         <div class="form-group">
           <label>奖励砍树次数</label>
-          <input type="number" id="approve-chopping" value="3" min="0">
+          <input type="number" id="approve-chopping" value="3" min="0" step="1" inputmode="numeric">
         </div>
         <div class="form-group">
-          <label>奖励道具（道具ID:数量，逗号分隔）</label>
-          <input type="text" id="approve-items" placeholder="比如：40001:2,20001:1">
+          <label>奖励道具（选填）</label>
+          ${this._renderRewardEditor('approve-items')}
         </div>
         <div class="form-group">
           <label>难度评级</label>
@@ -6004,17 +6084,13 @@ const AdminView = {
       });
 
       overlay.querySelector('#approve-ok').addEventListener('click', async () => {
-        const chopping = parseInt(document.getElementById('approve-chopping').value) || 0;
-        const itemsStr = document.getElementById('approve-items').value.trim();
-        const note = document.getElementById('approve-note').value.trim();
-
-        let rewardItems = [];
-        if (itemsStr) {
-          rewardItems = itemsStr.split(',').map(s => {
-            const [itemId, qty] = s.trim().split(':');
-            return { item_id: itemId.trim(), quantity: parseInt(qty) || 1 };
-          }).filter(i => i.item_id && ITEMS[i.item_id]);
-        }
+        if (!overlay.isConnected) return false;
+        const chopping = this._readRewardChopping(overlay.querySelector('#approve-chopping'));
+        if (chopping === null) { UI.toast('砍树次数须为非负整数', 'warn'); return false; }
+        const rewards = this._readRewardItems(overlay.querySelector('#approve-items'));
+        if (rewards.error) { UI.toast(rewards.error, 'warn'); return false; }
+        const rewardItems = rewards.items;
+        const note = overlay.querySelector('#approve-note').value.trim();
 
         const rewardText = TaskRewards.formatText(TaskRewards.getEntries({
           rewardChopping: chopping,
@@ -6274,7 +6350,7 @@ const AdminView = {
       <div class="card">
         <div class="card-title">装备：${axeDef.name}</div>
         <div style="display:flex;align-items:center;gap:12px">
-          <div style="display:flex;align-items:center;height:60px">${renderItemIcon(state.axeId, axeDef.icon, 'item-icon-lg')}</div>
+          <div style="display:flex;align-items:center;height:60px">${renderItemIcon(axeDef.id || state.axeId, escapeHtml(axeDef.name), 'item-icon-lg')}</div>
           <div>
             <div style="font-weight:600">${axeDef.name}</div>
             <div style="font-size:12px;color:var(--text-secondary)">${axeDef.desc}</div>
@@ -6290,7 +6366,7 @@ const AdminView = {
             const def = ITEMS[inv.itemId];
             if (!def) return '';
             return `<div style="text-align:center;width:48px">
-              <div style="display:flex;justify-content:center;align-items:center;height:36px">${renderItemIcon(inv.itemId, def.icon, 'item-icon-sm')}</div>
+              <div style="display:flex;justify-content:center;align-items:center;height:36px">${renderItemIcon(def.id || inv.itemId, escapeHtml(def.name), 'item-icon-sm')}</div>
               <div style="font-size:10px;color:var(--text-light)">×${inv.quantity}</div>
             </div>`;
           }).join('')}
@@ -6315,23 +6391,7 @@ const AdminView = {
     const state = await DB.getPlayerState();
     const inventory = state ? await DB.getInventory() : [];
 
-    // 按类型分组道具列表
-    const typeNames = { 1: '合成材料', 2: '兑现道具', 3: '突破道具', 4: '锻造道具', 5: '仙斧装备' };
-    let itemOptions = '<option value="">-- 选择道具 --</option>';
-    const groupedItems = {};
-    (GAME_CONFIG?.itemTable || []).forEach(item => {
-      const t = item.type;
-      if (!groupedItems[t]) groupedItems[t] = [];
-      groupedItems[t].push(item);
-    });
-    Object.keys(groupedItems).sort().forEach(t => {
-      itemOptions += `<optgroup label="${typeNames[t] || '类型' + t}">`;
-      groupedItems[t].forEach(item => {
-        const qName = QUALITY[item.quality]?.name || '';
-        itemOptions += `<option value="${item.id}">${itemEmoji(item.id)} ${item.name} (${qName}) [${item.id}]</option>`;
-      });
-      itemOptions += '</optgroup>';
-    });
+    const itemOptions = this._renderAdminItemOptions('', true);
 
     main.innerHTML = `
       <div class="page-title page-title-art">${renderFeatureIcon('icon-forge', '', 'page-title-icon')}<span>GM工具</span></div>
@@ -6375,11 +6435,12 @@ const AdminView = {
       <!-- 发放道具 -->
       <div class="card">
         <div class="card-title">发放道具</div>
-        <div class="form-group">
+        <div class="form-group admin-item-choice">
           <label>选择道具</label>
-          <select id="gm-item-id" style="width:100%">
+          <select id="gm-item-id" style="width:100%" onchange="AdminView._updateAdminItemPreview(this)">
             ${itemOptions}
           </select>
+          <span class="admin-item-preview admin-gm-item-preview" aria-hidden="true"></span>
         </div>
         <div class="form-group">
           <label>数量</label>
@@ -6420,8 +6481,9 @@ const AdminView = {
         <table class="data-table">
           ${inventory.map(inv => {
             const def = ITEMS[inv.itemId];
-            const name = def ? `${itemEmoji(inv.itemId)} ${def.name}` : inv.itemId;
-            return `<tr><td>${name}</td><td>×${inv.quantity}</td><td style="font-size:11px;color:var(--text-light)">${inv.itemId}</td></tr>`;
+            const name = escapeHtml(def?.name || inv.itemId);
+            const icon = def ? renderItemIcon(def.id || inv.itemId, escapeHtml(def.name), 'item-icon-sm') : '';
+            return `<tr><td><span class="admin-inventory-item">${icon}<span>${name}</span></span></td><td>×${inv.quantity}</td></tr>`;
           }).join('')}
         </table>
       </div>
@@ -6458,21 +6520,21 @@ const AdminView = {
       const state = await DB.getPlayerState();
       const newCoin = (state?.coin || 0) + qty;
       await DB.updatePlayerState({ coin: newCoin });
-      UI.toast(`发放 ${itemEmoji(itemId)} ${def.name} ×${qty}（当前 ${newCoin}）`, 'success');
+      UI.toast(`发放 ${def.name} ×${qty}（当前 ${newCoin}）`, 'success');
     } else if (def && def.type === 6) {
       // 砍树次数 → 写入 player_state.choppingCount
       const state = await DB.getPlayerState();
       const newCount = (state?.choppingCount || 0) + qty;
       await DB.updatePlayerState({ choppingCount: newCount });
-      UI.toast(`发放 ${itemEmoji(itemId)} ${def.name} ×${qty}（当前 ${newCount}）`, 'success');
+      UI.toast(`发放 ${def.name} ×${qty}（当前 ${newCount}）`, 'success');
     } else if (def && def.type === 5) {
       for (let index = 0; index < qty; index++) {
         await DB.grantWeaponInstance(itemId, WeaponAffixes.rollSkills(def.skillIds || []));
       }
-      UI.toast(`发放 ${itemEmoji(itemId)} ${def.name} ×${qty}`, 'success');
+      UI.toast(`发放 ${def.name} ×${qty}`, 'success');
     } else {
       await DB.addItem(itemId, qty);
-      UI.toast(`发放 ${itemEmoji(itemId)} ${def?.name || itemId} ×${qty}`, 'success');
+      UI.toast(`发放 ${def?.name || itemId} ×${qty}`, 'success');
     }
     this.renderGM();
   },

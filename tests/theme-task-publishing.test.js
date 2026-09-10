@@ -23,6 +23,8 @@ function element(value = '') {
   return {
     value, style: {}, disabled: false, readOnly: false, isConnected: true,
     innerHTML: '创建', textContent: '创建', attributes: {}, listeners: {},
+    rewardRows: [],
+    querySelectorAll() { return this.rewardRows; },
     setAttribute(name, content) { this.attributes[name] = content; },
     removeAttribute(name) { delete this.attributes[name]; },
     addEventListener(name, handler) { this.listeners[name] = handler; },
@@ -69,7 +71,7 @@ function harness(tasks = [], overrides = {}) {
         return overrides.createTask ? overrides.createTask(payload) : { id: 'new-task' };
       },
     },
-    ITEMS: { '40001': {}, '20001': {} },
+    ITEMS: { '40001': { id: '40001', name: '锻造石', type: 4 }, '20001': { id: '20001', name: '铜珠', type: 2 } },
     OperationGuard: createOperationGuard(),
     localDateStr: () => state.today,
     escapeHtml: value => String(value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'),
@@ -88,6 +90,11 @@ function harness(tasks = [], overrides = {}) {
     field: (overlay, id) => overlay.querySelector(`#${id}`),
     async open() { return admin.showCreateTask(element()); },
     submit: overlay => overlay.querySelector('#create-task-ok').listeners.click(),
+    rewards(overlay, entries) {
+      overlay.querySelector('#new-task-items').rewardRows = entries.map(([itemId, quantity]) => ({
+        querySelector(selector) { return element(selector === '.admin-reward-item' ? itemId : String(quantity)); },
+      }));
+    },
   };
 }
 
@@ -223,11 +230,12 @@ test('appending saves the original theme identity and rewards exactly once after
   const overlay = await h.open();
   const values = {
     'new-task-type': 'theme', 'new-task-title': ' 一起吃饭 ', 'new-task-desc': ' 约室友共进午餐 ',
-    'new-task-diff': 'B', 'new-task-chopping': '5', 'new-task-items': '40001:2,20001:1,unknown:9',
+    'new-task-diff': 'B', 'new-task-chopping': '5',
     'new-task-status': 'published', 'new-task-theme-source': '0',
     'new-task-theme': '不应覆盖已有主题', 'new-task-theme-start': '2000-01-01', 'new-task-theme-end': '2099-12-31',
   };
   for (const [id, value] of Object.entries(values)) h.field(overlay, id).value = value;
+  h.rewards(overlay, [['40001', 1], ['20001', 1], ['40001', 1]]);
   const first = h.submit(overlay);
   assert.equal(h.field(overlay, 'create-task-ok').disabled, true);
   assert.equal((await h.submit(overlay)).started, false);
@@ -289,10 +297,14 @@ for (const mode of ['null', 'throw']) {
     } });
     const overlay = await h.open();
     h.field(overlay, 'new-task-title').value = '保留我的任务';
+    h.rewards(overlay, [['40001', 2], ['20001', 3]]);
     assert.equal((await h.submit(overlay)).value, false);
     assert.equal(overlay.isConnected, true);
     assert.equal(h.field(overlay, 'create-task-ok').disabled, false);
     assert.equal(h.field(overlay, 'new-task-title').value, '保留我的任务');
+    assert.deepEqual(asPlain(h.admin._readRewardItems(h.field(overlay, 'new-task-items')).items), [
+      { item_id: '40001', quantity: 2 }, { item_id: '20001', quantity: 3 },
+    ]);
     assert.equal(h.state.refreshes, 0);
     assert.equal(h.state.toasts.some(toast => toast.type === 'success'), false);
     fail = false;
@@ -347,4 +359,38 @@ test('an open form cannot append during a gap between same-name theme periods', 
   assert.equal((await h.submit(overlay)).value, false);
   assert.equal(h.state.writes.length, 0);
   assert.match(h.state.toasts.at(-1).message, /已不在活动期内/);
+});
+
+test('invalid selected rewards and chopping quantities stop publication before any database write', async () => {
+  const cases = [
+    { rewards: [['', 1]], message: /选择道具/ },
+    { rewards: [['unknown', 1]], message: /选择道具/ },
+    { rewards: [['40001', 0]], message: /正整数/ },
+    { rewards: [['40001', -1]], message: /正整数/ },
+    { rewards: [['40001', '1.5']], message: /正整数/ },
+    { rewards: [['40001', '']], message: /正整数/ },
+    { rewards: [['40001', Number.MAX_SAFE_INTEGER], ['40001', 1]], message: /总数过大/ },
+    { chopping: '-1', message: /非负整数/ },
+    { chopping: '2.5', message: /非负整数/ },
+  ];
+  for (const scenario of cases) {
+    const h = harness(), overlay = await h.open();
+    h.field(overlay, 'new-task-title').value = '任务';
+    if (scenario.rewards) h.rewards(overlay, scenario.rewards);
+    if (scenario.chopping) h.field(overlay, 'new-task-chopping').value = scenario.chopping;
+    assert.equal((await h.submit(overlay)).value, false);
+    assert.equal(h.state.writes.length, 0);
+    assert.match(h.state.toasts.at(-1).message, scenario.message);
+    assert.equal(overlay.isConnected, true);
+    assert.equal(h.field(overlay, 'create-task-ok').disabled, false);
+  }
+});
+
+test('an empty optional reward list creates a task with only its separate chopping reward', async () => {
+  const h = harness(), overlay = await h.open();
+  h.field(overlay, 'new-task-title').value = '只有砍树次数';
+  await h.submit(overlay);
+  assert.deepEqual(asPlain(h.state.writes[0].rewardItems), []);
+  assert.equal(h.state.writes[0].rewardChopping, 3);
+  assert.doesNotMatch(overlay.content, /道具ID|40001:2/);
 });
