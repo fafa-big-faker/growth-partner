@@ -145,6 +145,13 @@ function main() {
   run(executable('javac'), ['-encoding', 'UTF-8', '-source', '8', '-target', '8', '-d', testClasses, policy, path.join(project, 'tests', 'NavigationPolicyTest.java')]);
   process.stdout.write(run(executable('java'), ['-cp', testClasses, 'cn.xianlai.game.NavigationPolicyTest']));
 
+  console.log('Checking deterministic PCM decoding and mixing...');
+  const pcmWave = path.join(source, 'java', 'cn', 'xianlai', 'game', 'PcmWave.java');
+  const pcmMixer = path.join(source, 'java', 'cn', 'xianlai', 'game', 'PcmMixer.java');
+  run(executable('javac'), ['-encoding', 'UTF-8', '-source', '8', '-target', '8', '-d', testClasses,
+    pcmWave, pcmMixer, path.join(project, 'tests', 'PcmAudioTest.java')]);
+  process.stdout.write(run(executable('java'), ['-cp', testClasses, 'cn.xianlai.game.PcmAudioTest']));
+
   console.log('Compiling Android resources and Java...');
   const compiledResources = path.join(work, 'resources.zip');
   const resourcesApk = path.join(work, 'resources.apk');
