@@ -1,6 +1,6 @@
 # 项目开发与发布手册
 
-音频低延迟约定（2026-09-10）：浏览器短音效含锻造循环统一使用 `AudioManager` 的 interactive AudioContext 与复用解码缓冲；Android 1.0.3+ 优先走固定白名单的原生 `SoundPool`，不可用时自动回退同一 Web Audio 路径。BGM 继续网页单实例串流。`LoginBoot` 调用 `prepareEffects()`，pointerdown/keydown 解锁，click 捕获阶段触发按钮音。静音、切后台、关闭奖励弹窗必须保留分组取消及异步取消保护；手机外放最终延迟需实机确认。回归入口：`tests/audio-web.test.js`、`tests/native-audio-bridge.test.js` 与 `tests/audio-web.browser-check.cjs`。
+音频低延迟约定（2026-09-11）：浏览器短音效含锻造循环统一使用 `AudioManager` 的 interactive AudioContext 与复用解码缓冲；Android 1.0.4+ 把固定白名单 WAV 预解码到内存并转换成设备最佳采样率，由前台持续预热、低延迟模式的单一 `AudioTrack` 混音，避免每个音效重新启动输出链路；不可用时自动回退同一 Web Audio 路径。BGM 继续网页单实例串流。切后台必须停止原生音轨和静音预热，回前台重启；静音、关闭奖励弹窗仍保留分组取消及异步取消保护。手机外放最终延迟需实机确认。回归入口：`android-app/tests/PcmAudioTest.java`、`tests/audio-web.test.js`、`tests/native-audio-bridge.test.js` 与 `tests/audio-web.browser-check.cjs`。
 
 这份手册记录日常开发中最容易重复、遗漏或卡住的流程。项目总体说明仍以 `HANDOVER.md` 为准。
 

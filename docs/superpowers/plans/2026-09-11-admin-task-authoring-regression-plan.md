@@ -28,11 +28,11 @@
 - Consumes: `DB.getAllTasks()` results already scoped by `DB.playerRole`.
 - Produces: reusable theme entries with `name`, `start`, `end`, `periods`, and `state` (`ongoing` or `upcoming`).
 
-- [ ] Add failing tests for upcoming published themes, draft-only themes, expired exclusion, grouping, selector labels, and save-time non-expired validation.
-- [ ] Run `node --test tests/admin-task-edit.test.js` and confirm the new assertions fail.
-- [ ] Broaden the theme collector and update selector copy and validation without adding a cross-environment query.
-- [ ] Run admin edit and task environment tests.
-- [ ] Commit the theme reuse fix.
+- [x] Add failing tests for upcoming published themes, draft-only themes, expired exclusion, grouping, selector labels, and save-time non-expired validation.
+- [x] Run `node --test tests/admin-task-edit.test.js` and confirm the new assertions fail.
+- [x] Broaden the theme collector and update selector copy and validation without adding a cross-environment query.
+- [x] Run admin edit and task environment tests.
+- [x] Commit the theme reuse fix.
 
 ### Task 2: Lock in publishing-pool editing and release
 
@@ -45,8 +45,8 @@
 - Consumes: task rows with exact `status` and the existing `showEditTask` strict reload.
 - Produces: one visible edit action for every displayed draft and cache-busted web delivery.
 
-- [ ] Extend the list test across all/draft/theme/daily/weekly filters and assert every displayed draft has an edit action while published tasks do not.
-- [ ] Verify fresh reads and updates retain `.eq('audience_role', this.playerRole)` and `.eq('status', 'draft')`.
-- [ ] Bump the `app.js` delivery version so installed and browser clients cannot retain the pre-fix authoring UI.
-- [ ] Run the full Node suite, syntax checks, and `git diff --check`.
+- [x] Extend the list test across all/draft/theme/daily/weekly filters and assert every displayed draft has an edit action while published tasks do not.
+- [x] Verify fresh reads and updates retain `.eq('audience_role', this.playerRole)` and `.eq('status', 'draft')`.
+- [x] Bump the `app.js` delivery version so installed and browser clients cannot retain the pre-fix authoring UI.
+- [x] Run the full Node suite, syntax checks, and `git diff --check`.
 - [ ] Commit, push `main`, wait for the exact Pages SHA, and compare changed online files byte-for-byte.

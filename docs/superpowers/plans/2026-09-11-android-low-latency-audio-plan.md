@@ -30,11 +30,11 @@
 - Consumes: PCM16 RIFF/WAVE input streams and a target sample rate.
 - Produces: `PcmWave.read(InputStream,int)` stereo samples and `PcmMixer.play/stop/stopAll/mix`.
 
-- [ ] Write a JVM test fixture that constructs mono/stereo WAV data and asserts parsing, sample-rate conversion, mixing order, looping, playback rate, stopping, and clipping.
-- [ ] Run the focused JVM test and confirm it fails because the new classes do not exist.
-- [ ] Implement strict chunk parsing, linear sample conversion, bounded voices, and saturated stereo output.
-- [ ] Run the JVM test and existing native source tests until they pass.
-- [ ] Commit the pure PCM layer.
+- [x] Write a JVM test fixture that constructs mono/stereo WAV data and asserts parsing, sample-rate conversion, mixing order, looping, playback rate, stopping, and clipping.
+- [x] Run the focused JVM test and confirm it fails because the new classes do not exist.
+- [x] Implement strict chunk parsing, linear sample conversion, bounded voices, and saturated stereo output.
+- [x] Run the JVM test and existing native source tests until they pass.
+- [x] Commit the pure PCM layer.
 
 ### Task 2: Replace SoundPool with a warm AudioTrack bridge
 
@@ -48,12 +48,12 @@
 - Consumes: the existing 12 effect keys and `PcmMixer`.
 - Produces: `XianlaiNativeAudio.isReady/play/stop/stopAll/backend` and activity `setForeground(boolean)`.
 
-- [ ] Extend tests to require device output properties, `PERFORMANCE_MODE_LOW_LATENCY`, `THREAD_PRIORITY_AUDIO`, bounded buffers, continuous silence, lifecycle suspension, and no `SoundPool` dependency.
-- [ ] Run the focused tests and confirm they fail against the existing bridge.
-- [ ] Build the native stream, preload assets, start the writer in foreground, and stop it on pause/destroy.
-- [ ] Keep `audio-manager.js` native-first with Web Audio fallback and expose the backend only for diagnosis.
-- [ ] Run native, audio-web, app-shell, and Java compilation tests.
-- [ ] Commit the low-latency bridge.
+- [x] Extend tests to require device output properties, `PERFORMANCE_MODE_LOW_LATENCY`, `THREAD_PRIORITY_AUDIO`, bounded buffers, continuous silence, lifecycle suspension, and no `SoundPool` dependency.
+- [x] Run the focused tests and confirm they fail against the existing bridge.
+- [x] Build the native stream, preload assets, start the writer in foreground, and stop it on pause/destroy.
+- [x] Keep `audio-manager.js` native-first with Web Audio fallback and expose the backend only for diagnosis.
+- [x] Run native, audio-web, app-shell, and Java compilation tests.
+- [x] Commit the low-latency bridge.
 
 ### Task 3: Build and verify Android 1.0.4
 
@@ -68,8 +68,8 @@
 - Consumes: tested PCM engine and existing signing backup.
 - Produces: signed upgrade APK 1.0.4/code 5.
 
-- [ ] Update both version declarations and user-facing Android documentation.
-- [ ] Run the full Node, Python, JVM, syntax, asset, and diff checks.
-- [ ] Build the APK and verify package ID, ZIP alignment, v2/v3 signature continuity, bundled effects, and Internet-only permission.
-- [ ] Record the APK size and SHA-256 and leave real-device latency as the explicit acceptance check.
+- [x] Update both version declarations and user-facing Android documentation.
+- [x] Run the full Node, Python, JVM, syntax, asset, and diff checks.
+- [x] Build the APK and verify package ID, ZIP alignment, v2/v3 signature continuity, bundled effects, and Internet-only permission.
+- [x] Record the APK size and SHA-256 and leave real-device latency as the explicit acceptance check.
 - [ ] Commit and push the Android release changes.

@@ -166,8 +166,8 @@ function main() {
     '--release', '--min-api', '26', '--lib', androidJar, '--output', dex, classesJar]);
   const unsigned = path.join(work, 'unsigned.apk');
   fs.copyFileSync(resourcesApk, unsigned);
-  // Java's jar writer uses portable ZIP entry separators on Windows. Store the
-  // already-compressed media verbatim so SoundPool can open WAV file descriptors.
+  // Java's jar writer uses portable ZIP entry separators on Windows. Keep the
+  // verified media bytes verbatim so native PCM decoding sees the exact web cues.
   run(executable('jar'), ['u0f', unsigned, '-C', path.join(source, 'assets'), '.']);
   for (const dexFile of filesUnder(dex, '.dex')) {
     run(executable('jar'), ['uf', unsigned, '-C', dex, path.basename(dexFile)]);
@@ -221,7 +221,7 @@ function main() {
   assert(archive.includes('xianlai/bundled-assets.tsv'), 'Bundled asset manifest is missing from the APK.');
   assert(!archive.includes('xianlai\\assets'), 'APK asset entries must use portable forward slashes.');
   const uiTapLine = archive.split(/\r?\n/).find(line => line.includes('xianlai/assets/runtime/audio/ui-tap.wav')) || '';
-  assert(uiTapLine.includes('Stored'), 'Native SoundPool cues must remain uncompressed in the APK.');
+  assert(uiTapLine.includes('Stored'), 'Native PCM cues must retain exact uncompressed bytes in the APK.');
   const deliveredApk = path.join(output, path.basename(apk));
   fs.copyFileSync(apk, deliveredApk);
   const record = {
@@ -231,7 +231,7 @@ function main() {
     gameUrl: 'https://fafa-big-faker.github.io/growth-partner/',
     signerSha256: verification.match(/certificate SHA-256 digest: ([a-f0-9]+)/i)?.[1],
     signingDirectory, backupDirectory,
-    checks: ['27 navigation boundary assertions', 'exact bundled runtime assets', 'uncompressed native audio',
+    checks: ['27 navigation boundary assertions', '24 deterministic PCM assertions', 'exact bundled runtime assets', 'native PCM audio',
       'Java compilation', 'DEX generation', 'APK v2/v3 signature verification', 'ZIP alignment', 'application ID and Internet-only permission'],
     deviceTest: 'Not performed: no Android device is connected and no emulator system image is installed.',
   };
