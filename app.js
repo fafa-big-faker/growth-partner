@@ -347,8 +347,10 @@ function getInitialGameImageAssets(axeId = null) {
     .map(label => `assets/runtime/weapon-ratings/rating-${label}.webp?v=weapon-ratings-20260909`);
   const forgeFiles = ['stage', 'equip-slip']
     .map(name => `assets/runtime/forge-workshop/${name}.webp?v=forge-workshop-20260909`);
+  const rewardBurstFiles = ['rare', 'high']
+    .map(tier => `assets/runtime/reward-bursts/${tier}.webp?v=reward-burst-20260910`);
   const treeFiles = Object.values(TREE_APPEARANCES).flatMap(tree => [tree.src, tree.light]);
-  return AssetPreloader.collect([itemImages, configuredImages, currentAxeFrames, v2Files, v3Files, v4Files, feedbackFiles, v5Files, v6QualityFiles, v7Files, ratingFiles, forgeFiles, treeFiles]);
+  return AssetPreloader.collect([itemImages, configuredImages, currentAxeFrames, v2Files, v3Files, v4Files, feedbackFiles, v5Files, v6QualityFiles, v7Files, ratingFiles, forgeFiles, rewardBurstFiles, treeFiles]);
 }
 
 function preloadAxeAnimation(itemId, onProgress = () => {}) {

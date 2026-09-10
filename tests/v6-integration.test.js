@@ -51,7 +51,8 @@ test('native login button keeps accessible text and defers both image layers to 
   }
   for (const file of ['app.js', 'login-art.js', 'login-art.css', 'xianlai-v4.css']) {
     const codeVersion = file === 'xianlai-v4.css' ? version
-      : ['app.js', 'login-art.js'].includes(file) ? 'entry-transitions-20260910' : 'reward-login-20260909';
+      : file === 'app.js' ? 'reward-burst-20260910'
+        : file === 'login-art.js' ? 'entry-transitions-20260910' : 'reward-login-20260909';
     assert.ok(html.includes(`${file}?v=${codeVersion}`));
   }
 });

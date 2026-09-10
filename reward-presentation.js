@@ -1,6 +1,8 @@
 (function initRewardPresentation(root) {
   const ART_BASE = 'assets/runtime/v7/rewards';
   const ART_VERSION = 'xianlai-v7-20260909';
+  const BURST_BASE = 'assets/runtime/reward-bursts';
+  const BURST_VERSION = 'reward-burst-20260910';
   const QUALITY_NAMES = ['凡品', '精品', '珍品', '神品', '仙品'];
   const BUFF_QUALITY_CLASSES = QUALITY_NAMES.map((name, index) => `buff-quality-${index + 1}`);
   const activeReveals = new WeakMap();
@@ -28,7 +30,8 @@
   }
 
   function getAssetUrls() {
-    return QUALITY_NAMES.map((name, index) => `${ART_BASE}/quality-${index + 1}.webp?v=${ART_VERSION}`);
+    return [...QUALITY_NAMES.map((name, index) => `${ART_BASE}/quality-${index + 1}.webp?v=${ART_VERSION}`),
+      ...['rare', 'high'].map(tier => `${BURST_BASE}/${tier}.webp?v=${BURST_VERSION}`)];
   }
 
   function groupResults(results) {
@@ -74,9 +77,9 @@
     let cursor = 0;
     for (const [itemIndex, reward] of metadata.entries()) {
       const rank = qualityId(reward.quality);
-      const arrivalMs = rank >= 4 ? 1100 : rank === 3 ? 800 : 210;
+      const arrivalMs = rank >= 4 ? 1280 : rank === 3 ? 880 : 210;
       events.push({ at: cursor, type: 'reveal', itemIndex });
-      if (rank >= 3) events.push({ at: cursor + (rank >= 4 ? 780 : 480), type: 'icon', itemIndex });
+      if (rank >= 3) events.push({ at: cursor + (rank >= 4 ? 260 : 240), type: 'icon', itemIndex });
       events.push({ at: cursor + arrivalMs, type: 'arrival-settled', itemIndex });
       const hasMultiplier = reward.triggers.some(trigger => trigger.type == null || Number(trigger.type) === 1);
       // Rare names enter with the icon; let that arrival settle before the full name hold.
@@ -178,14 +181,18 @@
       if (!body || !body.clientHeight) return;
       const viewport = body.getBoundingClientRect();
       const item = entry.element.getBoundingClientRect();
+      const burst = entry.element.classList.contains('is-reward-ink')
+        ? entry.element.querySelector('.reward-burst')?.getBoundingClientRect() : null;
+      // Minimum visible y in the imported 256px cells; include the ink, not just the icon.
+      const top = burst ? Math.min(item.top, burst.top + burst.height * (entry.metadata.quality >= 4 ? 23 : 29) / 256) : item.top;
       const quantity = entry.element.querySelector('.reward-item-quantity')?.getBoundingClientRect();
       const bottom = quantity?.bottom ?? item.bottom;
       const available = viewport.bottom - viewport.top;
-      const itemHeight = bottom - item.top;
+      const itemHeight = bottom - top;
       const padding = Math.min(6, Math.max(0, (available - itemHeight) / 2));
       let delta = 0;
       if (itemHeight > available) delta = bottom - viewport.bottom;
-      else if (item.top < viewport.top + padding) delta = item.top - viewport.top - padding;
+      else if (top < viewport.top + padding) delta = top - viewport.top - padding;
       else if (bottom > viewport.bottom - padding) delta = bottom - viewport.bottom + padding;
       if (delta) body.scrollTop = Math.max(0, body.scrollTop + delta);
     }
@@ -344,7 +351,7 @@
       return `<div class="reward-item reward-item--${size}" data-reward-item="${escape(id)}" data-reward-quality="${rank}" data-reward-reveal="${escape(JSON.stringify(metadata))}">
         <div class="reward-art">
           <img class="reward-quality-ink" src="${ART_BASE}/quality-${rank}.webp?v=${ART_VERSION}" alt="" aria-hidden="true" decoding="async">
-          ${rank >= 4 ? `<img class="reward-quality-echo" src="${ART_BASE}/quality-${rank}.webp?v=${ART_VERSION}" alt="" aria-hidden="true" decoding="async">` : ''}
+          ${rank >= 3 ? `<span class="reward-burst" aria-hidden="true"><img class="reward-burst-atlas" src="${BURST_BASE}/${rank >= 4 ? 'high' : 'rare'}.webp?v=${BURST_VERSION}" width="1024" height="768" alt="" decoding="async"></span>` : ''}
           <div class="reward-art-icon">${icon}</div>
         </div>
         <div class="reward-item-name quality-item-name quality-${rank}">${escape(name)}</div>

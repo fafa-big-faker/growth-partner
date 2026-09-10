@@ -87,6 +87,20 @@ test('rendered output shows one actual quantity and no permanent multiplier or e
   assert.ok(html.indexOf('reward-results-extra') > html.indexOf('reward-results-regular'));
 });
 
+test('rare art uses one shared twelve-frame atlas per tier and keeps the final quality ink', () => {
+  for (const quality of [1, 2, 3, 4, 5]) {
+    const html = Rewards.renderItem({ itemId: '40001', quantity: 1, quality });
+    assert.match(html, new RegExp(`quality-${quality}\\.webp`));
+    if (quality < 3) assert.doesNotMatch(html, /reward-burst/);
+    else {
+      assert.match(html, /class="reward-burst" aria-hidden="true"/);
+      assert.match(html, new RegExp(`reward-bursts/${quality >= 4 ? 'high' : 'rare'}\\.webp\\?v=reward-burst-20260910`));
+      assert.equal((html.match(/class="reward-burst-atlas"/g) || []).length, 1);
+    }
+    assert.doesNotMatch(html, /reward-quality-echo/);
+  }
+});
+
 function fixture(rewards, reduced = false) {
   let now = 0, id = 0;
   const timers = new Map(), listeners = new Map(), observers = [], played = [], stopped = [], audioActions = [];
@@ -460,7 +474,7 @@ test('reduced motion keeps sequential reward and skill information instead of sk
 });
 
 test('rare arrivals use item quality, reveal ink before the icon, then hold the settled name for 300ms', () => {
-  for (const [quality, iconAt, settledAt, sound] of [[3, 480, 800, 'rewardRare'], [4, 780, 1100, 'rewardHigh'], [5, 780, 1100, 'rewardHigh']]) {
+  for (const [quality, iconAt, settledAt, sound] of [[3, 240, 880, 'rewardRare'], [4, 260, 1280, 'rewardHigh'], [5, 260, 1280, 'rewardHigh']]) {
     const f = fixture([{ ...mixedQualityBonus, quality }, { quantity: 1 }]);
     Rewards.playReveal(f.overlay, { audio: f.audio });
     const entry = f.entries[0];
@@ -488,11 +502,11 @@ test('rare arrivals use item quality, reveal ink before the icon, then hold the 
 test('rare rewards without skills and extra rewards keep the same arrival and name hold without adding skill effects', () => {
   const f = fixture([{ quantity: 1, quality: 3 }, { ...mixedQualityBonus, quality: 5, isExtra: true }]);
   Rewards.playReveal(f.overlay, { audio: f.audio });
-  f.advance(1099);
+  f.advance(1179);
   assert.equal(f.entries[1].element.dataset.revealState, 'pending');
-  f.advance(1100);
+  f.advance(1180);
   assert.equal(f.entries[1].element.dataset.revealState, 'ink');
-  f.advance(2600);
+  f.advance(2860);
   assert.deepEqual(f.played.map(cue => cue.name), ['rewardRare', 'rewardHigh']);
   assert.equal(f.overlay.dataset.rewardRevealState, 'complete');
   assertQuantity(f.entries[1], '×12');

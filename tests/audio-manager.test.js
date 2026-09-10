@@ -64,8 +64,8 @@ test('category mix keeps UI feedback audible above the restrained BGM', () => {
     dropRare: 0.64,
     dropHigh: 0.68,
     rewardReveal: 0.48,
-    rewardRare: 0.72,
-    rewardHigh: 0.76,
+    rewardRare: 0.82,
+    rewardHigh: 0.88,
     skillTrigger: 0.74,
   });
 });

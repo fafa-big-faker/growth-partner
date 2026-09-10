@@ -141,7 +141,7 @@ test('browser module uses explicit renderer dependencies without app window glob
   assert.equal(typeof context.globalThis.RewardPresentation.renderItem, 'function');
   assert.equal(typeof context.globalThis.RewardPresentation.renderResults, 'function');
   assert.doesNotMatch(fs.readFileSync(modulePath, 'utf8'), /root\.(?:ITEMS|Game|QUALITY)/);
-  assert.deepEqual(require(modulePath).getAssetUrls().length, 5);
+  assert.deepEqual(require(modulePath).getAssetUrls().length, 7);
 });
 
 test('ten layout stays five columns, extras center, and art has no framed cards or glow', () => {

@@ -151,12 +151,13 @@ node scripts\normalize_audio.js
 - `AudioManager.playEffect(name,{group,volumeScale,playbackRate})`每组最多3声、全局最多12声，满额不再叠加；`stopEffects(group)`立即取消该组，原始音频不可重复增益处理。测试`audio-reward-assets.test.js`校验来源、峰值、时长及旧文件指纹。
 - 登录预览`assets/runtime/v3/backgrounds/login-preview.webp`由原运行登录图缩为240x180，2398字节，仅首屏占位使用；完整背景、Logo、按钮及六墨纹保持原图与URL。初始圆环48px，无需新增AI资源。
 
-### 珍稀奖励出场音效（2026-09-10）
+### 珍稀奖励出场音效·加强版（2026-09-10）
 
-- 输入`掉落出场-珍品.wav`与`掉落出场-神仙品.wav`，对应运行文件`reward-arrival-rare.wav`和`reward-arrival-high.wav`，AudioManager名称为`rewardRare`及`rewardHigh`。它们只用于结果墨团/道具出场，砍树过程原`dropRare/dropHigh`保持独立，珍稀出场不再叠普通`rewardReveal`音。
-- 仅运行`node scripts/normalize_audio.js --arrivals-only`导入这两条，`--arrivals-only --check`逐字节重建验证且不写文件；不覆盖源文件，不重写其他十一条声音。源SHA256分别为`4e78a81a2109967bda601a592bbeeecd71d5a6408b204f469d54b5e8cae9e599`与`4a74b282fddc4ec2a652fe2619c1a028f060361a8adc5b59c1901ad65ab7d0ec`，替换源文件时先重新测量再更新指纹。
-- 两条均保留PCM16、40kHz、双声道和完整0.8/1.1秒，分别128,242与176,242字节，不循环、不改变音调、不硬裁尾。固定增益后目标峰值0.70/0.76，RMS约0.076173/0.104360；默认混音0.72/0.76，有效峰值约0.504/0.578。珍品重音在0.60–0.68秒、高档在0.85–0.98秒，图标落稳应与实测重音衔接，不能照提示词假定0.5/0.75秒。
-- 两新文件合计304,484字节（约297.3KiB）；当前十三条全音频2,402,528字节（约2.291MiB），预算2.4MiB。原十一条文件、音量与缓存URL均不变；新文件使用独立路径，无需统一更新旧声音版本。更改音频映射后由`build_boot_assets.cjs`更新启动清单。
+- 输入`掉落出场-珍品-加强版.wav`与`掉落出场-神仙品-加强版.wav`，对应运行文件`reward-arrival-rare.wav`和`reward-arrival-high.wav`，AudioManager名称为`rewardRare`及`rewardHigh`。新旧四份原始声音都保留。它们只用于结果墨迹爆开/道具出场，砍树过程原`dropRare/dropHigh`保持独立，珍稀出场不再叠普通`rewardReveal`音。
+- 仅运行`node scripts/normalize_audio.js --arrivals-only`导入这两条，`--arrivals-only --check`逐字节重建验证且不写文件；不覆盖源文件，不重写其他十一条声音。源SHA256分别为`6064f0b26474041714dede3787e3483737ba4f743f3e70cc9f2901538483fb0b`与`14b8d07205ab209a363a0f2e4370d1769b4102e3848d2a05d9c1f0f8b54771eb`，替换源文件时先重新测量再更新指纹。
+- 两条保留PCM16、40kHz、双声道和完整0.88/1.28秒，分别141,042与205,042字节，不循环、不变速、不裁尾。源峰值0.411377/0.674286、RMS0.075047/0.107944；固定增益2.09054/1.39407倍，输出峰值0.86/0.94、RMS0.156889/0.150481。不做动态压缩或限幅，保留新素材的起伏与瞬态。
+- 默认混音0.82/0.88，有效峰值约0.705/0.827、RMS0.128649/0.132423，相比旧版有效RMS分别提高7.41/4.45dB。高档保留更有力度的瞬态，BGM与斧技混音不变。实测珍品主要重音375–450ms（峰394ms），高档100ms已有强起音，第二重音375–450ms（峰429ms）；动画高潮按实测重音衔接，不照提示词假定200ms，也不沿用旧版640/940ms。珍品有效尾音约775ms、高档约1175ms，后续斧技须让出完整声音句子。
+- 两新文件合计346,084字节（约338.0KiB）；当前十三条全音频2,444,128字节（约2.331MiB），仍在2.4MiB预算内。只为这两个替换文件增加`?v=reward-burst-20260910`；原十一条文件、音量与缓存URL均不变。更改音频映射后由`build_boot_assets.cjs`更新启动清单。
 - 出场与斧技共用当前弹窗声音组，跳过/关闭/隐藏取消自身组，不停BGM或砍树音。静音/播放失败不得阻塞演出；后续斧技发动仍仅停止本弹窗尾音。音频测试覆盖完整PCM格式、来源和旧文件指纹、确定性限定导入、混音峰值、声音分组取消。
 
 ## 8. 验证清单
@@ -283,6 +284,15 @@ node scripts\normalize_audio.js
 - 当前WebP保持原生1536×1024，quality84、method6、51,498字节（约50.3KiB），预算100KiB。PNG归档与原图逐像素相同；RGB源不额外建立alpha平面。运行URL固定为`assets/runtime/entry-preparation/background.webp?v=entry-preparation-20260910`，显示时保持3:2比例，不把整图拉伸成窄屏比例。
 - `node scripts/build_boot_assets.cjs`生成`boot-assets.js`，禁止手改。脚本在隔离环境中执行`game-config.js`和`app.js`资源定义前缀，止于`dbClient`初始化前；只创建空的动画实例，不运行Supabase、Auth、登录或玩家读写。图像URL来自真实`getInitialGameImageAssets`、九武器待机/砍树函数、LoginBoot关键/装饰/入境清单；声音来自AudioManager实际`AUDIO_PATHS`。
 - 清单导出`BootAssetManifest={version,assets}`，每项记录精确`url`（保留原query）、`bytes`、`sha256`、`kind:image/audio`与`density:all/1/2`。新背景和经验槽两图固定排在最前，其余URL按字典序稳定排列；version为整个有序清单JSON的SHA256。改变任意实际资源文件、URL、配置图标映射或运行资源解析器后，必须重新生成并运行`node scripts/build_boot_assets.cjs --check`。
-- 当前共224项：九武器90动作帧、13音频、公共与登录图，以及两套各10张树图。仅树图分density1/2，其他all；按当前DPR选择后均为214项，1x为7,092,641字节，2x为7,923,323字节。准备阶段完整下载但不同时解码90帧；普通屏幕不额外下载高清树图，高清屏幕也不下载旧1x树图。
+- 当前共226项：九武器90动作帧、13音频、公共与登录图、两张奖励特效图集，以及两套各10张树图。仅树图分density1/2，其他all；按当前DPR选择后均为216项，1x为7,424,453字节，2x为8,255,135字节。准备阶段完整下载但不同时解码90帧；普通屏幕不额外下载高清树图，高清屏幕也不下载旧1x树图。
 - 清单严格限制为`assets/runtime/`下的实际图片/音频，拒绝路径穿越、外站、原始图集及代码/JSON数据。不按目录遍历把历史素材塞进启动包，不加入玩家数据或凭据。ResourcePack只缓存这些静态文件，代码、配置、HTML和数据库保持原加载方式。
 - 校验`python tests/entry-art-assets.test.py`（原图指纹、完整像素、质量、预算、重建）和`node --test tests/boot-assets.test.js`（真实文件字节、首项优先级、90帧/13音频、两密度精确资源集合、UMD导出与路径边界），再运行两脚本`--check`。这些检查不截图、不登录真实账号、不读写数据库。
+
+## 20. 珍稀奖励十二帧墨破特效（2026-09-10）
+
+- 用户原图在仓库同级`美术风格参考V7/掉落特效-珍品.png`与`掉落特效-神仙品.png`，实际均为1448×1086、RGBA、4列3行，单格362×362；不能按提示词2048×1536硬切。两张具有真实透明通道，珍品为紫灰墨和银白闪点，高档为中性灰银墨，无需抠黑、去白或去棋盘。来源SHA256分别为`98a0b7f04e36e73ba1cdbcd58cf59f596fb7068bd15be931bc02eba9e062174c`、`cfcfda32b70833658f72c6cf87b68913ba2f3954f81b5f0adeb4594ce5292979`。
+- 运行`python scripts/import_reward_bursts.py`仅输出`assets/images/reward-bursts/`及`assets/runtime/reward-bursts/`。`--check`在内存中重建并逐字节核对，不写入；源指纹或尺寸不符先报错，替换新图必须重新测量透明边与分格。不要为两张特效重跑旧版全量构建。
+- PNG归档为`rare/frame-01.png`至`frame-12.png`和`high/frame-01.png`至`frame-12.png`，每帧保留完整362×362原格和每个原始像素；24帧可逐像素重组回两张原图。运行图只清理alpha小于5的背景彩噪，再把每个完整格统一缩为224×224、四边加16px透明边，置于256×256格。不得按各帧包围盒单独裁切、居中或改变比例；末尾微小碎墨也保留。高档第6帧格底仅有alpha为5的极淡边缘，完整格归档与统一缩小均保留它，不截掉边缘来满足安全区。
+- 正式资源为`assets/runtime/reward-bursts/rare.webp`及`high.webp`，均1024×768、4列3行、12帧、从左到右再从上到下；单格256×256，共用中心128,128。运行manifest同时记录每帧x/y、alpha边界、原图指纹、产物指纹及安全边。WebP quality90、method6、alpha无损；两张分别129,230和160,982字节，总290,212字节（约283.4KiB），独立预算600KiB。原图和原V7品质墨团保持不变。
+- 图像引用与预载统一使用`?v=reward-burst-20260910`。只预载两张运行atlas，不预载24张归档PNG；接入后由`build_boot_assets.cjs`重新生成启动清单。神品/仙品共用中性高档图，颜色若需区分由表现层处理，不能为每个道具再生成一套图。
+- 校验`python tests/reward-burst-assets.test.py`及导入脚本`--check`：覆盖原图完整重组、12帧顺序、不同帧真实形态、首尾碎墨、统一缩放/中心、透明安全边、压缩颜色与无损alpha、输出范围、来源指纹、确定性和总预算。检查为本地资源测试，不截图、不改玩家数据。

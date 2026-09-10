@@ -5,7 +5,7 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const { execFileSync } = require('node:child_process');
 const { REWARD_SOURCES, ARRIVAL_SOURCES, TARGET_PEAKS, inspectPcm16, normalizePcm16, selectAudioFiles } = require('../scripts/normalize_audio');
-const { AUDIO_PATHS } = require('../audio-manager');
+const { AUDIO_PATHS, AUDIO_VOLUMES } = require('../audio-manager');
 
 const root = path.join(__dirname, '..');
 const sourceDir = path.join(root, '..', '\u97f3\u9891\u8d44\u6e90');
@@ -18,8 +18,8 @@ const expected = {
   'skill-trigger.wav': { name: '\u65a7\u6280-\u53d1\u52a8V2.wav', seconds: 0.68, peak: 0.72, cue: 'skillTrigger', version: 'skill-v2-20260909' },
 };
 const arrivalExpected = {
-  'reward-arrival-rare.wav': { name: '掉落出场-珍品.wav', seconds: 0.8, peak: 0.70, cue: 'rewardRare' },
-  'reward-arrival-high.wav': { name: '掉落出场-神仙品.wav', seconds: 1.1, peak: 0.76, cue: 'rewardHigh' },
+  'reward-arrival-rare.wav': { name: '掉落出场-珍品-加强版.wav', seconds: 0.88, peak: 0.86, cue: 'rewardRare' },
+  'reward-arrival-high.wav': { name: '掉落出场-神仙品-加强版.wav', seconds: 1.28, peak: 0.94, cue: 'rewardHigh' },
 };
 const allExpected = { ...expected, ...arrivalExpected };
 const allSources = { ...REWARD_SOURCES, ...ARRIVAL_SOURCES };
@@ -38,7 +38,7 @@ test('rare arrival sounds are distinct from physical drop sounds', () => {
   for (const [name, spec] of Object.entries(arrivalExpected)) {
     assert.equal(ARRIVAL_SOURCES[name].file, spec.name);
     assert.equal(TARGET_PEAKS[name], spec.peak);
-    assert.equal(AUDIO_PATHS[spec.cue], `assets/runtime/audio/${name}`);
+    assert.equal(AUDIO_PATHS[spec.cue], `assets/runtime/audio/${name}?v=reward-burst-20260910`);
   }
   assert.notEqual(AUDIO_PATHS.rewardRare, AUDIO_PATHS.dropRare);
   assert.notEqual(AUDIO_PATHS.rewardHigh, AUDIO_PATHS.dropHigh);
@@ -59,8 +59,8 @@ test('reward cues preserve PCM format, complete duration and bounded peaks', () 
     assert.ok(measured.sourceRms > 0.06 && measured.sourceRms < 0.16, name);
     total += contents.length;
   }
-  assert.equal(total, 654252);
-  assert.ok(total < 650 * 1024);
+  assert.equal(total, 695852);
+  assert.ok(total < 700 * 1024);
 });
 
 test('reward normalization is deterministic and changes sample amplitudes only', {
@@ -123,8 +123,8 @@ test('arrival-only verification preserves original sources and all runtime files
   }]));
   const output = execFileSync(process.execPath, [path.join(root, 'scripts', 'normalize_audio.js'), '--arrivals-only', '--check'], { encoding: 'utf8' });
   assert.equal(output.trim().split(/\r?\n/).length, 2);
-  assert.match(output, /reward-arrival-rare\.wav: 0\.800s, 40000Hz, 2ch;.*\(verified\)/);
-  assert.match(output, /reward-arrival-high\.wav: 1\.100s, 40000Hz, 2ch;.*\(verified\)/);
+  assert.match(output, /reward-arrival-rare\.wav: 0\.880s, 40000Hz, 2ch;.*\(verified\)/);
+  assert.match(output, /reward-arrival-high\.wav: 1\.280s, 40000Hz, 2ch;.*\(verified\)/);
   for (const name of files) {
     assert.equal(hash(fs.readFileSync(path.join(runtimeDir, name))), before[name].hash, name);
     assert.equal(fs.statSync(path.join(runtimeDir, name)).mtimeMs, before[name].modified, name);
@@ -134,9 +134,38 @@ test('arrival-only verification preserves original sources and all runtime files
   }
 });
 
-test('only the changed skill audio uses a new cache URL', () => {
+test('only replaced skill and arrival audio use versioned cache URLs', () => {
   const versioned = Object.entries(AUDIO_PATHS).filter(([, url]) => url.includes('?'));
-  assert.deepEqual(versioned, [['skillTrigger', 'assets/runtime/audio/skill-trigger.wav?v=skill-v2-20260909']]);
+  assert.deepEqual(versioned, [
+    ['rewardRare', 'assets/runtime/audio/reward-arrival-rare.wav?v=reward-burst-20260910'],
+    ['rewardHigh', 'assets/runtime/audio/reward-arrival-high.wav?v=reward-burst-20260910'],
+    ['skillTrigger', 'assets/runtime/audio/skill-trigger.wav?v=skill-v2-20260909'],
+  ]);
+});
+
+test('enhanced arrivals keep their attack timing, contrast and audible unclipped mix', () => {
+  const specs = [
+    { file: 'reward-arrival-rare.wav', cue: 'rewardRare', rms: .1568892, oldMixedRms: .076173 * .72, minimumGainDb: 7, peakMs: 394.35 },
+    { file: 'reward-arrival-high.wav', cue: 'rewardHigh', rms: .1504808, oldMixedRms: .104360 * .76, minimumGainDb: 4, peakMs: 428.675 },
+  ];
+  for (const spec of specs) {
+    const contents = fs.readFileSync(path.join(runtimeDir, spec.file));
+    const measured = normalizePcm16(contents, TARGET_PEAKS[spec.file]);
+    assert.ok(Math.abs(measured.sourceRms - spec.rms) < .00001, spec.file);
+    const mixedRms = measured.sourceRms * AUDIO_VOLUMES[spec.cue];
+    assert.ok(20 * Math.log10(mixedRms / spec.oldMixedRms) > spec.minimumGainDb);
+    assert.ok(measured.sourcePeak * AUDIO_VOLUMES[spec.cue] < .84, 'leave room for the existing BGM');
+    let peak = 0;
+    let peakFrame = 0;
+    for (let frame = 0; frame < measured.frames; frame++) {
+      for (let channel = 0; channel < measured.channels; channel++) {
+        const sample = Math.abs(contents.readInt16LE(measured.dataOffset + (frame * measured.channels + channel) * 2));
+        assert.ok(sample < 32767, 'the source dynamics must not clip');
+        if (sample > peak) { peak = sample; peakFrame = frame; }
+      }
+    }
+    assert.ok(Math.abs(peakFrame / measured.sampleRate * 1000 - spec.peakMs) < 1, 'keep the supplied accent aligned');
+  }
 });
 
 test('V2 skill measurements retain full duration and useful headroom', () => {

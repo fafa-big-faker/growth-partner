@@ -71,7 +71,7 @@ async function main() {
           if (probe.quantities.at(-1) !== quantity) probe.quantities.push(quantity);
           const values = items.map(item => item.dataset.revealState || 'final');
           if (JSON.stringify(probe.states.at(-1)) !== JSON.stringify(values)) probe.states.push(values);
-          for (const node of overlay.querySelectorAll('.reward-quality-ink, .reward-quality-echo, .reward-art-icon, .reward-item-quantity-value')) {
+          for (const node of overlay.querySelectorAll('.reward-quality-ink, .reward-burst-atlas, .reward-art-icon, .reward-item-quantity-value')) {
             const name = getComputedStyle(node).animationName;
             if (name !== 'none') probe.animations.add(name);
           }
@@ -198,7 +198,7 @@ async function main() {
       assert.deepEqual(result.preSkillAt299, { name: result.originalNames[0], active: false, quantity: '×2' }, '299ms still shows the original item name and plain base quantity');
       const firstArrival = result.played.find(sound => sound.name === 'rewardRare');
       assert.ok(firstArrival, 'the rare item uses its own complete arrival phrase');
-      assert.ok(Math.abs(skillSounds[0].at - firstArrival.at - 1100) < 120, 'first skill follows the rare800ms arrival and full300ms real-name hold');
+      assert.ok(Math.abs(skillSounds[0].at - firstArrival.at - 1180) < 120, 'first skill follows the rare880ms arrival and full300ms real-name hold');
       assert.ok(Math.abs(skillSounds[1].at - skillSounds[0].at - 1300) < 90, 'second trigger follows the full first 1300ms');
       for (const [index, expected] of [{ old: '×2', next: '×6！', multiplier: 3 }, { old: '×6！', next: '×12！', multiplier: 2 }].entries()) {
         const at = skillSounds[index].at;
@@ -249,7 +249,7 @@ async function main() {
       assert.deepEqual(natural.arrivals.map(entry => entry.quality), [3, 1, 1, 2, 3, 4, 5, 1, 2, 3, 3]);
       for (let index = 1; index < natural.arrivals.length; index++) {
         const preceding = natural.arrivals[index - 1];
-        const expected = index === 1 ? 3700 : preceding.quality >= 4 ? 1400 : preceding.quality === 3 ? 1100 : 210;
+        const expected = index === 1 ? 3780 : preceding.quality >= 4 ? 1580 : preceding.quality === 3 ? 1180 : 210;
         assert.ok(Math.abs(natural.arrivals[index].at - preceding.at - expected) < 200,
           `next item follows its predecessor's completed rarity/skill presentation: ${JSON.stringify({ index, expected, arrivals: natural.arrivals })}`);
       }
@@ -263,9 +263,9 @@ async function main() {
       }
       assert.equal(natural.namesRestored, true);
       assert.ok(natural.animations.includes('reward-skill-ink'), 'real ink pulse is active');
-      assert.ok(natural.animations.includes('reward-rare-ink'), 'rare ink spreads as a separate layer');
+      assert.ok(natural.animations.includes('reward-burst-rare'), 'rare reward plays its imported twelve-frame burst');
       assert.ok(natural.animations.includes('reward-rare-icon'), 'rare icon has its own delayed entrance');
-      assert.ok(natural.animations.includes('reward-ink-echo'), 'high rarity has a restrained second ink layer');
+      assert.ok(natural.animations.includes('reward-burst-high'), 'high rarity plays its distinct twelve-frame burst');
       assert.ok(natural.animations.includes('reward-count-shake'), 'old number has a real dedicated shake');
       assert.ok(natural.animations.includes('reward-count-arrive'), 'new number has a real scale-and-settle animation');
       assert.equal(natural.animations.includes('reward-refund-reveal'), false);

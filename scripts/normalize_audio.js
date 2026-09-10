@@ -26,12 +26,12 @@ const REWARD_SOURCES = Object.freeze({
 
 const ARRIVAL_SOURCES = Object.freeze({
   'reward-arrival-rare.wav': {
-    file: '掉落出场-珍品.wav',
-    sha256: '4e78a81a2109967bda601a592bbeeecd71d5a6408b204f469d54b5e8cae9e599',
+    file: '掉落出场-珍品-加强版.wav',
+    sha256: '6064f0b26474041714dede3787e3483737ba4f743f3e70cc9f2901538483fb0b',
   },
   'reward-arrival-high.wav': {
-    file: '掉落出场-神仙品.wav',
-    sha256: '4a74b282fddc4ec2a652fe2619c1a028f060361a8adc5b59c1901ad65ab7d0ec',
+    file: '掉落出场-神仙品-加强版.wav',
+    sha256: '14b8d07205ab209a363a0f2e4370d1769b4102e3848d2a05d9c1f0f8b54771eb',
   },
 });
 
@@ -46,8 +46,8 @@ const TARGET_PEAKS = Object.freeze({
   'drop-rare.wav': 0.70,
   'drop-high.wav': 0.76,
   'skill-trigger.wav': 0.72,
-  'reward-arrival-rare.wav': 0.70,
-  'reward-arrival-high.wav': 0.76,
+  'reward-arrival-rare.wav': 0.86,
+  'reward-arrival-high.wav': 0.94,
 });
 
 function findChunk(buffer, expectedId) {

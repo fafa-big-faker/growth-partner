@@ -1,0 +1,478 @@
+{
+  "version": "reward-burst-20260910",
+  "grid": {
+    "columns": 4,
+    "rows": 3,
+    "frame_count": 12,
+    "order": "row-major"
+  },
+  "treatment": "Archive exact source cells; runtime clears only alpha<5 noise, uniformly resizes each complete 362px cell to 224px and adds 16px transparent padding. No per-frame crop, centering, color replacement or omitted frames.",
+  "sources": {
+    "rare": {
+      "name": "掉落特效-珍品.png",
+      "size": [
+        1448,
+        1086
+      ],
+      "mode": "RGBA",
+      "alpha": [
+        0,
+        254
+      ],
+      "bytes": 969729,
+      "sha256": "98a0b7f04e36e73ba1cdbcd58cf59f596fb7068bd15be931bc02eba9e062174c",
+      "frame_size": 362,
+      "frames": [
+        {
+          "index": 0,
+          "box": [
+            0,
+            0,
+            362,
+            362
+          ],
+          "alpha_bounds": [
+            117,
+            165,
+            234,
+            259
+          ],
+          "path": "assets/images/reward-bursts/rare/frame-01.png",
+          "bytes": 13967,
+          "sha256": "e8f8c11e671f581609e3d370a3528d8bcf9c0f83cfd681823dca31792b8ed6d5"
+        },
+        {
+          "index": 1,
+          "box": [
+            362,
+            0,
+            724,
+            362
+          ],
+          "alpha_bounds": [
+            93,
+            82,
+            299,
+            298
+          ],
+          "path": "assets/images/reward-bursts/rare/frame-02.png",
+          "bytes": 45829,
+          "sha256": "745166123a0e24f014e4d491aab73c8e79706690d9d937d262671e89dd066a3e"
+        },
+        {
+          "index": 2,
+          "box": [
+            724,
+            0,
+            1086,
+            362
+          ],
+          "alpha_bounds": [
+            97,
+            94,
+            261,
+            290
+          ],
+          "path": "assets/images/reward-bursts/rare/frame-03.png",
+          "bytes": 53404,
+          "sha256": "d80ca29b56a96a611b8bde954a4c5074f6df2c8b9a62d392bbdf4f280e4a0ba0"
+        },
+        {
+          "index": 3,
+          "box": [
+            1086,
+            0,
+            1448,
+            362
+          ],
+          "alpha_bounds": [
+            75,
+            108,
+            279,
+            292
+          ],
+          "path": "assets/images/reward-bursts/rare/frame-04.png",
+          "bytes": 70548,
+          "sha256": "e46e6295cfe48c87e11c0faff151933941319b975b31ffd1e8a60a78e1301bb0"
+        },
+        {
+          "index": 4,
+          "box": [
+            0,
+            362,
+            362,
+            724
+          ],
+          "alpha_bounds": [
+            30,
+            28,
+            332,
+            341
+          ],
+          "path": "assets/images/reward-bursts/rare/frame-05.png",
+          "bytes": 166301,
+          "sha256": "74cd21132a61be5838798d297ef547ae25b9446601cee4308d81cd2dc041bf61"
+        },
+        {
+          "index": 5,
+          "box": [
+            362,
+            362,
+            724,
+            724
+          ],
+          "alpha_bounds": [
+            32,
+            28,
+            337,
+            341
+          ],
+          "path": "assets/images/reward-bursts/rare/frame-06.png",
+          "bytes": 153754,
+          "sha256": "736bc983c8ddc62acc96d9946751847d720b66c62874fa73aa1dc09c5fee87e4"
+        },
+        {
+          "index": 6,
+          "box": [
+            724,
+            362,
+            1086,
+            724
+          ],
+          "alpha_bounds": [
+            23,
+            22,
+            339,
+            334
+          ],
+          "path": "assets/images/reward-bursts/rare/frame-07.png",
+          "bytes": 161738,
+          "sha256": "405e2282c0a8f7bd04f6d52aa5462adaf11ec5fc996bc423e9af1df1df9fa2a5"
+        },
+        {
+          "index": 7,
+          "box": [
+            1086,
+            362,
+            1448,
+            724
+          ],
+          "alpha_bounds": [
+            25,
+            28,
+            340,
+            335
+          ],
+          "path": "assets/images/reward-bursts/rare/frame-08.png",
+          "bytes": 116523,
+          "sha256": "a2ef8dc0a383c581a65e47e2b8d2e3a6aafaf4314fa822f09cf49c8ee0c13987"
+        },
+        {
+          "index": 8,
+          "box": [
+            0,
+            724,
+            362,
+            1086
+          ],
+          "alpha_bounds": [
+            43,
+            57,
+            350,
+            337
+          ],
+          "path": "assets/images/reward-bursts/rare/frame-09.png",
+          "bytes": 86661,
+          "sha256": "89654cde168ce83833653306527b0dd5034e624edc0d2c041ba565a31fd3335f"
+        },
+        {
+          "index": 9,
+          "box": [
+            362,
+            724,
+            724,
+            1086
+          ],
+          "alpha_bounds": [
+            80,
+            90,
+            315,
+            283
+          ],
+          "path": "assets/images/reward-bursts/rare/frame-10.png",
+          "bytes": 41119,
+          "sha256": "2c3066448b8935b74780b0e99def5c70e8d007468c8a07cd95b7218dc26f6d6e"
+        },
+        {
+          "index": 10,
+          "box": [
+            724,
+            724,
+            1086,
+            1086
+          ],
+          "alpha_bounds": [
+            104,
+            110,
+            272,
+            231
+          ],
+          "path": "assets/images/reward-bursts/rare/frame-11.png",
+          "bytes": 15921,
+          "sha256": "94b0b2d66c209c3942a56a2328557a325dd5f8f38b39cf6499eb04b6a8fde036"
+        },
+        {
+          "index": 11,
+          "box": [
+            1086,
+            724,
+            1448,
+            1086
+          ],
+          "alpha_bounds": [
+            126,
+            114,
+            253,
+            200
+          ],
+          "path": "assets/images/reward-bursts/rare/frame-12.png",
+          "bytes": 6664,
+          "sha256": "e421b381ee73482d616f54ae0ac27d2c4ff40264e3f87ed388d7f62e6f83291e"
+        }
+      ]
+    },
+    "high": {
+      "name": "掉落特效-神仙品.png",
+      "size": [
+        1448,
+        1086
+      ],
+      "mode": "RGBA",
+      "alpha": [
+        0,
+        255
+      ],
+      "bytes": 1134688,
+      "sha256": "cfcfda32b70833658f72c6cf87b68913ba2f3954f81b5f0adeb4594ce5292979",
+      "frame_size": 362,
+      "frames": [
+        {
+          "index": 0,
+          "box": [
+            0,
+            0,
+            362,
+            362
+          ],
+          "alpha_bounds": [
+            25,
+            125,
+            344,
+            296
+          ],
+          "path": "assets/images/reward-bursts/high/frame-01.png",
+          "bytes": 64060,
+          "sha256": "4f3f92d9366c216cb20a32d3015109df0dc5e84196259197fe9f8426c41d3dda"
+        },
+        {
+          "index": 1,
+          "box": [
+            362,
+            0,
+            724,
+            362
+          ],
+          "alpha_bounds": [
+            49,
+            107,
+            352,
+            281
+          ],
+          "path": "assets/images/reward-bursts/high/frame-02.png",
+          "bytes": 63342,
+          "sha256": "0e5bbc54b11b8b2360ea946775d7025edb99cd0e7c087dc31a0b9432aea8fa82"
+        },
+        {
+          "index": 2,
+          "box": [
+            724,
+            0,
+            1086,
+            362
+          ],
+          "alpha_bounds": [
+            81,
+            96,
+            271,
+            323
+          ],
+          "path": "assets/images/reward-bursts/high/frame-03.png",
+          "bytes": 64190,
+          "sha256": "09ad5993855d1a49c1321734393e95782ee3588a4ca5c110c42f8cb83d5d38b3"
+        },
+        {
+          "index": 3,
+          "box": [
+            1086,
+            0,
+            1448,
+            362
+          ],
+          "alpha_bounds": [
+            83,
+            76,
+            305,
+            317
+          ],
+          "path": "assets/images/reward-bursts/high/frame-04.png",
+          "bytes": 68528,
+          "sha256": "b0491b3e8c7aa272518a782971fdd6974daf1ec30263ffcbe22c809283bedbb0"
+        },
+        {
+          "index": 4,
+          "box": [
+            0,
+            362,
+            362,
+            724
+          ],
+          "alpha_bounds": [
+            28,
+            64,
+            328,
+            294
+          ],
+          "path": "assets/images/reward-bursts/high/frame-05.png",
+          "bytes": 108348,
+          "sha256": "a489af01ee8d86ae0336ab8cee3e38f9aa7ba7b6248e921be20dbdfd4c7c9c73"
+        },
+        {
+          "index": 5,
+          "box": [
+            362,
+            362,
+            724,
+            724
+          ],
+          "alpha_bounds": [
+            10,
+            12,
+            352,
+            362
+          ],
+          "path": "assets/images/reward-bursts/high/frame-06.png",
+          "bytes": 211445,
+          "sha256": "ad7c7b9025a41a049512b72eecc7e240a5f66c96fc9673981dfbb465d5e752ca"
+        },
+        {
+          "index": 6,
+          "box": [
+            724,
+            362,
+            1086,
+            724
+          ],
+          "alpha_bounds": [
+            29,
+            31,
+            340,
+            349
+          ],
+          "path": "assets/images/reward-bursts/high/frame-07.png",
+          "bytes": 175489,
+          "sha256": "0c28f3d05c6e05378bc45033ac36684e8f7653c2d0dc081b3e3e9581e83db22b"
+        },
+        {
+          "index": 7,
+          "box": [
+            1086,
+            362,
+            1448,
+            724
+          ],
+          "alpha_bounds": [
+            11,
+            42,
+            346,
+            356
+          ],
+          "path": "assets/images/reward-bursts/high/frame-08.png",
+          "bytes": 158014,
+          "sha256": "ef18f5356664f63769996023a5f2a17cd0b5f7739b5be17596bbd63e6d2669d4"
+        },
+        {
+          "index": 8,
+          "box": [
+            0,
+            724,
+            362,
+            1086
+          ],
+          "alpha_bounds": [
+            42,
+            16,
+            358,
+            331
+          ],
+          "path": "assets/images/reward-bursts/high/frame-09.png",
+          "bytes": 118646,
+          "sha256": "bc3aa3e746f3b2071415f073783085fc035d02a88b15b694870ac0adb50e4d06"
+        },
+        {
+          "index": 9,
+          "box": [
+            362,
+            724,
+            724,
+            1086
+          ],
+          "alpha_bounds": [
+            41,
+            82,
+            328,
+            306
+          ],
+          "path": "assets/images/reward-bursts/high/frame-10.png",
+          "bytes": 46822,
+          "sha256": "14c85b13e86d38b4b77de637e8ec7d86aeb484239b1ac900a98a18a7ab8a6b3f"
+        },
+        {
+          "index": 10,
+          "box": [
+            724,
+            724,
+            1086,
+            1086
+          ],
+          "alpha_bounds": [
+            74,
+            81,
+            291,
+            257
+          ],
+          "path": "assets/images/reward-bursts/high/frame-11.png",
+          "bytes": 17245,
+          "sha256": "94438f4a134840b5f86f22c83371eadc55703d66acb27bc92769bb0010043ca1"
+        },
+        {
+          "index": 11,
+          "box": [
+            1086,
+            724,
+            1448,
+            1086
+          ],
+          "alpha_bounds": [
+            117,
+            113,
+            258,
+            242
+          ],
+          "path": "assets/images/reward-bursts/high/frame-12.png",
+          "bytes": 5638,
+          "sha256": "dffde70887f98a9605d84e24ce9278e2070161bdcc3d84422574c205eb1af513"
+        }
+      ]
+    }
+  }
+}

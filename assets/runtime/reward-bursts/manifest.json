@@ -1,0 +1,305 @@
+{
+  "version": "reward-burst-20260910",
+  "columns": 4,
+  "rows": 3,
+  "frame_count": 12,
+  "frame_width": 256,
+  "frame_height": 256,
+  "frame_anchor": [
+    128,
+    128
+  ],
+  "content_size": 224,
+  "padding": 16,
+  "quality": 90,
+  "method": 6,
+  "alpha_lossless": true,
+  "budget_bytes": 614400,
+  "assets": {
+    "rare": {
+      "url": "assets/runtime/reward-bursts/rare.webp?v=reward-burst-20260910",
+      "width": 1024,
+      "height": 768,
+      "bytes": 129230,
+      "sha256": "5c9f826a671da66db47eacdc8998ee82bbf003f2f9d3c5488b23b6cb2fe866de",
+      "source_sha256": "98a0b7f04e36e73ba1cdbcd58cf59f596fb7068bd15be931bc02eba9e062174c",
+      "frames": [
+        {
+          "index": 0,
+          "x": 0,
+          "y": 0,
+          "alpha_bounds": [
+            86,
+            118,
+            161,
+            177
+          ]
+        },
+        {
+          "index": 1,
+          "x": 256,
+          "y": 0,
+          "alpha_bounds": [
+            73,
+            66,
+            203,
+            201
+          ]
+        },
+        {
+          "index": 2,
+          "x": 512,
+          "y": 0,
+          "alpha_bounds": [
+            75,
+            74,
+            179,
+            196
+          ]
+        },
+        {
+          "index": 3,
+          "x": 768,
+          "y": 0,
+          "alpha_bounds": [
+            62,
+            82,
+            191,
+            197
+          ]
+        },
+        {
+          "index": 4,
+          "x": 0,
+          "y": 256,
+          "alpha_bounds": [
+            34,
+            33,
+            222,
+            228
+          ]
+        },
+        {
+          "index": 5,
+          "x": 256,
+          "y": 256,
+          "alpha_bounds": [
+            35,
+            33,
+            226,
+            229
+          ]
+        },
+        {
+          "index": 6,
+          "x": 512,
+          "y": 256,
+          "alpha_bounds": [
+            30,
+            29,
+            228,
+            223
+          ]
+        },
+        {
+          "index": 7,
+          "x": 768,
+          "y": 256,
+          "alpha_bounds": [
+            31,
+            33,
+            227,
+            224
+          ]
+        },
+        {
+          "index": 8,
+          "x": 0,
+          "y": 512,
+          "alpha_bounds": [
+            42,
+            51,
+            234,
+            225
+          ]
+        },
+        {
+          "index": 9,
+          "x": 256,
+          "y": 512,
+          "alpha_bounds": [
+            65,
+            71,
+            213,
+            192
+          ]
+        },
+        {
+          "index": 10,
+          "x": 512,
+          "y": 512,
+          "alpha_bounds": [
+            80,
+            84,
+            185,
+            159
+          ]
+        },
+        {
+          "index": 11,
+          "x": 768,
+          "y": 512,
+          "alpha_bounds": [
+            94,
+            86,
+            173,
+            142
+          ]
+        }
+      ]
+    },
+    "high": {
+      "url": "assets/runtime/reward-bursts/high.webp?v=reward-burst-20260910",
+      "width": 1024,
+      "height": 768,
+      "bytes": 160982,
+      "sha256": "3ab0b55566ff8e0d91f43abd5f91d74ab1f1b212410e80f82a3e74336c68a748",
+      "source_sha256": "cfcfda32b70833658f72c6cf87b68913ba2f3954f81b5f0adeb4594ce5292979",
+      "frames": [
+        {
+          "index": 0,
+          "x": 0,
+          "y": 0,
+          "alpha_bounds": [
+            29,
+            93,
+            231,
+            200
+          ]
+        },
+        {
+          "index": 1,
+          "x": 256,
+          "y": 0,
+          "alpha_bounds": [
+            44,
+            80,
+            236,
+            191
+          ]
+        },
+        {
+          "index": 2,
+          "x": 512,
+          "y": 0,
+          "alpha_bounds": [
+            64,
+            75,
+            185,
+            218
+          ]
+        },
+        {
+          "index": 3,
+          "x": 768,
+          "y": 0,
+          "alpha_bounds": [
+            65,
+            62,
+            207,
+            213
+          ]
+        },
+        {
+          "index": 4,
+          "x": 0,
+          "y": 256,
+          "alpha_bounds": [
+            32,
+            55,
+            221,
+            200
+          ]
+        },
+        {
+          "index": 5,
+          "x": 256,
+          "y": 256,
+          "alpha_bounds": [
+            21,
+            23,
+            236,
+            240
+          ]
+        },
+        {
+          "index": 6,
+          "x": 512,
+          "y": 256,
+          "alpha_bounds": [
+            33,
+            35,
+            227,
+            232
+          ]
+        },
+        {
+          "index": 7,
+          "x": 768,
+          "y": 256,
+          "alpha_bounds": [
+            22,
+            40,
+            230,
+            237
+          ]
+        },
+        {
+          "index": 8,
+          "x": 0,
+          "y": 512,
+          "alpha_bounds": [
+            41,
+            26,
+            239,
+            223
+          ]
+        },
+        {
+          "index": 9,
+          "x": 256,
+          "y": 512,
+          "alpha_bounds": [
+            40,
+            65,
+            221,
+            207
+          ]
+        },
+        {
+          "index": 10,
+          "x": 512,
+          "y": 512,
+          "alpha_bounds": [
+            60,
+            66,
+            196,
+            176
+          ]
+        },
+        {
+          "index": 11,
+          "x": 768,
+          "y": 512,
+          "alpha_bounds": [
+            88,
+            86,
+            176,
+            166
+          ]
+        }
+      ]
+    }
+  },
+  "total_bytes": 290212
+}

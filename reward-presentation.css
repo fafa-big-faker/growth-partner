@@ -41,6 +41,14 @@
 
 .reward-dialog > .modal-body::-webkit-scrollbar { display: none; width: 0; height: 0; }
 
+/* The scrollport includes a fixed paint gutter for the burst's real alpha bounds.
+   Negative side margins preserve the grid width; animation never changes this space. */
+.modal.reward-dialog:has(.reward-burst) { padding-right: 26px; }
+.reward-dialog > .modal-body:has(.reward-burst) {
+  margin-inline: -26px;
+  padding: 26px 26px 0;
+}
+
 .reward-dialog > .modal-footer {
   flex-shrink: 0;
   justify-content: center;
@@ -94,7 +102,7 @@
   flex-shrink: 0;
 }
 
-.reward-quality-ink, .reward-quality-echo {
+.reward-quality-ink {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -103,7 +111,27 @@
   pointer-events: none;
 }
 
-.reward-quality-echo { opacity: 0; }
+.reward-burst {
+  position: absolute;
+  inset: -30%;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+.reward-item:is([data-reward-quality="4"], [data-reward-quality="5"]) .reward-burst { inset: -40%; }
+.reward-burst-atlas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 400%;
+  height: 300%;
+  max-width: none;
+  max-height: none;
+  display: block;
+  pointer-events: none;
+}
+.reward-item[data-reward-quality="4"] .reward-burst-atlas { filter: sepia(.65) saturate(1.8) hue-rotate(280deg); }
+.reward-item[data-reward-quality="5"] .reward-burst-atlas { filter: sepia(.7) saturate(1.8); }
 
 .reward-art-icon {
   position: absolute;
@@ -160,12 +188,15 @@
 .reward-item.is-reward-pending > * { opacity: 0; }
 .reward-item.is-reward-revealing .reward-art { animation: reward-ink-reveal 210ms ease-out both; }
 .reward-item.is-reward-revealing :is(.reward-item-name, .reward-item-quantity) { animation: reward-copy-reveal 160ms ease-out both; }
-.reward-item.is-reward-ink { --reward-arrival-duration: 800ms; }
-.reward-item.is-reward-ink:is([data-reward-quality="4"], [data-reward-quality="5"]) { --reward-arrival-duration: 1100ms; }
-.reward-item.is-reward-ink .reward-quality-ink { animation: reward-rare-ink var(--reward-arrival-duration) cubic-bezier(.18,.68,.28,1) both; }
-.reward-item.is-reward-ink .reward-quality-echo { animation: reward-ink-echo 880ms 220ms ease-out both; }
+.reward-item.is-reward-ink { position: relative; z-index: 1; }
+.reward-item.is-reward-ink .reward-burst { opacity: 1; }
+.reward-item.is-reward-ink .reward-burst-atlas { animation: reward-burst-rare 880ms steps(1, end) both; }
+.reward-item.is-reward-ink:is([data-reward-quality="4"], [data-reward-quality="5"]) .reward-burst-atlas { animation-name: reward-burst-high; animation-duration: 1280ms; }
+.reward-item.is-reward-ink:not(.is-reward-icon) .reward-quality-ink { opacity: 0; }
+.reward-item.is-reward-icon .reward-quality-ink { animation: reward-base-arrive 240ms ease-out both; }
 .reward-item.is-reward-ink:not(.is-reward-icon) :is(.reward-art-icon, .reward-item-name, .reward-item-quantity) { opacity: 0; }
-.reward-item.is-reward-icon .reward-art-icon { animation: reward-rare-icon 320ms cubic-bezier(.2,.7,.3,1) both; }
+.reward-item.is-reward-icon .reward-art-icon { animation: reward-rare-icon 320ms cubic-bezier(.16,.7,.25,1) both; }
+.reward-item.is-reward-icon:is([data-reward-quality="4"], [data-reward-quality="5"]) .reward-art-icon { animation-name: reward-high-icon; animation-duration: 340ms; }
 .reward-item.is-reward-icon :is(.reward-item-name, .reward-item-quantity) { animation: reward-copy-reveal 180ms ease-out both; }
 .reward-item.is-skill-active .reward-quality-ink { animation: reward-skill-ink 280ms ease-out both; }
 .reward-item.is-count-shaking .reward-item-quantity-value { animation: reward-count-shake 500ms linear both; }
@@ -180,20 +211,47 @@
   from { opacity: 0; }
   to { opacity: 1; }
 }
-@keyframes reward-rare-ink {
-  0% { opacity: 0; transform: scale(.24) rotate(-9deg); }
-  28% { opacity: .6; transform: scale(.56) rotate(-5deg); }
-  70% { opacity: 1; transform: scale(1.09) rotate(1deg); }
-  100% { opacity: 1; transform: scale(1) rotate(0); }
+/* Translate the whole 4x3 atlas in discrete cells; never slide across neighboring frames. */
+@keyframes reward-burst-rare {
+  0% { transform: translate(0, 0); }
+  6.8182% { transform: translate(-25%, 0); }
+  13.6364% { transform: translate(-50%, 0); }
+  23.8636% { transform: translate(-75%, 0); }
+  32.9545% { transform: translate(0, -33.333333%); }
+  43.1818% { transform: translate(-25%, -33.333333%); }
+  51.1364% { transform: translate(-50%, -33.333333%); }
+  59.0909% { transform: translate(-75%, -33.333333%); }
+  69.3182% { transform: translate(0, -66.666667%); }
+  79.5455% { transform: translate(-25%, -66.666667%); }
+  87.5% { transform: translate(-50%, -66.666667%); }
+  94.3182%, 100% { transform: translate(-75%, -66.666667%); }
 }
-@keyframes reward-ink-echo {
-  0% { opacity: 0; transform: scale(.58) rotate(8deg); }
-  45% { opacity: .2; }
-  100% { opacity: 0; transform: scale(1.15) rotate(3deg); }
+@keyframes reward-burst-high {
+  0% { transform: translate(0, 0); }
+  6.25% { transform: translate(-25%, 0); }
+  13.28125% { transform: translate(-50%, 0); }
+  20.3125% { transform: translate(-75%, 0); }
+  26.5625% { transform: translate(0, -33.333333%); }
+  32.03125% { transform: translate(-25%, -33.333333%); }
+  39.84375% { transform: translate(-50%, -33.333333%); }
+  50% { transform: translate(-75%, -33.333333%); }
+  61.71875% { transform: translate(0, -66.666667%); }
+  75% { transform: translate(-25%, -66.666667%); }
+  86.71875% { transform: translate(-50%, -66.666667%); }
+  95.3125%, 100% { transform: translate(-75%, -66.666667%); }
+}
+@keyframes reward-base-arrive {
+  from { opacity: 0; transform: scale(.84); }
+  to { opacity: 1; transform: scale(1); }
 }
 @keyframes reward-rare-icon {
-  0% { opacity: 0; transform: translateY(5px) scale(.7); }
-  50% { opacity: 1; transform: translateY(-1px) scale(1.1); }
+  0% { opacity: 0; transform: translateY(7px) scale(.55); }
+  50% { opacity: 1; transform: translateY(-2px) scale(1.17); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes reward-high-icon {
+  0% { opacity: 0; transform: translateY(10px) scale(.42); }
+  44%, 58% { opacity: 1; transform: translateY(-3px) scale(1.24); }
   100% { opacity: 1; transform: translateY(0) scale(1); }
 }
 @keyframes reward-count-arrive {
@@ -252,10 +310,13 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .reward-item.is-reward-ink .reward-burst { opacity: 0; }
   .reward-item.is-reward-revealing .reward-art,
   .reward-item.is-reward-revealing :is(.reward-item-name, .reward-item-quantity),
-  .reward-item.is-reward-ink :is(.reward-quality-ink, .reward-quality-echo),
-  .reward-item.is-reward-icon :is(.reward-art-icon, .reward-item-name, .reward-item-quantity),
+  .reward-item.is-reward-ink .reward-burst-atlas,
+  .reward-item.is-reward-ink:is([data-reward-quality="4"], [data-reward-quality="5"]) .reward-burst-atlas,
+  .reward-item.is-reward-icon:is([data-reward-quality="4"], [data-reward-quality="5"]) .reward-art-icon,
+  .reward-item.is-reward-icon :is(.reward-quality-ink, .reward-art-icon, .reward-item-name, .reward-item-quantity),
   .reward-item.is-count-shaking .reward-item-quantity-value,
   .reward-item.is-count-changing .reward-item-quantity-value,
   .reward-item.is-skill-active .reward-quality-ink { animation: none; }

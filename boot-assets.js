@@ -2,7 +2,7 @@
 (function (root) {
   'use strict';
   const manifest = {
-  "version": "2905f1767da4d1ffc6c926ce6bc7c7d8a6dd34301681babc7d4901dca7f356da",
+  "version": "7d8b7bdf93f1fb9878f2e9732370cf6fad1b167d37ab2b959688695f0abc08ca",
   "assets": [
     {
       "url": "assets/runtime/entry-preparation/background.webp?v=entry-preparation-20260910",
@@ -75,16 +75,16 @@
       "density": "all"
     },
     {
-      "url": "assets/runtime/audio/reward-arrival-high.wav",
-      "bytes": 176242,
-      "sha256": "e5ab3dbb63eb2550b644a882188bcd9fd151885abbfcee5d93465191085e6d69",
+      "url": "assets/runtime/audio/reward-arrival-high.wav?v=reward-burst-20260910",
+      "bytes": 205042,
+      "sha256": "01ae6d6ce18a54d3d50f768d434e367261b9e21a59d40a9bb4b29d6df77898e1",
       "kind": "audio",
       "density": "all"
     },
     {
-      "url": "assets/runtime/audio/reward-arrival-rare.wav",
-      "bytes": 128242,
-      "sha256": "1734ae5ec92f5fffc000245c11bb875b8d8b728337153f4f052f62498bfd0aa1",
+      "url": "assets/runtime/audio/reward-arrival-rare.wav?v=reward-burst-20260910",
+      "bytes": 141042,
+      "sha256": "0a431f86274283dd828cb04ad555d0dfc9ec088d3a7964204cc23d74370e96f8",
       "kind": "audio",
       "density": "all"
     },
@@ -771,6 +771,20 @@
       "url": "assets/runtime/ink-controls/return-arrow.webp?v=ink-controls-20260909",
       "bytes": 4392,
       "sha256": "56e202f7c151def8322bb94620f02c0d376f1c473786ed656cd5459eee9c11e7",
+      "kind": "image",
+      "density": "all"
+    },
+    {
+      "url": "assets/runtime/reward-bursts/high.webp?v=reward-burst-20260910",
+      "bytes": 160982,
+      "sha256": "3ab0b55566ff8e0d91f43abd5f91d74ab1f1b212410e80f82a3e74336c68a748",
+      "kind": "image",
+      "density": "all"
+    },
+    {
+      "url": "assets/runtime/reward-bursts/rare.webp?v=reward-burst-20260910",
+      "bytes": 129230,
+      "sha256": "5c9f826a671da66db47eacdc8998ee82bbf003f2f9d3c5488b23b6cb2fe866de",
       "kind": "image",
       "density": "all"
     },

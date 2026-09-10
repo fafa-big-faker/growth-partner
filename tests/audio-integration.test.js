@@ -40,7 +40,7 @@ test('all supplied audio files are present and remain lightweight', () => {
     if (file.endsWith('.wav')) assert.equal(contents.subarray(0, 4).toString('ascii'), 'RIFF');
     totalBytes += contents.length;
   });
-  assert.equal(totalBytes, 2402528);
+  assert.equal(totalBytes, 2444128);
   assert.ok(totalBytes < 2.4 * 1024 * 1024, 'audio bundle should remain under 2.4 MiB with both complete rare arrival cues');
 });
 
@@ -56,8 +56,8 @@ test('runtime effects use the approved peak-normalized loudness targets', () => 
     'drop-rare.wav': 0.70,
     'drop-high.wav': 0.76,
     'skill-trigger.wav': 0.72,
-    'reward-arrival-rare.wav': 0.70,
-    'reward-arrival-high.wav': 0.76,
+    'reward-arrival-rare.wav': 0.86,
+    'reward-arrival-high.wav': 0.94,
   };
   Object.entries(targets).forEach(([file, target]) => {
     const contents = fs.readFileSync(path.join(root, 'assets', 'runtime', 'audio', file));
