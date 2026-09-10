@@ -5736,11 +5736,10 @@ const AdminView = {
     list.innerHTML = html;
   },
 
-  _getReusableTaskThemes(tasks, today = localDateStr()) {
+  _getOngoingTaskThemes(tasks, today = localDateStr()) {
     const groups = new Map();
     tasks.forEach(task => {
-      if (task.taskType !== 'theme' || !['draft', 'published'].includes(task.status)
-          || !task.themeName || !task.themeStart || !task.themeEnd || task.themeEnd < today) return;
+      if (task.taskType !== 'theme' || task.status !== 'published' || !task.themeName) return;
       if (!groups.has(task.themeName)) {
         groups.set(task.themeName, { name: task.themeName, start: task.themeStart, end: task.themeEnd, periods: [] });
       }
@@ -5751,11 +5750,33 @@ const AdminView = {
       if (task.themeEnd && (!theme.end || task.themeEnd > theme.end)) theme.end = task.themeEnd;
     });
     return [...groups.values()]
-      .map(theme => ({ ...theme,
-        state: theme.periods.some(period => period.start <= today && today <= period.end) ? 'ongoing' : 'upcoming',
-      }))
-      .sort((a, b) => (a.state === b.state ? 0 : (a.state === 'ongoing' ? -1 : 1))
-        || a.start.localeCompare(b.start) || a.name.localeCompare(b.name, 'zh-CN'));
+      .filter(theme => theme.periods.some(period => period.start <= today && today <= period.end))
+      .sort((a, b) => b.start.localeCompare(a.start) || a.name.localeCompare(b.name, 'zh-CN'));
+  },
+
+  _getReusableTaskThemes(tasks, today = localDateStr()) {
+    const rows = tasks.filter(task => task.taskType === 'theme' && ['draft', 'published'].includes(task.status)
+        && task.themeName && task.themeStart && task.themeEnd && task.themeStart <= task.themeEnd && task.themeEnd >= today)
+      .map(task => ({ name: task.themeName, start: task.themeStart, end: task.themeEnd, status: task.status }))
+      .sort((a, b) => a.name.localeCompare(b.name, 'zh-CN') || a.start.localeCompare(b.start) || a.end.localeCompare(b.end));
+    const themes = [];
+    rows.forEach(row => {
+      const previous = themes[themes.length - 1];
+      if (previous && previous.name === row.name && row.start <= previous.end) {
+        previous.start = previous.start < row.start ? previous.start : row.start;
+        previous.end = previous.end > row.end ? previous.end : row.end;
+        previous.periods.push(row);
+      } else {
+        themes.push({ name: row.name, start: row.start, end: row.end, periods: [row] });
+      }
+    });
+    return themes.map(theme => ({ ...theme,
+      state: theme.periods.some(period => period.start <= today && today <= period.end) ? 'ongoing' : 'upcoming',
+    })).sort((a, b) => {
+      if (a.state !== b.state) return a.state === 'ongoing' ? -1 : 1;
+      const dateOrder = a.state === 'ongoing' ? b.start.localeCompare(a.start) : a.start.localeCompare(b.start);
+      return dateOrder || a.name.localeCompare(b.name, 'zh-CN');
+    });
   },
 
   async showCreateTask(control) {
@@ -5922,7 +5943,7 @@ const AdminView = {
           const theme = overlay._reusableTaskThemes[Number(source)];
           const today = localDateStr();
           if (!theme || theme.end < today) {
-            UI.toast('所选主题已经结束，请重新打开表单选择主题', 'warn');
+            UI.toast('所选主题已不在活动期内，请重新打开表单选择主题', 'warn');
             return false;
           }
           themeName = theme.name; themeStart = theme.start; themeEnd = theme.end;

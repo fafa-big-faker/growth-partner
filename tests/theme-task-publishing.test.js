@@ -262,7 +262,7 @@ test('appending saves the original theme identity and rewards exactly once after
 test('draft publication and new theme creation retain the entered values', async () => {
   const h = harness();
   const overlay = await h.open();
-  assert.match(overlay.content, /暂无正在进行的主题/);
+  assert.match(overlay.content, /暂无可复用主题/);
   for (const [id, value] of Object.entries({
     'new-task-type': 'theme', 'new-task-title': '赏月', 'new-task-theme': ' 中秋 ',
     'new-task-theme-start': '2026-09-25', 'new-task-theme-end': '2026-09-28',
