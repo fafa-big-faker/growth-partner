@@ -300,6 +300,7 @@ public final class MainActivity extends Activity {
         awaitingBack = false;
         handler.removeCallbacks(backDeadline);
         setPageBackgrounded(true);
+        if (nativeAudio != null) nativeAudio.setForeground(false);
         if (webView != null) webView.onPause();
         CookieManager.getInstance().flush();
         super.onPause();
@@ -309,6 +310,7 @@ public final class MainActivity extends Activity {
         super.onResume();
         paused = false;
         if (webView != null) webView.onResume();
+        if (nativeAudio != null) nativeAudio.setForeground(true);
         setPageBackgrounded(false);
     }
 
