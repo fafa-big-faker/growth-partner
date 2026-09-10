@@ -190,3 +190,68 @@ test('stalled audio preparation is bounded and aborts downloads instead of block
   assert.equal(await f.manager.playEffect('uiOpen'), true);
   f.manager.stopEffects();
 });
+
+test('native App audio takes priority without creating a context or downloading short cues', async () => {
+  const calls = [];
+  const native = {
+    isReady: () => true,
+    play(name, volume, rate, loop) { calls.push(['play', name, volume, rate, loop]); return calls.length; },
+    stop(streamId) { calls.push(['stop', streamId]); },
+    stopAll() { calls.push(['stopAll']); },
+  };
+  const timers = [];
+  const f = fixture({ contextFails: true });
+  const manager = createAudioManager({ AudioCtor: class { constructor() { throw new Error('short media fallback not expected'); } },
+    NativeAudio: native, AudioContextCtor: null, fetch: async () => { throw new Error('download not expected'); },
+    storage: { getItem() {}, setItem() {} }, documentRef: { querySelectorAll: () => [] },
+    setTimeout(callback, delay) { timers.push({ callback, delay }); return timers.length; }, clearTimeout() {},
+  });
+  assert.equal(manager.usesNativeEffects(), true);
+  assert.deepEqual(await manager.prepareEffects(), { total: 12, failed: [] });
+  assert.equal(await manager.playEffect('rewardHigh', { volumeScale: .5, playbackRate: 1.1 }), true);
+  assert.deepEqual(calls[0], ['play', 'rewardHigh', AUDIO_VOLUMES.rewardHigh * .5, 1.1, false]);
+  assert.equal(timers[0].delay, Math.ceil(1280 / 1.1));
+  manager.stopEffects();
+  assert.deepEqual(calls[1], ['stop', 1]);
+  assert.equal(f.requests.length, 0);
+});
+
+test('native loop, mute, background and failed native start preserve existing lifecycle semantics', async () => {
+  const calls = [];
+  let nextStream = 10;
+  const native = { isReady: () => true,
+    play(...args) { calls.push(['play', ...args]); return args[0] === 'uiOpen' ? 0 : nextStream++; },
+    stop(id) { calls.push(['stop', id]); }, stopAll() { calls.push(['stopAll']); } };
+  const manager = createAudioManager({ NativeAudio: native, AudioCtor: null, AudioContextCtor: null,
+    storage: { getItem() {}, setItem() {} }, documentRef: { querySelectorAll: () => [] } });
+  assert.equal(await manager.playEffect('uiOpen'), false);
+  assert.equal(await manager.startLoop('forgeProcess'), true);
+  assert.deepEqual(calls.at(-1), ['play', 'forgeProcess', AUDIO_VOLUMES.forgeProcess, 1, true]);
+  manager.setMuted(true);
+  assert.ok(calls.some(call => call[0] === 'stop' && call[1] === 10));
+  manager.setMuted(false);
+  assert.equal(calls.filter(call => call[0] === 'play' && call[1] === 'forgeProcess').length, 2);
+  manager.setSuspended(true);
+  assert.equal(await manager.playEffect('chopHit'), false);
+  manager.setSuspended(false);
+  manager.setMuted(true);
+  manager.setMuted(false);
+  assert.equal(calls.filter(call => call[0] === 'play' && call[1] === 'forgeProcess').length, 2,
+    'a loop cleared in the background never returns');
+});
+
+test('an unavailable native bridge falls back to the already tested Web Audio route', async () => {
+  class Context {
+    constructor() { this.state = 'running'; this.destination = {}; }
+    async decodeAudioData(bytes) { return { bytes }; }
+    async resume() { this.state = 'running'; }
+    createBufferSource() { return { playbackRate: { value: 1 }, connect() {}, disconnect() {}, start() {}, stop() {} }; }
+    createGain() { return { gain: { value: 1 }, connect() {}, disconnect() {} }; }
+  }
+  const manager = createAudioManager({ NativeAudio: { isReady: () => false }, AudioCtor: null,
+    AudioContextCtor: Context, fetch: async () => ({ ok: true, arrayBuffer: async () => new ArrayBuffer(4) }),
+    storage: { getItem() {}, setItem() {} }, documentRef: { querySelectorAll: () => [] } });
+  assert.equal(manager.usesNativeEffects(), false);
+  assert.equal((await manager.prepareEffects()).failed.length, 0);
+  assert.equal(await manager.playEffect('uiTap'), true);
+});

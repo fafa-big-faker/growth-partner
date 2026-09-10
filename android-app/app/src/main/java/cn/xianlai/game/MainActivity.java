@@ -41,6 +41,7 @@ public final class MainActivity extends Activity {
     private TextView detail;
     private Button retry;
     private WebView webView;
+    private NativeAudioBridge nativeAudio;
     private boolean failed;
     private boolean paused;
     private boolean awaitingBack;
@@ -114,6 +115,8 @@ public final class MainActivity extends Activity {
     @SuppressWarnings("deprecation")
     private void createWebView() {
         webView = new WebView(this);
+        nativeAudio = new NativeAudioBridge(this);
+        webView.addJavascriptInterface(nativeAudio, "XianlaiNativeAudio");
         webView.setBackgroundColor(PAPER);
         webView.setOverScrollMode(View.OVER_SCROLL_NEVER);
         WebSettings settings = webView.getSettings();
@@ -179,6 +182,10 @@ public final class MainActivity extends Activity {
             @Override public boolean onRenderProcessGone(WebView view, RenderProcessGoneDetail gone) {
                 root.removeView(view);
                 view.destroy();
+                if (nativeAudio != null) {
+                    nativeAudio.release();
+                    nativeAudio = null;
+                }
                 if (webView == view) webView = null;
                 showError(R.string.retry_hint);
                 return true;
@@ -305,6 +312,10 @@ public final class MainActivity extends Activity {
             root.removeView(webView);
             webView.destroy();
             webView = null;
+        }
+        if (nativeAudio != null) {
+            nativeAudio.release();
+            nativeAudio = null;
         }
         super.onDestroy();
     }

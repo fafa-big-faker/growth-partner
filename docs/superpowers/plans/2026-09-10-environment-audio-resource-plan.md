@@ -49,14 +49,14 @@
 - Consumes: the existing 12 non-BGM keys in `AUDIO_PATHS`.
 - Produces: `window.XianlaiNativeAudio.isReady/play/stop/stopAll`; `AudioManager.usesNativeEffects()`.
 
-- [ ] Add failing web contract tests for native priority, safe argument bounds, group cancellation, loops, mute/background and Web Audio fallback.
-- [ ] Add static/native source tests for the exact whitelist and absence of URL/file/network bridge methods.
-- [ ] Run the focused tests and confirm failure.
-- [ ] Implement `NativeAudioBridge` with `SoundPool.Builder`, `USAGE_GAME`, a fixed key-to-bundled-asset map and lifecycle release.
-- [ ] Register the bridge only on the trusted WebView and release it on Activity destruction.
-- [ ] Implement the AudioManager native proxy without changing BGM, mix values or public call sites.
-- [ ] Run web audio, app shell, Java compilation and Android build tests.
-- [ ] Commit native low-latency audio.
+- [x] Add failing web contract tests for native priority, safe argument bounds, group cancellation, loops, mute/background and Web Audio fallback.
+- [x] Add static/native source tests for the exact whitelist and absence of URL/file/network bridge methods.
+- [x] Run the focused tests and confirm failure.
+- [x] Implement `NativeAudioBridge` with `SoundPool.Builder`, `USAGE_GAME`, a fixed key-to-bundled-asset map and lifecycle release.
+- [x] Register the bridge only on the trusted WebView and release it on Activity destruction.
+- [x] Implement the AudioManager native proxy without changing BGM, mix values or public call sites.
+- [x] Run web audio, app shell, Java compilation and Android build tests.
+- [x] Commit native low-latency audio.
 
 ### Task 3: Bundle exact web assets and defer unused animations
 

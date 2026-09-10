@@ -34,6 +34,11 @@
   const MUTE_STORAGE_KEY = 'growth-partner-audio-muted';
   const GROUP_EFFECT_LIMIT = 3;
   const TOTAL_EFFECT_LIMIT = 12;
+  const AUDIO_DURATIONS_MS = Object.freeze({
+    uiTap: 200, uiOpen: 200, chopHit: 300, itemDrop: 300,
+    forgeProcess: 3000, forgeSuccess: 680, dropRare: 500, dropHigh: 800,
+    rewardReveal: 200, rewardRare: 880, rewardHigh: 1280, skillTrigger: 680,
+  });
 
   function boundedNumber(value, minimum, maximum, fallback) {
     const number = Number(value);
@@ -44,8 +49,11 @@
     const AudioCtor = options.AudioCtor || root.Audio;
     const storage = options.storage || root.localStorage;
     const documentRef = options.documentRef || root.document;
+    const NativeAudio = options.NativeAudio || root.XianlaiNativeAudio;
     const ContextCtor = options.AudioContextCtor || root.AudioContext || root.webkitAudioContext;
     const fetchAudio = options.fetch || root.fetch?.bind(root);
+    const setTimer = options.setTimeout || root.setTimeout?.bind(root) || setTimeout;
+    const clearTimer = options.clearTimeout || root.clearTimeout?.bind(root) || clearTimeout;
     const buffers = new Map();
     const decoding = new Map();
     let context = null;
@@ -75,6 +83,11 @@
       return context;
     }
 
+    function usesNativeEffects() {
+      try { return Boolean(NativeAudio?.isReady?.()); }
+      catch { return false; }
+    }
+
     function unlock() {
       if (suspended) return;
       const ctx = getContext();
@@ -86,6 +99,7 @@
 
     async function prepareEffects(timeoutMs = 8000) {
       const names = Object.keys(AUDIO_PATHS).filter(name => name !== 'bgmMain');
+      if (usesNativeEffects()) return { total: names.length, failed: [] };
       const ctx = getContext();
       if (!ctx) return { total: names.length, failed: names.map(name => AUDIO_PATHS[name]) };
       const results = await Promise.all(names.map(name => {
@@ -116,6 +130,49 @@
         return pending;
       }));
       return { total: names.length, failed: names.filter((_, index) => !results[index]).map(name => AUDIO_PATHS[name]) };
+    }
+
+    function createNativeAudio(name) {
+      if (!AUDIO_DURATIONS_MS[name] || !usesNativeEffects()) return null;
+      let streamId = 0;
+      let endTimer = null;
+      const audio = {
+        volume: AUDIO_VOLUMES[name] ?? 0.3,
+        playbackRate: 1,
+        loop: false,
+        currentTime: 0,
+        paused: true,
+        onended: null,
+        onerror: null,
+        pause() {
+          if (endTimer !== null) clearTimer(endTimer);
+          endTimer = null;
+          if (streamId > 0) {
+            try { NativeAudio.stop(streamId); } catch { /* Native output may already be gone. */ }
+          }
+          streamId = 0;
+          audio.paused = true;
+        },
+        play() {
+          audio.pause();
+          try {
+            streamId = Number(NativeAudio.play(name, audio.volume, audio.playbackRate, audio.loop)) || 0;
+          } catch {
+            streamId = 0;
+          }
+          if (streamId <= 0) throw new Error('Native audio playback unavailable');
+          audio.paused = false;
+          if (!audio.loop) {
+            endTimer = setTimer(() => {
+              endTimer = null;
+              streamId = 0;
+              audio.paused = true;
+              audio.onended?.();
+            }, Math.ceil(AUDIO_DURATIONS_MS[name] / audio.playbackRate));
+          }
+        },
+      };
+      return audio;
     }
 
     function createBufferedAudio(name) {
@@ -174,6 +231,8 @@
 
     function createAudio(name) {
       if (name !== 'bgmMain') {
+        const nativeAudio = createNativeAudio(name);
+        if (nativeAudio) return nativeAudio;
         const buffered = createBufferedAudio(name);
         if (buffered) return buffered;
       }
@@ -399,6 +458,7 @@
       setSuspended,
       toggleMuted,
       isMuted: () => muted,
+      usesNativeEffects,
       preload,
       prepareEffects,
       bindControls,
@@ -409,6 +469,6 @@
   const AudioManager = createAudioManager();
   root.AudioManager = AudioManager;
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { AUDIO_PATHS, AUDIO_VOLUMES, MUTE_STORAGE_KEY, createAudioManager };
+    module.exports = { AUDIO_PATHS, AUDIO_VOLUMES, AUDIO_DURATIONS_MS, MUTE_STORAGE_KEY, createAudioManager };
   }
 })(typeof globalThis !== 'undefined' ? globalThis : window);
