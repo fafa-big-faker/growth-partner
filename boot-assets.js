@@ -2,1589 +2,1815 @@
 (function (root) {
   'use strict';
   const manifest = {
-  "version": "7d8b7bdf93f1fb9878f2e9732370cf6fad1b167d37ab2b959688695f0abc08ca",
+  "version": "74b5842ff2f9fc5578d648b2e12c6adfaed8ae035874d45b634c2662d0d06702",
   "assets": [
     {
       "url": "assets/runtime/entry-preparation/background.webp?v=entry-preparation-20260910",
       "bytes": 51498,
       "sha256": "2a2943aa390b1fbd6e0a7648b41efd4010e955df3ec5fb0cc346790166f4d371",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/ink-controls/exp-track.webp?v=ink-controls-20260909",
       "bytes": 6784,
       "sha256": "4d594b9bd510389426de7abd51e755e90732b2a5182e697251924099a58765aa",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/ink-controls/exp-fill.webp?v=ink-controls-20260909",
       "bytes": 6428,
       "sha256": "25f8a071745c0e30dcf97ca73e1c1525ba8ee86a22d9a3b40e3ca6559e72db6b",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/audio/bgm-main.mp3",
       "bytes": 998024,
       "sha256": "fcc89ed8b241fd48ce5e817dbd042f8598592b4abaa3d76ad1edd70ca478a55c",
       "kind": "audio",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/audio/chop-hit.wav",
       "bytes": 48242,
       "sha256": "1b981c8f57ba8c66bba48836c96b9ed2eaa508eb4c1327a4bcdd1788876694ca",
       "kind": "audio",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/audio/drop-high.wav",
       "bytes": 128242,
       "sha256": "341fa77a2c640eb0b298fc9b8d8d184a13b12cf856bd315e83ed685ed3f2ba26",
       "kind": "audio",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/audio/drop-rare.wav",
       "bytes": 80242,
       "sha256": "055133aec460f47d4fdd90a1273061d8663a8edfa82df805d6c2804266dbba3a",
       "kind": "audio",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/audio/forge-process.wav",
       "bytes": 480242,
       "sha256": "432d957937cee0707f8f9091070eaee8dcf3e15ba2029368be1db4d6b6fd5938",
       "kind": "audio",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/audio/forge-success.wav",
       "bytes": 109042,
       "sha256": "08d74708d55f17b41752807dfc78a60fee4fcf0c622dc30a219e69d4b958fa0b",
       "kind": "audio",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/audio/item-drop.wav",
       "bytes": 48242,
       "sha256": "2c19bdfdf5f53be6ab0f49e6396726495c903b805937b8d29254f4c1eec6256f",
       "kind": "audio",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/audio/reward-arrival-high.wav?v=reward-burst-20260910",
       "bytes": 205042,
       "sha256": "01ae6d6ce18a54d3d50f768d434e367261b9e21a59d40a9bb4b29d6df77898e1",
       "kind": "audio",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/audio/reward-arrival-rare.wav?v=reward-burst-20260910",
       "bytes": 141042,
       "sha256": "0a431f86274283dd828cb04ad555d0dfc9ec088d3a7964204cc23d74370e96f8",
       "kind": "audio",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/audio/reward-reveal.wav",
       "bytes": 32242,
       "sha256": "43a90d3544b9811a030f33f0b856dbbdcb10fe56ea84e8ac13ee645bd7a835cb",
       "kind": "audio",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/audio/skill-trigger.wav?v=skill-v2-20260909",
       "bytes": 109042,
       "sha256": "176fb1daefc3207fe61f6556b6d9348bc4db31f1657cbe6cae98e97e94666c43",
       "kind": "audio",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/audio/ui-open.wav",
       "bytes": 32242,
       "sha256": "9167bac0424fcbda4a383faafae72053059c74a1411e118799503549b6b7132b",
       "kind": "audio",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/audio/ui-tap.wav",
       "bytes": 32242,
       "sha256": "5b44fa42c0add1585c906f5390bdcc6d9b779c92143d6bfedb02c7d6122b0a71",
       "kind": "audio",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/character/axes/51001/frame-01.webp",
       "bytes": 20082,
       "sha256": "e248d7fb1608590ba586b3f6404270df1511c1ac15b658f0afdfd427ea43da2f",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/axes/51001/frame-02.webp",
       "bytes": 22620,
       "sha256": "8ca88ac69a3ce63457587e538fe04292cac4e45084af3c9d7cc134a6c7e84194",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/axes/51001/frame-03.webp",
       "bytes": 23706,
       "sha256": "fa3403a0c197073a0662f375003c39948412e1e1ebb5e3ba3454521f8a57e354",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/axes/51001/frame-04.webp",
       "bytes": 23214,
       "sha256": "2b731a61b71af8438f41055149a2ef39767ef67dc799643992b900d08d57abed",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/axes/51001/frame-05.webp",
       "bytes": 23566,
       "sha256": "cf37b4d26e35316e1d9467f46cd76fb4187bd95cac7087853ef7250dfc84cf00",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/axes/51001/frame-06.webp",
       "bytes": 20332,
       "sha256": "7fef2c7f554e0e3a76f56c6f2f6486d6962dccac4e7ea57b04a89a30aa7dc7c0",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/axes/51002/frame-01.webp",
       "bytes": 20430,
       "sha256": "0a6fc95dce686dedad457166b1d69c9facab04ed356aec66185e548ea0f2d9e4",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/axes/51002/frame-02.webp",
       "bytes": 22656,
       "sha256": "897098950906b30bb466c446df109742f63a43eed04e11d1ec5a5e90ff46240e",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/axes/51002/frame-03.webp",
       "bytes": 24432,
       "sha256": "c7328d922c6b017894baaf1f15016c38a8becaf33be4da697944eaa240272e4b",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/axes/51002/frame-04.webp",
       "bytes": 24470,
       "sha256": "5cd2dcba3292e4f688877b2dfb1d0226f8893a50b39e8747c95bd11c9c2d7fc9",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/axes/51002/frame-05.webp",
       "bytes": 23444,
       "sha256": "599f9278b57819f769ed81699f70eec82ad189664bd7985fc601f2e12de7d315",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/axes/51002/frame-06.webp",
       "bytes": 20216,
       "sha256": "2c21defb05bd41511a44fb0e033a1334cc0be8269d3f79f2fd9f6e914c939692",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/axes/52001/frame-01.webp",
       "bytes": 19950,
       "sha256": "fbab98ecb4705c54a0238248a890185bc2119e0fb4a474de97d2a41d3e451cf2",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/axes/52001/frame-02.webp",
       "bytes": 23142,
       "sha256": "824c400ff98b62a84253ff8c81d028a37794d813030c1439f5f2c077bcc56234",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/axes/52001/frame-03.webp",
       "bytes": 24254,
       "sha256": "33be8baff65dcdd0f8559a8cc5701ae96ef809ac05c99b8ed646d3950cdd20cb",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/axes/52001/frame-04.webp",
       "bytes": 23772,
       "sha256": "df77fa960092b8522fb2331b36bab13fa122e99a8f3b9090d9840ec5984d4530",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/axes/52001/frame-05.webp",
       "bytes": 23646,
       "sha256": "062c3ab8b18affc02f664889bb0d27be0c46d819ef02c975f6fbf209304a1ec4",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/axes/52001/frame-06.webp",
       "bytes": 19708,
       "sha256": "a6e9d5d43a32ae71eee390a9a900e07a3416d149d82c2751fc05817ac92b4e70",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/axes/52002/frame-01.webp",
       "bytes": 24688,
       "sha256": "eff4ce0aabdaadbbf55bed2ccc34a1957479b2e15a4ac8de2576f882e9cd3e23",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/axes/52002/frame-02.webp",
       "bytes": 29338,
       "sha256": "742adf2e27488f92231b4791cccd945089515d06416b54ad9b2cf0c6aef40eee",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/axes/52002/frame-03.webp",
       "bytes": 29870,
       "sha256": "1bc914799cc6edab50b7cf010408f58f5970b28242b3011742a7e1d313674fa1",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/axes/52002/frame-04.webp",
       "bytes": 28910,
       "sha256": "b9de39e9981e12a4505d1fb21e028b73dc91fd005dcefb871366c20817751a2a",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/axes/52002/frame-05.webp",
       "bytes": 30006,
       "sha256": "5469d705634199d68a320e2a84b91d49fa2ca6a003f6c7f307de90048322c0ba",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/axes/52002/frame-06.webp",
       "bytes": 24562,
       "sha256": "b068b398dbde63438d33cefbb216b50b11eda0db8768ab31e9b73d8987085241",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/axes/53001/frame-01.webp",
       "bytes": 24858,
       "sha256": "d53f38407dc0216b0c9a0732829bf79303f9a7b72025fb0fb7f403c7f5230623",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/axes/53001/frame-02.webp",
       "bytes": 28678,
       "sha256": "615cf3345c92d8e39ff91d0affc0705170344e93d011d06f51509b0e023509a5",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/axes/53001/frame-03.webp",
       "bytes": 31470,
       "sha256": "b46b124b03f7f3634b9c69372924642aab55af5bd7671115e5fb1c58f06196f1",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/axes/53001/frame-04.webp",
       "bytes": 31106,
       "sha256": "1baee3f7e7f699b614427c1d2dd2841b90d67c73fbac4c2ec832e5114a117d40",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/axes/53001/frame-05.webp",
       "bytes": 29536,
       "sha256": "7e3d6c50c6bd5e1242b16170e12f8056acdece8db2e3f6beecc14cb8cadedcb7",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/axes/53001/frame-06.webp",
       "bytes": 24850,
       "sha256": "99e7aef07b24f46e0063d24fc049a523819dfb813b0c902faa7de25db010adc2",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/axes/53002/frame-01.webp",
       "bytes": 24910,
       "sha256": "17786e769c8101b0171379032b9e0c0910fc0a1adf26ffde80057edf07cc5a98",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/axes/53002/frame-02.webp",
       "bytes": 28494,
       "sha256": "c82b1b33b47fc4e13a6922627f25fd533715f4767a6496fe999ff0545afb3bae",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/axes/53002/frame-03.webp",
       "bytes": 29972,
       "sha256": "6ce9024a90e074cfd98eca0b71f326952a8d05fd126f20ecf7c3c8bed6d6b574",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/axes/53002/frame-04.webp",
       "bytes": 30406,
       "sha256": "6cf52e0fba767696d4d9d87aed93210bb438c3c5008ee446f7d78fe32b45671a",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/axes/53002/frame-05.webp",
       "bytes": 27526,
       "sha256": "5ae8c6e94f3488159fac1102f3a5b009379202deb222f735d962b2f040ed7388",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/axes/53002/frame-06.webp",
       "bytes": 25376,
       "sha256": "d65b0a985924b42fa01fad26028b7601b7d5f583c0b022b91fefee9ec040d0c9",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/axes/54001/frame-01.webp",
       "bytes": 24902,
       "sha256": "76b95f6a71081d52716f7010f3866e11edcd5b5dfc3c028328c7dbfb319c99d9",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/axes/54001/frame-02.webp",
       "bytes": 29506,
       "sha256": "180e93a988fe1ecb558b44173bd3241103b26c434db5ad4b7af31fd098445abd",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/axes/54001/frame-03.webp",
       "bytes": 30980,
       "sha256": "a493d2acc3ccdd4692f1f66e86aabcfe9e7bf99fbe65b0f6cb4af37b904faa10",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/axes/54001/frame-04.webp",
       "bytes": 29960,
       "sha256": "1f6d0867f7600b1220e9c0e3e0926494aba279833cd992beb87bc842a7d4c34f",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/axes/54001/frame-05.webp",
       "bytes": 28980,
       "sha256": "342f1b9b06d3cf792e1aad5b128009b6226399f6172e73966a7d696fc01284d2",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/axes/54001/frame-06.webp",
       "bytes": 24540,
       "sha256": "b444f9fc6d4dc11d2500cc58b61673b9ab50efabf99237c3a614f80fec686457",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/axes/54002/frame-01.webp",
       "bytes": 26896,
       "sha256": "6800979d017760b1426af1e33e7f4c379d2138c188c4513101a5c28e87b2a8b6",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/axes/54002/frame-02.webp",
       "bytes": 29290,
       "sha256": "35c76a0efcd885f604befa3a21c18020ce33fb6c864f9deffeb5c55a7273a3e2",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/axes/54002/frame-03.webp",
       "bytes": 32724,
       "sha256": "397c1fe0cbfae81301c7eb52fd36b3af7c1ba9123c6a9cea828b3b582c1726f4",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/axes/54002/frame-04.webp",
       "bytes": 31636,
       "sha256": "c41c0ec3313f35f9cdbe0cc7d171c838892bfc559a55aca4810a4543af3691f3",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/axes/54002/frame-05.webp",
       "bytes": 27890,
       "sha256": "489d1862b0264db7070ba8a0e060df3a6e6a5d31265cb1b76799ad4f6f2e265a",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/axes/54002/frame-06.webp",
       "bytes": 26758,
       "sha256": "e454f9ca8e1f1628cf0956f8e7ecbb72b67e479774558948d5ed269e35f619bb",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/axes/55001/frame-01.webp",
       "bytes": 22960,
       "sha256": "4d6a31bbd94aedd96804f55dbbcdd543b975380a76edacd85fb94bd2617a7bfd",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/axes/55001/frame-02.webp",
       "bytes": 29622,
       "sha256": "c7d0ffb9d9d01e68995e02ccd05faff4c8f43cb47431b3713776692e3dfbe574",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/axes/55001/frame-03.webp",
       "bytes": 31024,
       "sha256": "e0da686e85f6569a5ebe3f3b6cb120a434d6ae91a3e0b3676f90c351e6855e04",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/axes/55001/frame-04.webp",
       "bytes": 29734,
       "sha256": "85b27c8e55d60082c7a6646873de11f3277ff6f09e700e1d26fd3188b9cbcd0e",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/axes/55001/frame-05.webp",
       "bytes": 29086,
       "sha256": "9ee099fa4de294d33951f65fa39a76f166adf787f294ceaebfc110eaed4cf14e",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/axes/55001/frame-06.webp",
       "bytes": 23114,
       "sha256": "bfabdb72b0873cb43647961b03da54cdad2ee22bdcc3a3df37a660c852c22717",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/idle-axes/51001/frame-01.webp?v=idle-anchor-20260907",
       "bytes": 21190,
       "sha256": "5a446a103d682451ae0742b921fac7bcad10e2cfc5380398d658963f88316c92",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/idle-axes/51001/frame-02.webp?v=idle-anchor-20260907",
       "bytes": 21530,
       "sha256": "2cab98c94c038ca8283a5a95c646f2f7cd10382d728d5001d8a032068bd404da",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/idle-axes/51001/frame-03.webp?v=idle-anchor-20260907",
       "bytes": 21496,
       "sha256": "27399b23eb849038671b156d81ad72da45374382444659c21f608e46a4d2b218",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/idle-axes/51001/frame-04.webp?v=idle-anchor-20260907",
       "bytes": 21144,
       "sha256": "60417f440c22e0510b750aa57977d18f6310be2258d9bc18769a09662f840a5e",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/idle-axes/51002/frame-01.webp?v=idle-anchor-20260907",
       "bytes": 24416,
       "sha256": "121a870a6de130181e04e467427b53390dc195a9075e9296c4c76185b4855883",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/idle-axes/51002/frame-02.webp?v=idle-anchor-20260907",
       "bytes": 24724,
       "sha256": "a1754d587397552929976ff4eae0d130e273374a0b4b568ae5bfc91103f7fe67",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/idle-axes/51002/frame-03.webp?v=idle-anchor-20260907",
       "bytes": 24546,
       "sha256": "83ddccc99f99aa3c4473f2e754a29e9d456c68ccbbd9d68e1bcb012ef5046570",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/idle-axes/51002/frame-04.webp?v=idle-anchor-20260907",
       "bytes": 23414,
       "sha256": "69a45e9594a8fc85644676add026f4af560ee3120d99b9c487c5f2ba1276b12b",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/idle-axes/52001/frame-01.webp?v=idle-anchor-20260907",
       "bytes": 24310,
       "sha256": "f03a3deaae75eed5e8f7537c78c56c16745260c513e97da58f74e8633180ad22",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/idle-axes/52001/frame-02.webp?v=idle-anchor-20260907",
       "bytes": 24274,
       "sha256": "a35186889862fb894800bf048f5dc0efa4fdcf567ef96e7585ccab90ea5f4e4e",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/idle-axes/52001/frame-03.webp?v=idle-anchor-20260907",
       "bytes": 23892,
       "sha256": "de04b5ccffb8e734aed805d11589c0b19936d9156ccb51e4f56593536b402163",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/idle-axes/52001/frame-04.webp?v=idle-anchor-20260907",
       "bytes": 24182,
       "sha256": "178a2d42029836efb42abae8d7a2f06a1abf2ed18cc6821946bb26fc30fec21d",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/idle-axes/52002/frame-01.webp?v=idle-anchor-20260907",
       "bytes": 21148,
       "sha256": "55d43971f2df586342b95045cd014dc7c8ebba271f97cd31391d3f2f9f82c31d",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/idle-axes/52002/frame-02.webp?v=idle-anchor-20260907",
       "bytes": 21566,
       "sha256": "82bd689d0671e0e1e4de30692a5c12ff0b6339e626d2882ae73b59fdd1a41f79",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/idle-axes/52002/frame-03.webp?v=idle-anchor-20260907",
       "bytes": 21576,
       "sha256": "846840ec6b3f2830ec54a74043ddf50dee2ea7cb534afbc5a9fa887a4e12c17e",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/idle-axes/52002/frame-04.webp?v=idle-anchor-20260907",
       "bytes": 21056,
       "sha256": "b2636b254d8735a1d77086d94490975f7466a4d93461f5aae23015c43011a56e",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/idle-axes/53001/frame-01.webp?v=idle-anchor-20260907",
       "bytes": 30248,
       "sha256": "58577f0747d7b3ba42ed894aef4f8f0fc467dc09d885ef79a8393f3f6bc2de3a",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/idle-axes/53001/frame-02.webp?v=idle-anchor-20260907",
       "bytes": 30540,
       "sha256": "9cba301cf5e347b048d540ddbdd743d153bd9bfebec5fa477d93154cca07b430",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/idle-axes/53001/frame-03.webp?v=idle-anchor-20260907",
       "bytes": 30142,
       "sha256": "a8a87e8703fe4822297e0f27601f3eae4ac979636f44759e3f4a9b9c7e5614c2",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/idle-axes/53001/frame-04.webp?v=idle-anchor-20260907",
       "bytes": 29692,
       "sha256": "77ec9914f15ed143d2019df37e96876c76fe6d42263592f7ac1fe287ca2ddfa9",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/idle-axes/53002/frame-01.webp?v=idle-anchor-20260907",
       "bytes": 28674,
       "sha256": "5f8e14aef6e9df4e7c1db3e49b818b5cdeb93034107dd8ee9f3964214d64a44e",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/idle-axes/53002/frame-02.webp?v=idle-anchor-20260907",
       "bytes": 29048,
       "sha256": "67ad6fad0b8a0de8ae98f5e71e63114049a9bbda8ff5b1ecfa96f9fc5428bdd2",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/idle-axes/53002/frame-03.webp?v=idle-anchor-20260907",
       "bytes": 28518,
       "sha256": "52162e213ee369179e7bb1f28d07707a1ee3601a88b43aa10129e9a92d43a260",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/idle-axes/53002/frame-04.webp?v=idle-anchor-20260907",
       "bytes": 28818,
       "sha256": "6417e4db6be4aa97ad91d3bad172f79d9d473a07a8d82eac80684c7f0796ac45",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/idle-axes/54001/frame-01.webp?v=idle-anchor-20260907",
       "bytes": 26502,
       "sha256": "3a47fcf3b30239cc750e17b6928f92117b3ff1fdb7457b4b44f64671cfd160a2",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/idle-axes/54001/frame-02.webp?v=idle-anchor-20260907",
       "bytes": 26640,
       "sha256": "863f00996a6bf711fc9cefec5a58445b2ccef948fbc59a0644056e5026734c8b",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/idle-axes/54001/frame-03.webp?v=idle-anchor-20260907",
       "bytes": 25784,
       "sha256": "a1dcf94521270409012780fe00cb460d8049d32b0c1be36915332fe1e0743f21",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/idle-axes/54001/frame-04.webp?v=idle-anchor-20260907",
       "bytes": 26104,
       "sha256": "790e00c724ce61b3b90da4f8c979b4f75abc29125756ef0161aefbbfd145e392",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/idle-axes/54002/frame-01.webp?v=idle-anchor-20260907",
       "bytes": 22378,
       "sha256": "f168ad0a3772c0bc431acdd110cb42a5943a3d8dfd30f6f67789821d42c19c03",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/idle-axes/54002/frame-02.webp?v=idle-anchor-20260907",
       "bytes": 22744,
       "sha256": "42b4caf3ec77d219c1844b85824bb9fdba5f29a14faaa9b249f1f866113997b7",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/idle-axes/54002/frame-03.webp?v=idle-anchor-20260907",
       "bytes": 22168,
       "sha256": "be95ca11b4452ba68e509f7e1f67a9e2bb777361e5a33d9facb38410cd43f56e",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/idle-axes/54002/frame-04.webp?v=idle-anchor-20260907",
       "bytes": 21960,
       "sha256": "16cb4616883c75c034c329abfd7dce9bc1b9609f6cf4aaa07c56cfac53282d3b",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/idle-axes/55001/frame-01.webp?v=idle-anchor-20260907",
       "bytes": 25052,
       "sha256": "64348c83ec693ba4c60f33a30be834612fb1e6e7bf42ce41d144c011395c9648",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/idle-axes/55001/frame-02.webp?v=idle-anchor-20260907",
       "bytes": 25042,
       "sha256": "da9c1391465a30df54dca7b581a1e72c052339dfafb1060d979da0e19af3849b",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/idle-axes/55001/frame-03.webp?v=idle-anchor-20260907",
       "bytes": 25348,
       "sha256": "7f6471a2ea2d811e010f0f04dbe2df7542f18502cae6ee6e9e5effb7911fb1b4",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/character/idle-axes/55001/frame-04.webp?v=idle-anchor-20260907",
       "bytes": 24658,
       "sha256": "c06c57ecbdc6430c4fcb2a2b993e6ab365492be444c392c438a38acc87ae5254",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/effects/leaf-ink.webp?v=ink-feedback-20260908",
       "bytes": 1400,
       "sha256": "dbd6abf9e44cb77de676df78b6f772ba0caced1229a4c31fea72c050956dd848",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/forge-workshop/equip-slip.webp?v=forge-workshop-20260909",
       "bytes": 8284,
       "sha256": "c0e7e12c5a3d313b4fc1aa93001762d466bc13fa117ff26110fd22861b618f0d",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/forge-workshop/stage.webp?v=forge-workshop-20260909",
       "bytes": 45042,
       "sha256": "91ee1a14dda69de111fd42394a680b3ca93d4a0e862e41480fc227bf60149091",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/ink-controls/return-arrow.webp?v=ink-controls-20260909",
       "bytes": 4392,
       "sha256": "56e202f7c151def8322bb94620f02c0d376f1c473786ed656cd5459eee9c11e7",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/reward-bursts/high.webp?v=reward-burst-20260910",
       "bytes": 160982,
       "sha256": "3ab0b55566ff8e0d91f43abd5f91d74ab1f1b212410e80f82a3e74336c68a748",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/reward-bursts/rare.webp?v=reward-burst-20260910",
       "bytes": 129230,
       "sha256": "5c9f826a671da66db47eacdc8998ee82bbf003f2f9d3c5488b23b6cb2fe866de",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/ui/arrow-up-down.svg",
       "bytes": 330,
       "sha256": "439dae512ad071bdc1c9a2547b9c513f08d4f63d64a5c1a5adc17ad0641ed3f4",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/ui/check.svg",
       "bytes": 323,
       "sha256": "93c33af29f589c0714f29217f1b1cc89287a35ae24e126eb50cf5d06bb5fc929",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/ui/close.svg",
       "bytes": 308,
       "sha256": "2c5b36d0f2e8a0c17d9214e35be2d7e11ac60a85e3431aa18889551d3d4af759",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/ui/lock-keyhole.svg",
       "bytes": 362,
       "sha256": "8735e1dd37dfe7559d1aa971fff681c4c746b45ade20cfe4919982e980632828",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/v2/backgrounds/cultivate.webp",
       "bytes": 94016,
       "sha256": "cfec0748d4d80c7bfac7f142c96f017d5fe36ae80382c61dd9a233f865b4d6db",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/v2/backgrounds/reward.webp",
       "bytes": 112664,
       "sha256": "47ead0a49a30132ec08106396b441d86fa4dece2de5a9ecc2207618348ccdfb3",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/v2/backgrounds/tasks.webp",
       "bytes": 111362,
       "sha256": "b294f628c0110232067a1c5642f6c434ed3621a1d00a68e6aac039669b2baf9a",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/v2/icons/icon-breakthrough.webp",
       "bytes": 18984,
       "sha256": "978b2578a008f12ad607aa6c65ed1652797aa3a1b2902c4c5184b84a1af8f541",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/v2/icons/icon-tree-info.webp",
       "bytes": 15872,
       "sha256": "3f8f0b8b2c1d970f667a9a0d330b3a09985b36a4a67e5e0cdc37c213f00f3e24",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/v2/icons/icon-wallet.webp",
       "bytes": 14134,
       "sha256": "2f4feca8703aeb0d78432743239e27c4c8ceaa08a3f190777c2a21c6b6e9d5c7",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/v2/ui/button-primary.webp",
       "bytes": 9154,
       "sha256": "0cb330a8270d35ddb695ea1f4becf2d83b3a6a5ac7d455f5ef05d8ad017bcdb0",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/v2/ui/button-secondary.webp",
       "bytes": 7706,
       "sha256": "4d2addb87cd395a2613cbd649f176fd57d1068bd5865d25beeceb00b1fbe609d",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/v2/ui/checkbox-off.webp",
       "bytes": 4604,
       "sha256": "99fd527ced78414d0a6b5882152f395f5bdecaa6164437df4eb6120a6ce76cf0",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/v2/ui/checkbox-on.webp",
       "bytes": 6296,
       "sha256": "6ae98cc60e163aa6a563a950d8873993ed01aa1d223039e7f241010ee3ce6b18",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/v2/ui/chop-button-bg.webp",
       "bytes": 20728,
       "sha256": "8a47286c2dbf7e796729c2617ef2dba2e3263b7ec92710a2dd406c41b3a95539",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/v2/ui/panel-corner.webp",
       "bytes": 11064,
       "sha256": "8ad925702c3b059fc56fbd46734488954890771a052c9a531f437cab060c79c7",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/v2/ui/panel-divider.webp",
       "bytes": 9382,
       "sha256": "fff8f72944131c5a1beec1a57848fbcc81edc9825eb6f5958e776140e356e949",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/v2/ui/scroll-thumb.webp",
       "bytes": 7582,
       "sha256": "bbc719f5e7e7e9bdbfbc339fc2003e1b09d636713a2fa3be2d024476ab19b4d3",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/v2/ui/status-pill.webp",
       "bytes": 4520,
       "sha256": "f42d8447164d4ea4cb34a4e752440a91bef8ae21eea44344e6d51be9d1d62b6e",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/v2/ui/tab-active.webp",
       "bytes": 10362,
       "sha256": "9770ddacaa0b52cd57b8bca8cf67b2c48ff58b890581dba3939885cc9d6b4f96",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/v2/ui/tab-inactive.webp",
       "bytes": 9100,
       "sha256": "f7b7a2253e7ac96fa033f2002912a73e637da88150d7b61072375d5c7df906ed",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/v3/backgrounds/login.webp",
       "bytes": 138714,
       "sha256": "b86a9556e78ff98ceac8c09597f23b385539cbeb7b65d160993a82f8319d1700",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/v3/icons/icon-achievement.webp",
       "bytes": 13592,
       "sha256": "00807eb7d98467a73792bd05a3638d55df0526580a2de409e64389ce102b09a7",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/v3/icons/icon-cultivate.webp",
       "bytes": 13284,
       "sha256": "9f4042be21d36f40a27c7dbf6fa0048f5aec8bf2353cd781bd399a4348197972",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/v3/icons/icon-mail.webp",
       "bytes": 8404,
       "sha256": "5c5563d4d5c15713fa348478d7a756d18f087e73f76f3ed7608c5eb843a339e7",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/v3/icons/icon-shop.webp",
       "bytes": 13398,
       "sha256": "cc89c20beba4f81940d9b36df5d357419384c35d82ba429d1014d526dcad259b",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/v3/icons/icon-sound.webp",
       "bytes": 11172,
       "sha256": "699d8a846d507534a53f248fc4a70e23372422867e0448c0ef542da9bbdb25bf",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/v3/icons/icon-tasks.webp",
       "bytes": 13690,
       "sha256": "234beabf88b6442d41480542a980093d82fc57a6fc03b9fbec3f13bcc29fffe4",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/v3/ui/button-primary.webp",
       "bytes": 23848,
       "sha256": "86c44b951bf043034a33b0657949332ff1bc1612e326377ab9ec8bf1ac10e69a",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/v3/ui/frame-equip.webp",
       "bytes": 22416,
       "sha256": "5b2d8391f3c64f7f44dbcbbe4821b629974b006b541d836f7a48a54a66e14ddc",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/v3/ui/frame-inventory.webp",
       "bytes": 32578,
       "sha256": "180469721f1f6bc7b56b1299a270b05769d864a899e20d586cbcb640165514fe",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/v3/ui/frame-nav.webp",
       "bytes": 22800,
       "sha256": "d92f815b4b5f749de883cc4428f3a1959a907fd5f9c4aa9fcb8c3a598c75600e",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/v3/ui/frame-status.webp",
       "bytes": 20620,
       "sha256": "ded313e444b6908817579dc4a5c6238ceeb3006bf97666e054d418897f3256c0",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/v3/ui/frame-topbar.webp",
       "bytes": 16052,
       "sha256": "34188add511e2ba2f73bfdf71af964e0271e8358367b264a0cc80a85c53ca6d0",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/v3/ui/logo.webp",
       "bytes": 92434,
       "sha256": "91f69ba0258ee84d2937416e59ea965a9071019cebb1f8b35de5978696f29cfa",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/v4/icons/icon-forge.webp",
       "bytes": 7088,
       "sha256": "e473bae6bd4471e092af60c92b25a86df0782df6fa9fa16f65740893f123b6ab",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/v4/items/0.webp",
       "bytes": 10288,
       "sha256": "32c5d5842196c4b401eb769cc28a3686fcdc85e39163e81cdfb123ca6a4b3c94",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/v4/items/1.webp",
       "bytes": 9928,
       "sha256": "1dcfc7218fa2c053910010c2696057ac5e6c1276fceb72e4d3a64ad94a9c5e48",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/v4/items/10001.webp",
       "bytes": 11560,
       "sha256": "082db6e68c7943fc9093588f4f3ec19ee1ead62e15b3c5a261a391b86817cb0e",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/v4/items/10002.webp",
       "bytes": 8648,
       "sha256": "c4bfefbde793a5c72dc958fbb0595c195bc6a238bcdd58768d2a9f97266cfbfa",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/v4/items/10101.webp",
       "bytes": 9534,
       "sha256": "8211338194808e6d66bb819163bf38a4e79b21ee7e2731f6bf2d263853f82e26",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/v4/items/10102.webp",
       "bytes": 7622,
       "sha256": "c1efad2af33faca06e4ec3ceca7ae4e70023680c66553c7596e032cf8163a795",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/v4/items/10201.webp",
       "bytes": 11350,
       "sha256": "00960bc8a494ee9c18ff37b6ac3df82069502e01f1e37602990b896c8150e530",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/v4/items/10202.webp",
       "bytes": 9886,
       "sha256": "270bfed6bc6b5d7f5aa73c199035183ee5cf0d58a289e867c598d7700c60f963",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/v4/items/10301.webp",
       "bytes": 9810,
       "sha256": "46fc915b3cff9760a8a2968df067197b93b9343beaff8f0d9aeeafde3181691b",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/v4/items/10302.webp",
       "bytes": 9008,
       "sha256": "25da43134b8072873304601dc3b2241a9a9111500324fb2cd6a6f065878e3391",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/v4/items/20001.webp",
       "bytes": 10766,
       "sha256": "16c353f7d8117d3ab6ad94119b523c9e6851dac0d3c9e912319879a028acb48b",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/v4/items/20101.webp",
       "bytes": 11076,
       "sha256": "d87de2e7b4897dcea011080429c17be19fe35e198ec6b5137634b9d55b18e141",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/v4/items/20201.webp",
       "bytes": 10518,
       "sha256": "7c18f23aa4aa7de4601359b2be186130ebbf99a66f3bdea05b4e06a99d5ac46c",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/v4/items/20301.webp",
       "bytes": 10828,
       "sha256": "19cedee6bde6ede7b2468149e37fa51e52d799cdff4bf00a117048ac1d5afdb5",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/v4/items/30001.webp",
       "bytes": 9868,
       "sha256": "51226be041bdeb04e8b550871602b6c9cc33f062effbd1840385f4d45ffe35a1",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/v4/items/30101.webp",
       "bytes": 8090,
       "sha256": "33ae7de8aa016092606b0b2434c857dba16c125af20a5840e3fa8b29d0f50de3",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/v4/items/30201.webp",
       "bytes": 9134,
       "sha256": "1941885eb637d9e8a5d7b5486e97237d68f6893627f278b2fb6a5f1873d1b0be",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/v4/items/40001.webp",
       "bytes": 8900,
       "sha256": "5173e9f2028513c817c7250df6b5ecb249135bea6aa7b9af8cd17acfbc88fdea",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/v4/items/40002.webp",
       "bytes": 8004,
       "sha256": "3801507a8613bcae70699857c44d580abcfb1724853383c48afb1a0c38e3aade",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/v4/items/51001.webp",
       "bytes": 13184,
       "sha256": "e886f55e31cf8d2f8aefca0aa40ab7cdf622398c1c62c22a159d328f9f53eb42",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/v4/items/51002.webp",
       "bytes": 14858,
       "sha256": "33e59293175b8323c84bf520fa1f3232b34e17d82b149a0bf02f459a1b514f08",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/v4/items/52001.webp",
       "bytes": 19112,
       "sha256": "5614a9a51ce51e9bc756e860498dd37260e97244040d101f46089a5d7249f346",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/v4/items/52002.webp",
       "bytes": 17236,
       "sha256": "bf55ab47b99599a7306df77ad7b8a691e38c6429539a01abb1587fd7e57d08d5",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/v4/items/53001.webp",
       "bytes": 20356,
       "sha256": "62fb44f004c4dbead7dfa1138959eae6bad757c2b108eaee7b1c5097a3731d7f",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/v4/items/53002.webp",
       "bytes": 17090,
       "sha256": "f77b8c4863f39853977d4c91ac92e1c3363e7e1266b0daf0b3319a5d41daa05d",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/v4/items/54001.webp",
       "bytes": 18290,
       "sha256": "41fa5b19f25a2655b44c36c47d63802295b58ffe0f0b04ce5ac301e3f7beae5c",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/v4/items/54002.webp",
       "bytes": 19226,
       "sha256": "79d665b5e9668017d812652c23b083916742dd399a09e95e8cd01753649b0975",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/v4/items/55001.webp",
       "bytes": 22240,
       "sha256": "71e7e17b5b701d37343b3ea151cb55a9b71d12a43c5c957981c59a861c4ff713",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/v4/ui/button-forge.webp",
       "bytes": 31276,
       "sha256": "15f2f8494e01adf38154d7e85d8dd633f15a647c935ba7ea01ddeb995262bfcf",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/v4/ui/modal-paper.webp",
       "bytes": 87856,
       "sha256": "c973f69b856b2c6d8c9af025c4d0e0f1dbdefff8b29d6ee493635a3905080e05",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/v4/ui/slot-item.webp",
       "bytes": 10444,
       "sha256": "a4f4dee98bd3b13d224f8089973d79eb403b1d9c0f67c68dfd75c2203174d936",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/v4/ui/slot-weapon.webp",
       "bytes": 8774,
       "sha256": "fa29c96e149ace25392c7d5d730cfc1dab87359b40fc41dc4315f05ab7ad80ec",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/v5/effects/ink-01.webp?v=xianlai-v5-20260908",
       "bytes": 26164,
       "sha256": "38c9b815705f5fb99ac40081336011582026f465b9d0fb8cb880671992ac6e4b",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/v5/effects/ink-02.webp?v=xianlai-v5-20260908",
       "bytes": 26424,
       "sha256": "72eef706132cab9427fc116b9e7a7731aaa15c542728286679b6990ddf6c8db0",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/v5/effects/ink-03.webp?v=xianlai-v5-20260908",
       "bytes": 17860,
       "sha256": "9a0cd07252f708117bc2caf71764388e87cb387cdf6b867af6c40dd95dc7bfe2",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/v5/effects/ink-04.webp?v=xianlai-v5-20260908",
       "bytes": 22304,
       "sha256": "6b110066c68393b785029fa23c153fe6d926162d02b7654f87c815b3e854145a",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/v5/effects/ink-05.webp?v=xianlai-v5-20260908",
       "bytes": 16270,
       "sha256": "2357bba450e42ed33bf110cc56371efe13aaef7e32311fbc908534ac99c56065",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/v5/effects/ink-06.webp?v=xianlai-v5-20260908",
       "bytes": 20690,
       "sha256": "604f5e8f9d7f3b44788fb11dd059803cd7e6e4601a20c621af1e99a17e7f1eef",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/v5/ui/shop-paper.webp",
       "bytes": 28432,
       "sha256": "b127ae6cfe59c9b4e5f4596252eadfbe113e16fb630c671669d99c6619adb8a4",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/v5/ui/task-paper.webp",
       "bytes": 27774,
       "sha256": "676669884cf8871bd7fa020bd423bcdabd9425dfb27f1a120dc8d01736bf2a86",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/v6/quality/quality-1.webp?v=xianlai-v6-20260908",
       "bytes": 3456,
       "sha256": "80015999fdd2631f8ac8e198865c3a0732aaf737419a0cfcf309b9ce4751c11d",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/v6/quality/quality-2.webp?v=xianlai-v6-20260908",
       "bytes": 4140,
       "sha256": "20aa45b1d3171ea89df654ee3ebf928c8ef3e6cf98ce8f91156e05454dd01c3f",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/v6/quality/quality-3.webp?v=xianlai-v6-20260908",
       "bytes": 4008,
       "sha256": "c068f4b7d452fde159e1dc8fc03042bdcddfbd1218b1c01c7ccc34828e32d062",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/v6/quality/quality-4.webp?v=xianlai-v6-20260908",
       "bytes": 4094,
       "sha256": "d0d5a8a3e4a41dec72bf0b4fb9acf47c1e1fd97cfc9b1a0048cbedf5dacf2750",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/v6/quality/quality-5.webp?v=xianlai-v6-20260908",
       "bytes": 4368,
       "sha256": "d889c9e5ba9d64ba7dfa31f2d5a5ac6cd083ae9987c43fbd352f2e4226587965",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/v6/ui/login-brush.webp?v=xianlai-v6-20260908",
       "bytes": 72242,
       "sha256": "6ebfac974fa7b761f2b3647e54b69e7ad7aa48aa0ebcad004460ce436277186e",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/v6/ui/login-lettering.webp?v=xianlai-v6-20260908",
       "bytes": 78454,
       "sha256": "296f14ebfbd3134b9e03d8c7f1e19bb42d90c5c8ad2da6b4cbe9bfb6babc6e9a",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/v7/rewards/quality-1.webp?v=xianlai-v7-20260909",
       "bytes": 16564,
       "sha256": "afff375a6a187edb17f42b85edc663557a34e03c0b4e8ead3fadd05c4b94dbb6",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/v7/rewards/quality-2.webp?v=xianlai-v7-20260909",
       "bytes": 22790,
       "sha256": "a8eccceca73a3a5a7a9fa8bd2fce31cf4bd121b83aa63b67f0360b2651c29adf",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/v7/rewards/quality-3.webp?v=xianlai-v7-20260909",
       "bytes": 22142,
       "sha256": "f0e1be52f0cfc4adc522489c4ef00ddeb554fba69b658aafb60d3ba1e79a7956",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/v7/rewards/quality-4.webp?v=xianlai-v7-20260909",
       "bytes": 22024,
       "sha256": "b6d77085b24872914752ff93e0f407698e12442d5dd4185513de62634dfef14a",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/v7/rewards/quality-5.webp?v=xianlai-v7-20260909",
       "bytes": 22236,
       "sha256": "69b39b840b8faccd18ba9eccfd85e9734309481632d3576d6f2d1f0a2af6de9e",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/v7/ui/inventory-paper.webp?v=xianlai-v7-20260909",
       "bytes": 39674,
       "sha256": "a2028e1900fe8b80af15d76c41393a51ae76070311408717652e5948870452a7",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/weapon-ratings/rating-a.webp?v=weapon-ratings-20260909",
       "bytes": 2906,
       "sha256": "cc8999ceea02286956e7b45e1dd04fa84e67c8239f102a5fb19f17dcc020f859",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/weapon-ratings/rating-b.webp?v=weapon-ratings-20260909",
       "bytes": 2512,
       "sha256": "7804ede524e1255f841b9b7f2facd008d4b1588ca71ff5f27e23cd59ad06c517",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/weapon-ratings/rating-s.webp?v=weapon-ratings-20260909",
       "bytes": 2572,
       "sha256": "48cdf862a61149d1d3b719339edb3284f2e6c9341c04442bbe0cceb4f672e632",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/weapon-ratings/rating-ss.webp?v=weapon-ratings-20260909",
       "bytes": 4392,
       "sha256": "068e53cedd31cccade39b98ec9d01a745f16394f5d6915bb049c0f776822622a",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/weapon-ratings/rating-sss.webp?v=weapon-ratings-20260909",
       "bytes": 6354,
       "sha256": "c714cea5c79ca5ee149553ff2f2753c4dedd7d5e2aea978516431f2cf988c3c9",
       "kind": "image",
-      "density": "all"
+      "density": "all",
+      "phase": "boot"
     },
     {
       "url": "assets/runtime/wish-trees/light-01.webp?v=wish-trees-20260909",
       "bytes": 6780,
       "sha256": "0a0cd3bb4b0a5e3b8d788baa52141ba83efc5453a5a7f47d2b79740557dc02a9",
       "kind": "image",
-      "density": 1
+      "density": 1,
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/wish-trees/light-01@2x.webp?v=wish-trees-hd-20260910",
       "bytes": 24368,
       "sha256": "2a3b0852b51724c3c8c695c74459d85934a29b684971186749871b2f0f283e61",
       "kind": "image",
-      "density": 2
+      "density": 2,
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/wish-trees/light-02.webp?v=wish-trees-20260909",
       "bytes": 11270,
       "sha256": "1f4360f75b63641fb4ddc4ae0693e3a5cd426a9ceac89ea5efc9e44ebc287e6f",
       "kind": "image",
-      "density": 1
+      "density": 1,
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/wish-trees/light-02@2x.webp?v=wish-trees-hd-20260910",
       "bytes": 39086,
       "sha256": "2b5075b8493126dc8be0f95d3897c624cdb09397da0fa99e8e2b698cb9a31b64",
       "kind": "image",
-      "density": 2
+      "density": 2,
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/wish-trees/light-03.webp?v=wish-trees-20260909",
       "bytes": 19310,
       "sha256": "f40bdbafee5aa0fe9cae20f3113eba4fafaa22d58f471517c87f025448ca4578",
       "kind": "image",
-      "density": 1
+      "density": 1,
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/wish-trees/light-03@2x.webp?v=wish-trees-hd-20260910",
       "bytes": 66712,
       "sha256": "ceeb073972d9a8c438a411f4db22da660101f671cfb849d72edc597b43ce742b",
       "kind": "image",
-      "density": 2
+      "density": 2,
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/wish-trees/light-04.webp?v=wish-trees-20260909",
       "bytes": 24726,
       "sha256": "e42cb376d3ba86053266c8e1515470d4681db65e58479bd124c6fbd403eddaa2",
       "kind": "image",
-      "density": 1
+      "density": 1,
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/wish-trees/light-04@2x.webp?v=wish-trees-hd-20260910",
       "bytes": 85998,
       "sha256": "ad73570ffc256ce5cbc2a74ae1ebecaf424ee28d95853ddc201979aa0b84f2fc",
       "kind": "image",
-      "density": 2
+      "density": 2,
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/wish-trees/light-05.webp?v=wish-trees-20260909",
       "bytes": 35748,
       "sha256": "d1a50309f5a5d330d4fa38a9f4abb42d3da237dd9ec19c9cf3cae4d62891f853",
       "kind": "image",
-      "density": 1
+      "density": 1,
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/wish-trees/light-05@2x.webp?v=wish-trees-hd-20260910",
       "bytes": 124770,
       "sha256": "2e7a130af0e872f7d971d6b81cb6d295f896517bd72b3cffe4e983241cbe9164",
       "kind": "image",
-      "density": 2
+      "density": 2,
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/wish-trees/tree_01.webp?v=wish-trees-20260909",
       "bytes": 25198,
       "sha256": "985559d3a134e0a6bd46689997e65ebb8c7f22dfabc632f06c0a17e61261e05b",
       "kind": "image",
-      "density": 1
+      "density": 1,
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/wish-trees/tree_01@2x.webp?v=wish-trees-hd-20260910",
       "bytes": 88110,
       "sha256": "60ad11b4677fe28d18d171f908efd319df9a52f7603ae447e0a419a29c80a56a",
       "kind": "image",
-      "density": 2
+      "density": 2,
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/wish-trees/tree_02.webp?v=wish-trees-20260909",
       "bytes": 35720,
       "sha256": "fea705433ee6c558db49dea4bffe878b302c357ffbc4098bb8e5fd4af64760d5",
       "kind": "image",
-      "density": 1
+      "density": 1,
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/wish-trees/tree_02@2x.webp?v=wish-trees-hd-20260910",
       "bytes": 125470,
       "sha256": "7f0f6e60bc4da784dc9dac1cc026e11fe953a1246ac51103577cc9a3053e57c7",
       "kind": "image",
-      "density": 2
+      "density": 2,
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/wish-trees/tree_03.webp?v=wish-trees-20260909",
       "bytes": 47318,
       "sha256": "a1b3ff180cc13ab09df908d79f73eb71940cef70a346f40e53d225805a37cb88",
       "kind": "image",
-      "density": 1
+      "density": 1,
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/wish-trees/tree_03@2x.webp?v=wish-trees-hd-20260910",
       "bytes": 166394,
       "sha256": "ba84a9fb85bd4fb577b9ddfde64745ec03959e6d0556f7070c5cd371dfb41ee4",
       "kind": "image",
-      "density": 2
+      "density": 2,
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/wish-trees/tree_04.webp?v=wish-trees-20260909",
       "bytes": 58428,
       "sha256": "e47448888ef71b02580349d31c652935dd942cb8e83ba5748b193a916e1903b1",
       "kind": "image",
-      "density": 1
+      "density": 1,
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/wish-trees/tree_04@2x.webp?v=wish-trees-hd-20260910",
       "bytes": 203622,
       "sha256": "c030b8b51fef8eff14650faa46cd67eadf7f5c860bce379bfd22cf58d518c889",
       "kind": "image",
-      "density": 2
+      "density": 2,
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/wish-trees/tree_05.webp?v=wish-trees-20260909",
       "bytes": 64916,
       "sha256": "90060406722300b3c58cbb27c7f9b0cc72fc8df46c333fee5a4e0b76eca254e1",
       "kind": "image",
-      "density": 1
+      "density": 1,
+      "phase": "deferred"
     },
     {
       "url": "assets/runtime/wish-trees/tree_05@2x.webp?v=wish-trees-hd-20260910",
       "bytes": 235566,
       "sha256": "cc9b9c7a75b1aa5ba1ea1ec473a1a019deaf52ec36e202ec197e407a078a45f9",
       "kind": "image",
-      "density": 2
+      "density": 2,
+      "phase": "deferred"
     }
   ]
 };

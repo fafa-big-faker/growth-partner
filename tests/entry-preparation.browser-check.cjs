@@ -306,7 +306,12 @@ async function successfulEntryCheck(page, server) {
     totalChops: 0, remainingChops: 50, databaseAttempts: [] });
   const network = server.mediaSince(before);
   const gameMedia = network.filter(request => !request.key.startsWith('/assets/runtime/app-icon/'));
-  assert.deepEqual(gameMedia, [], 'successful login, current character/scene decode and tutorial reuse prepared resources');
+  assert.equal(gameMedia.length, 12, 'login fetches only the current tree pair and equipped axe frames');
+  assert.equal(gameMedia.filter(request => request.key.includes('/wish-trees/')).length, 2);
+  assert.equal(gameMedia.filter(request => request.key.includes('/character/idle-axes/51001/')).length, 4);
+  assert.equal(gameMedia.filter(request => request.key.includes('/character/axes/51001/')).length, 6);
+  assert.ok(gameMedia.every(request => request.key.includes('/wish-trees/') || request.key.includes('/51001/')),
+    `no unused tree or axe is fetched after login: ${JSON.stringify(gameMedia)}`);
   return { successfulLocalAccount: true, currentSceneMediaDownloads: gameMedia.length,
     browserMetadataRequests: network.map(request => request.key), firstChopGuide: true,
     noPlayerDataMutation: true };

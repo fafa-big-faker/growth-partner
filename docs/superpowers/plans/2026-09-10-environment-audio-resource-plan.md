@@ -77,15 +77,15 @@
 - Consumes: boot entries `{url,bytes,sha256,kind,density,phase}`.
 - Produces: native `hasAsset(url,bytes,sha256)` and exact local request responses; public boot excludes deferred axe frames.
 
-- [ ] Add failing manifest tests for public/deferred phase metadata and no 90-frame public boot requirement.
-- [ ] Add failing resource-pack tests proving native-exact entries complete locally while changed entries use the existing fetch/verify/cache path.
-- [ ] Add failing Android packaging tests for one manifest entry per bundled payload, exact hashes and trusted-path-only interception.
-- [ ] Implement generated phase metadata and keep current hash/size verification.
-- [ ] Implement native asset staging and exact mapping generation in the Android builder.
-- [ ] Implement `BundledAssetStore` and `shouldInterceptRequest` local responses with network fallthrough.
-- [ ] Update login/resource preparation to skip deferred entries and load only the authenticated current scene/axe before reveal.
-- [ ] Run cold/warm browser checks, ensuring no real accounts or database writes.
-- [ ] Commit resource delivery changes.
+- [x] Add failing manifest tests for public/deferred phase metadata and no 90-frame public boot requirement.
+- [x] Add failing resource-pack tests proving native-exact entries complete locally while changed entries use the existing fetch/verify/cache path.
+- [x] Add failing Android packaging tests for one manifest entry per bundled payload, exact hashes and trusted-path-only interception.
+- [x] Implement generated phase metadata and keep current hash/size verification.
+- [x] Implement native asset staging and exact mapping generation in the Android builder.
+- [x] Implement `BundledAssetStore` and `shouldInterceptRequest` local responses with network fallthrough.
+- [x] Update login/resource preparation to skip deferred entries and load only the authenticated current scene/axe before reveal.
+- [x] Run cold/warm browser checks, ensuring no real accounts or database writes.
+- [x] Commit resource delivery changes.
 
 ### Task 4: Build, migrate, release and verify
 

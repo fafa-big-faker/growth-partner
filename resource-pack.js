@@ -60,6 +60,7 @@
     const cacheStorage = own(dependencies, 'caches', host.caches);
     const crypto = own(dependencies, 'crypto', host.crypto);
     const serviceWorker = own(dependencies, 'serviceWorker', host.navigator?.serviceWorker);
+    const NativeAssets = own(dependencies, 'NativeAssets', host.XianlaiBundledAssets);
     const ResponseType = dependencies.Response || host.Response;
     const Controller = dependencies.AbortController || host.AbortController;
     const schedule = dependencies.setTimeout || host.setTimeout.bind(host);
@@ -69,6 +70,7 @@
     const workerTimeoutMs = Math.max(1, Number(dependencies.workerTimeoutMs) || 2500);
     const cacheTimeoutMs = Math.max(1, Number(dependencies.cacheTimeoutMs) || 1500);
     const jobs = new Map(), queue = [], verifiedFallback = new Set(), liveRuns = new Map();
+    const nativeMatches = new Map();
     const desiredAssets = new Map(), cacheWrites = new Map();
     let active = 0, latest = 0, cachePromise, cacheDisabled = !cacheStorage, workerPromise;
     let state = { ready: false, failed: [], cancelled: [], persistent: false, totalBytes: 0, loadedBytes: 0,
@@ -136,8 +138,10 @@
         if (url.origin !== base.origin || !url.pathname.startsWith(base.pathname + 'assets/runtime/')
             || /%(?:2f|5c)/i.test(url.pathname) || url.username || url.password || url.hash || !validKind
             || !Number.isSafeInteger(entry.bytes) || entry.bytes <= 0 || !/^[a-f0-9]{64}$/.test(entry.sha256)
-            || !['all', 1, 2].includes(entry.density)) throw new TypeError('Invalid static resource descriptor');
-        const asset = { ...entry, absoluteUrl: url.href, key: `${url.href}\n${entry.bytes}\n${entry.sha256}` };
+            || !['all', 1, 2].includes(entry.density)
+            || !['boot', 'deferred'].includes(entry.phase || 'boot')) throw new TypeError('Invalid static resource descriptor');
+        const asset = { ...entry, phase: entry.phase || 'boot', absoluteUrl: url.href,
+          key: `${url.href}\n${entry.bytes}\n${entry.sha256}` };
         const previous = unique.get(url.href);
         if (previous && (previous.key !== asset.key || previous.density !== asset.density || previous.kind !== asset.kind)) {
           throw new TypeError('Conflicting static resource descriptors');
@@ -153,6 +157,15 @@
         return [...new Uint8Array(result)].map(value => value.toString(16).padStart(2, '0')).join('');
       }
       return sha256Fallback(bytes);
+    }
+
+    function isNativeMatch(asset) {
+      if (nativeMatches.has(asset.key)) return nativeMatches.get(asset.key);
+      let matched = false;
+      try { matched = Boolean(NativeAssets?.hasAsset?.(asset.url, asset.bytes, asset.sha256)); }
+      catch { matched = false; }
+      nativeMatches.set(asset.key, matched);
+      return matched;
     }
 
     function pump() {
@@ -188,6 +201,11 @@
       job.run = async () => {
         timer = schedule(() => { controller?.abort(); finish(false, 'timeout'); }, timeoutMs);
         try {
+          if (isNativeMatch(asset)) {
+            progress(asset.bytes);
+            finish(true);
+            return;
+          }
           let cache = await getCache();
           if (!valid()) return;
           if (cache) {
@@ -314,7 +332,9 @@
     async function prepare(manifest, onProgress = () => {}, settings = {}) {
       const allAssets = normalize(manifest);
       const density = Number(settings.dpr ?? host.devicePixelRatio ?? 1) > 1 ? 2 : 1;
-      const assets = allAssets.filter(asset => asset.density === 'all' || asset.density === density);
+      const assets = allAssets.filter(asset => (asset.density === 'all' || asset.density === density)
+        && (settings.includeDeferred || asset.phase === 'boot'));
+      const nativeCoverage = assets.length > 0 && assets.every(isNativeMatch);
       const token = ++latest, signal = settings.signal;
       allAssets.forEach(asset => desiredAssets.set(asset.absoluteUrl, asset.key));
       const totalBytes = assets.reduce((sum, asset) => sum + asset.bytes, 0);
@@ -325,7 +345,7 @@
       function snapshot(update = {}) {
         const loadedBytes = [...progress.values()].reduce((sum, value) => sum + value, 0);
         const ready = done && completed.size === assets.length && !signal?.aborted;
-        const result = { ready, failed: [...failed], cancelled: [...cancelled], persistent: persistent && !cacheDisabled,
+        const result = { ready, failed: [...failed], cancelled: [...cancelled], persistent: persistent && (nativeCoverage || !cacheDisabled),
           totalBytes, loadedBytes, completed: completed.size, total: assets.length,
           percent: ready ? 100 : Math.min(99, totalBytes ? Math.floor(loadedBytes / totalBytes * 100) : 0), ...update };
         if (token === latest) state = result;
@@ -333,10 +353,10 @@
         return result;
       }
       snapshot();
-      const worker = signal?.aborted ? Promise.resolve(false) : ensureWorker();
+      const worker = signal?.aborted ? Promise.resolve(false) : (nativeCoverage ? Promise.resolve(true) : ensureWorker());
       worker.then(ok => {
         if (!done && !signal?.aborted) {
-          persistent = Boolean(ok && !cacheDisabled);
+          persistent = Boolean(ok && (nativeCoverage || !cacheDisabled));
           // A verified file is safe for CSS/Image reuse only after this page
           // is controlled; emit even if no download completes at that instant.
           snapshot();
@@ -360,7 +380,7 @@
             if (signal?.aborted) cancel();
           });
         }
-        persistent = Boolean(persistent && !cacheDisabled && !signal?.aborted);
+        persistent = Boolean(persistent && (nativeCoverage || !cacheDisabled) && !signal?.aborted);
         done = true;
         const result = snapshot();
         if (result.ready) await cleanOldEntries(allAssets, token);

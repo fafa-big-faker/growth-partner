@@ -70,6 +70,39 @@ function newestDirectory(directory, predicate) {
   return fs.readdirSync(directory).filter(predicate).sort((a, b) => b.localeCompare(a, undefined, { numeric: true }))[0];
 }
 
+function mimeFor(file) {
+  const extension = path.extname(file).toLowerCase();
+  return ({ '.webp': 'image/webp', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
+    '.svg': 'image/svg+xml', '.wav': 'audio/wav', '.mp3': 'audio/mpeg', '.ogg': 'audio/ogg' })[extension];
+}
+
+function stageBundledAssets(assetDirectory) {
+  const boot = require('../scripts/build_boot_assets.cjs');
+  const manifest = boot.generate(repository);
+  const copied = new Map();
+  const lines = [];
+  for (const asset of manifest.assets) {
+    const resolved = boot.fileForUrl(asset.url, repository);
+    const relative = asset.url.split('?')[0];
+    const packaged = `xianlai/${relative}`;
+    const previous = copied.get(packaged);
+    if (previous) assert(previous === asset.sha256, `Bundled asset path collision: ${relative}`);
+    else {
+      const destination = path.join(assetDirectory, ...packaged.split('/'));
+      fs.mkdirSync(path.dirname(destination), { recursive: true });
+      fs.copyFileSync(resolved.file, destination);
+      copied.set(packaged, asset.sha256);
+    }
+    const mime = mimeFor(resolved.file);
+    assert(mime, `Unsupported bundled asset type: ${relative}`);
+    lines.push([asset.url, packaged, mime, asset.bytes, asset.sha256].join('\t'));
+  }
+  const manifestFile = path.join(assetDirectory, 'xianlai', 'bundled-assets.tsv');
+  fs.mkdirSync(path.dirname(manifestFile), { recursive: true });
+  fs.writeFileSync(manifestFile, lines.join('\n') + '\n');
+  return { entries: lines.length, payloads: copied.size, bytes: manifest.assets.reduce((sum, asset) => sum + asset.bytes, 0), manifestFile };
+}
+
 function main() {
   console.log('Preparing installed Android toolchain...');
   outsideRepository(output);
@@ -99,6 +132,8 @@ function main() {
   const source = path.join(work, 'source');
   console.log('Staging sources for Windows Android tools...');
   stageDirectory(appSource, source);
+  const bundled = stageBundledAssets(path.join(source, 'assets'));
+  console.log(`Bundled ${bundled.payloads} runtime files (${bundled.bytes} bytes) for exact local reuse.`);
   const classes = path.join(work, 'classes');
   const testClasses = path.join(work, 'tests');
   const generated = path.join(work, 'generated');
@@ -124,6 +159,9 @@ function main() {
     '--release', '--min-api', '26', '--lib', androidJar, '--output', dex, classesJar]);
   const unsigned = path.join(work, 'unsigned.apk');
   fs.copyFileSync(resourcesApk, unsigned);
+  // Java's jar writer uses portable ZIP entry separators on Windows. Store the
+  // already-compressed media verbatim so SoundPool can open WAV file descriptors.
+  run(executable('jar'), ['u0f', unsigned, '-C', path.join(source, 'assets'), '.']);
   for (const dexFile of filesUnder(dex, '.dex')) {
     run(executable('jar'), ['uf', unsigned, '-C', dex, path.basename(dexFile)]);
   }
@@ -171,6 +209,12 @@ function main() {
   assert(!badging.includes('application-debuggable'), 'A debuggable APK must not be distributed.');
   const permissions = badging.split(/\r?\n/).filter(line => line.startsWith('uses-permission:'));
   assert(permissions.length === 1 && permissions[0].includes('android.permission.INTERNET'), 'Unexpected APK permissions.');
+  const archive = run(path.join(buildTools, 'aapt.exe'), ['list', '-v', apk]);
+  assert(archive.includes('xianlai/assets/runtime/audio/ui-tap.wav'), 'Native UI sound is missing from the APK.');
+  assert(archive.includes('xianlai/bundled-assets.tsv'), 'Bundled asset manifest is missing from the APK.');
+  assert(!archive.includes('xianlai\\assets'), 'APK asset entries must use portable forward slashes.');
+  const uiTapLine = archive.split(/\r?\n/).find(line => line.includes('xianlai/assets/runtime/audio/ui-tap.wav')) || '';
+  assert(uiTapLine.includes('Stored'), 'Native SoundPool cues must remain uncompressed in the APK.');
   const deliveredApk = path.join(output, path.basename(apk));
   fs.copyFileSync(apk, deliveredApk);
   const record = {
@@ -180,7 +224,8 @@ function main() {
     gameUrl: 'https://fafa-big-faker.github.io/growth-partner/',
     signerSha256: verification.match(/certificate SHA-256 digest: ([a-f0-9]+)/i)?.[1],
     signingDirectory, backupDirectory,
-    checks: ['27 navigation boundary assertions', 'Java compilation', 'DEX generation', 'APK v2/v3 signature verification', 'ZIP alignment', 'application ID and Internet-only permission'],
+    checks: ['27 navigation boundary assertions', 'exact bundled runtime assets', 'uncompressed native audio',
+      'Java compilation', 'DEX generation', 'APK v2/v3 signature verification', 'ZIP alignment', 'application ID and Internet-only permission'],
     deviceTest: 'Not performed: no Android device is connected and no emulator system image is installed.',
   };
   fs.writeFileSync(path.join(output, '构建记录.json'), JSON.stringify(record, null, 2) + '\n');
@@ -200,4 +245,7 @@ function main() {
   console.log('Release signatures v2/v3 and package metadata verified. No device runtime test was performed.');
 }
 
-try { main(); } catch (error) { console.error(error.message); process.exitCode = 1; }
+module.exports = { main, stageBundledAssets, mimeFor };
+if (require.main === module) {
+  try { main(); } catch (error) { console.error(error.message); process.exitCode = 1; }
+}

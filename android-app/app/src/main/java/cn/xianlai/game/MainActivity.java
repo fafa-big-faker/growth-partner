@@ -42,6 +42,7 @@ public final class MainActivity extends Activity {
     private Button retry;
     private WebView webView;
     private NativeAudioBridge nativeAudio;
+    private BundledAssetStore bundledAssets;
     private boolean failed;
     private boolean paused;
     private boolean awaitingBack;
@@ -115,7 +116,9 @@ public final class MainActivity extends Activity {
     @SuppressWarnings("deprecation")
     private void createWebView() {
         webView = new WebView(this);
+        bundledAssets = new BundledAssetStore(this);
         nativeAudio = new NativeAudioBridge(this);
+        webView.addJavascriptInterface(bundledAssets, "XianlaiBundledAssets");
         webView.addJavascriptInterface(nativeAudio, "XianlaiNativeAudio");
         webView.setBackgroundColor(PAPER);
         webView.setOverScrollMode(View.OVER_SCROLL_NEVER);
@@ -144,6 +147,11 @@ public final class MainActivity extends Activity {
         WebView.setWebContentsDebuggingEnabled(false);
         webView.setWebChromeClient(new WebChromeClient());
         webView.setWebViewClient(new WebViewClient() {
+            @Override public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
+                WebResourceResponse bundled = bundledAssets == null ? null : bundledAssets.responseFor(request);
+                return bundled != null ? bundled : super.shouldInterceptRequest(view, request);
+            }
+
             @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 String url = request.getUrl().toString();
                 if (NavigationPolicy.isTrusted(url)) return false;

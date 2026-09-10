@@ -2304,17 +2304,17 @@ const Auth = {
         const scene = await AssetPreloader.preload(getCurrentSceneImageAssets(Game.state), () => {}, { retries: 1 });
         if (!isCurrentAttempt()) return;
         if (scene.failed.length || scene.cancelled?.length) throw new Error('current scene artwork could not be decoded');
-      }
-      this._setLoading(true, 85, '正在准备角色');
-      const actorResult = await preloadAxeAnimation(
-        Game.state.axeId,
-        progress => { if (attemptActive && isCurrentAttempt()) this._setLoading(true, 85 + progress.percent * 0.15); },
-      );
-      if (!isCurrentAttempt()) return;
-      if (actorResult.failed.length || actorResult.cancelled?.length) {
-        const retried = await AssetPreloader.preload([...actorResult.failed, ...(actorResult.cancelled || [])]);
+        this._setLoading(true, 85, '正在准备角色');
+        const actorResult = await preloadAxeAnimation(
+          Game.state.axeId,
+          progress => { if (attemptActive && isCurrentAttempt()) this._setLoading(true, 85 + progress.percent * 0.15); },
+        );
         if (!isCurrentAttempt()) return;
-        if (retried.failed.length || retried.cancelled?.length) throw new Error('character artwork could not be loaded');
+        if (actorResult.failed.length || actorResult.cancelled?.length) {
+          const retried = await AssetPreloader.preload([...actorResult.failed, ...(actorResult.cancelled || [])]);
+          if (!isCurrentAttempt()) return;
+          if (retried.failed.length || retried.cancelled?.length) throw new Error('character artwork could not be loaded');
+        }
       }
       this.session = account;
       const from = document.getElementById('login-screen');

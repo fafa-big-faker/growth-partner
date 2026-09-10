@@ -17,6 +17,7 @@ test('boot manifest matches every current file byte and its derived version', ()
     assert.equal(asset.sha256, build.sha256(bytes), `${asset.url}: exact content hash`);
     assert.equal(asset.kind, kind);
     assert.ok(['all', 1, 2].includes(asset.density));
+    assert.ok(['boot', 'deferred'].includes(asset.phase));
   }
   assert.deepEqual(build.generate(), manifest, 'actual URL resolvers and runtime file changes must regenerate boot-assets.js');
 });
@@ -31,7 +32,7 @@ test('entry background and progress textures download before the rest of the pac
   assert.deepEqual(rest, [...rest].sort(), 'remaining URLs keep stable lexical order');
 });
 
-test('each density includes exactly the live common and login resources plus all nine weapons and audio', () => {
+test('the APK manifest retains all assets while public boot defers unused weapons and trees', () => {
   const login = build.moduleExports(path.join(build.ROOT, 'login-boot.js'));
   const audio = build.moduleExports(path.join(build.ROOT, 'audio-manager.js'));
   for (const density of [1, 2]) {
@@ -44,6 +45,10 @@ test('each density includes exactly the live common and login resources plus all
     const trees = selected.filter(asset => asset.url.startsWith('assets/runtime/wish-trees/'));
     assert.equal(trees.length, 10);
     assert.ok(trees.every(asset => asset.url.includes('@2x') === (density === 2)));
+    assert.ok(trees.every(asset => asset.phase === 'deferred'));
+    const publicBoot = selected.filter(asset => asset.phase === 'boot');
+    assert.equal(publicBoot.filter(asset => /\/character\/(?:idle-axes|axes)\//.test(asset.url)).length, 0);
+    assert.equal(publicBoot.filter(asset => asset.url.startsWith('assets/runtime/wish-trees/')).length, 0);
   }
   const frames = manifest.assets.filter(asset => /\/character\/(?:idle-axes|axes)\//.test(asset.url));
   assert.equal(frames.length, 90);
@@ -54,10 +59,12 @@ test('each density includes exactly the live common and login resources plus all
     assert.equal(frames.filter(asset => asset.url.includes(`/axes/${id}/`)).length, 6);
   }
   assert.ok(frames.every(asset => asset.density === 'all'));
+  assert.ok(frames.every(asset => asset.phase === 'deferred'));
   const sounds = manifest.assets.filter(asset => asset.kind === 'audio');
   assert.equal(sounds.length, 13);
   assert.deepEqual(sounds.map(asset => asset.url).sort(), [...Object.values(audio.AUDIO_PATHS)].sort());
   assert.ok(sounds.every(asset => asset.density === 'all'));
+  assert.ok(sounds.every(asset => asset.phase === 'boot'));
 });
 
 test('manifest works as a browser global and excludes application code, original atlases and external endpoints', () => {

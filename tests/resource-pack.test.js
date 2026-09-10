@@ -329,3 +329,46 @@ test('SHA-256 fallback and native verification agree for known and multiblock in
   const file = descriptor('native.webp', 'Web Crypto fixture'), f = fixture([file], { crypto: webcrypto });
   assert.equal((await f.pack.prepare(f.manifest)).ready, true);
 });
+
+test('exact APK assets complete locally while changed assets retain verified network fallback', async () => {
+  const bundled = descriptor('bundled.webp', 'already inside APK');
+  const changed = descriptor('changed.webp', 'newer web payload');
+  const deferred = descriptor('later.webp', 'load after login');
+  bundled.asset.phase = 'boot';
+  changed.asset.phase = 'boot';
+  deferred.asset.phase = 'deferred';
+  const nativeCalls = [];
+  const f = fixture([bundled, changed, deferred], {
+    NativeAssets: {
+      hasAsset(url, bytes, sha256) {
+        nativeCalls.push([url, bytes, sha256]);
+        return url === bundled.asset.url && bytes === bundled.asset.bytes && sha256 === bundled.asset.sha256;
+      },
+    },
+  });
+  f.manifest.assets = [bundled.asset, changed.asset, deferred.asset];
+  const result = await f.pack.prepare(f.manifest);
+  assert.equal(result.ready, true);
+  assert.equal(result.totalBytes, bundled.asset.bytes + changed.asset.bytes);
+  assert.equal(result.loadedBytes, result.totalBytes);
+  assert.deepEqual(f.requests.map(request => request.url), [new URL(changed.asset.url, BASE).href]);
+  assert.ok(nativeCalls.some(call => call[0] === bundled.asset.url));
+  assert.ok(!nativeCalls.some(call => call[0] === deferred.asset.url));
+});
+
+test('a fully matching APK pack is immediately persistent without HTTP, cache writes or worker takeover', async () => {
+  const files = [descriptor('one.webp', 'one'), descriptor('audio/two.wav', 'two')];
+  files.forEach(file => { file.asset.phase = 'boot'; });
+  const f = fixture(files, {
+    serviceWorker: null,
+    caches: null,
+    NativeAssets: { hasAsset: () => true },
+    fetch: async () => { throw new Error('APK assets must not use HTTP'); },
+  });
+  const result = await f.pack.prepare(f.manifest);
+  const bytes = files.reduce((sum, file) => sum + file.asset.bytes, 0);
+  assert.deepEqual(result, { ready: true, failed: [], cancelled: [], persistent: true,
+    totalBytes: bytes, loadedBytes: bytes });
+  assert.deepEqual(f.requests, []);
+  assert.deepEqual(f.registrations, []);
+});

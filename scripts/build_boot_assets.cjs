@@ -73,21 +73,25 @@ function generate(root = ROOT) {
   const common = [...login.getCriticalAssets(), ...login.getDecorationAssets(),
     ...entryAssets, ...Object.values(audio.AUDIO_PATHS)];
   const entries = new Map();
-  const add = (url, density) => {
+  const add = (url, density, phase = 'boot') => {
     const prior = entries.get(url);
     if (prior) {
       if (prior.density !== density) prior.density = 'all';
+      if (prior.phase !== phase) prior.phase = 'boot';
       return;
     }
     const { file, kind } = fileForUrl(url, root);
     const bytes = fs.readFileSync(file);
     assert.ok(bytes.length > 0, 'Boot assets must not be empty');
-    entries.set(url, { url, bytes: bytes.length, sha256: sha256(bytes), kind, density });
+    entries.set(url, { url, bytes: bytes.length, sha256: sha256(bytes), kind, density, phase });
   };
   for (const resolution of resolutions) {
-    for (const url of [...resolution.common, ...resolution.frames]) add(url, resolution.density);
+    for (const url of resolution.common) {
+      add(url, resolution.density, url.startsWith('assets/runtime/wish-trees/') ? 'deferred' : 'boot');
+    }
+    for (const url of resolution.frames) add(url, resolution.density, 'deferred');
   }
-  for (const url of common) add(url, 'all');
+  for (const url of common) add(url, 'all', 'boot');
   const priority = url => { const index = entryAssets.indexOf(url); return index < 0 ? entryAssets.length : index; };
   const assets = [...entries.values()].sort((left, right) => priority(left.url) - priority(right.url)
     || (left.url < right.url ? -1 : left.url > right.url ? 1 : 0));
@@ -119,6 +123,8 @@ function main() {
   console.log(JSON.stringify({ checked: process.argv.includes('--check'), version: manifest.version,
     assets: manifest.assets.length, audio: manifest.assets.filter(asset => asset.kind === 'audio').length,
     frames: manifest.assets.filter(asset => /\/character\/(?:idle-axes|axes)\//.test(asset.url)).length,
+    boot: manifest.assets.filter(asset => asset.phase === 'boot').length,
+    deferred: manifest.assets.filter(asset => asset.phase === 'deferred').length,
     density1: { files: selected(1).length, bytes: selected(1).reduce((sum, asset) => sum + asset.bytes, 0) },
     density2: { files: selected(2).length, bytes: selected(2).reduce((sum, asset) => sum + asset.bytes, 0) },
   }));
