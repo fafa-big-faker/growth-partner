@@ -148,7 +148,7 @@
         if (version !== settlingVersion || !active()) return;
         settlingTimer = null;
         if (logoReady && backdropReady && !revealed) revealLogo();
-      }, 500);
+      }, Number.isFinite(options.revealDelayMs) ? Math.max(0, options.revealDelayMs) : 500);
     }
 
     function loadBackdrop() {

@@ -1,0 +1,16 @@
+/* Page-entry styles are temporary. Daily navigation keeps its original layout. */
+.scene-transition-locked,
+.scene-transition-locked * {
+  pointer-events: none !important;
+}
+
+#login-screen.scene-transition-outgoing {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 12000 !important;
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  overflow: clip;
+  transform-origin: center center;
+}

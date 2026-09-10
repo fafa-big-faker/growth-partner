@@ -41,14 +41,15 @@ test('all new runtime artwork is included in preload and old login art is no lon
 
 test('login and UI art resources load before the application starts', () => {
   for (const file of ['xianlai-ui.css', 'login-art.css', 'login-art.js']) {
-    const version = file === 'xianlai-ui.css' ? 'xianlai-art-v3-20260908' : 'reward-login-20260909';
+    const version = file === 'xianlai-ui.css' ? 'xianlai-art-v3-20260908'
+      : file === 'login-art.js' ? 'entry-transitions-20260910' : 'reward-login-20260909';
     assert.ok(html.includes(`${file}?v=${version}`));
     assert.ok(html.indexOf(file) < html.indexOf('src="app.js'));
   }
   assert.match(html, /<title>仙来/);
   assert.match(html, /id="login-brand-image" data-boot-src="assets\/runtime\/v3\/ui\/logo.webp"/);
   assert.ok(html.indexOf('src="boot-assets.js') < html.indexOf('src="login-boot.js'));
-  assert.match(app, /LoginArt\.init\(\{ prepared \}\)/);
+  assert.match(app, /LoginArt\.init\(\{ prepared, revealDelayMs \}\)/);
 });
 
 test('muting preserves the new bitmap and toggles its accessible state', () => {

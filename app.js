@@ -872,11 +872,15 @@ const DB = {
     }));
   },
 
-  async getAllTasks(type = null) {
+  async getAllTasks(type = null, { strict = false } = {}) {
     let query = dbClient.from('xiu_tasks').select('*');
     if (type) query = query.eq('task_type', type);
     const { data, error } = await query.order('sort_order', { ascending: true });
-    if (error) { console.error('DB getAllTasks error:', error); return []; }
+    if (error) {
+      console.error('DB getAllTasks error:', error);
+      if (strict) throw error;
+      return [];
+    }
     return data.map(t => ({
       id: t.id,
       taskType: t.task_type,
@@ -942,6 +946,26 @@ const DB = {
     const { error } = await dbClient.from('xiu_tasks').update({ status }).eq('id', id);
     if (error) { console.error('DB updateTaskStatus error:', error); return false; }
     return true;
+  },
+
+  async updateDraftTask(id, task) {
+    // Only editable fields are written: keep the original identity, order and state.
+    const { data, error } = await dbClient.from('xiu_tasks').update({
+      task_type: task.taskType,
+      title: task.title,
+      description: task.description,
+      difficulty: task.difficulty,
+      reward_chopping: task.rewardChopping,
+      reward_items: task.rewardItems,
+      theme_name: task.themeName || null,
+      theme_start: task.themeStart || null,
+      theme_end: task.themeEnd || null,
+    }).eq('id', id).eq('status', 'draft').select('id');
+    if (error) {
+      console.error('DB updateDraftTask error:', error);
+      return { ok: false, code: 'save_failed' };
+    }
+    return data?.length === 1 ? { ok: true } : { ok: false, code: 'state_changed' };
   },
 
   async deleteTask(id) {
@@ -2226,11 +2250,20 @@ const Auth = {
       event.preventDefault();
       void this.doLogin();
     });
+    let loginArtStarted = false;
+    const initLoginArt = (prepared, revealDelayMs = 500) => {
+      if (loginArtStarted || typeof LoginArt === 'undefined') return;
+      LoginArt.init({ prepared, revealDelayMs });
+      loginArtStarted = true;
+    };
     const ready = typeof LoginBoot !== 'undefined' ? LoginBoot.start() : Promise.resolve(null);
-    if (typeof LoginBoot !== 'undefined') LoginBoot.markRuntimeReady?.({ imageAssets: getEntryDecodeImageAssets() });
+    if (typeof LoginBoot !== 'undefined') LoginBoot.markRuntimeReady?.({
+      imageAssets: getEntryDecodeImageAssets(),
+      onReveal: prepared => initLoginArt(prepared, 360),
+    });
     void ready.then(prepared => {
       if (prepared?.cancelled) return;
-      if (typeof LoginArt !== 'undefined') LoginArt.init({ prepared });
+      initLoginArt(prepared);
     });
   },
 
@@ -2246,6 +2279,8 @@ const Auth = {
   async doLogin() {
     if (this._loggingIn) return;
     this._loggingIn = true;
+    const version = this._loginVersion = (this._loginVersion || 0) + 1;
+    const isCurrentAttempt = () => this._loginVersion === version;
     const submit = document.getElementById('login-submit');
     if (submit) submit.disabled = true;
     const role = this.currentRole;
@@ -2256,51 +2291,70 @@ const Auth = {
     try {
       if (typeof LoginBoot !== 'undefined') {
         const prepared = await LoginBoot.whenReady();
+        if (!isCurrentAttempt() || prepared?.cancelled) return;
         if (!prepared.criticalReady) throw new Error('login artwork is not ready');
       }
       this._setLoading(true, 0, '正在核验道号');
       const account = await AccountSession.verify(role, password);
+      if (!isCurrentAttempt()) return;
       if (!account) {
         attemptActive = false;
         this._setLoading(false, 0);
         UI.toast('道号密码错误', 'error');
         return;
       }
+      if (document.activeElement === document.getElementById('login-password')) document.activeElement.blur();
       DB.setPlayerRole(account.playerRole);
       PlayerView.clearDataCaches();
       if (role === 'player') void AudioManager.playBgm();
       else AudioManager.pauseBgm();
       this._setLoading(true, 0, '正在读取修行记录');
       await Game.init();
+      if (!isCurrentAttempt()) return;
       if (!Game.state) throw new Error('player initialization failed');
       if (role === 'player') {
         const scene = await AssetPreloader.preload(getCurrentSceneImageAssets(Game.state), () => {}, { retries: 1 });
+        if (!isCurrentAttempt()) return;
         if (scene.failed.length || scene.cancelled?.length) throw new Error('current scene artwork could not be decoded');
       }
       this._setLoading(true, 85, '正在准备角色');
       const actorResult = await preloadAxeAnimation(
         Game.state.axeId,
-        progress => { if (attemptActive) this._setLoading(true, 85 + progress.percent * 0.15); },
+        progress => { if (attemptActive && isCurrentAttempt()) this._setLoading(true, 85 + progress.percent * 0.15); },
       );
+      if (!isCurrentAttempt()) return;
       if (actorResult.failed.length || actorResult.cancelled?.length) {
         const retried = await AssetPreloader.preload([...actorResult.failed, ...(actorResult.cancelled || [])]);
+        if (!isCurrentAttempt()) return;
         if (retried.failed.length || retried.cancelled?.length) throw new Error('character artwork could not be loaded');
       }
       this.session = account;
-      if (typeof LoginArt !== 'undefined') LoginArt.setVisible(false);
-      if (role === 'admin') {
-        document.getElementById('login-screen').style.display = 'none';
-        document.getElementById('admin-dashboard').style.display = 'flex';
-        Router.adminTab('task-manage');
+      const from = document.getElementById('login-screen');
+      const to = document.getElementById(role === 'admin' ? 'admin-dashboard' : 'player-dashboard');
+      const prepare = async () => {
+        to.style.display = 'flex';
+        if (role === 'admin') await Router.adminTab('task-manage');
+        else {
+          UI.updateHeader();
+          await Router.playerTab('cultivate', { force: true });
+        }
+      };
+      if (typeof SceneTransition !== 'undefined') {
+        const entrance = await SceneTransition.enterGame({ from, to, prepare });
+        if (!isCurrentAttempt()) return;
+        if (entrance.cancelled) throw new Error('entry transition cancelled');
       } else {
-        document.getElementById('login-screen').style.display = 'none';
-        document.getElementById('player-dashboard').style.display = 'flex';
-        UI.updateHeader();
-        Router.playerTab('cultivate', { force: true });
+        from.style.display = 'none';
+        await prepare();
       }
+      if (!isCurrentAttempt()) return;
+      if (typeof LoginArt !== 'undefined') LoginArt.setVisible(false);
+      if (role === 'player') PlayerView.startFirstChopGuide?.();
       void this._credentials?.saveVerified(role, password);
     } catch (error) {
       attemptActive = false;
+      if (!isCurrentAttempt()) return;
+      if (typeof SceneTransition !== 'undefined') SceneTransition.cancel();
       console.error('login initialization failed:', error);
       this.session = null;
       if (typeof FirstChopGuide !== 'undefined') FirstChopGuide.destroy();
@@ -2315,8 +2369,10 @@ const Auth = {
       UI.toast('入道未完成，请检查网络后重试', 'error');
     } finally {
       attemptActive = false;
-      this._loggingIn = false;
-      if (submit) submit.disabled = false;
+      if (isCurrentAttempt()) {
+        this._loggingIn = false;
+        if (submit) submit.disabled = false;
+      }
     }
   },
 
@@ -2340,6 +2396,9 @@ const Auth = {
   },
 
   logout() {
+    this._loginVersion = (this._loginVersion || 0) + 1;
+    this._loggingIn = false;
+    if (typeof SceneTransition !== 'undefined') SceneTransition.cancel();
     this.session = null;
     PlayerView.cancelChopPresentation();
     document.getElementById('player-dashboard').style.display = 'none';
@@ -2389,10 +2448,10 @@ const Router = {
       el.classList.toggle('active', el.dataset.tab === tab);
     });
     switch (tab) {
-      case 'cultivate': PlayerView.renderCultivate(); break;
-      case 'tasks': PlayerView.renderTasks(version); break;
-      case 'reward': PlayerView.renderReward(version); break;
-      case 'mail': PlayerView.renderMail(); break;
+      case 'cultivate': return PlayerView.renderCultivate();
+      case 'tasks': return PlayerView.renderTasks(version);
+      case 'reward': return PlayerView.renderReward(version);
+      case 'mail': return PlayerView.renderMail();
     }
   },
 
@@ -2412,11 +2471,11 @@ const Router = {
     const main = document.getElementById('admin-main');
 
     switch (tab) {
-      case 'task-manage': AdminView.renderTaskManage(); break;
-      case 'review': AdminView.renderReview(); break;
-      case 'withdraw': AdminView.renderWithdrawReview(); break;
-      case 'player-view': AdminView.renderPlayerView(); break;
-      case 'gm': AdminView.renderGM(); break;
+      case 'task-manage': return AdminView.renderTaskManage();
+      case 'review': return AdminView.renderReview();
+      case 'withdraw': return AdminView.renderWithdrawReview();
+      case 'player-view': return AdminView.renderPlayerView();
+      case 'gm': return AdminView.renderGM();
     }
   },
 };
@@ -2876,6 +2935,7 @@ const PlayerView = {
   },
 
   startFirstChopGuide({ replay = false } = {}) {
+    if (typeof SceneTransition !== 'undefined' && SceneTransition.isActive()) return false;
     if (typeof FirstChopGuide === 'undefined' || FirstChopGuide.isActive()) return false;
     const account = Auth.session;
     if (account?.role !== 'player' || !Game.state) return false;
@@ -5577,9 +5637,16 @@ const AdminView = {
   },
 
   // --- 任务管理 ---
-  async renderTaskManage() {
+  async renderTaskManage({ preserveFilter = false } = {}) {
     const main = document.getElementById('admin-main');
+    const version = this._taskManageVersion = (this._taskManageVersion || 0) + 1;
+    const session = typeof Auth !== 'undefined' ? Auth.session : null;
+    const selectedFilter = preserveFilter ? this._adminTaskFilter : 'all';
     const tasks = await DB.getAllTasks();
+    if (this._taskManageVersion !== version || !main || main.isConnected === false
+      || (typeof Auth !== 'undefined' && Auth.session !== session)
+      || (typeof Router !== 'undefined' && Router.currentAdminTab !== 'task-manage')
+      || document.getElementById('admin-dashboard')?.style.display === 'none') return;
 
     main.innerHTML = `
       <div class="page-title page-title-art">${renderFeatureIcon('icon-tasks', '', 'page-title-icon')}<span>任务管理</span></div>
@@ -5602,8 +5669,7 @@ const AdminView = {
     `;
 
     this._adminTasks = tasks;
-    this._adminTaskFilter = 'all';
-    this._renderAdminTaskList();
+    this.filterAdminTasks(selectedFilter);
   },
 
   _adminTasks: [],
@@ -5649,31 +5715,32 @@ const AdminView = {
         : '<span class="tag" style="background:#d4edda;color:#155724;font-size:11px">已发布</span>';
 
       const themeBadge = task.themeName
-        ? `<span class="tag theme-task-tag">${task.themeName}${task.themeStart && task.themeEnd ? ` · ${task.themeStart}~${task.themeEnd}` : ''}</span>`
+        ? `<span class="tag theme-task-tag">${escapeHtml(task.themeName)}${task.themeStart && task.themeEnd ? ` · ${escapeHtml(task.themeStart)}~${escapeHtml(task.themeEnd)}` : ''}</span>`
         : '';
 
       const statusBtn = task.status === 'draft'
-        ? `<button class="btn btn-primary btn-sm" onclick="AdminView.publishTask('${task.id}')">发布</button>`
-        : `<button class="btn btn-outline btn-sm" onclick="AdminView.unpublishTask('${task.id}')">撤回</button>`;
+        ? `<button class="btn btn-outline btn-sm" onclick="AdminView.showEditTask('${task.id}',this)">编辑</button>
+           <button class="btn btn-primary btn-sm" onclick="AdminView.publishTask('${task.id}',this)">发布</button>`
+        : `<button class="btn btn-outline btn-sm" onclick="AdminView.unpublishTask('${task.id}',this)">撤回</button>`;
 
       html += `
         <div class="task-card">
           <div class="task-card-header">
-            <div class="task-title">${task.title}</div>
+            <div class="task-title">${escapeHtml(task.title)}</div>
             <div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end">
               ${themeBadge}
               ${statusBadge}
               ${task.difficulty ? UI.difficultyTag(task.difficulty) : ''}
             </div>
           </div>
-          <div class="task-desc">${task.description || ''}</div>
+          <div class="task-desc">${escapeHtml(task.description || '')}</div>
           <div class="task-meta">
             ${UI.taskTypeTag(task.taskType)}
             ${rewardHtml}
           </div>
           <div class="task-actions">
             ${statusBtn}
-            <button class="btn btn-outline btn-sm btn-danger" onclick="AdminView.deleteTask('${task.id}')">删除</button>
+            <button class="btn btn-outline btn-sm btn-danger" onclick="AdminView.deleteTask('${task.id}',this)">删除</button>
           </div>
         </div>
       `;
@@ -5710,7 +5777,28 @@ const AdminView = {
     return outcome.value;
   },
 
-  _showCreateTaskForm(tasks) {
+  async showEditTask(id, control) {
+    if (this._createTaskOverlay?.isConnected) {
+      if (this._createTaskOverlay._editingTask?.id !== id) UI.toast('请先完成或关闭当前任务表单', 'warn');
+      return this._createTaskOverlay;
+    }
+    const outcome = await UI.runLockedAction('task-create-open', control, '读取中...', async () => {
+      const session = typeof Auth !== 'undefined' ? Auth.session : null;
+      const tasks = await DB.getAllTasks(null, { strict: true });
+      if ((control && !control.isConnected)
+        || (typeof Auth !== 'undefined' && Auth.session !== session)) return false;
+      const task = tasks.find(entry => entry.id === id);
+      if (!task || task.status !== 'draft') {
+        UI.toast('任务状态已变化，只能编辑发布池中的任务', 'warn');
+        await this.renderTaskManage({ preserveFilter: true });
+        return false;
+      }
+      return this._showCreateTaskForm(tasks, task);
+    });
+    return outcome.value;
+  },
+
+  _showCreateTaskForm(tasks, editingTask = null) {
     const themes = this._getOngoingTaskThemes(tasks);
     const overlay = UI.modal(`
       <div class="form-group">
@@ -5751,7 +5839,7 @@ const AdminView = {
         <div class="form-group">
           <label for="new-task-theme-source">选择主题</label>
           <select id="new-task-theme-source" onchange="AdminView._onCreateTaskThemeChange(this.closest('.modal-overlay'))">
-            <option value="">新建主题</option>
+            <option value="">${editingTask ? '保留或修改原主题' : '新建主题'}</option>
             ${themes.map((theme, index) => `<option value="${index}">${escapeHtml(theme.name)} · ${escapeHtml(theme.start)} 至 ${escapeHtml(theme.end)}（进行中）</option>`).join('')}
           </select>
           <div id="new-task-theme-source-hint" style="font-size:12px;color:var(--text-light);margin-top:4px">${themes.length ? '可选进行中的主题追加任务，或新建主题。' : '暂无正在进行的主题，可填写下方信息新建。'}</div>
@@ -5776,21 +5864,41 @@ const AdminView = {
       </div>
       <div class="form-group">
         <label>发布状态</label>
-        <select id="new-task-status">
+        <select id="new-task-status"${editingTask ? ' disabled' : ''}>
           <option value="draft">放入发布池（不立即发布）</option>
-          <option value="published">直接发布</option>
+          ${editingTask ? '' : '<option value="published">直接发布</option>'}
         </select>
       </div>
     `, {
-      title: '新建任务',
+      title: editingTask ? '编辑待发布任务' : '新建任务',
       footer: `<div class="modal-footer">
         <button class="btn btn-outline btn-sm" onclick="this.closest('.modal-overlay').remove()">取消</button>
-        <button class="btn btn-primary btn-sm" id="create-task-ok">创建</button>
+        <button class="btn btn-primary btn-sm" id="create-task-ok">${editingTask ? '保存修改' : '创建'}</button>
       </div>`
     });
 
     this._createTaskOverlay = overlay;
     overlay._ongoingTaskThemes = themes;
+    overlay._editingTask = editingTask;
+    if (editingTask) {
+      const values = {
+        'new-task-type': editingTask.taskType,
+        'new-task-title': editingTask.title || '',
+        'new-task-desc': editingTask.description || '',
+        'new-task-diff': editingTask.difficulty || 'C',
+        'new-task-chopping': editingTask.rewardChopping ?? 0,
+        'new-task-status': 'draft',
+        'new-task-theme': editingTask.themeName || '',
+        'new-task-theme-start': editingTask.themeStart || '',
+        'new-task-theme-end': editingTask.themeEnd || '',
+      };
+      for (const [id, value] of Object.entries(values)) overlay.querySelector(`#${id}`).value = String(value);
+      const editor = overlay.querySelector('#new-task-items');
+      for (const reward of editingTask.rewardItems || []) {
+        const item = Object.hasOwn(ITEMS, reward.item_id) ? ITEMS[reward.item_id] : null;
+        this._addRewardRow(editor, { ...reward, item_id: String(item?.id ?? reward.item_id) });
+      }
+    }
     const createButton = overlay.querySelector('#create-task-ok');
     createButton.addEventListener('click', () => this._createTaskFromForm(overlay, createButton));
     this._onCreateTaskTypeChange(overlay);
@@ -5798,7 +5906,8 @@ const AdminView = {
   },
 
   async _createTaskFromForm(overlay, button) {
-    return UI.runLockedAction('task-create', button, '创建中...', async () => {
+    const editingTask = overlay._editingTask;
+    return UI.runLockedAction(editingTask ? `task-mutate:${editingTask.id}` : 'task-create', button, editingTask ? '保存中...' : '创建中...', async () => {
       if (!overlay.isConnected || overlay._taskCreated) return false;
       const field = id => overlay.querySelector(`#${id}`).value;
       const taskType = field('new-task-type');
@@ -5809,7 +5918,7 @@ const AdminView = {
       let themeName = field('new-task-theme').trim() || null;
       let themeStart = field('new-task-theme-start') || null;
       let themeEnd = field('new-task-theme-end') || null;
-      const status = field('new-task-status');
+      const status = editingTask ? 'draft' : field('new-task-status');
 
       if (!title) { UI.toast('请填写任务名称', 'warn'); return; }
 
@@ -5837,7 +5946,7 @@ const AdminView = {
       if (rewards.error) { UI.toast(rewards.error, 'warn'); return false; }
       const rewardItems = rewards.items;
 
-      const created = await DB.createTask({
+      const payload = {
         taskType,
         title,
         description: desc,
@@ -5848,16 +5957,31 @@ const AdminView = {
         themeName: finalThemeName,
         themeStart: finalThemeStart,
         themeEnd: finalThemeEnd,
-        sortOrder: this._adminTasks.length,
-      });
-      if (!created) {
-        UI.toast('任务创建失败，请重试', 'error');
+      };
+      const controls = [...overlay.querySelectorAll('input, select, textarea, button')]
+        .map(control => ({ control, disabled: control.disabled }));
+      const wasLocked = overlay.classList.contains('modal-locked');
+      controls.forEach(({ control }) => { control.disabled = true; });
+      overlay.classList.add('modal-locked');
+      let saved;
+      try {
+        saved = editingTask
+          ? await DB.updateDraftTask(editingTask.id, payload)
+          : await DB.createTask({ ...payload, sortOrder: this._adminTasks.length });
+      } finally {
+        controls.forEach(({ control, disabled }) => { control.disabled = disabled; });
+        if (!wasLocked) overlay.classList.remove('modal-locked');
+      }
+      if (editingTask ? !saved?.ok : !saved) {
+        UI.toast(editingTask
+          ? (saved?.code === 'state_changed' ? '任务状态已变化，可能已被发布或删除。当前输入已保留，请关闭后刷新任务列表。' : '任务保存失败，请重试')
+          : '任务创建失败，请重试', 'error');
         return false;
       }
       overlay._taskCreated = true;
       UI.closeModal(overlay);
-      UI.toast(taskType === 'theme' ? '主题任务创建成功' : '任务创建成功', 'success');
-      await this.renderTaskManage();
+      UI.toast(editingTask ? '修改已保存，任务仍在发布池' : (taskType === 'theme' ? '主题任务创建成功' : '任务创建成功'), 'success');
+      await this.renderTaskManage({ preserveFilter: true });
       return true;
     });
   },
@@ -5894,30 +6018,33 @@ const AdminView = {
       : (overlay._ongoingTaskThemes.length ? '可选进行中的主题追加任务，或新建主题。' : '暂无正在进行的主题，可填写下方信息新建。');
   },
 
-  deleteTask(id) {
-    UI.confirm('确定删除这个任务吗？', async () => {
-      await DB.deleteTask(id);
+  deleteTask(id, control) {
+    UI.confirm('确定删除这个任务吗？', () => UI.runLockedAction(`task-mutate:${id}`, control, '删除中...', async () => {
+      if (!await DB.deleteTask(id)) { UI.toast('删除未完成，请重试', 'error'); return false; }
       UI.toast('已删除', 'success');
-      this.renderTaskManage();
-    });
+      await this.renderTaskManage({ preserveFilter: true });
+      return true;
+    }), { key: `task-delete:${id}` });
   },
 
-  async publishTask(id) {
-    const ok = await DB.updateTaskStatus(id, 'published');
-    if (ok) {
+  async publishTask(id, control) {
+    return UI.runLockedAction(`task-mutate:${id}`, control, '发布中...', async () => {
+      const ok = await DB.updateTaskStatus(id, 'published');
+      if (!ok) { UI.toast('发布未完成，请重试', 'error'); return false; }
       UI.toast('任务已发布', 'success');
-      this.renderTaskManage();
-    }
+      await this.renderTaskManage({ preserveFilter: true });
+      return true;
+    });
   },
 
-  async unpublishTask(id) {
-    UI.confirm('确定撤回这个任务吗？玩家将看不到它。', async () => {
+  async unpublishTask(id, control) {
+    UI.confirm('确定撤回这个任务吗？玩家将看不到它。', () => UI.runLockedAction(`task-mutate:${id}`, control, '撤回中...', async () => {
       const ok = await DB.updateTaskStatus(id, 'draft');
-      if (ok) {
-        UI.toast('任务已撤回到发布池', 'success');
-        this.renderTaskManage();
-      }
-    });
+      if (!ok) { UI.toast('撤回未完成，请重试', 'error'); return false; }
+      UI.toast('任务已撤回到发布池', 'success');
+      await this.renderTaskManage({ preserveFilter: true });
+      return true;
+    }), { key: `task-unpublish:${id}` });
   },
 
   // --- 审核 ---

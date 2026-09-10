@@ -108,6 +108,17 @@ test('a failed real chop remains a failure for the tutorial controller', async (
   assert.equal(await f.starts[0].onChop(), false);
 });
 
+test('a moving entrance never starts an invisible input-blocking guide', () => {
+  const f = fixture();
+  let active = true;
+  f.state.SceneTransition = { isActive: () => active };
+  assert.equal(f.view.startFirstChopGuide(), false);
+  assert.equal(f.starts.length, 0);
+  active = false;
+  assert.equal(f.view.startFirstChopGuide(), true);
+  assert.equal(f.starts.length, 1);
+});
+
 test('guide starts after scene mounting and login resources, and is cleared on lifecycle exits', () => {
   const login = app.slice(app.indexOf('  async doLogin()'), app.indexOf('  _setLoading('));
   assert.ok(login.indexOf('this.session = account') > login.indexOf('const actorResult = await preloadAxeAnimation'));

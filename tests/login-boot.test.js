@@ -4,7 +4,7 @@ const { create, getCriticalAssets, getDecorationAssets, getEntryAssets } = requi
 
 const flush = async () => { for (let index = 0; index < 16; index++) await Promise.resolve(); };
 
-function fixture({ reduced = false, waitForRuntime = false, resourcePack, manifest, requireResourcePack = false } = {}) {
+function fixture({ reduced = false, waitForRuntime = false, resourcePack, manifest, requireResourcePack = false, transition } = {}) {
   const elements = new Map();
   const calls = [];
   const timers = new Map();
@@ -40,7 +40,7 @@ function fixture({ reduced = false, waitForRuntime = false, resourcePack, manife
     getImage(src) { return { src, naturalWidth: 512 }; },
   };
   const boot = create({ document: { createElement: element, getElementById: id => elements.get(id) },
-    window: { matchMedia: () => ({ matches: reduced }) }, preloader, waitForRuntime, resourcePack, manifest, requireResourcePack,
+    window: { matchMedia: () => ({ matches: reduced }) }, preloader, waitForRuntime, resourcePack, manifest, requireResourcePack, transition,
     setTimeout(callback) { timers.set(++timerId, callback); return timerId; },
     clearTimeout(id) { timers.delete(id); },
   });
@@ -293,4 +293,86 @@ test('entry background waits for cache takeover even when its bytes finish first
   assert.equal(state.get('login-boot').classList.contains('has-art'), true);
   assert.equal(state.get('login-boot').classList.contains('has-track-art'), true);
   state.boot.destroy();
+});
+
+test('ready artwork starts the logo during the dissolve but keeps login locked until it finishes', async () => {
+  let finishTransition;
+  let revealCount = 0;
+  const state = fixture({ reduced: true, waitForRuntime: true, transition: {
+    revealLogin({ onReveal }) {
+      onReveal();
+      return new Promise(resolve => { finishTransition = resolve; });
+    },
+  } });
+  const ready = state.boot.start();
+  let readyCount = 0;
+  void ready.then(() => { readyCount++; });
+  state.boot.markRuntimeReady({ onReveal(prepared) {
+    assert.equal(prepared.criticalReady, true);
+    assert.equal(state.screen.classList.contains('login-boot-pending'), false);
+    revealCount++;
+  } });
+  state.calls[0].resolve();
+  await flush();
+  assert.equal(revealCount, 1);
+  assert.equal(state.boot.getState().phase, 'revealing');
+  assert.equal(state.boot.getState().percent, 100);
+  assert.equal(state.shell.inert, true);
+  assert.equal(state.get('login-boot').hidden, false);
+  assert.equal(readyCount, 0);
+  state.boot.enterSimplified();
+  state.boot.markRuntimeReady();
+  assert.equal(revealCount, 1, 'repeat readiness cannot replay the entrance');
+  finishTransition({ cancelled: false });
+  await ready;
+  assert.equal(readyCount, 1);
+  assert.equal(state.shell.inert, false);
+  assert.equal(state.get('login-boot').hidden, true);
+});
+
+test('destroy cancels an entrance and a late animation completion cannot enable login', async () => {
+  let complete;
+  let cancelled = 0;
+  const state = fixture({ reduced: true, transition: {
+    revealLogin({ onReveal }) { onReveal(); return new Promise(resolve => { complete = resolve; }); },
+    cancel() { cancelled++; },
+  } });
+  const ready = state.boot.start();
+  state.calls[0].resolve();
+  await flush();
+  state.boot.destroy();
+  assert.equal(cancelled, 1);
+  assert.equal((await ready).cancelled, true);
+  complete({ cancelled: false });
+  await flush();
+  assert.equal(state.screen.classList.contains('login-boot-ready'), false);
+  assert.equal(state.shell.inert, true);
+});
+
+test('a decorative transition failure falls back to the already prepared login', async () => {
+  const state = fixture({ reduced: true, transition: {
+    async revealLogin() { throw new Error('animation unavailable'); },
+    cancel() {},
+  } });
+  const ready = state.boot.start();
+  state.calls[0].resolve();
+  assert.equal((await ready).criticalReady, true);
+  assert.equal(state.shell.inert, false);
+  assert.equal(state.get('login-boot').hidden, true);
+  assert.equal(state.screen.classList.contains('login-boot-pending'), false);
+});
+
+test('cancelling only the decorative entrance still leaves readiness usable for login', async () => {
+  const state = fixture({ reduced: true, transition: {
+    async revealLogin() { return { cancelled: true }; },
+  } });
+  const ready = state.boot.start();
+  state.calls[0].resolve();
+  const result = await ready;
+  assert.equal(result.criticalReady, true);
+  assert.equal(result.cancelled, undefined);
+  assert.equal(state.boot.getState().phase, 'ready');
+  assert.equal(state.shell.inert, false);
+  assert.equal(state.shell.attrs['aria-hidden'], undefined);
+  assert.equal(state.get('login-boot').hidden, true);
 });

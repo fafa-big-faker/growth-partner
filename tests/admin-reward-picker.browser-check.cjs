@@ -257,6 +257,125 @@ async function emptyAndInvalidScenario(page) {
     invalidChoppingRejected: true, thrownFailurePreserved: true };
 }
 
+async function draftEditScenario(page, viewport) {
+  const setup = await page.evaluate(async () => {
+    const draft = { id: 'local-draft-to-edit', status: 'draft', taskType: 'theme',
+      title: '本地待发布主题任务', description: '和同学聊聊社团活动', difficulty: 'B',
+      rewardChopping: 6, rewardItems: [{ item_id: 'stone_forge', quantity: 2 }, { item_id: '20001', quantity: 3 }],
+      themeName: '本地未来主题', themeStart: '2030-09-01', themeEnd: '2030-09-30', sortOrder: 17 };
+    adminFixture.tasks.push(draft);
+    adminFixture.updates = [];
+    adminFixture.editMode = 'success';
+    adminFixture.readPending = false;
+    DB.getAllTasks = async () => {
+      adminFixture.taskReads++;
+      if (adminFixture.readPending) return new Promise(resolve => {
+        adminFixture.finishRead = () => {
+          adminFixture.readPending = false;
+          adminFixture.finishRead = null;
+          resolve([...adminFixture.tasks]);
+        };
+      });
+      return [...adminFixture.tasks];
+    };
+    DB.updateDraftTask = async (id, payload) => {
+      const task = JSON.parse(JSON.stringify(payload));
+      adminFixture.updates.push({ id, payload: task });
+      const complete = success => {
+        if (!success) return { ok: false, code: 'save_failed' };
+        const existing = adminFixture.tasks.find(entry => entry.id === id && entry.status === 'draft');
+        if (!existing) return { ok: false, code: 'state_changed' };
+        Object.assign(existing, task);
+        return { ok: true };
+      };
+      if (adminFixture.editMode === 'pending') return new Promise(resolve => {
+        adminFixture.finishEdit = success => { adminFixture.finishEdit = null; resolve(complete(success)); };
+      });
+      return complete(true);
+    };
+    await AdminView.renderTaskManage();
+    return { created: adminFixture.writes.length, total: adminFixture.tasks.length };
+  });
+  const published = page.locator('#admin-task-list .task-card').filter({ hasText: '本地已有主题任务' }).first();
+  assert.equal(await published.getByRole('button', { name: '编辑', exact: true }).count(), 0,
+    'published tasks do not expose the draft-edit action');
+  await page.locator('#admin-main .filter-chip[data-filter="draft"]').click();
+  const card = page.locator('#admin-task-list .task-card').filter({ hasText: '本地待发布主题任务' });
+  const button = card.locator('button[onclick*="showEditTask"]');
+  assert.equal(await button.isVisible(), true, 'a draft has an actual Edit button in its card');
+  const beforeReads = await page.evaluate(() => { adminFixture.readPending = true; return adminFixture.taskReads; });
+  await button.dblclick();
+  await page.waitForFunction(() => typeof adminFixture.finishRead === 'function');
+  assert.equal(await button.isDisabled(), true);
+  assert.equal(await page.evaluate(() => adminFixture.taskReads), beforeReads + 1,
+    'a real double-click opens only one read of the current draft');
+  await page.evaluate(() => adminFixture.finishRead());
+  const modal = page.locator('.modal-overlay').filter({ has: page.locator('#create-task-ok') });
+  await modal.waitFor({ state: 'visible' });
+  assert.equal(await page.locator('.modal-overlay').count(), 1, 'double-click never stacks two editors');
+  assert.match(await modal.innerText(), /编辑待发布任务/);
+  const values = await modal.evaluate(overlay => Object.fromEntries([
+    'new-task-type', 'new-task-title', 'new-task-desc', 'new-task-diff', 'new-task-chopping',
+    'new-task-status', 'new-task-theme', 'new-task-theme-start', 'new-task-theme-end', 'new-task-theme-source',
+  ].map(id => [id, overlay.querySelector(`#${id}`).value])));
+  assert.deepEqual(values, { 'new-task-type': 'theme', 'new-task-title': '本地待发布主题任务',
+    'new-task-desc': '和同学聊聊社团活动', 'new-task-diff': 'B', 'new-task-chopping': '6',
+    'new-task-status': 'draft', 'new-task-theme': '本地未来主题', 'new-task-theme-start': '2030-09-01',
+    'new-task-theme-end': '2030-09-30', 'new-task-theme-source': '' }, 'all saved fields are prefilled, including a theme that is not currently active');
+  assert.equal(await modal.locator('#new-task-status').isDisabled(), true);
+  assert.equal(await modal.locator('#new-task-status option[value="published"]').count(), 0);
+  assert.deepEqual(await readRows(modal), [{ itemId: '40001', quantity: '2' }, { itemId: '20001', quantity: '3' }],
+    'saved rewards prefill named rows, resolving old item aliases');
+  await modal.locator('#new-task-title').fill('本地修改后的待发布任务');
+  await modal.locator('#new-task-desc').fill('先说一句你好，再问问感兴趣的社团');
+  await modal.locator('#new-task-chopping').fill('8');
+  await modal.locator('[data-reward-row] .admin-reward-quantity').first().fill('7');
+  const geometry = await checkRewardGeometry(modal, viewport);
+  await page.evaluate(() => { adminFixture.editMode = 'pending'; });
+  await modal.locator('#create-task-ok').dblclick();
+  await page.waitForFunction(() => typeof adminFixture.finishEdit === 'function');
+  assert.equal(await modal.locator('#create-task-ok').isDisabled(), true);
+  assert.equal(await page.evaluate(() => adminFixture.updates.length), 1, 'real double-click starts only one save');
+  assert.equal(await modal.locator('#new-task-title').isEditable(), false, 'pending saves cannot silently discard later edits');
+  assert.equal(await modal.getByRole('button', { name: '取消', exact: true }).isDisabled(), true);
+  assert.equal(await modal.locator('.modal-close').isDisabled(), true);
+  assert.equal(await modal.evaluate(node => node.classList.contains('modal-locked')), true);
+  assert.equal(await page.evaluate(() => adminFixture.writes.length), setup.created, 'editing does not create a new task');
+  const saved = await page.evaluate(() => adminFixture.updates[0]);
+  assert.deepEqual(saved, { id: 'local-draft-to-edit', payload: { taskType: 'theme',
+    title: '本地修改后的待发布任务', description: '先说一句你好，再问问感兴趣的社团', difficulty: 'B', rewardChopping: 8,
+    rewardItems: [{ item_id: '40001', quantity: 7 }, { item_id: '20001', quantity: 3 }],
+    status: 'draft', themeName: '本地未来主题', themeStart: '2030-09-01', themeEnd: '2030-09-30' } });
+  await page.evaluate(() => adminFixture.finishEdit(false));
+  await page.waitForFunction(() => !OperationGuard.isBusy());
+  assert.equal(await modal.isVisible(), true, 'failed update retains the editor');
+  assert.equal(await modal.locator('#create-task-ok').isEnabled(), true);
+  assert.equal(await modal.locator('#new-task-title').isEditable(), true);
+  assert.equal(await modal.locator('#new-task-status').isDisabled(), true, 'the original draft status lock is preserved');
+  assert.equal(await modal.locator('#new-task-title').inputValue(), saved.payload.title);
+  assert.deepEqual(await readRows(modal), [{ itemId: '40001', quantity: '7' }, { itemId: '20001', quantity: '3' }]);
+  assert.equal(await modal.locator('#new-task-theme').inputValue(), '本地未来主题');
+  await page.evaluate(() => { adminFixture.editMode = 'success'; });
+  await modal.locator('#create-task-ok').click();
+  await modal.waitFor({ state: 'detached' });
+  await page.waitForFunction(() => !OperationGuard.isBusy());
+  const result = await page.evaluate(() => ({ task: adminFixture.tasks.find(task => task.id === 'local-draft-to-edit'),
+    total: adminFixture.tasks.length, created: adminFixture.writes.length, updates: adminFixture.updates.length,
+    filter: AdminView._adminTaskFilter, selectedFilter: document.querySelector('#admin-main .filter-chip.active')?.dataset.filter,
+    taskTitles: [...document.querySelectorAll('#admin-task-list .task-title')].map(node => node.textContent),
+    toast: adminFixture.toasts.at(-1) }));
+  assert.deepEqual(result.task, { id: saved.id, ...saved.payload, sortOrder: 17 },
+    'save retains the original task identity, draft status and ordering');
+  assert.equal(result.total, setup.total); assert.equal(result.created, setup.created); assert.equal(result.updates, 2);
+  assert.equal(result.filter, 'draft'); assert.equal(result.selectedFilter, 'draft');
+  assert.ok(result.taskTitles.includes(saved.payload.title));
+  assert.ok(!result.taskTitles.includes('本地已有主题任务'), 'saved form returns to the same draft-only filter');
+  assert.deepEqual(result.toast, { message: '修改已保存，任务仍在发布池', type: 'success' });
+  return { geometry, draftOnlyEntry: true, allFieldsPrefilled: true, themePreserved: true,
+    sameTaskUpdated: true, remainsDraft: true, realDoubleClicksBlocked: true,
+    failedFormPreserved: true, draftFilterPreserved: true };
+}
+
 async function gmIconsScenario(page) {
   await page.locator('#admin-dashboard .nav-item[data-tab="gm"]').click();
   await page.locator('#gm-item-id').waitFor({ state: 'visible' });
@@ -298,9 +417,10 @@ async function main() {
       await fixture(page, server.origin);
       const rewards = await rewardAndThemeScenario(page, viewport);
       const validation = await emptyAndInvalidScenario(page);
+      const edit = await draftEditScenario(page, viewport);
       const gm = await gmIconsScenario(page);
       assert.deepEqual(await page.evaluate(() => adminUnexpectedDatabase), []);
-      checks.push({ viewport, rewards, validation, gm });
+      checks.push({ viewport, rewards, validation, edit, gm });
     }
     assert.deepEqual(errors, []);
     assert.deepEqual(external, []);

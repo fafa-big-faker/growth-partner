@@ -50,8 +50,11 @@ function harness(tasks = [], overrides = {}) {
       }
       const defaults = { 'new-task-type': 'weekly', 'new-task-diff': 'C', 'new-task-chopping': '3', 'new-task-status': 'draft' };
       for (const [id, value] of Object.entries(defaults)) elements.get(id).value = value;
+      const classes = new Set();
       const overlay = {
         isConnected: true, content, options, elements,
+        classList: { add: name => classes.add(name), remove: name => classes.delete(name), contains: name => classes.has(name) },
+        querySelectorAll() { return [...elements.values()]; },
         querySelector(selector) { return elements.get(selector.slice(1)) || null; },
       };
       state.modals.push(overlay);

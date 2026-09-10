@@ -240,6 +240,87 @@ test('pending login readiness holds verification and release uses the locked ori
   assert.deepEqual(state.saved[0], ['player', 'fixture-password']);
 });
 
+test('login lock and guide handoff wait for the game entrance to fully finish', async () => {
+  const state = setup();
+  let finish;
+  let guideStarts = 0;
+  state.scope.PlayerView.startFirstChopGuide = () => { guideStarts++; };
+  state.scope.SceneTransition = {
+    async enterGame({ prepare }) {
+      await prepare();
+      return new Promise(resolve => { finish = resolve; });
+    },
+    cancel() {},
+  };
+  const login = state.auth.doLogin();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(state.routed.length, 1);
+  assert.equal(state.auth._loggingIn, true);
+  assert.equal(state.saved.length, 0);
+  assert.equal(guideStarts, 0);
+  assert.deepEqual(state.artCalls, [], 'login ink remains alive until its screen has faded out');
+  await state.auth.doLogin();
+  assert.equal(state.routed.length, 1);
+  finish({ cancelled: false });
+  await login;
+  assert.equal(state.auth._loggingIn, false);
+  assert.equal(guideStarts, 1);
+  assert.equal(state.saved.length, 1);
+  assert.deepEqual(state.artCalls.at(-1), ['visible', false]);
+});
+
+test('asynchronous route rejection restores the form and cancels the entrance', async () => {
+  const state = setup();
+  let cancelled = 0;
+  state.scope.Router.playerTab = async () => { throw new Error('render failed'); };
+  state.scope.SceneTransition = {
+    async enterGame({ prepare }) { await prepare(); return { cancelled: false }; },
+    cancel() { cancelled++; },
+  };
+  await state.auth.doLogin();
+  assert.equal(cancelled, 1);
+  assert.equal(state.saved.length, 0);
+  assert.equal(state.getElement('login-screen').style.display, 'flex');
+  assert.equal(state.getElement('player-dashboard').style.display, 'none');
+  assert.equal(state.getElement('login-password').readOnly, false);
+  assert.equal(state.auth._loggingIn, false);
+});
+
+test('logout during entrance invalidates late completion without saving or opening a guide', async () => {
+  const state = setup();
+  let finish;
+  let guideStarts = 0;
+  state.scope.PlayerView.startFirstChopGuide = () => { guideStarts++; };
+  state.scope.SceneTransition = {
+    async enterGame({ prepare }) { await prepare(); return new Promise(resolve => { finish = resolve; }); },
+    cancel() {},
+  };
+  const login = state.auth.doLogin();
+  await new Promise(resolve => setImmediate(resolve));
+  state.auth.logout();
+  finish({ cancelled: false });
+  await login;
+  assert.equal(state.saved.length, 0);
+  assert.equal(guideStarts, 0);
+  assert.equal(state.auth.session, null);
+  assert.equal(state.getElement('player-dashboard').style.display, 'none');
+  assert.equal(state.getElement('login-screen').style.display, 'flex');
+  assert.deepEqual(state.artCalls.at(-1), ['visible', true]);
+});
+
+test('logout while awaiting verification cannot later reopen a session', async () => {
+  let finish;
+  const state = setup(() => new Promise(resolve => { finish = resolve; }));
+  const login = state.auth.doLogin();
+  await new Promise(resolve => setImmediate(resolve));
+  state.auth.logout();
+  finish({ playerRole: 'fixture-player' });
+  await login;
+  assert.equal(state.auth.session, null);
+  assert.equal(state.routed.length, 0);
+  assert.equal(state.saved.length, 0);
+});
+
 test('markup supports native managers and never submits a password to static hosting', () => {
   const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
   assert.match(html, /<form[^>]+id="login-form-panel"[^>]+onsubmit="event.preventDefault\(\)"/);

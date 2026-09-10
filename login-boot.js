@@ -27,6 +27,8 @@
     const preloader = options.preloader || root.AssetPreloader;
     const resourcePack = options.resourcePack || root.ResourcePack;
     const manifest = options.manifest || root.BootAssetManifest;
+    const transition = options.transition || root.SceneTransition;
+    let onReveal = options.onReveal;
     const requireResourcePack = !!options.requireResourcePack;
     const setTimer = options.setTimeout || root.setTimeout.bind(root);
     const clearTimer = options.clearTimeout || root.clearTimeout.bind(root);
@@ -67,7 +69,7 @@
 
     function animateQuote() {
       stopQuotes();
-      if (destroyed || phase === 'ready' || phase === 'error' || doc?.hidden) return;
+      if (destroyed || phase === 'ready' || phase === 'revealing' || phase === 'error' || doc?.hidden) return;
       quoteTimer = setTimer(() => {
         quoteIndex = (quoteIndex + 1) % QUOTES.length;
         const swap = () => {
@@ -171,7 +173,7 @@
     }
 
     async function finish(simplified = false) {
-      if (destroyed || !criticalReady || phase === 'ready' || phase === 'decoding-game') return;
+      if (destroyed || !criticalReady || ['ready', 'revealing', 'decoding-game'].includes(phase)) return;
       if (!runtimeReady) {
         pendingFinish = simplified;
         update('runtime', '正在连接仙途');
@@ -207,27 +209,48 @@
       }
       const images = Object.fromEntries([...CRITICAL_ASSETS, ...DECORATION_ASSETS]
         .map(src => [src, preloader.getImage?.(src)]).filter(([, image]) => image));
-      phase = 'ready';
+      phase = 'revealing';
       setProgress(100);
       stopQuotes();
       clearTimer(runtimeTimer);
       doc?.removeEventListener?.('visibilitychange', animateQuote);
-      screen.classList.remove('login-boot-pending');
-      screen.classList.add('login-boot-ready');
       screen.classList.toggle('login-boot-simplified', simplified);
-      screen.setAttribute('aria-busy', 'false');
-      if (shell) { shell.inert = false; shell.removeAttribute('aria-hidden'); }
-      if (overlay) overlay.hidden = true;
       doc.querySelectorAll?.('img[data-boot-src]').forEach(image => {
         if (!image.getAttribute('src')) image.src = image.dataset.bootSrc;
         image.removeAttribute('data-boot-src');
       });
-      resolveReady({ criticalReady: true, resourcesReady, persistent, simplified, failed: [...failures], images });
+      const prepared = { criticalReady: true, resourcesReady, persistent, simplified, failed: [...failures], images };
+      let revealed = false;
+      const beginReveal = () => {
+        if (revealed || destroyed || version !== currentAttempt) return;
+        revealed = true;
+        screen.classList.remove('login-boot-pending');
+        onReveal?.(prepared);
+      };
+      try {
+        if (transition) {
+          const result = await transition.revealLogin({ screen, overlay, shell, onReveal: beginReveal });
+          if (destroyed || version !== currentAttempt) return;
+          if (result?.cancelled) beginReveal();
+        } else beginReveal();
+      } catch {
+        // A decorative animation must never strand an already prepared login.
+        transition?.cancel?.();
+        beginReveal();
+      }
+      if (destroyed || version !== currentAttempt) return;
+      phase = 'ready';
+      screen.classList.add('login-boot-ready');
+      screen.setAttribute('aria-busy', 'false');
+      if (shell) { shell.inert = false; shell.removeAttribute('aria-hidden'); }
+      if (overlay) overlay.hidden = true;
+      resolveReady(prepared);
     }
 
     function markRuntimeReady(settings = {}) {
       runtimeReady = true;
       gameAssets = [...new Set(settings.imageAssets || [])];
+      if (typeof settings.onReveal === 'function') onReveal = settings.onReveal;
       clearTimer(runtimeTimer);
       if (pendingFinish !== null) {
         const simplified = pendingFinish;
@@ -359,6 +382,7 @@
     function destroy() {
       destroyed = true;
       currentAttempt++;
+      if (phase === 'revealing') transition?.cancel?.();
       controller?.abort();
       stopQuotes();
       clearTimer(runtimeTimer);

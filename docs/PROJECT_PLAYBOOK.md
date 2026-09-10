@@ -32,6 +32,17 @@
 - 任务创建和自主任务奖励审核共用AdminView奖励编辑器：通过`_renderAdminItemOptions`从ITEMS的规范ID去重并分组，玩家可见选项以名称/品质为主，不要求输入ID。`_addRewardRow`、`_removeRewardRow`及`_updateAdminItemPreview`管理行与现用图片，`_readRewardItems`严格读取正整数并合并重复道具。
 - 砍树次数仍在独立字段设置，奖励道具列表不重复列type6；`_readRewardChopping`读取非负整数。创建/审核只在校验成功后调用原有DB逻辑，不直接改变玩家背包。
 - 天道道具预览、背包、任务奖励继续共用`renderItemIcon/getItemIconPath`，不要在下拉选项或背包重新拼旧emoji作为图标。GM可以选择全部类型，与任务奖励选择器共享名称和图片来源。
+- 发布池任务可通过`showEditTask`编辑，打开时strict读取最新数据并确认draft，复用创建表单及奖励选择器预填。保存只调用`updateDraftTask`条件更新id+draft，不改UUID、排序、发布状态或额外主题奖励；错误/零行保留输入，零行提示状态已变化。保存/发布等写操作共用逐任务锁，保存刷新保留当前筛选。
+- `renderTaskManage`检查请求代次、账号、页面及可见性；旧请求不得在退出、切页、后续刷新之后回填。新建与编辑共用表单打开锁，同一时间只保留一个任务表单；编辑使用表单字段value赋值、列表文字转义，避免引号或尖括号破坏页面。
+- 任务保存请求期间禁用所有表单输入和按钮，并临时加`modal-locked`阻止点背景或关闭；finally恢复原disabled状态（发布状态原本禁用的不能被放开），防止保存等待中后改的输入被成功关闭时悄悄丢弃。真实编辑预填、奖励数量、双击、失败重试与筛选保留由`tests/admin-reward-picker.browser-check.cjs`一并覆盖。
+
+## 首屏、登录与游戏转场
+
+- `scene-transition.js/css`只负责这两次入场：首屏720ms叠化到登录，账号和资源就绪后700ms叠化到游戏；背包/底栏子项晚80ms、6px归位，登录退出缩放1.02。复用现有美术，不生成新图片、全屏滤镜或额外声音。
+- `LoginBoot`区分资源完成和`revealing`阶段，`whenReady`等转场结束才允许登录。`Auth.init`的onReveal与ready回退共用单次Logo初始化，传360ms延迟使书写在叠化中段开始，不能完成后再次init重播。普通装饰取消仍返回可用ready；销毁/过期实例才返回cancelled。
+- `Auth.doLogin`先验证、加载数据、解码当前场景/人物，成功后才入场，登录锁持续到转场完成；有效验证后收起密码输入键盘。动画异常不影响已加载页面，真正渲染失败回到表单。准备目标页面的请求12秒未完成则回退，晚到渲染须检查session/代次；动画本身另外有180ms结束兜底。
+- 只给退出的登录页临时fixed叠层，不对目标dashboard或底栏祖先做transform，避免改变固定定位与新手引导坐标。取消/后台结束须取消动画、移除临时样式并恢复inert。减少动态时160ms淡入淡出，无平移缩放。
+- `startFirstChopGuide`在转场active时不启动；Auth在完成后重新核对当前账号/页面再调用，避免透明引导抢焦点或提前拦点击。`tests/scene-transition.browser-check.cjs`以真实文件/动画和模拟数据验证三视口、Logo连续性、输入锁、失败重试、取消、后台和减少动态，不截图或访问真实数据库。
 
 ## 2. 飞书配置约定
 
