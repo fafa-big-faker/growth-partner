@@ -198,8 +198,8 @@
         ],
         "padding": 16
       },
-      "10001": {
-        "path": "assets/images/v4/items/10001.png",
+      "10101": {
+        "path": "assets/images/v4/items/10101.png",
         "size": [
           288,
           288
@@ -219,8 +219,8 @@
         ],
         "padding": 16
       },
-      "10101": {
-        "path": "assets/images/v4/items/10101.png",
+      "10001": {
+        "path": "assets/images/v4/items/10001.png",
         "size": [
           318,
           318
@@ -282,8 +282,8 @@
         ],
         "padding": 16
       },
-      "10002": {
-        "path": "assets/images/v4/items/10002.png",
+      "10102": {
+        "path": "assets/images/v4/items/10102.png",
         "size": [
           285,
           285
@@ -303,8 +303,8 @@
         ],
         "padding": 16
       },
-      "10102": {
-        "path": "assets/images/v4/items/10102.png",
+      "10002": {
+        "path": "assets/images/v4/items/10002.png",
         "size": [
           310,
           310
@@ -366,8 +366,8 @@
         ],
         "padding": 16
       },
-      "20001": {
-        "path": "assets/images/v4/items/20001.png",
+      "20101": {
+        "path": "assets/images/v4/items/20101.png",
         "size": [
           319,
           319
@@ -387,8 +387,8 @@
         ],
         "padding": 16
       },
-      "20101": {
-        "path": "assets/images/v4/items/20101.png",
+      "20001": {
+        "path": "assets/images/v4/items/20001.png",
         "size": [
           316,
           316

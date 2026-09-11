@@ -2,7 +2,7 @@
 (function (root) {
   'use strict';
   const manifest = {
-  "version": "74b5842ff2f9fc5578d648b2e12c6adfaed8ae035874d45b634c2662d0d06702",
+  "version": "0d25e0dc8a3820bb7a1c5d860822d0b7859ad70f47c330273ccc04c37dc6613a",
   "assets": [
     {
       "url": "assets/runtime/entry-preparation/background.webp?v=entry-preparation-20260910",
@@ -1206,22 +1206,6 @@
     },
     {
       "url": "assets/runtime/v4/items/10001.webp",
-      "bytes": 11560,
-      "sha256": "082db6e68c7943fc9093588f4f3ec19ee1ead62e15b3c5a261a391b86817cb0e",
-      "kind": "image",
-      "density": "all",
-      "phase": "boot"
-    },
-    {
-      "url": "assets/runtime/v4/items/10002.webp",
-      "bytes": 8648,
-      "sha256": "c4bfefbde793a5c72dc958fbb0595c195bc6a238bcdd58768d2a9f97266cfbfa",
-      "kind": "image",
-      "density": "all",
-      "phase": "boot"
-    },
-    {
-      "url": "assets/runtime/v4/items/10101.webp",
       "bytes": 9534,
       "sha256": "8211338194808e6d66bb819163bf38a4e79b21ee7e2731f6bf2d263853f82e26",
       "kind": "image",
@@ -1229,9 +1213,25 @@
       "phase": "boot"
     },
     {
-      "url": "assets/runtime/v4/items/10102.webp",
+      "url": "assets/runtime/v4/items/10002.webp",
       "bytes": 7622,
       "sha256": "c1efad2af33faca06e4ec3ceca7ae4e70023680c66553c7596e032cf8163a795",
+      "kind": "image",
+      "density": "all",
+      "phase": "boot"
+    },
+    {
+      "url": "assets/runtime/v4/items/10101.webp",
+      "bytes": 11560,
+      "sha256": "082db6e68c7943fc9093588f4f3ec19ee1ead62e15b3c5a261a391b86817cb0e",
+      "kind": "image",
+      "density": "all",
+      "phase": "boot"
+    },
+    {
+      "url": "assets/runtime/v4/items/10102.webp",
+      "bytes": 8648,
+      "sha256": "c4bfefbde793a5c72dc958fbb0595c195bc6a238bcdd58768d2a9f97266cfbfa",
       "kind": "image",
       "density": "all",
       "phase": "boot"
@@ -1270,16 +1270,16 @@
     },
     {
       "url": "assets/runtime/v4/items/20001.webp",
-      "bytes": 10766,
-      "sha256": "16c353f7d8117d3ab6ad94119b523c9e6851dac0d3c9e912319879a028acb48b",
+      "bytes": 11076,
+      "sha256": "d87de2e7b4897dcea011080429c17be19fe35e198ec6b5137634b9d55b18e141",
       "kind": "image",
       "density": "all",
       "phase": "boot"
     },
     {
       "url": "assets/runtime/v4/items/20101.webp",
-      "bytes": 11076,
-      "sha256": "d87de2e7b4897dcea011080429c17be19fe35e198ec6b5137634b9d55b18e141",
+      "bytes": 10766,
+      "sha256": "16c353f7d8117d3ab6ad94119b523c9e6851dac0d3c9e912319879a028acb48b",
       "kind": "image",
       "density": "all",
       "phase": "boot"
