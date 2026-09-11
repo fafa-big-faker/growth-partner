@@ -6700,11 +6700,19 @@ const AdminView = {
   },
 
   async gmGiveBreakthroughItems() {
-    const items = ['30101', '30201', '30301'];
-    for (const id of items) {
-      await DB.addItem(id, 9);
+    // 突破材料以道具配置为准，避免配置表调整后 GM 仍发放已废弃的道具 ID。
+    const items = (GAME_CONFIG?.itemTable || [])
+      .filter(item => Number(item.type) === 3)
+      .sort((a, b) => Number(a.id) - Number(b.id));
+    if (!items.length) {
+      UI.toast('未找到突破道具配置', 'error');
+      return;
     }
-    UI.toast('已发放突破道具（望石/待石/期石×9）', 'success');
+    for (const item of items) {
+      await DB.addItem(String(item.id), 9);
+    }
+    const names = items.map(item => item.name).filter(Boolean).join('、');
+    UI.toast(`已发放突破道具（${names || '配置道具'}×9）`, 'success');
     this.renderGM();
   },
 

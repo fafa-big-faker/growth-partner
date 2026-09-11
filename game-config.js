@@ -1,6 +1,6 @@
 // ===== 游戏配置文件（由 sync-config.py 从飞书表格自动生成）=====
 // 修改飞书表格后运行同步脚本即可更新，请勿手动编辑此文件
-// 最后同步: 2026-09-09 20:54:19
+// 最后同步: 2026-09-11 22:45:11
 
 const GAME_CONFIG = {
   // 角色等级经验表（共 150 条）
@@ -978,49 +978,49 @@ const GAME_CONFIG = {
   },
   {
     "id": 10001,
-    "name": "月屑",
-    "type": 1,
-    "quality": 1,
-    "stackLimit": 999,
-    "interactionType": 1,
-    "interactionParams": "20001,50",
-    "description": "懒得写描述，集齐它你就可以换点小钱",
-    "icon": "❓",
-    "iconImage": "assets/runtime/v4/items/10001.webp"
-  },
-  {
-    "id": 10002,
-    "name": "月牙片",
-    "type": 1,
-    "quality": 1,
-    "stackLimit": 999,
-    "interactionType": 1,
-    "interactionParams": "20001,10",
-    "description": "懒得写描述，集齐它你就可以换点小钱",
-    "icon": "❓",
-    "iconImage": "assets/runtime/v4/items/10002.webp"
-  },
-  {
-    "id": 10101,
     "name": "星尘",
     "type": 1,
     "quality": 1,
     "stackLimit": 999,
     "interactionType": 1,
+    "interactionParams": "20001,50",
+    "description": "星辰燃尽后散落的微光，可凝聚为一颗星。",
+    "icon": "❓",
+    "iconImage": "assets/runtime/v4/items/10001.webp"
+  },
+  {
+    "id": 10002,
+    "name": "星叶",
+    "type": 1,
+    "quality": 1,
+    "stackLimit": 999,
+    "interactionType": 1,
+    "interactionParams": "20001,10",
+    "description": "沾染星辉的灵叶，集齐后可兑换一颗星。",
+    "icon": "❓",
+    "iconImage": "assets/runtime/v4/items/10002.webp"
+  },
+  {
+    "id": 10101,
+    "name": "月屑",
+    "type": 1,
+    "quality": 1,
+    "stackLimit": 999,
+    "interactionType": 1,
     "interactionParams": "20101,10",
-    "description": "懒得写描述，集齐它你就可以换点小钱",
+    "description": "月华坠落后留下的细碎灵屑，可凝聚为一弯月。",
     "icon": "❓",
     "iconImage": "assets/runtime/v4/items/10101.webp"
   },
   {
     "id": 10102,
-    "name": "星叶",
+    "name": "月牙片",
     "type": 1,
     "quality": 2,
     "stackLimit": 999,
     "interactionType": 1,
     "interactionParams": "20101,5",
-    "description": "懒得写描述，集齐它你就可以换点小钱",
+    "description": "月华初成时留下的残片，集齐后可兑换一弯月。",
     "icon": "❓",
     "iconImage": "assets/runtime/v4/items/10102.webp"
   },
@@ -1032,7 +1032,7 @@ const GAME_CONFIG = {
     "stackLimit": 999,
     "interactionType": 1,
     "interactionParams": "20201,10",
-    "description": "懒得写描述，集齐它你就可以换点小钱",
+    "description": "晨曦洒落的微小光屑，可凝聚为一束光。",
     "icon": "❓",
     "iconImage": "assets/runtime/v4/items/10201.webp"
   },
@@ -1044,7 +1044,7 @@ const GAME_CONFIG = {
     "stackLimit": 999,
     "interactionType": 1,
     "interactionParams": "20201,5",
-    "description": "懒得写描述，集齐它你就可以换点小钱",
+    "description": "由朝阳凝成的灵露，集齐后可兑换一束光。",
     "icon": "❓",
     "iconImage": "assets/runtime/v4/items/10202.webp"
   },
@@ -1056,7 +1056,7 @@ const GAME_CONFIG = {
     "stackLimit": 999,
     "interactionType": 1,
     "interactionParams": "20301,10",
-    "description": "懒得写描述，集齐它你就可以换点小钱，还会被叫原批",
+    "description": "云海沉淀而成的灵石，可凝聚为一朵云。",
     "icon": "❓",
     "iconImage": "assets/runtime/v4/items/10301.webp"
   },
@@ -1068,31 +1068,31 @@ const GAME_CONFIG = {
     "stackLimit": 999,
     "interactionType": 1,
     "interactionParams": "20301,5",
-    "description": "懒得写描述，集齐它你就可以换点小钱",
+    "description": "云气温养出的玉质灵材，集齐后可兑换一朵云。",
     "icon": "❓",
     "iconImage": "assets/runtime/v4/items/10302.webp"
   },
   {
     "id": 20001,
-    "name": "一弯月",
+    "name": "一颗星",
     "type": 2,
     "quality": 2,
     "stackLimit": 999,
     "interactionType": 2,
     "interactionParams": "0.5",
-    "description": "拿去换钱吧，哥不在乎这点小钱",
+    "description": "穿过夜幕的星辰精粹，可爆些微老登金币。",
     "icon": "❓",
     "iconImage": "assets/runtime/v4/items/20001.webp"
   },
   {
     "id": 20101,
-    "name": "一颗星",
+    "name": "一弯月",
     "type": 2,
     "quality": 3,
     "stackLimit": 999,
     "interactionType": 2,
     "interactionParams": "1",
-    "description": "拿去换钱吧，哥不在乎这点小钱，",
+    "description": "清辉如水的月华精粹，可爆少许老登金币。",
     "icon": "❓",
     "iconImage": "assets/runtime/v4/items/20101.webp"
   },
@@ -1104,7 +1104,7 @@ const GAME_CONFIG = {
     "stackLimit": 999,
     "interactionType": 2,
     "interactionParams": "5",
-    "description": "拿去换钱吧，哥不在乎这点小钱，（咬牙版）",
+    "description": "凝聚晨曦与日华的珍贵灵物，可爆亿点老登金币。",
     "icon": "❓",
     "iconImage": "assets/runtime/v4/items/20201.webp"
   },
@@ -1116,7 +1116,7 @@ const GAME_CONFIG = {
     "stackLimit": 999,
     "interactionType": 2,
     "interactionParams": "10",
-    "description": "拿去换钱吧，哥不在乎这点小钱，（牙龈咬碎版）",
+    "description": "云海灵韵所化的仙品宝物，爆老登金币时请尽量保持镇定。",
     "icon": "❓",
     "iconImage": "assets/runtime/v4/items/20301.webp"
   },
@@ -1128,7 +1128,7 @@ const GAME_CONFIG = {
     "stackLimit": 999,
     "interactionType": 0,
     "interactionParams": "",
-    "description": "代表你爸的石",
+    "description": "寄托家人期许的灵石，沉默，却一直在替你撑腰。",
     "icon": "❓",
     "iconImage": "assets/runtime/v4/items/30001.webp"
   },
@@ -1140,7 +1140,7 @@ const GAME_CONFIG = {
     "stackLimit": 999,
     "interactionType": 0,
     "interactionParams": "",
-    "description": "代表你妈的石",
+    "description": "承载家人牵挂的灵石，无论走多远，总有人盼你归来。",
     "icon": "❓",
     "iconImage": "assets/runtime/v4/items/30101.webp"
   },
@@ -1152,7 +1152,7 @@ const GAME_CONFIG = {
     "stackLimit": 999,
     "interactionType": 0,
     "interactionParams": "",
-    "description": "代表你哥的石",
+    "description": "留住家人等待的灵石，修行再忙，也别忘了回头看看。",
     "icon": "❓",
     "iconImage": "assets/runtime/v4/items/30201.webp"
   },
