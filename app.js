@@ -2147,7 +2147,7 @@ const Game = {
       applyLocalGrant(item);
 
       if (GameplayRules.isBonusChop(this.state.totalChops)) {
-        const extraDrop = this._rollPackDrop(1001);
+        const extraDrop = this._rollPoolDrop(1015);
         if (extraDrop) {
           extraDrop.isExtra = true;
           applyLocalGrant(extraDrop);

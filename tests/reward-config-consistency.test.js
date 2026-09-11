@@ -10,10 +10,14 @@ const gameConfig = fs.readFileSync(path.join(__dirname, '..', 'game-config.js'),
 
 test('every tenth chop uses reward pool 1015', () => {
   const chopMethod = app.match(/async chop\(\)[\s\S]*?\n  },/)?.[0] || '';
+  const chopTenMethod = app.match(/async chopTen\(\)[\s\S]*?\n  },/)?.[0] || '';
   assert.match(chopMethod, /GameplayRules\.isBonusChop\(this\.state\.totalChops\)/);
   assert.match(chopMethod, /this\._rollPoolDrop\(1015\)/);
   assert.doesNotMatch(chopMethod, /this\._rollPackDrop\(1001\)/);
   assert.doesNotMatch(chopMethod, /this\._rollPackDrop\(1003\)/);
+  assert.match(chopTenMethod, /GameplayRules\.isBonusChop\(this\.state\.totalChops\)/);
+  assert.match(chopTenMethod, /this\._rollPoolDrop\(1015\)/);
+  assert.doesNotMatch(chopTenMethod, /this\._rollPackDrop\(1001\)/);
 });
 
 test('ordinary and direct pack drops propagate configured quantities', () => {
