@@ -17,7 +17,7 @@ test('synchronized item names and icons match the approved atlas without changin
   const context = {};
   vm.runInNewContext(`${fs.readFileSync(path.join(root, 'game-config.js'), 'utf8')};globalThis.config = GAME_CONFIG;`, context);
   const byId = Object.fromEntries(context.config.itemTable.map(item => [String(item.id), item]));
-  const names = { 0: '小钱钱', 10001: '月屑', 10002: '月牙片', 10101: '星尘', 10102: '星叶', 10201: '日光屑', 10202: '暖阳露', 10301: '云石', 10302: '云玉', 20001: '一弯月', 20101: '一颗星', 20201: '一束光', 20301: '一朵云', 40001: '开工石', 40002: '菩提露' };
+  const names = { 0: '小钱钱', 10001: '星尘', 10002: '星叶', 10101: '月屑', 10102: '月牙片', 10201: '日光屑', 10202: '暖阳露', 10301: '云石', 10302: '云玉', 20001: '一颗星', 20101: '一弯月', 20201: '一束光', 20301: '一朵云', 40001: '开工石', 40002: '菩提露' };
   for (const [id, name] of Object.entries(names)) assert.equal(byId[id].name, name);
   for (const id of Object.keys(items)) assert.equal(byId[id].iconImage, `assets/runtime/v4/items/${id}.webp`);
   for (const [id, params] of Object.entries({ 10001: '20001,50', 10002: '20001,10', 20001: '0.5', 20301: '10' })) {

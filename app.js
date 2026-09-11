@@ -1471,9 +1471,9 @@ const Game = {
     }
     item.kind = grant.kind;
 
-    // 每累计砍树 10 次，从奖励包 1001 均匀抽取一件额外奖励。
+    // 每累计砍树 10 次，从奖池 1015 按配置权重抽取一件额外奖励。
     if (GameplayRules.isBonusChop(this.state.totalChops)) {
-      const extraDrop = this._rollPackDrop(1001);
+      const extraDrop = this._rollPoolDrop(1015);
       if (extraDrop) {
         const extraGrant = await this.grantItem(extraDrop.itemId, extraDrop.quantity);
         if (extraGrant) {
@@ -1942,7 +1942,10 @@ const Game = {
       return false;
     }
 
-    await this.refresh();
+    // grantItem 已用数据库返回值同步本地状态与背包，这里不再全量重载
+    // 玩家状态和武器实例，避免商店兑换成功前额外等待多次串行请求。
+    UI.updateHeader();
+    PlayerView.refreshInventoryConsumers();
     UI.toast(`购买成功！获得 ${shopItem.name} ×${shopItem.itemCount}`, 'success');
     return true;
   },

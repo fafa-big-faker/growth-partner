@@ -8,10 +8,11 @@ const app = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
 const sync = fs.readFileSync(path.join(__dirname, '..', 'sync-config.py'), 'utf8');
 const gameConfig = fs.readFileSync(path.join(__dirname, '..', 'game-config.js'), 'utf8');
 
-test('every tenth chop uses reward pack 1001', () => {
+test('every tenth chop uses reward pool 1015', () => {
   const chopMethod = app.match(/async chop\(\)[\s\S]*?\n  },/)?.[0] || '';
   assert.match(chopMethod, /GameplayRules\.isBonusChop\(this\.state\.totalChops\)/);
-  assert.match(chopMethod, /this\._rollPackDrop\(1001\)/);
+  assert.match(chopMethod, /this\._rollPoolDrop\(1015\)/);
+  assert.doesNotMatch(chopMethod, /this\._rollPackDrop\(1001\)/);
   assert.doesNotMatch(chopMethod, /this\._rollPackDrop\(1003\)/);
 });
 
