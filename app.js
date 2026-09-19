@@ -2533,24 +2533,34 @@ const Router = {
   adminTab(tab) {
     void AudioManager.playEffect('uiOpen');
     this.currentAdminTab = tab;
+    const navVersion = this._adminNavVersion = (this._adminNavVersion || 0) + 1;
     document.querySelectorAll('#admin-dashboard .bottom-nav .nav-item').forEach(el => {
       el.classList.toggle('active', el.dataset.tab === tab);
     });
     const main = document.getElementById('admin-main');
 
+    // 立即画出骨架：数据库往返要几百毫秒，先给反馈才不会“点了没反应”。
+    AdminView.paintAdminLoading?.(tab);
+
     switch (tab) {
-      case 'task-manage': return AdminView.renderTaskManage();
-      case 'review': return AdminView.renderReview();
+      case 'task-manage': return AdminView.renderTaskManage({ navVersion });
+      case 'review': return AdminView.renderReview({ navVersion });
       case 'withdraw':
         void AdminView.refreshReviewBadge?.();
-        return AdminView.renderWithdrawReview();
+        return AdminView.renderWithdrawReview({ navVersion });
       case 'player-view':
         void AdminView.refreshReviewBadge?.();
-        return AdminView.renderPlayerView();
+        return AdminView.renderPlayerView({ navVersion });
       case 'gm':
         void AdminView.refreshReviewBadge?.();
-        return AdminView.renderGM();
+        return AdminView.renderGM({ navVersion });
     }
+  },
+
+  // 当前天道页签是否仍然是调用方渲染时的那个（防止慢请求回填旧页面）
+  isCurrentAdminRender(tab, navVersion) {
+    if (typeof navVersion === 'number' && this._adminNavVersion !== navVersion) return false;
+    return this.currentAdminTab === tab;
   },
 };
 
@@ -5717,14 +5727,17 @@ const AdminView = {
     const version = this._taskManageVersion = (this._taskManageVersion || 0) + 1;
     const session = typeof Auth !== 'undefined' ? Auth.session : null;
     const selectedFilter = preserveFilter ? this._adminTaskFilter : 'all';
-    const [tasks, submissions] = await Promise.all([
-      DB.getAllTasks(),
-      typeof DB.getSubmissions === 'function' ? DB.getSubmissions() : Promise.resolve([]),
-    ]);
+    const loaded = await this._adminLoad({
+      tasks: () => DB.getAllTasks(),
+      submissions: () => (typeof DB.getSubmissions === 'function' ? DB.getSubmissions() : null),
+    });
+    const tasks = loaded.tasks || [];
+    const submissions = loaded.submissions || [];
     if (this._taskManageVersion !== version || !main || main.isConnected === false
       || (typeof Auth !== 'undefined' && Auth.session !== session)
       || (typeof Router !== 'undefined' && Router.currentAdminTab !== 'task-manage')
       || document.getElementById('admin-dashboard')?.style.display === 'none') return;
+    this._clearAdminBusy();
 
     if (!preserveFilter) {
       this._adminSearch = '';
@@ -5845,6 +5858,74 @@ const AdminView = {
     if (typeof DB.getSubmissions !== 'function') return;
     const submissions = await DB.getSubmissions();
     this.applyReviewBadge(submissions);
+  },
+
+  // 页签标题，用于骨架屏和其它提示文案。
+  _adminTabMeta(tab) {
+    return {
+      'task-manage': { title: '任务管理', subtitle: '发布和管理修仙任务', icon: 'icon-tasks' },
+      review: { title: '任务审核', subtitle: '审批修炼者提交的任务', icon: 'icon-achievement' },
+      withdraw: { title: '提现审批', subtitle: '审批修炼者的提现申请', icon: 'icon-wallet' },
+      'player-view': { title: '查看玩家', subtitle: '了解修炼者的修行进度', icon: 'icon-cultivate' },
+      gm: { title: 'GM工具', subtitle: '测试用·发放资源与道具', icon: 'icon-forge' },
+    }[tab] || { title: '天道', subtitle: '', icon: 'icon-tasks' };
+  },
+
+  // 切页签时立刻画出页面标题和骨架，让点击有即时反馈；
+  // 真正的数据回来后由各自的 render 覆盖这块内容。
+  paintAdminLoading(tab) {
+    const main = document.getElementById('admin-main');
+    if (!main) return;
+    const meta = this._adminTabMeta(tab);
+    main.setAttribute('aria-busy', 'true');
+    main.innerHTML = `
+      ${this._adminPageHeader(tab)}
+      <div class="admin-skeleton" aria-hidden="true">
+        ${Array.from({ length: 3 }, () => '<div class="admin-skeleton-card"><span></span><i></i><i class="short"></i></div>').join('')}
+      </div>
+    `;
+  },
+
+  _adminPageHeader(tab, subtitle) {
+    const meta = this._adminTabMeta(tab);
+    const text = subtitle === undefined ? meta.subtitle : subtitle;
+    return `
+      <div class="page-title page-title-art">${renderFeatureIcon(meta.icon, '', 'page-title-icon')}<span>${escapeHtml(meta.title)}</span></div>
+      ${text ? `<div class="page-subtitle">${escapeHtml(text)}</div>` : ''}
+    `;
+  },
+
+  _clearAdminBusy() {
+    document.getElementById('admin-main')?.removeAttribute('aria-busy');
+  },
+
+  // 迟到的渲染不能再覆盖用户已经切过去的页面。
+  _isCurrentAdminTab(tab, navVersion) {
+    if (typeof Router === 'undefined') return true;
+    // 版本号是主要依据：只要版本变了，无论有没有 isCurrentAdminRender 都算过期。
+    if (typeof navVersion === 'number' && typeof Router._adminNavVersion === 'number'
+      && Router._adminNavVersion !== navVersion) return false;
+    if (typeof Router.isCurrentAdminRender === 'function') return Router.isCurrentAdminRender(tab, navVersion);
+    return Router.currentAdminTab === tab;
+  },
+
+  // 天道两侧的数据读取：并发执行，避免串行等待叠加成好几秒。
+  async _adminLoad(loaders) {
+    const keys = Object.keys(loaders);
+    const values = await Promise.all(keys.map(key => {
+      const loader = loaders[key];
+      if (typeof loader !== 'function') return Promise.resolve(null);
+      // 同步发起请求（不要额外包一层 microtask，否则读请求会晚一拍才发出）
+      try {
+        return Promise.resolve(loader()).catch(() => null);
+      } catch (error) {
+        console.error('admin read failed:', key, error);
+        return Promise.resolve(null);
+      }
+    }));
+    const result = {};
+    keys.forEach((key, index) => { result[key] = values[index]; });
+    return result;
   },
 
   toggleAdminBatchMode() {
@@ -6548,19 +6629,22 @@ const AdminView = {
   },
 
   // --- 审核 ---
-  async renderReview() {
+  async renderReview({ navVersion } = {}) {
     const main = document.getElementById('admin-main');
-    const [submissions, tasks] = await Promise.all([
-      DB.getSubmissions(),
-      typeof DB.getAllTasks === 'function' ? DB.getAllTasks() : Promise.resolve([]),
-    ]);
+    const loaded = await this._adminLoad({
+      submissions: () => DB.getSubmissions(),
+      tasks: () => (typeof DB.getAllTasks === 'function' ? DB.getAllTasks() : null),
+    });
+    const submissions = loaded.submissions || [];
+    const tasks = loaded.tasks || [];
+    if (!this._isCurrentAdminTab('review', navVersion)) return;
     this._adminTasksForReview = tasks || [];
     this.applyReviewBadge(submissions);
     const pendingCount = submissions.filter(s => s.status === 'pending').length;
+    this._clearAdminBusy();
 
     main.innerHTML = `
-      <div class="page-title page-title-art">${renderFeatureIcon('icon-achievement', '', 'page-title-icon')}<span>任务审核</span></div>
-      <div class="page-subtitle">${pendingCount > 0 ? `有 ${pendingCount} 条等待审批` : '当前没有等待审批的任务'}</div>
+      ${this._adminPageHeader('review', pendingCount > 0 ? `有 ${pendingCount} 条等待审批` : '当前没有等待审批的任务')}
 
       <div class="filter-bar">
         <div class="filter-chip active" data-filter="pending" onclick="AdminView.filterReview('pending')">待审核${pendingCount > 0 ? ` ${pendingCount}` : ''}</div>
@@ -6821,16 +6905,19 @@ const AdminView = {
   },
 
   // --- 提现审批 ---
-  async renderWithdrawReview() {
+  async renderWithdrawReview({ navVersion } = {}) {
     const main = document.getElementById('admin-main');
-    const withdrawals = await DB.getWithdrawals();
+    const loaded = await this._adminLoad({ withdrawals: () => DB.getWithdrawals() });
+    const withdrawals = loaded.withdrawals || [];
+    if (!this._isCurrentAdminTab('withdraw', navVersion)) return;
+    this._clearAdminBusy();
+    const pendingCount = withdrawals.filter(w => w.status === 'pending').length;
 
     main.innerHTML = `
-      <div class="page-title page-title-art">${renderFeatureIcon('icon-wallet', '', 'page-title-icon')}<span>提现审批</span></div>
-      <div class="page-subtitle">审批修炼者的提现申请</div>
+      ${this._adminPageHeader('withdraw', pendingCount > 0 ? `有 ${pendingCount} 条待处理的提现申请` : '没有待处理的提现申请')}
 
       <div class="filter-bar">
-        <div class="filter-chip active" data-filter="pending" onclick="AdminView.filterWithdraw('pending')">待处理</div>
+        <div class="filter-chip active" data-filter="pending" onclick="AdminView.filterWithdraw('pending')">待处理${pendingCount > 0 ? ` ${pendingCount}` : ''}</div>
         <div class="filter-chip" data-filter="approved" onclick="AdminView.filterWithdraw('approved')">已通过</div>
         <div class="filter-chip" data-filter="rejected" onclick="AdminView.filterWithdraw('rejected')">已驳回</div>
         <div class="filter-chip" data-filter="all" onclick="AdminView.filterWithdraw('all')">全部</div>
@@ -6962,98 +7049,231 @@ const AdminView = {
   },
 
   // --- 查看玩家 ---
-  async renderPlayerView() {
+  async renderPlayerView({ navVersion } = {}) {
     const main = document.getElementById('admin-main');
-    const state = await DB.getPlayerState();
-    const inventory = state ? await DB.getInventory() : [];
-    const weapons = state ? await DB.getWeaponInstances() : [];
-    const mails = state ? await DB.getMails() : [];
+    await this._loadPlayerView({ navVersion });
+  },
 
+  async _loadPlayerView({ navVersion, force = false } = {}) {
+    const main = document.getElementById('admin-main');
+    const loaded = await this._adminLoad({
+      state: () => DB.getPlayerState(),
+      inventory: () => DB.getInventory(),
+      weapons: () => DB.getWeaponInstances(),
+      mails: () => DB.getMails(),
+      submissions: () => (typeof DB.getSubmissions === 'function' ? DB.getSubmissions() : null),
+      withdrawals: () => (typeof DB.getWithdrawals === 'function' ? DB.getWithdrawals() : null),
+    });
+    if (!this._isCurrentAdminTab('player-view', navVersion)) return;
+    this._clearAdminBusy();
+
+    const state = loaded.state;
     if (!state) {
       main.innerHTML = `
-        <div class="page-title page-title-art">${renderFeatureIcon('icon-cultivate', '', 'page-title-icon')}<span>查看玩家</span></div>
-        <div class="page-subtitle">了解修炼者的修行进度</div>
+        ${this._adminPageHeader('player-view', '这位修炼者还没有开始修行')}
         <div class="empty-state" style="padding:48px 24px">
           ${renderFeatureIcon('icon-cultivate', '', 'empty-state-art')}
           <p>修炼者尚未开始修仙</p>
           <p style="font-size:12px;color:var(--text-light)">等待修炼者首次登录后即可查看数据</p>
+          <button class="btn btn-outline btn-sm" style="margin-top:12px" onclick="AdminView.refreshPlayerView(this)">重新读取</button>
         </div>
       `;
       return;
     }
 
-    const axeDef = ITEMS[state.axeId] || ITEMS['51001'];
+    const inventory = loaded.inventory || [];
+    const weapons = loaded.weapons || [];
+    const mails = loaded.mails || [];
+    const submissions = loaded.submissions || [];
+    const withdrawals = loaded.withdrawals || [];
+
+    // 环境标识：同一把密码决定看的是测试档还是正式档，页面必须写清楚，避免看错人。
+    const environment = (typeof Auth !== 'undefined' && Auth.session?.environment) || (typeof DB !== 'undefined' ? (DB.playerRole === 'player_live' ? 'live' : 'test') : '');
+    const envLabel = environment === 'live' ? '正式账号' : '测试账号';
+    const envClass = environment === 'live' ? 'admin-env-live' : 'admin-env-test';
+
+    const realm = (typeof REALMS !== 'undefined' ? REALMS.find(r => r.level == state.realmLevel) : null) || null;
+    const treeLevel = TREE_LEVELS[state.treeLevel] || null;
+    const treeRealm = (typeof TREE_REALMS !== 'undefined' ? TREE_REALMS.find(t => t.level == state.treeRealm) : null) || null;
+    const expMax = getExpForLevel(state.level);
+    const exp = Number(state.exp) || 0;
+    const expPercent = expMax > 0 ? Math.min(100, Math.round((exp / expMax) * 100)) : 0;
+
+    // 装备：以 axe_instance_id 为准取实例；找不到时退回道具定义，避免整页报错。
     const equippedWeapon = weapons.find(weapon => weapon.id === state.axeInstanceId) || null;
-    const equippedSkillHtml = renderWeaponSkills(equippedWeapon, '');
+    const axeDef = ITEMS[state.axeId] || ITEMS[String(equippedWeapon?.itemId)] || ITEMS['51001'] || null;
+    const equippedSkillHtml = equippedWeapon ? renderWeaponSkills(equippedWeapon, '') : '';
+    const spareCount = weapons.filter(weapon => weapon.id !== state.axeInstanceId).length;
+
+    const submissionCounts = {
+      pending: submissions.filter(s => s.status === 'pending').length,
+      approved: submissions.filter(s => s.status === 'approved').length,
+      claimed: submissions.filter(s => s.status === 'claimed').length,
+      rejected: submissions.filter(s => s.status === 'rejected').length,
+    };
+    const unreadMails = mails.filter(m => !m.isRead || (!m.isClaimed && (m.items || []).length > 0)).length;
+    const pendingWithdrawals = withdrawals.filter(w => w.status === 'pending');
 
     main.innerHTML = `
-      <div class="page-title page-title-art">${renderFeatureIcon('icon-cultivate', '', 'page-title-icon')}<span>查看玩家</span></div>
-      <div class="page-subtitle">了解修炼者的修行进度</div>
+      ${this._adminPageHeader('player-view', '了解修炼者的修行进度')}
 
-      <div class="stats-row">
+      <div class="admin-player-bar">
+        <span class="tag ${envClass}">${escapeHtml(envLabel)}</span>
+        <span class="admin-player-bar-hint">${escapeHtml(DB.playerRole === 'player_live' ? '天道 · 正式服' : '天道 · 测试服')}</span>
+        <button class="btn btn-outline btn-sm admin-refresh-btn" onclick="AdminView.refreshPlayerView(this)">刷新</button>
+      </div>
+
+      <div class="stats-row stats-row-4">
         <div class="stat-card">
-          <div class="stat-num">${state.level}</div>
+          <div class="stat-num">${escapeHtml(String(state.level ?? 1))}</div>
           <div class="stat-label">等级</div>
         </div>
         <div class="stat-card">
-          <div class="stat-num">${state.choppingCount}</div>
+          <div class="stat-num">${escapeHtml(String(state.choppingCount ?? 0))}</div>
           <div class="stat-label">砍树次数</div>
         </div>
         <div class="stat-card">
-          <div class="stat-num" style="font-size:18px">¥${state.balance.toFixed(2)}</div>
-          <div class="stat-label">余额</div>
+          <div class="stat-num">${escapeHtml(String(state.coin ?? 0))}</div>
+          <div class="stat-label">游戏币</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num" style="font-size:18px">¥${Number(state.balance || 0).toFixed(2)}</div>
+          <div class="stat-label">可提现余额</div>
         </div>
       </div>
 
       <div class="card">
-        <div class="card-title">装备：${axeDef.name}</div>
+        <div class="card-title">修行进度</div>
+        <div class="admin-exp-row">
+          <span>经验 ${exp} / ${expMax}</span>
+          <span class="admin-exp-percent">${expPercent}%</span>
+        </div>
+        <div class="admin-exp-track"><div style="width:${expPercent}%"></div></div>
+        <table class="data-table">
+          <tr><td>仙阶</td><td>${escapeHtml(realm ? realm.name : `Lv.${state.realmLevel ?? 1}`)}${realm?.reqLevel ? ` · 需 ${escapeHtml(String(realm.reqLevel))} 级` : ''}${realm?.maxAxeQuality ? ` · 最高可装备 ${escapeHtml(String(realm.maxAxeQuality))} 品` : ''}</td></tr>
+          <tr><td>仙树</td><td>${escapeHtml(this._treeProgressText(treeLevel, treeRealm, state))}</td></tr>
+          <tr><td>累计砍树</td><td>${escapeHtml(String(state.totalChops ?? 0))} 次</td></tr>
+          <tr><td>累计获得游戏币</td><td>${escapeHtml(String(state.totalCoinEarned ?? 0))}</td></tr>
+          <tr><td>本月累签</td><td>${escapeHtml(String(state.signInDays ?? 0))} 天${state.signInMonth ? ` · ${escapeHtml(String(state.signInMonth))}` : ''}</td></tr>
+          <tr><td>已领成就</td><td>${escapeHtml(String((state.achievementClaims || []).length))} 个</td></tr>
+          <tr><td>主题奖励</td><td>已领取 ${escapeHtml(String((state.themeRewardClaims || []).length))} 个</td></tr>
+        </table>
+      </div>
+
+      <div class="card">
+        <div class="card-title">当前装备</div>
+        ${axeDef ? `
         <div style="display:flex;align-items:center;gap:12px">
           <div style="display:flex;align-items:center;height:60px">${renderItemIcon(axeDef.id || state.axeId, escapeHtml(axeDef.name), 'item-icon-lg')}</div>
           <div>
-            <div style="font-weight:600">${axeDef.name}</div>
-            <div style="font-size:12px;color:var(--text-secondary)">${axeDef.desc}</div>
-            ${equippedSkillHtml ? `<div style="font-size:12px;color:var(--accent);margin-top:4px">斧技 · ${equippedSkillHtml}</div>` : ''}
+            <div style="font-weight:600">${escapeHtml(axeDef.name)}</div>
+            <div style="font-size:12px;color:var(--text-secondary)">${escapeHtml(axeDef.desc || '')}</div>
+            ${equippedSkillHtml ? `<div class="admin-axe-skill">斧技 · ${this._skillTextHtml(equippedSkillHtml)}</div>` : ''}
           </div>
         </div>
+        ` : '<p class="admin-log-empty">道具表里找不到这把斧头，可能配置已改动</p>'}
+        <div class="admin-task-note" style="margin-top:10px;margin-bottom:0">背包里还有 ${escapeHtml(String(spareCount))} 把备用仙斧</div>
       </div>
 
       <div class="card">
-        <div class="card-title">背包（${inventory.length} 种道具 · ${Math.max(0, weapons.length - 1)} 把备用仙斧）</div>
-        <div style="display:flex;flex-wrap:wrap;gap:8px">
-          ${inventory.slice(0, 20).map(inv => {
+        <div class="card-title">背包（${escapeHtml(String(inventory.length))} 种道具）</div>
+        ${inventory.length === 0
+          ? '<p class="admin-log-empty">背包是空的</p>'
+          : `<div class="admin-inventory-grid">${inventory.map(inv => {
             const def = ITEMS[inv.itemId];
-            if (!def) return '';
-            return `<div style="text-align:center;width:48px">
-              <div style="display:flex;justify-content:center;align-items:center;height:36px">${renderItemIcon(def.id || inv.itemId, escapeHtml(def.name), 'item-icon-sm')}</div>
-              <div style="font-size:10px;color:var(--text-light)">×${inv.quantity}</div>
+            if (!def) {
+              return `<div class="admin-inventory-cell admin-inventory-unknown" title="道具表里没有 ID ${escapeHtml(String(inv.itemId))}">
+                <span class="admin-inventory-unknown-id">${escapeHtml(String(inv.itemId))}</span>
+                <span class="admin-inventory-qty">×${escapeHtml(String(inv.quantity))}</span>
+              </div>`;
+            }
+            return `<div class="admin-inventory-cell" title="${escapeHtml(def.name)}">
+              <div class="admin-inventory-icon">${renderItemIcon(def.id || inv.itemId, escapeHtml(def.name), 'item-icon-sm')}</div>
+              <div class="admin-inventory-name">${escapeHtml(def.name)}</div>
+              <div class="admin-inventory-qty">×${escapeHtml(String(inv.quantity))}</div>
             </div>`;
-          }).join('')}
-        </div>
+          }).join('')}</div>`}
+        <div class="admin-task-note" style="margin-top:10px;margin-bottom:0">这里显示全部种类；道具表里没有的 ID 会标出来，方便发现历史遗留数据</div>
       </div>
 
       <div class="card">
-        <div class="card-title">数据</div>
+        <div class="card-title">任务与邮件</div>
         <table class="data-table">
-          <tr><td>仙树等级</td><td>Lv.${state.treeLevel} (${TREE_LEVELS[state.treeLevel]?.name || ''})</td></tr>
-          <tr><td>经验值</td><td>${state.exp} / ${getExpForLevel(state.level)}</td></tr>
-          <tr><td>累计提现</td><td>¥${state.totalWithdrawn.toFixed(2)}</td></tr>
-          <tr><td>邮件数</td><td>${mails.length} 封</td></tr>
+          <tr><td>待审核</td><td>${escapeHtml(String(submissionCounts.pending))} 条</td></tr>
+          <tr><td>已通过待领取</td><td>${escapeHtml(String(submissionCounts.approved))} 条</td></tr>
+          <tr><td>已领取</td><td>${escapeHtml(String(submissionCounts.claimed))} 条</td></tr>
+          <tr><td>已驳回</td><td>${escapeHtml(String(submissionCounts.rejected))} 条</td></tr>
+          <tr><td>邮件</td><td>共 ${escapeHtml(String(mails.length))} 封${unreadMails > 0 ? ` · <b class="admin-alert">${escapeHtml(String(unreadMails))} 封未读/未领</b>` : ''}</td></tr>
+          <tr><td>提现申请</td><td>共 ${escapeHtml(String(withdrawals.length))} 笔${pendingWithdrawals.length > 0 ? ` · <b class="admin-alert">${escapeHtml(String(pendingWithdrawals.length))} 笔待处理</b>` : ''}</td></tr>
+          <tr><td>累计提现</td><td>¥${Number(state.totalWithdrawn || 0).toFixed(2)}</td></tr>
         </table>
       </div>
     `;
   },
 
+  async refreshPlayerView(control) {
+    const outcome = await UI.runLockedAction('admin-player-refresh', control, '读取中...', async () => {
+      const session = typeof Auth !== 'undefined' ? Auth.session : null;
+      await this._loadPlayerView({ navVersion: Router?._adminNavVersion });
+      if (typeof Auth !== 'undefined' && Auth.session !== session) return false;
+      UI.toast('已刷新', 'success');
+      return true;
+    });
+    return outcome.started && outcome.value;
+  },
+
+  // 仙树等级名和灵阶名在配置里常常是同一个（都来自仙树表），
+  // 两个都显示会出现“仙树·灵阶15 · 仙树·灵阶15”这种重复。
+  _treeProgressText(treeLevel, treeRealm, state) {
+    const level = Number(state?.treeLevel ?? 0);
+    const levelName = treeLevel?.name || '';
+    const realmName = treeRealm?.name || '';
+    const parts = [`Lv.${level}`];
+    if (levelName) parts.push(levelName);
+    if (realmName && realmName !== levelName) parts.push(realmName);
+    return parts.join(' · ');
+  },
+
+  // 斧技文案里带品质配色的 <span class="buff-value buff-quality-N">，来自配置表。
+  // 玩家端本来就按 HTML 渲染，天道页要保持一致的彩色效果；
+  // 但这里只放行这一种标签，其它标签和所有属性一律转义，避免配置里混进脚本。
+  _skillTextHtml(text) {
+    let open = 0;
+    return String(text ?? '').split(/(<\/?span[^>]*>)/gi).map(part => {
+      if (!part.startsWith('<')) return escapeHtml(part);
+      // 只有配对上了前面真正放行的 <span> 才保留闭合标签，避免留下多余的 </span>
+      if (/^<\/span>$/i.test(part)) {
+        if (open === 0) return '';
+        open -= 1;
+        return '</span>';
+      }
+      const match = /^<span\s+class="([^"]*)"\s*>$/i.exec(part);
+      if (!match) return escapeHtml(part);
+      const safeClass = match[1].split(/\s+/)
+        .filter(name => /^buff-(value|quality-\d+)$/.test(name))
+        .join(' ');
+      if (!safeClass) return '';
+      open += 1;
+      return `<span class="${safeClass}">`;
+    }).join('');
+  },
+
   // --- GM工具 ---
-  async renderGM() {
+  async renderGM({ navVersion } = {}) {
     const main = document.getElementById('admin-main');
-    const state = await DB.getPlayerState();
-    const inventory = state ? await DB.getInventory() : [];
+    const loaded = await this._adminLoad({
+      state: () => DB.getPlayerState(),
+      inventory: () => DB.getInventory(),
+    });
+    const state = loaded.state;
+    const inventory = state ? (loaded.inventory || []) : [];
+    if (!this._isCurrentAdminTab('gm', navVersion)) return;
+    this._clearAdminBusy();
 
     const itemOptions = this._renderAdminItemOptions('', true);
 
     main.innerHTML = `
-      <div class="page-title page-title-art">${renderFeatureIcon('icon-forge', '', 'page-title-icon')}<span>GM工具</span></div>
-      <div class="page-subtitle">测试用·发放资源与道具</div>
+      ${this._adminPageHeader('gm')}
 
       ${state ? `
       <div class="stats-row">
