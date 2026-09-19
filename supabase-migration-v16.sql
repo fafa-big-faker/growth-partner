@@ -1,6 +1,13 @@
 -- v16: make the task audit log actually writable by the game.
 -- v15 created the table but left RLS enforcing, so inserts were rejected with
 -- "new row violates row-level security policy". Run this once; it is idempotent.
+--
+-- 使用说明（重要）：
+--   1. 清空 SQL 编辑器里原有内容（不要只选中一段执行）；
+--   2. 把下面全部内容粘进去；
+--   3. 点 Run；
+--   4. 结果区应该出现一个表格，其中 rls_enabled 必须是 false、policy_count 至少是 1。
+--      如果这两个数不对，说明脚本没有整段执行。
 
 BEGIN;
 
@@ -34,5 +41,12 @@ NOTIFY pgrst, 'reload schema';
 
 COMMIT;
 
--- 自检：执行下面这行应该返回一行结果，而不是报错。
--- SELECT * FROM public.task_admin_logs LIMIT 1;
+-- 自检输出：这一段不需要你判断，结果会自动出现在下面的结果表里。
+SELECT
+  c.relrowsecurity                                   AS rls_enabled,
+  (SELECT COUNT(*) FROM pg_policies
+     WHERE schemaname = 'public' AND tablename = 'task_admin_logs') AS policy_count,
+  has_table_privilege('anon', 'public.task_admin_logs', 'INSERT')   AS anon_can_insert
+FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE n.nspname = 'public' AND c.relname = 'task_admin_logs';

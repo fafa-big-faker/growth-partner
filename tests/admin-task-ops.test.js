@@ -334,6 +334,13 @@ test('migration v16 reopens the audit log for anon writes with a fallback policy
   assert.match(sql, /CREATE POLICY task_admin_logs_game_access/);
   assert.match(sql, /USING \(true\)[\s\S]*WITH CHECK \(true\)/);
   assert.match(sql, /GRANT USAGE, SELECT ON SEQUENCE public\.task_admin_logs_id_seq/);
+  // 脚本必须自带自检输出：上次只改表结构不报状态，导致“执行成功”但 RLS 还在。
+  // 关键：DISABLE 和 CREATE POLICY 都必须在 BEGIN/COMMIT 之内，任何一步失败都不能假装成功。
+  const body = sql.slice(sql.indexOf('BEGIN;'), sql.indexOf('SELECT\n'));
+  assert.ok(body.includes('DISABLE ROW LEVEL SECURITY'), 'RLS disable must be inside the transaction');
+  assert.ok(body.includes('CREATE POLICY task_admin_logs_game_access'), 'policy must be inside the transaction');
+  assert.match(sql, /SELECT[\s\S]*rls_enabled[\s\S]*policy_count[\s\S]*anon_can_insert/);
+  assert.match(sql, /清空 SQL 编辑器里原有内容/);
 });
 
 test('a broken audit table degrades quietly instead of spamming an error per action', async () => {
