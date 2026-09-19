@@ -129,7 +129,10 @@ test('new tasks take the highest sort order plus one so deletions cannot collide
 test('approved and expired tasks drop pull-back actions while drafts and live tasks keep theirs', () => {
   const h = harness();
   h.admin._adminTasks = [
-    { id: 'approved', status: 'published', taskType: 'weekly', title: '<b>已通过</b>', description: '', rewardItems: [] },
+    {
+      id: 'approved', status: 'published', taskType: 'theme', themeName: '进行中活动',
+      themeStart: '2026-09-01', themeEnd: '2026-10-31', title: '<b>已通过</b>', description: '', rewardItems: [],
+    },
     { id: 'expired', status: 'published', taskType: 'theme', themeName: '旧活动', themeStart: '2026-01-01', themeEnd: '2026-01-31', title: '过期活动任务', description: '', rewardItems: [] },
     { id: 'draft', status: 'draft', taskType: 'weekly', title: '草稿任务', description: '', rewardItems: [] },
     { id: 'live', status: 'published', taskType: 'weekly', title: '进行中任务', description: '', rewardItems: [] },
@@ -151,6 +154,19 @@ test('approved and expired tasks drop pull-back actions while drafts and live ta
   }
   // 归档任务不出现在「全部」里，需要在「已删除」里恢复
   assert.doesNotMatch(live, /restoreTask\('gone'/);
+
+  // 每日/每周任务是一次性长期任务：玩家通过后仍要能撤回或删除，只是标出状态
+  const weeklyApproved = harness();
+  weeklyApproved.admin._adminTasks = [
+    { id: 'w1', status: 'published', taskType: 'weekly', title: '打电话', description: '', rewardItems: [] },
+  ];
+  weeklyApproved.admin._adminSubmissions = [{ taskId: 'w1', status: 'claimed' }];
+  weeklyApproved.admin._adminTaskFilter = 'all';
+  weeklyApproved.admin._renderAdminTaskList();
+  const weeklyHtml = weeklyApproved.nodes['admin-task-list'].innerHTML;
+  assert.match(weeklyHtml, /tag-lifecycle-approved/);
+  assert.match(weeklyHtml, /unpublishTask\('w1',this\)/);
+  assert.match(weeklyHtml, /archiveTask\('w1',this\)/);
 
   h.admin._adminTaskFilter = 'draft';
   h.admin._renderAdminTaskList();

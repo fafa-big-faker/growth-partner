@@ -5944,16 +5944,15 @@ const AdminView = {
         ? `<span class="tag theme-task-tag">${escapeHtml(task.themeName)}${task.themeStart && task.themeEnd ? ` · ${escapeHtml(task.themeStart)}~${escapeHtml(task.themeEnd)}` : ''}</span>`
         : '';
 
-      // 已结束/已通过的任务不再提供撤下或删除入口，只保留状态与复制。
+      // 主题任务活动结束或玩家已通过后，不再提供撤下/删除入口，只保留状态与再建一份；
+      // 每日/每周任务是一次性长期任务，仍然保留撤回和删除，避免之后没法管理。
+      const themeSettled = (lifecycle.key === 'approved' || lifecycle.key === 'ended') && task.taskType === 'theme';
       let actionHtml = '';
       if (lifecycle.key === 'archived') {
         actionHtml = `
            <button class="btn btn-outline btn-sm" onclick="AdminView.restoreTask('${task.id}',this)">恢复</button>
            <button class="btn btn-outline btn-sm btn-danger" onclick="AdminView.purgeTask('${task.id}',this)">彻底删除</button>`;
-      } else if (lifecycle.key === 'approved') {
-        actionHtml = `
-           <button class="btn btn-outline btn-sm" onclick="AdminView.showDuplicateTask('${task.id}',this)">再建一份</button>`;
-      } else if (lifecycle.key === 'ended') {
+      } else if (themeSettled) {
         actionHtml = `
            <button class="btn btn-outline btn-sm" onclick="AdminView.showDuplicateTask('${task.id}',this)">再建一份</button>`;
       } else if (task.status === 'draft') {
