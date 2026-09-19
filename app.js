@@ -885,7 +885,7 @@ const DB = {
       if (strict) throw error;
       return [];
     }
-    return data.map(t => ({
+    const rows = data.map(t => ({
       id: t.id,
       taskType: t.task_type,
       title: t.title,
@@ -894,11 +894,18 @@ const DB = {
       rewardChopping: t.reward_chopping,
       rewardItems: t.reward_items || [],
       status: t.status,
+      sortOrder: t.sort_order || 0,
       themeName: t.theme_name || null,
       themeStart: t.theme_start || null,
       themeEnd: t.theme_end || null,
       themeExtraReward: t.theme_extra_reward || [],
+      createdAt: t.created_at || null,
     }));
+    // 排序号可能历史撞号（删除后重建会复用序号）；同号时用创建时间兜底，
+    // 保证管理列表顺序稳定，不会因为权重相同而随机跳动。
+    rows.sort((a, b) => (Number(a.sortOrder || 0) - Number(b.sortOrder || 0))
+      || String(a.createdAt || '').localeCompare(String(b.createdAt || '')));
+    return rows;
   },
 
   async createTask(task) {
@@ -955,10 +962,74 @@ const DB = {
   },
 
   async deleteTask(id) {
+    // 只允许彻底删除已归档的任务：直接删除会留下指向空任务的提交记录。
     const { data, error } = await dbClient.from('xiu_tasks').delete()
-      .eq('id', id).eq('audience_role', this.playerRole).select('id');
+      .eq('id', id).eq('audience_role', this.playerRole).eq('status', 'archived').select('id');
     if (error) { console.error('DB deleteTask error:', error); return false; }
     return data?.length === 1;
+  },
+
+  // 归档（软删除）：任务从所有列表隐藏，但提交记录仍然指向一条真实存在的任务。
+  async archiveTask(id) {
+    const { data, error } = await dbClient.from('xiu_tasks')
+      .update({ status: 'archived' })
+      .eq('id', id).eq('audience_role', this.playerRole).select('id');
+    if (error) { console.error('DB archiveTask error:', error); return false; }
+    return data?.length === 1;
+  },
+
+  async restoreTask(id) {
+    const { data, error } = await dbClient.from('xiu_tasks')
+      .update({ status: 'draft' })
+      .eq('id', id).eq('audience_role', this.playerRole).eq('status', 'archived').select('id');
+    if (error) { console.error('DB restoreTask error:', error); return false; }
+    return data?.length === 1;
+  },
+
+  // --- 天道操作日志 ---
+  // 表不存在时静默降级：日志是辅助信息，不能阻塞任务发布。
+  _taskLogsAvailable: true,
+
+  async logTaskAction(entry = {}) {
+    if (!this._taskLogsAvailable) return false;
+    const { error } = await dbClient.from('task_admin_logs').insert({
+      user_role: this.playerRole,
+      action: String(entry.action || ''),
+      task_id: entry.taskId || null,
+      task_title: entry.taskTitle || '',
+      detail: entry.detail || '',
+    });
+    if (error) {
+      if (/does not exist|schema cache/i.test(error.message || '')) this._taskLogsAvailable = false;
+      else console.error('DB logTaskAction error:', error);
+      return false;
+    }
+    return true;
+  },
+
+  async getTaskLogs(limit = 80) {
+    const { data, error } = await dbClient.from('task_admin_logs')
+      .select('*')
+      .eq('user_role', this.playerRole)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    if (error) {
+      if (!/does not exist|schema cache/i.test(error.message || '')) {
+        console.error('DB getTaskLogs error:', error);
+      }
+      return { available: false, logs: [] };
+    }
+    return {
+      available: true,
+      logs: data.map(row => ({
+        id: row.id,
+        action: row.action,
+        taskId: row.task_id,
+        taskTitle: row.task_title,
+        detail: row.detail,
+        createdAt: row.created_at,
+      })),
+    };
   },
 
   // --- 任务提交 ---
@@ -2464,9 +2535,15 @@ const Router = {
     switch (tab) {
       case 'task-manage': return AdminView.renderTaskManage();
       case 'review': return AdminView.renderReview();
-      case 'withdraw': return AdminView.renderWithdrawReview();
-      case 'player-view': return AdminView.renderPlayerView();
-      case 'gm': return AdminView.renderGM();
+      case 'withdraw':
+        void AdminView.refreshReviewBadge?.();
+        return AdminView.renderWithdrawReview();
+      case 'player-view':
+        void AdminView.refreshReviewBadge?.();
+        return AdminView.renderPlayerView();
+      case 'gm':
+        void AdminView.refreshReviewBadge?.();
+        return AdminView.renderGM();
     }
   },
 };
@@ -2687,6 +2764,7 @@ const UI = {
       review: ['审核中', 'tag-status-review'],
       done: ['已完成', 'tag-status-done'],
       approved: ['已通过', 'tag-status-approved'],
+      claimed: ['已领取', 'tag-status-claimed'],
       rejected: ['已驳回', 'tag-status-rejected'],
     };
     const s = map[status];
@@ -4316,7 +4394,7 @@ const PlayerView = {
         <textarea id="submit-desc" placeholder="说说你是怎么完成这个任务的..."></textarea>
       </div>
     `, {
-      title: `提交：${task.title}`,
+      title: `提交：${escapeHtml(task.title)}`,
       footer: `<div class="modal-footer">
         <button class="btn btn-outline btn-sm" onclick="this.closest('.modal-overlay').remove()">取消</button>
         <button class="btn btn-primary btn-sm" id="submit-ok">提交</button>
@@ -5633,19 +5711,37 @@ const AdminView = {
     const version = this._taskManageVersion = (this._taskManageVersion || 0) + 1;
     const session = typeof Auth !== 'undefined' ? Auth.session : null;
     const selectedFilter = preserveFilter ? this._adminTaskFilter : 'all';
-    const tasks = await DB.getAllTasks();
+    const [tasks, submissions] = await Promise.all([
+      DB.getAllTasks(),
+      typeof DB.getSubmissions === 'function' ? DB.getSubmissions() : Promise.resolve([]),
+    ]);
     if (this._taskManageVersion !== version || !main || main.isConnected === false
       || (typeof Auth !== 'undefined' && Auth.session !== session)
       || (typeof Router !== 'undefined' && Router.currentAdminTab !== 'task-manage')
       || document.getElementById('admin-dashboard')?.style.display === 'none') return;
 
+    if (!preserveFilter) {
+      this._adminSearch = '';
+      this._adminBatchMode = false;
+      this._adminSelected = new Set();
+    }
+    this.applyReviewBadge(submissions);
+
     main.innerHTML = `
       <div class="page-title page-title-art">${renderFeatureIcon('icon-tasks', '', 'page-title-icon')}<span>任务管理</span></div>
       <div class="page-subtitle">发布和管理修仙任务</div>
 
-      <button class="btn btn-primary btn-block" style="margin-bottom:16px" onclick="AdminView.showCreateTask(this)">
-        ${renderFeatureIcon('icon-tasks', '', 'button-feature-icon')}新建任务
-      </button>
+      <div class="admin-toolbar">
+        <button class="btn btn-primary" onclick="AdminView.showCreateTask(this)">
+          ${renderFeatureIcon('icon-tasks', '', 'button-feature-icon')}新建任务
+        </button>
+        <button class="btn btn-outline btn-sm" onclick="AdminView.toggleAdminBatchMode()">批量管理</button>
+        <button class="btn btn-outline btn-sm" onclick="AdminView.showTaskLogs(this)">操作记录</button>
+      </div>
+
+      <div class="admin-search">
+        <input type="search" id="admin-task-search" placeholder="搜索任务名称、描述或主题" oninput="AdminView.searchAdminTasks(this.value)" aria-label="搜索任务">
+      </div>
 
       <div class="filter-bar">
         <div class="filter-chip active" data-filter="all" onclick="AdminView.filterAdminTasks('all')">全部</div>
@@ -5654,17 +5750,27 @@ const AdminView = {
         <div class="filter-chip" data-filter="theme" onclick="AdminView.filterAdminTasks('theme')">主题</div>
         <div class="filter-chip" data-filter="weekly" onclick="AdminView.filterAdminTasks('weekly')">每周</div>
         <div class="filter-chip" data-filter="daily" onclick="AdminView.filterAdminTasks('daily')">每日</div>
+        <div class="filter-chip" data-filter="ended" onclick="AdminView.filterAdminTasks('ended')">已结束</div>
+        <div class="filter-chip" data-filter="archived" onclick="AdminView.filterAdminTasks('archived')">已删除</div>
       </div>
 
+      <div id="admin-batch-bar" class="admin-batch-bar" hidden></div>
       <div id="admin-task-list"></div>
     `;
 
     this._adminTasks = tasks;
+    this._adminSubmissions = submissions || [];
+    const searchInput = document.getElementById('admin-task-search');
+    if (searchInput) searchInput.value = this._adminSearch || '';
     this.filterAdminTasks(selectedFilter);
   },
 
   _adminTasks: [],
   _adminTaskFilter: 'all',
+  _adminSubmissions: [],
+  _adminSearch: '',
+  _adminBatchMode: false,
+  _adminSelected: new Set(),
 
   filterAdminTasks(filter) {
     this._adminTaskFilter = filter;
@@ -5674,25 +5780,158 @@ const AdminView = {
     this._renderAdminTaskList();
   },
 
+  searchAdminTasks(value) {
+    this._adminSearch = String(value || '');
+    this._renderAdminTaskList();
+  },
+
+  // 生命周期只有一个真相：归档 > 已通过/已领取 > 活动已结束 > 发布池 > 已发布。
+  _taskLifecycle(task, submission, today = localDateStr()) {
+    if (!task) return { key: 'unknown', label: '', className: '' };
+    if (task.status === 'archived') return { key: 'archived', label: '已删除', className: 'tag-lifecycle-archived' };
+    if (submission && (submission.status === 'approved' || submission.status === 'claimed')) {
+      return { key: 'approved', label: '已通过', className: 'tag-lifecycle-approved' };
+    }
+    if (task.taskType === 'theme' && task.themeEnd && String(task.themeEnd) < today) {
+      return { key: 'ended', label: '活动已结束', className: 'tag-lifecycle-ended' };
+    }
+    return task.status === 'draft'
+      ? { key: 'draft', label: '发布池', className: 'tag-lifecycle-draft' }
+      : { key: 'published', label: '已发布', className: 'tag-lifecycle-published' };
+  },
+
+  // 主题活动的运营状态：进行中 / 未开始 / 已结束。
+  _themeRunState(task, today = localDateStr()) {
+    if (!task || task.taskType !== 'theme' || !task.themeStart || !task.themeEnd) return null;
+    if (String(task.themeEnd) < today) return { key: 'ended', label: '活动已结束' };
+    if (String(task.themeStart) > today) return { key: 'upcoming', label: '活动未开始' };
+    const end = new Date(`${task.themeEnd}T00:00:00`);
+    const now = new Date(`${today}T00:00:00`);
+    const days = Math.round((end - now) / 86400000) + 1;
+    return { key: 'ongoing', label: days <= 1 ? '活动今日结束' : `活动进行中 · 剩 ${days} 天` };
+  },
+
+  _adminTimeText(value) {
+    if (!value) return '时间未知';
+    try {
+      return GameDateTime.formatShanghaiDate(value);
+    } catch {
+      return String(value).slice(0, 10);
+    }
+  },
+
+  // 审核角标：只要还有待审核提交就亮着，数字即待办条数。
+  applyReviewBadge(submissions) {
+    const pending = (submissions || []).filter(s => s.status === 'pending').length;
+    this._pendingReviewCount = pending;
+    const badge = document.getElementById('admin-review-badge');
+    if (!badge) return;
+    if (pending > 0) {
+      badge.style.display = 'inline-flex';
+      badge.textContent = pending > 99 ? '99+' : String(pending);
+    } else {
+      badge.style.display = 'none';
+      badge.textContent = '';
+    }
+  },
+
+  async refreshReviewBadge() {
+    if (typeof DB.getSubmissions !== 'function') return;
+    const submissions = await DB.getSubmissions();
+    this.applyReviewBadge(submissions);
+  },
+
+  toggleAdminBatchMode() {
+    this._adminBatchMode = !this._adminBatchMode;
+    this._adminSelected = new Set();
+    this._renderAdminTaskList();
+  },
+
+  _selectedAdminIds() {
+    return [...(this._adminSelected || new Set())];
+  },
+
+  _toggleAdminTaskSelection(id, checked) {
+    if (!this._adminSelected) this._adminSelected = new Set();
+    if (checked) this._adminSelected.add(id);
+    else this._adminSelected.delete(id);
+    this._renderBatchBar();
+  },
+
+  _toggleAdminSelectAll(checked) {
+    this._adminSelected = new Set(checked ? this._visibleAdminTaskIds() : []);
+    this._renderAdminTaskList();
+  },
+
+  _visibleAdminTaskIds() {
+    return (this._filteredAdminTasks() || []).map(task => task.id);
+  },
+
+  _renderBatchBar() {
+    const bar = document.getElementById('admin-batch-bar');
+    if (!bar) return;
+    if (!this._adminBatchMode) {
+      bar.hidden = true;
+      bar.innerHTML = '';
+      return;
+    }
+    const selected = this._selectedAdminIds();
+    const visible = this._visibleAdminTaskIds();
+    const allSelected = visible.length > 0 && selected.length === visible.length;
+    bar.hidden = false;
+    bar.innerHTML = `
+      <span class="admin-batch-count">已选 ${selected.length} / ${visible.length}</span>
+      <label class="admin-batch-all"><input type="checkbox" ${allSelected ? 'checked' : ''} onchange="AdminView._toggleAdminSelectAll(this.checked)">全选</label>
+      <button class="btn btn-outline btn-sm" ${selected.length ? '' : 'disabled'} onclick="AdminView.batchSetStatus('published')">批量发布</button>
+      <button class="btn btn-outline btn-sm" ${selected.length ? '' : 'disabled'} onclick="AdminView.batchSetStatus('draft')">批量撤回</button>
+      <button class="btn btn-outline btn-sm btn-danger" ${selected.length ? '' : 'disabled'} onclick="AdminView.batchArchive()">批量删除</button>
+    `;
+  },
+
+  _filteredAdminTasks() {
+    const today = localDateStr();
+    const f = this._adminTaskFilter;
+    let tasks = this._adminTasks || [];
+    if (f === 'published' || f === 'draft' || f === 'archived') {
+      tasks = tasks.filter(t => t.status === f);
+    } else if (f === 'ended') {
+      tasks = tasks.filter(t => t.status !== 'archived' && t.taskType === 'theme' && t.themeEnd && String(t.themeEnd) < today);
+    } else if (f === 'weekly' || f === 'daily' || f === 'theme') {
+      tasks = tasks.filter(t => t.taskType === f && t.status !== 'archived');
+    } else if (f === 'all') {
+      tasks = tasks.filter(t => t.status !== 'archived');
+    }
+    const keyword = String(this._adminSearch || '').trim().toLowerCase();
+    if (keyword) {
+      tasks = tasks.filter(t => `${t.title || ''} ${t.description || ''} ${t.themeName || ''}`
+        .toLowerCase().includes(keyword));
+    }
+    return tasks;
+  },
+
   _renderAdminTaskList() {
     const list = document.getElementById('admin-task-list');
     if (!list) return;
+    const today = localDateStr();
+    const tasks = this._filteredAdminTasks();
+    const submissions = this._adminSubmissions || [];
+    const isSelected = id => Boolean(this._adminSelected && this._adminSelected.has(id));
 
-    let tasks = this._adminTasks;
-    const f = this._adminTaskFilter;
-    if (f === 'published' || f === 'draft') {
-      tasks = tasks.filter(t => t.status === f);
-    } else if (f === 'weekly' || f === 'daily' || f === 'theme') {
-      tasks = tasks.filter(t => t.taskType === f);
-    }
+    this._renderBatchBar();
 
+    const keyword = String(this._adminSearch || '').trim();
     if (tasks.length === 0) {
-      list.innerHTML = renderEmptyState('icon-tasks', '暂无任务');
+      list.innerHTML = renderEmptyState('icon-tasks', keyword ? `没有匹配「${keyword}」的任务` : '暂无任务');
       return;
     }
 
     let html = '';
     tasks.forEach(task => {
+      const submission = submissions.find(s => s.taskId === task.id) || null;
+      const pendingCount = submissions.filter(s => s.taskId === task.id && s.status === 'pending').length;
+      const lifecycle = this._taskLifecycle(task, submission, today);
+      const themeState = this._themeRunState(task, today);
+
       const rewardItems = task.rewardItems || [];
       let rewardHtml = '';
       if (task.rewardChopping > 0) rewardHtml += `<span class="reward-chopping" style="display:inline-flex;align-items:center;gap:3px">${renderItemIcon('1', '砍树次数', 'item-icon-xs')} ×${task.rewardChopping}</span>`;
@@ -5701,42 +5940,69 @@ const AdminView = {
         if (def) rewardHtml += `<span style="display:inline-flex;align-items:center;gap:2px;font-size:14px">${renderItemIcon(def.id || ri.item_id, escapeHtml(def.name), 'item-icon-xs')}×${ri.quantity}</span>`;
       });
 
-      const statusBadge = task.status === 'draft'
-        ? '<span class="tag" style="background:#fff3cd;color:#856404;font-size:11px">发布池</span>'
-        : '<span class="tag" style="background:#d4edda;color:#155724;font-size:11px">已发布</span>';
-
       const themeBadge = task.themeName
         ? `<span class="tag theme-task-tag">${escapeHtml(task.themeName)}${task.themeStart && task.themeEnd ? ` · ${escapeHtml(task.themeStart)}~${escapeHtml(task.themeEnd)}` : ''}</span>`
         : '';
 
-      const statusBtn = task.status === 'draft'
-        ? `<button class="btn btn-outline btn-sm" onclick="AdminView.showEditTask('${task.id}',this)">编辑</button>
-           <button class="btn btn-primary btn-sm" onclick="AdminView.publishTask('${task.id}',this)">发布</button>`
-        : `<button class="btn btn-outline btn-sm" onclick="AdminView.unpublishTask('${task.id}',this)">撤回</button>`;
+      // 已结束/已通过的任务不再提供撤下或删除入口，只保留状态与复制。
+      let actionHtml = '';
+      if (lifecycle.key === 'archived') {
+        actionHtml = `
+           <button class="btn btn-outline btn-sm" onclick="AdminView.restoreTask('${task.id}',this)">恢复</button>
+           <button class="btn btn-outline btn-sm btn-danger" onclick="AdminView.purgeTask('${task.id}',this)">彻底删除</button>`;
+      } else if (lifecycle.key === 'approved') {
+        actionHtml = `
+           <button class="btn btn-outline btn-sm" onclick="AdminView.showDuplicateTask('${task.id}',this)">再建一份</button>`;
+      } else if (lifecycle.key === 'ended') {
+        actionHtml = `
+           <button class="btn btn-outline btn-sm" onclick="AdminView.showDuplicateTask('${task.id}',this)">再建一份</button>`;
+      } else if (task.status === 'draft') {
+        actionHtml = `
+           <button class="btn btn-outline btn-sm" onclick="AdminView.showEditTask('${task.id}',this)">编辑</button>
+           <button class="btn btn-primary btn-sm" onclick="AdminView.publishTask('${task.id}',this)">发布</button>
+           <button class="btn btn-outline btn-sm" onclick="AdminView.showDuplicateTask('${task.id}',this)">复制</button>
+           <button class="btn btn-outline btn-sm btn-danger" onclick="AdminView.archiveTask('${task.id}',this)">删除</button>`;
+      } else {
+        actionHtml = `
+           <button class="btn btn-outline btn-sm" onclick="AdminView.unpublishAndEdit('${task.id}',this)">撤回并编辑</button>
+           <button class="btn btn-outline btn-sm" onclick="AdminView.unpublishTask('${task.id}',this)">撤回</button>
+           <button class="btn btn-outline btn-sm" onclick="AdminView.showDuplicateTask('${task.id}',this)">复制</button>
+           <button class="btn btn-outline btn-sm btn-danger" onclick="AdminView.archiveTask('${task.id}',this)">删除</button>`;
+      }
 
       html += `
-        <div class="task-card">
+        <div class="task-card${isSelected(task.id) ? ' task-card-selected' : ''}">
           <div class="task-card-header">
-            <div class="task-title">${escapeHtml(task.title)}</div>
+            <div class="task-title">${this._adminBatchMode
+              ? `<input type="checkbox" class="admin-task-pick" aria-label="选择任务" ${isSelected(task.id) ? 'checked' : ''} onchange="AdminView._toggleAdminTaskSelection('${task.id}', this.checked)">`
+              : ''}${escapeHtml(task.title)}</div>
             <div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end">
               ${themeBadge}
-              ${statusBadge}
+              <span class="tag ${lifecycle.className}">${escapeHtml(lifecycle.label)}</span>
+              ${pendingCount > 0 ? `<span class="tag tag-lifecycle-pending">待审核 ${pendingCount}</span>` : ''}
               ${task.difficulty ? UI.difficultyTag(task.difficulty) : ''}
             </div>
           </div>
           <div class="task-desc">${escapeHtml(task.description || '')}</div>
+          ${themeState ? `<div class="admin-task-note">${escapeHtml(themeState.label)}</div>` : ''}
+          ${submission && submission.status !== 'pending' ? `<div class="admin-task-note">玩家进度：${escapeHtml(this._submissionStatusLabel(submission.status))}</div>` : ''}
           <div class="task-meta">
             ${UI.taskTypeTag(task.taskType)}
             ${rewardHtml}
           </div>
+          <div class="admin-task-foot">排序 ${Number(task.sortOrder || 0)} · 创建于 ${escapeHtml(this._adminTimeText(task.createdAt))}</div>
           <div class="task-actions">
-            ${statusBtn}
-            <button class="btn btn-outline btn-sm btn-danger" onclick="AdminView.deleteTask('${task.id}',this)">删除</button>
+            ${actionHtml}
           </div>
         </div>
       `;
     });
     list.innerHTML = html;
+  },
+
+  _submissionStatusLabel(status) {
+    const map = { pending: '待审核', approved: '已通过待领取', claimed: '已领取', rejected: '已驳回' };
+    return map[status] || status || '';
   },
 
   _getOngoingTaskThemes(tasks, today = localDateStr()) {
@@ -5814,8 +6080,10 @@ const AdminView = {
     return outcome.value;
   },
 
-  _showCreateTaskForm(tasks, editingTask = null) {
+  _showCreateTaskForm(tasks, editingTask = null, options = {}) {
     const themes = this._getReusableTaskThemes(tasks);
+    const template = options.template || null;
+    const prefill = editingTask || template;
     const overlay = UI.modal(`
       <div class="form-group">
         <label>任务类型</label>
@@ -5853,29 +6121,32 @@ const AdminView = {
       <div style="display:none;border-top:1px solid var(--border);margin:12px 0;padding-top:12px" id="new-task-theme-box">
         <div style="font-weight:600;margin-bottom:8px;font-size:13px">主题设置<span id="theme-required-hint" style="color:var(--danger);display:none">（主题任务必填）</span></div>
         <div class="form-group">
-          <label for="new-task-theme-source">选择主题</label>
+          <label for="new-task-theme-source">活动归入</label>
           <select id="new-task-theme-source" onchange="AdminView._onCreateTaskThemeChange(this.closest('.modal-overlay'))">
-            <option value="">${editingTask ? '保留或修改原主题' : '新建主题'}</option>
+            <option value="">${prefill ? '保留或修改原主题' : '新建一个活动（自己填名称和日期）'}</option>
             ${themes.map((theme, index) => `<option value="${index}">${escapeHtml(theme.name)} · ${escapeHtml(theme.start)} 至 ${escapeHtml(theme.end)}（${theme.state === 'ongoing' ? '进行中' : '即将开始'}）</option>`).join('')}
           </select>
           <div id="new-task-theme-source-hint" style="font-size:12px;color:var(--text-light);margin-top:4px">${themes.length ? '可选进行中或即将开始的主题追加任务，也可以新建主题。' : '暂无可复用主题，可填写下方信息新建。'}</div>
         </div>
-        <div class="form-group">
-          <label>主题名称（如：开学季）</label>
-          <input type="text" id="new-task-theme" placeholder="比如：开学季 · 收心行动">
-        </div>
-        <div style="display:flex;gap:8px">
-          <div class="form-group" style="flex:1">
-            <label>开始日期</label>
-            <input type="date" id="new-task-theme-start">
+        <div id="new-task-theme-summary" class="admin-theme-summary" hidden></div>
+        <div id="new-task-theme-fields">
+          <div class="form-group">
+            <label>新活动名称（如：开学季）</label>
+            <input type="text" id="new-task-theme" placeholder="比如：开学季 · 收心行动">
           </div>
-          <div class="form-group" style="flex:1">
-            <label>结束日期</label>
-            <input type="date" id="new-task-theme-end">
+          <div style="display:flex;gap:8px">
+            <div class="form-group" style="flex:1">
+              <label>开始日期</label>
+              <input type="date" id="new-task-theme-start">
+            </div>
+            <div class="form-group" style="flex:1">
+              <label>结束日期</label>
+              <input type="date" id="new-task-theme-end">
+            </div>
           </div>
-        </div>
-        <div style="font-size:11px;color:var(--text-light);margin-top:-4px">
-          主题任务仅在起止时间内对玩家展示；活动结束后自动隐藏，显示“尽情期待”。
+          <div style="font-size:11px;color:var(--text-light);margin-top:-4px">
+            活动任务只在起止时间内对玩家展示；活动到期后自动下架，玩家的完成记录仍然保留。
+          </div>
         </div>
       </div>
       <div class="form-group">
@@ -5886,9 +6157,9 @@ const AdminView = {
         </select>
       </div>
     `, {
-      title: editingTask ? '编辑待发布任务' : '新建任务',
+      title: editingTask ? '编辑待发布任务' : (template ? `再建一份：${escapeHtml(template.title || '')}` : '新建任务'),
       footer: `<div class="modal-footer">
-        <button class="btn btn-outline btn-sm" onclick="this.closest('.modal-overlay').remove()">取消</button>
+        <button class="btn btn-outline btn-sm" id="create-task-cancel">取消</button>
         <button class="btn btn-primary btn-sm" id="create-task-ok">${editingTask ? '保存修改' : '创建'}</button>
       </div>`
     });
@@ -5896,29 +6167,64 @@ const AdminView = {
     this._createTaskOverlay = overlay;
     overlay._reusableTaskThemes = themes;
     overlay._editingTask = editingTask;
-    if (editingTask) {
+    overlay._copyOf = template ? (template.title || '') : '';
+    if (prefill) {
+      // 复制时主题归入留空，避免把副本塞回原活动；编辑时保留原主题。
       const values = {
-        'new-task-type': editingTask.taskType,
-        'new-task-title': editingTask.title || '',
-        'new-task-desc': editingTask.description || '',
-        'new-task-diff': editingTask.difficulty || 'C',
-        'new-task-chopping': editingTask.rewardChopping ?? 0,
+        'new-task-type': prefill.taskType,
+        'new-task-title': template ? `${template.title || ''}（副本）` : (prefill.title || ''),
+        'new-task-desc': prefill.description || '',
+        'new-task-diff': prefill.difficulty || 'C',
+        'new-task-chopping': prefill.rewardChopping ?? 0,
         'new-task-status': 'draft',
-        'new-task-theme': editingTask.themeName || '',
-        'new-task-theme-start': editingTask.themeStart || '',
-        'new-task-theme-end': editingTask.themeEnd || '',
+        'new-task-theme': editingTask ? (editingTask.themeName || '') : '',
+        'new-task-theme-start': editingTask ? (editingTask.themeStart || '') : '',
+        'new-task-theme-end': editingTask ? (editingTask.themeEnd || '') : '',
       };
       for (const [id, value] of Object.entries(values)) overlay.querySelector(`#${id}`).value = String(value);
       const editor = overlay.querySelector('#new-task-items');
-      for (const reward of editingTask.rewardItems || []) {
+      for (const reward of prefill.rewardItems || []) {
         const item = Object.hasOwn(ITEMS, reward.item_id) ? ITEMS[reward.item_id] : null;
         this._addRewardRow(editor, { ...reward, item_id: String(item?.id ?? reward.item_id) });
       }
     }
     const createButton = overlay.querySelector('#create-task-ok');
     createButton.addEventListener('click', () => this._createTaskFromForm(overlay, createButton));
+    const cancelButton = overlay.querySelector('#create-task-cancel');
+    cancelButton?.addEventListener('click', () => this._requestCloseTaskForm(overlay));
+    overlay.addEventListener?.('click', event => {
+      const isCloseControl = event.target === overlay || event.target.closest?.('.modal-close');
+      if (!isCloseControl || overlay.classList.contains('modal-locked')) return;
+      event.stopPropagation();
+      event.preventDefault();
+      this._requestCloseTaskForm(overlay);
+    }, true);
+    overlay._taskFormBaseline = this._taskFormSnapshot(overlay);
     this._onCreateTaskTypeChange(overlay);
     return overlay;
+  },
+
+  _taskFormSnapshot(overlay) {
+    return [...overlay.querySelectorAll('input, select, textarea')]
+      .map(field => `${field.id}:${field.value}`)
+      .join('|');
+  },
+
+  // 关掉表单前提醒未保存内容，避免辛苦填的奖励配置被一次误点丢掉。
+  _requestCloseTaskForm(overlay) {
+    if (overlay.classList.contains('modal-locked')) return;
+    if (overlay._discardConfirmed || overlay._taskCreated) {
+      UI.closeModal(overlay);
+      return;
+    }
+    if (this._taskFormSnapshot(overlay) === overlay._taskFormBaseline) {
+      UI.closeModal(overlay);
+      return;
+    }
+    UI.confirm('表单还有没保存的内容，关闭后会丢失。确定关闭吗？', () => {
+      overlay._discardConfirmed = true;
+      UI.closeModal(overlay);
+    });
   },
 
   async _createTaskFromForm(overlay, button) {
@@ -5983,7 +6289,7 @@ const AdminView = {
       try {
         saved = editingTask
           ? await DB.updateDraftTask(editingTask.id, payload)
-          : await DB.createTask({ ...payload, sortOrder: this._adminTasks.length });
+          : await DB.createTask({ ...payload, sortOrder: this._nextTaskSortOrder() });
       } finally {
         controls.forEach(({ control, disabled }) => { control.disabled = disabled; });
         if (!wasLocked) overlay.classList.remove('modal-locked');
@@ -5996,10 +6302,36 @@ const AdminView = {
       }
       overlay._taskCreated = true;
       UI.closeModal(overlay);
+      if (editingTask) {
+        this._logTask('update', { id: editingTask.id, title: payload.title }, '编辑发布池任务');
+      } else {
+        this._logTask('create', { id: saved?.id, title: payload.title }, `${status === 'published' ? '直接发布' : '存入发布池'} · ${this._taskTypeLabel(taskType)}`);
+      }
       UI.toast(editingTask ? '修改已保存，任务仍在发布池' : (taskType === 'theme' ? '主题任务创建成功' : '任务创建成功'), 'success');
       await this.renderTaskManage({ preserveFilter: true });
       return true;
     });
+  },
+
+  _taskTypeLabel(type) {
+    return { daily: '每日任务', weekly: '每周任务', theme: '主题任务', self: '自主申报' }[type] || type || '';
+  },
+
+  // 排序号取当前最大值 +1：删除任务后不会和已有任务撞号。
+  _nextTaskSortOrder() {
+    const max = (this._adminTasks || [])
+      .reduce((top, task) => Math.max(top, Number(task.sortOrder) || 0), 0);
+    return max + 1;
+  },
+
+  _logTask(action, task, detail) {
+    if (typeof DB.logTaskAction !== 'function') return;
+    void Promise.resolve(DB.logTaskAction({
+      action,
+      taskId: task?.id || null,
+      taskTitle: task?.title || '',
+      detail: detail || '',
+    })).catch(() => {});
   },
 
   // 创建任务弹窗：切换任务类型时，主题任务高亮主题设置为必填
@@ -6032,21 +6364,81 @@ const AdminView = {
     overlay.querySelector('#new-task-theme-source-hint').textContent = theme
       ? '将追加到所选主题，名称和活动日期沿用原设置。'
       : (overlay._reusableTaskThemes.length ? '可选进行中或即将开始的主题追加任务，也可以新建主题。' : '暂无可复用主题，可填写下方信息新建。');
+    // 选中已有活动时不再让人手填名称和日期：活动信息只有一份。
+    const manual = overlay.querySelector('#new-task-theme-fields');
+    if (manual) manual.hidden = !!theme;
+    const summary = overlay.querySelector('#new-task-theme-summary');
+    if (summary) {
+      summary.hidden = !theme;
+      summary.textContent = theme
+        ? `已加入活动「${theme.name}」 · ${theme.start} 至 ${theme.end}`
+        : '';
+    }
   },
 
-  deleteTask(id, control) {
-    UI.confirm('确定删除这个任务吗？', () => UI.runLockedAction(`task-mutate:${id}`, control, '删除中...', async () => {
-      if (!await DB.deleteTask(id)) { UI.toast('删除未完成，请重试', 'error'); return false; }
-      UI.toast('已删除', 'success');
+  _findAdminTask(id) {
+    return (this._adminTasks || []).find(task => task.id === id) || null;
+  },
+
+  // 删除改为归档：任务从所有列表消失，但提交记录仍指向真实任务，可随时恢复。
+  async archiveTask(id, control) {
+    const task = this._findAdminTask(id);
+    return UI.confirm(`归档「${task?.title || '这个任务'}」？\n\n归档后玩家立即看不到它，记录会保留，可以在「已删除」里恢复。`, () => UI.runLockedAction(`task-mutate:${id}`, control, '归档中...', async () => {
+      if (!await DB.archiveTask(id)) { UI.toast('归档未完成，请重试', 'error'); return false; }
+      this._logTask('archive', task, '归档任务');
+      UI.toast('已归档，可在「已删除」中恢复', 'success');
       await this.renderTaskManage({ preserveFilter: true });
       return true;
-    }), { key: `task-delete:${id}` });
+    }), { key: `task-archive:${id}` });
+  },
+
+  restoreTask(id, control) {
+    return UI.runLockedAction(`task-mutate:${id}`, control, '恢复中...', async () => {
+      const task = this._findAdminTask(id);
+      if (!await DB.restoreTask(id)) { UI.toast('恢复未完成，请重试', 'error'); return false; }
+      this._logTask('restore', task, '恢复为发布池任务');
+      UI.toast('已恢复到发布池', 'success');
+      await this.renderTaskManage({ preserveFilter: true });
+      return true;
+    });
+  },
+
+  async purgeTask(id, control) {
+    const task = this._findAdminTask(id);
+    return UI.confirm(`彻底删除「${task?.title || '这个任务'}」？\n\n此操作不可恢复。`, () => UI.runLockedAction(`task-mutate:${id}`, control, '删除中...', async () => {
+      if (!await DB.deleteTask(id)) { UI.toast('删除未完成，请重试', 'error'); return false; }
+      this._logTask('purge', task, '彻底删除已归档任务');
+      UI.toast('已彻底删除', 'success');
+      await this.renderTaskManage({ preserveFilter: true });
+      return true;
+    }), { key: `task-purge:${id}` });
+  },
+
+  async showDuplicateTask(id, control) {
+    if (this._createTaskOverlay?.isConnected) {
+      UI.toast('请先完成或关闭当前任务表单', 'warn');
+      return this._createTaskOverlay;
+    }
+    const outcome = await UI.runLockedAction('task-create-open', control, '读取中...', async () => {
+      const session = typeof Auth !== 'undefined' ? Auth.session : null;
+      const tasks = await DB.getAllTasks(null, { strict: true });
+      if ((control && !control.isConnected)
+        || (typeof Auth !== 'undefined' && Auth.session !== session)) return false;
+      const source = tasks.find(entry => entry.id === id);
+      if (!source) {
+        UI.toast('未找到这个任务，请刷新查看', 'warn');
+        return false;
+      }
+      return this._showCreateTaskForm(tasks, null, { template: source, copyOf: source.title });
+    });
+    return outcome.value;
   },
 
   async publishTask(id, control) {
     return UI.runLockedAction(`task-mutate:${id}`, control, '发布中...', async () => {
       const ok = await DB.updateTaskStatus(id, 'published');
       if (!ok) { UI.toast('发布未完成，请重试', 'error'); return false; }
+      this._logTask('publish', this._findAdminTask(id), '发布任务');
       UI.toast('任务已发布', 'success');
       await this.renderTaskManage({ preserveFilter: true });
       return true;
@@ -6057,24 +6449,118 @@ const AdminView = {
     UI.confirm('确定撤回这个任务吗？玩家将看不到它。', () => UI.runLockedAction(`task-mutate:${id}`, control, '撤回中...', async () => {
       const ok = await DB.updateTaskStatus(id, 'draft');
       if (!ok) { UI.toast('撤回未完成，请重试', 'error'); return false; }
+      this._logTask('unpublish', this._findAdminTask(id), '撤回到发布池');
       UI.toast('任务已撤回到发布池', 'success');
       await this.renderTaskManage({ preserveFilter: true });
       return true;
     }), { key: `task-unpublish:${id}` });
   },
 
+  async unpublishAndEdit(id, control) {
+    return UI.runLockedAction(`task-mutate:${id}`, control, '撤回中...', async () => {
+      const ok = await DB.updateTaskStatus(id, 'draft');
+      if (!ok) { UI.toast('撤回未完成，请重试', 'error'); return false; }
+      this._logTask('unpublish', this._findAdminTask(id), '撤回并编辑');
+      await this.renderTaskManage({ preserveFilter: true });
+      await this.showEditTask(id, null);
+      return true;
+    });
+  },
+
+  async batchSetStatus(status) {
+    const ids = this._selectedAdminIds();
+    if (ids.length === 0) { UI.toast('请先勾选任务', 'warn'); return false; }
+    const label = status === 'published' ? '发布' : '撤回';
+    const outcome = await UI.runLockedAction(`task-batch:${status}`, null, `${label}中...`, async () => {
+      const failed = [];
+      for (const id of ids) {
+        const ok = await DB.updateTaskStatus(id, status);
+        if (ok) this._logTask(status === 'published' ? 'publish' : 'unpublish', this._findAdminTask(id), `批量${label}`);
+        else failed.push(id);
+      }
+      this._adminSelected = new Set();
+      await this.renderTaskManage({ preserveFilter: true });
+      if (failed.length) {
+        UI.toast(`有 ${failed.length} 个任务${label}失败，请重试`, 'error');
+        return false;
+      }
+      UI.toast(`已${label} ${ids.length} 个任务`, 'success');
+      return true;
+    });
+    return outcome.started && outcome.value;
+  },
+
+  async batchArchive() {
+    const ids = this._selectedAdminIds();
+    if (ids.length === 0) { UI.toast('请先勾选任务', 'warn'); return false; }
+    return UI.confirm(`归档选中的 ${ids.length} 个任务？\n\n归档后玩家立即看不到它们，可以在「已删除」里恢复。`, () => UI.runLockedAction('task-batch:archive', null, '归档中...', async () => {
+      const failed = [];
+      for (const id of ids) {
+        const ok = await DB.archiveTask(id);
+        if (ok) this._logTask('archive', this._findAdminTask(id), '批量归档');
+        else failed.push(id);
+      }
+      this._adminSelected = new Set();
+      await this.renderTaskManage({ preserveFilter: true });
+      if (failed.length) {
+        UI.toast(`有 ${failed.length} 个任务归档失败，请重试`, 'error');
+        return false;
+      }
+      UI.toast(`已归档 ${ids.length} 个任务`, 'success');
+      return true;
+    }), { key: 'task-batch-archive' });
+  },
+
+  async showTaskLogs(control) {
+    const outcome = await UI.runLockedAction('task-logs-open', control, '读取中...', async () => {
+      const result = typeof DB.getTaskLogs === 'function'
+        ? await DB.getTaskLogs(100)
+        : { available: false, logs: [] };
+      const rows = result.logs || [];
+      const actionLabel = {
+        create: '新建', update: '编辑', publish: '发布', unpublish: '撤回',
+        archive: '归档', restore: '恢复', purge: '彻底删除',
+        approve: '审核通过', reject: '驳回',
+      };
+      const body = result.available === false
+        ? '<p class="admin-log-empty">操作记录表还没建好，先在 Supabase 执行 supabase-migration-v15.sql 之后就能看到记录。</p>'
+        : (rows.length === 0
+          ? '<p class="admin-log-empty">还没有操作记录</p>'
+          : `<div class="admin-log-list">${rows.map(row => `
+              <div class="admin-log-row">
+                <div class="admin-log-head">
+                  <span class="tag">${escapeHtml(actionLabel[row.action] || row.action || '操作')}</span>
+                  <span class="admin-log-time">${escapeHtml(this._adminTimeText(row.createdAt))}</span>
+                </div>
+                <div class="admin-log-title">${escapeHtml(row.taskTitle || '（无标题）')}</div>
+                ${row.detail ? `<div class="admin-log-detail">${escapeHtml(row.detail)}</div>` : ''}
+              </div>
+            `).join('')}</div>`);
+      UI.modal(body, { title: '任务操作记录' });
+      return true;
+    });
+    return outcome.started && outcome.value;
+  },
+
   // --- 审核 ---
   async renderReview() {
     const main = document.getElementById('admin-main');
-    const submissions = await DB.getSubmissions();
+    const [submissions, tasks] = await Promise.all([
+      DB.getSubmissions(),
+      typeof DB.getAllTasks === 'function' ? DB.getAllTasks() : Promise.resolve([]),
+    ]);
+    this._adminTasksForReview = tasks || [];
+    this.applyReviewBadge(submissions);
+    const pendingCount = submissions.filter(s => s.status === 'pending').length;
 
     main.innerHTML = `
       <div class="page-title page-title-art">${renderFeatureIcon('icon-achievement', '', 'page-title-icon')}<span>任务审核</span></div>
-      <div class="page-subtitle">审批修炼者提交的任务</div>
+      <div class="page-subtitle">${pendingCount > 0 ? `有 ${pendingCount} 条等待审批` : '当前没有等待审批的任务'}</div>
 
       <div class="filter-bar">
-        <div class="filter-chip active" data-filter="pending" onclick="AdminView.filterReview('pending')">待审核</div>
+        <div class="filter-chip active" data-filter="pending" onclick="AdminView.filterReview('pending')">待审核${pendingCount > 0 ? ` ${pendingCount}` : ''}</div>
         <div class="filter-chip" data-filter="approved" onclick="AdminView.filterReview('approved')">已通过</div>
+        <div class="filter-chip" data-filter="claimed" onclick="AdminView.filterReview('claimed')">已领取</div>
         <div class="filter-chip" data-filter="rejected" onclick="AdminView.filterReview('rejected')">已驳回</div>
         <div class="filter-chip" data-filter="all" onclick="AdminView.filterReview('all')">全部</div>
       </div>
@@ -6112,24 +6598,42 @@ const AdminView = {
       return;
     }
 
+    const now = Date.now();
     let html = '';
     subs.forEach(sub => {
       const date = GameDateTime.formatShanghaiDate(sub.submittedAt);
       const isSelf = sub.isSelfTask;
+      const task = (this._adminTasksForReview || []).find(entry => entry.id === sub.taskId) || null;
+      const rewardSource = {
+        rewardChopping: sub.rewardChopping || task?.rewardChopping || 0,
+        rewardItems: (sub.rewardItems && sub.rewardItems.length) ? sub.rewardItems : (task?.rewardItems || []),
+      };
+      const rewardHtml = renderTaskRewardChips(rewardSource, 'task-reward-list task-reward-list-inline');
+      const difficulty = task?.difficulty || '';
+      let waited = '';
+      if (sub.status === 'pending' && sub.submittedAt) {
+        const minutes = Math.max(0, Math.round((now - new Date(sub.submittedAt).getTime()) / 60000));
+        waited = minutes < 60
+          ? `已等待 ${minutes} 分钟`
+          : (minutes < 1440 ? `已等待 ${Math.floor(minutes / 60)} 小时` : `已等待 ${Math.floor(minutes / 1440)} 天`);
+      }
 
       html += `
         <div class="task-card">
           <div class="task-card-header">
-            <div class="task-title">${sub.selfTitle || sub.taskTitle}</div>
+            <div class="task-title">${escapeHtml(sub.selfTitle || sub.taskTitle || '')}</div>
             ${UI.statusTag(sub.status)}
           </div>
           <div class="task-meta">
             ${UI.taskTypeTag(sub.taskType)}
             ${isSelf ? '<span class="tag tag-type-self">自主申报</span>' : ''}
-            <span style="font-size:12px;color:var(--text-light)">${date}</span>
+            ${difficulty ? UI.difficultyTag(difficulty) : ''}
           </div>
-          <div class="task-desc">完成描述：${sub.description || ''}</div>
-          ${sub.reviewNote ? `<div class="task-desc" style="color:var(--accent)">审核备注：${sub.reviewNote}</div>` : ''}
+          ${task && task.description ? `<div class="task-desc admin-review-brief">任务要求：${escapeHtml(task.description)}</div>` : ''}
+          <div class="task-desc">完成描述：${escapeHtml(sub.description || '')}</div>
+          ${sub.reviewNote ? `<div class="task-desc admin-review-note">审核备注：${escapeHtml(sub.reviewNote)}</div>` : ''}
+          <div class="admin-task-note">提交于 ${escapeHtml(date)}${waited ? ` · ${escapeHtml(waited)}` : ''}</div>
+          ${rewardHtml ? `<div class="admin-review-reward">奖励：${rewardHtml}</div>` : ''}
           ${sub.status === 'pending' ? `
             <div class="task-actions" style="margin-top:10px">
               <button class="btn btn-outline btn-sm" onclick="AdminView.rejectSub('${sub.id}')">驳回</button>
@@ -6185,6 +6689,11 @@ const AdminView = {
         }
 
         if (overlay) UI.closeModal(overlay);
+        this._logTask(
+          status === 'approved' ? 'approve' : 'reject',
+          { id: sub.taskId, title: sub.selfTitle || sub.taskTitle },
+          status === 'approved' ? '审核通过并发放奖励' : `驳回：${note || ''}`,
+        );
         UI.toast(status === 'approved' ? '已通过' : '已驳回', 'success');
         await this.renderReview();
         return true;

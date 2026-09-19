@@ -63,6 +63,9 @@ async function fixture(page, origin) {
     Auth.session = { role: 'admin', environment: 'test', playerRole: 'player' };
     DB.setPlayerRole('player');
     DB.getAllTasks = async () => { adminFixture.taskReads++; return [...adminFixture.tasks]; };
+    DB.getSubmissions = async () => [...(adminFixture.submissions || [])];
+    DB.getTaskLogs = async () => ({ available: true, logs: [] });
+    DB.logTaskAction = async entry => { (adminFixture.taskLogs ||= []).push(entry); return true; };
     DB.createTask = async payload => {
       const task = JSON.parse(JSON.stringify(payload));
       adminFixture.writes.push(task);

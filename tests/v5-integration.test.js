@@ -23,7 +23,7 @@ test('V5 preloads required paper without making optional login textures block en
   assert.ok(LoginArt.getImageAssets().every(url => url.endsWith('?v=xianlai-v5-20260908')));
   for (const file of ['app.js', 'login-art.js', 'mobile-cultivation.css', 'ink-pages.css']) {
     const version = file === 'ink-pages.css' ? 'forge-login-polish-20260908'
-      : file === 'app.js' ? 'task-authoring-20260911'
+      : file === 'app.js' ? 'admin-task-ops-20260920'
         : file === 'login-art.js' ? 'entry-transitions-20260910' : 'reward-login-20260909';
     assert.ok(html.includes(`${file}?v=${version}`), `release version missing for ${file}`);
   }
