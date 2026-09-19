@@ -326,3 +326,36 @@ test('migration v15 creates the audit log, allows archived status and is wired i
   assert.match(html, /id="admin-review-badge"/);
   assert.match(app, /id="admin-task-search"/);
 });
+
+test('migration v16 reopens the audit log for anon writes with a fallback policy', () => {
+  const sql = fs.readFileSync(path.join(root, 'supabase-migration-v16.sql'), 'utf8');
+  assert.match(sql, /ALTER TABLE public\.task_admin_logs DISABLE ROW LEVEL SECURITY/);
+  // 即使将来 RLS 被重新开启，宽松策略也要保证匿名 key 仍能写入
+  assert.match(sql, /CREATE POLICY task_admin_logs_game_access/);
+  assert.match(sql, /USING \(true\)[\s\S]*WITH CHECK \(true\)/);
+  assert.match(sql, /GRANT USAGE, SELECT ON SEQUENCE public\.task_admin_logs_id_seq/);
+});
+
+test('a broken audit table degrades quietly instead of spamming an error per action', async () => {
+  const calls = [];
+  const query = {
+    insert(payload) { calls.push(['insert', payload]); return Promise.resolve({ data: null, error: { code: '42501', message: 'new row violates row-level security policy for table "task_admin_logs"' } }); },
+    select() { return this; }, eq() { return this; }, order() { return this; }, limit() { return this; },
+  };
+  const logged = [];
+  const context = vm.createContext({
+    dbClient: { from() { return query; } },
+    console: { error(...args) { logged.push(args.join(' ')); } },
+  });
+  vm.runInContext(`globalThis.DB = {${taskDbSource}}`, context);
+  context.DB.playerRole = 'player_live';
+
+  assert.equal(await context.DB.logTaskAction({ action: 'create', taskTitle: 'x' }), false);
+  assert.equal(context.DB._taskLogsAvailable, false);
+  assert.deepEqual(logged, [], 'an RLS rejection is expected to be handled silently');
+  // 已经判定不可用之后，后续操作不再尝试写库，避免每次动作都发一次失败的请求
+  const before = calls.length;
+  assert.equal(await context.DB.logTaskAction({ action: 'publish', taskTitle: 'y' }), false);
+  assert.equal(calls.length, before);
+  assert.match(context.DB._taskLogsUpgradeHint, /supabase-migration-v16\.sql/);
+});

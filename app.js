@@ -989,6 +989,14 @@ const DB = {
   // --- 天道操作日志 ---
   // 表不存在时静默降级：日志是辅助信息，不能阻塞任务发布。
   _taskLogsAvailable: true,
+  _taskLogsUpgradeHint: 'supabase-migration-v16.sql',
+
+  // 日志表是否不可用：缺表、缺权限、被 RLS 拦住都算。
+  // RLS 未关闭时会返回 42501；不能只认“表不存在”，否则每次操作都会刷报错。
+  _taskLogsBroken(error) {
+    return /does not exist|schema cache|row-level security|permission denied|42501/i
+      .test(`${error?.code || ''} ${error?.message || ''}`);
+  },
 
   async logTaskAction(entry = {}) {
     if (!this._taskLogsAvailable) return false;
@@ -1000,7 +1008,7 @@ const DB = {
       detail: entry.detail || '',
     });
     if (error) {
-      if (/does not exist|schema cache/i.test(error.message || '')) this._taskLogsAvailable = false;
+      if (this._taskLogsBroken(error)) this._taskLogsAvailable = false;
       else console.error('DB logTaskAction error:', error);
       return false;
     }
@@ -1014,9 +1022,7 @@ const DB = {
       .order('created_at', { ascending: false })
       .limit(limit);
     if (error) {
-      if (!/does not exist|schema cache/i.test(error.message || '')) {
-        console.error('DB getTaskLogs error:', error);
-      }
+      if (!this._taskLogsBroken(error)) console.error('DB getTaskLogs error:', error);
       return { available: false, logs: [] };
     }
     return {
@@ -6522,9 +6528,9 @@ const AdminView = {
         approve: '审核通过', reject: '驳回',
       };
       const body = result.available === false
-        ? '<p class="admin-log-empty">操作记录表还没建好，先在 Supabase 执行 supabase-migration-v15.sql 之后就能看到记录。</p>'
+        ? `<p class="admin-log-empty">操作记录表还没准备好（缺少表、权限或没关闭 RLS）。请在 Supabase 执行 <b>${escapeHtml(DB._taskLogsUpgradeHint || 'supabase-migration-v16.sql')}</b> 后再打开这里。</p>`
         : (rows.length === 0
-          ? '<p class="admin-log-empty">还没有操作记录</p>'
+          ? `<p class="admin-log-empty">还没有操作记录。这里会统计新建、编辑、发布、撤回、归档和审核动作。<br>如果之后一直为空，请确认已执行 ${escapeHtml(DB._taskLogsUpgradeHint || 'supabase-migration-v16.sql')}。</p>`
           : `<div class="admin-log-list">${rows.map(row => `
               <div class="admin-log-row">
                 <div class="admin-log-head">
