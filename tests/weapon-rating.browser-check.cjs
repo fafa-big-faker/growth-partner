@@ -111,7 +111,8 @@ function assertLibrary(cells, expected) {
       assert.ok(!overlaps(marker.box, cell.qualityMark), 'status does not cover the axe-quality mark: ' + context);
       for (const other of cell.markers.slice(index + 1)) assert.ok(!overlaps(marker.box, other.box), 'current/locked/new markers do not overlap: ' + context);
       if (marker.type.includes('mobile-current-badge')) {
-        assert.equal(marker.image, true, 'current equipment uses the small check image');
+        assert.equal(marker.image, false, 'current equipment uses an explicit text tag');
+        assert.equal(marker.text, '已装备');
         assert.ok(marker.box.y < cell.slot.y + cell.slot.height / 2, 'current marker is moved out of the bottom rating area');
       }
     }
@@ -253,7 +254,8 @@ async function main() {
       const initialCells = await inspectLibrary(page);
       assertLibrary(initialCells, expected);
       const current = initialCells.find(cell => cell.id === 'rating-4');
-      assert.equal(current.markers.length, 3, 'current, locked and new are exercised together');
+      assert.equal(current.markers.length, 2, 'current and locked remain, without a redundant new badge');
+      assert.ok(!current.markers.some(marker => marker.type.includes('item-new-badge')));
 
       await page.evaluate(() => {
         document.getElementById('inventory-grid').scrollTop = 48;
@@ -278,6 +280,9 @@ async function main() {
       const afterCells = await inspectLibrary(page);
       assertLibrary(afterCells, expected);
       assert.equal(afterCells[0].id, 'rating-1', 'newly equipped instance moves to the current position');
+      assert.equal(afterCells.filter(cell => cell.markers.some(marker => marker.type.includes('mobile-current-badge'))).length, 1);
+      assert.ok(afterCells[0].markers.some(marker => marker.text === '已装备'));
+      assert.ok(!afterCells[0].markers.some(marker => marker.type.includes('item-new-badge')));
       await page.locator('#mobile-weapon-toggle').click();
       await settle(page);
       const changed = await inspectEquipped(page);

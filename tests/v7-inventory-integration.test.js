@@ -35,10 +35,30 @@ test('mobile library includes current UUID first without merging duplicate axes'
   assert.ok(presentation.weaponsHtml.indexOf("'equipped'") < presentation.weaponsHtml.indexOf("'spare'"));
   assert.equal((presentation.weaponsHtml.match(/class="item-slot/g) || []).length, 2);
   assert.equal((presentation.weaponsHtml.match(/mobile-current-badge/g) || []).length, 1);
+  assert.match(presentation.weaponsHtml, /mobile-current-badge"[^>]*>已装备<\/span>/);
   assert.match(presentation.weaponsHtml, /当前/);
   assert.match(presentation.html, /Skill value/);
   assert.match(presentation.html, /quality-item-name quality-1/);
   assert.match(presentation.html, /mobile-equipped-quality"><span class="tag" data-quality="1"/);
+});
+
+test('equipped tag follows UUID and suppresses only its displayed new badge', () => {
+  const ctx = fixture();
+  const checked = [];
+  ctx.InventoryNewState.isWeaponNew = id => { checked.push(id); return true; };
+  const render = () => vm.runInNewContext(`({${sourceMethod('getMobileEquipmentPresentation')}}).getMobileEquipmentPresentation()`, ctx);
+  const cells = html => [...html.matchAll(/<button\b[^]*?<\/button>/g)].map(match => match[0]);
+  for (const currentId of ['equipped', 'spare']) {
+    ctx.Game.state.axeInstanceId = currentId;
+    ctx.Game.equippedWeapon = ctx.Game.weapons.find(weapon => weapon.id === currentId);
+    const [current, other] = cells(render().weaponsHtml);
+    assert.ok(current.includes(`data-weapon-id="${currentId}"`));
+    assert.match(current, /mobile-current-badge"[^>]*>已装备<\/span>/);
+    assert.doesNotMatch(current, /item-new-badge/);
+    assert.doesNotMatch(other, /mobile-current-badge|is-equipped/);
+    assert.match(other, /item-new-badge/);
+  }
+  assert.equal(checked.length, 4, 'rendering preserves the existing novelty lookup for both instances');
 });
 
 test('equipped weapon cannot enter the sale confirmation', () => {

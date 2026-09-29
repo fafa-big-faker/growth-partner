@@ -305,6 +305,16 @@
 .reward-modal-v7 .reward-results-extra { margin-top: 12px; padding-top: 8px; }
 .reward-modal-v7 .reward-item--small { width: 64px; }
 
+/* Compact only phone single-chop results; keep touch targets and burst paint gutters. */
+@media (max-width: 719px) {
+  .modal.reward-dialog--single { max-width: 280px; padding-block: 14px; }
+  .reward-dialog--single > .modal-header { margin-bottom: 2px; padding-bottom: 2px; }
+  .reward-dialog--single > .modal-footer { margin-top: 4px; padding-top: 4px; }
+  .reward-dialog--single .reward-item--large .reward-art { max-width: 78px; }
+  .reward-dialog--single .reward-item--large .reward-item-name { font-size: 15px; min-height: 22px; }
+  .reward-dialog--single .reward-item--large .reward-item-quantity { margin-top: 3px; min-height: 18px; }
+}
+
 @media (max-width: 380px) {
   .reward-results-regular { gap: 10px 4px; }
 }

@@ -64,12 +64,13 @@
   #player-dashboard.mobile-cultivation .mobile-inventory-columns .item-lock-badge { right: 3px; top: 3px; width: 16px; height: 16px; }
   #player-dashboard.mobile-cultivation .mobile-inventory-columns .item-locked .item-new-badge { right: 21px; }
   .weapon-slot-status { position: absolute; z-index: 3; top: 4px; right: 3px; width: 28px; display: grid; grid-template-columns: 12px 14px; gap: 2px; justify-items: end; pointer-events: none; }
-  .mobile-current-badge { display: block; width: 12px; height: 12px; }
-  .mobile-current-badge img { display: block; width: 12px; height: 12px; }
+  /* Leave the quality brush mark clear even in the 320px two-column library. */
+  #player-dashboard.mobile-cultivation #mobile-weapon-grid .is-equipped .weapon-slot-status { right: 1px; width: 32px; grid-template-columns: 16px 14px; }
+  .mobile-current-badge { display: block; grid-column: 1 / -1; width: 32px; height: 14px; border-radius: 3px 1px 3px 1px; background: #365d4c; color: #fffbed; font: 600 10px/14px 'Noto Serif SC', SimSun, serif; letter-spacing: 0; text-align: center; white-space: nowrap; text-shadow: none; }
   #player-dashboard.mobile-cultivation #mobile-weapon-grid .weapon-slot-status .item-lock-badge { position: static; grid-column: 2; width: 14px; height: 14px; padding: 0; background: none; border: 0; box-shadow: none; }
   #player-dashboard.mobile-cultivation #mobile-weapon-grid .weapon-slot-status .lock-badge-icon { width: 14px; height: 14px; filter: drop-shadow(0 1px 1px #fff); }
   #player-dashboard.mobile-cultivation #mobile-weapon-grid .weapon-slot-status .item-new-badge { position: static; grid-column: 1 / -1; height: 11px; line-height: 11px; }
-  #player-dashboard.mobile-cultivation #mobile-weapon-grid .is-equipped { outline: 1px solid #5c836a; outline-offset: -2px; }
+  #player-dashboard.mobile-cultivation #mobile-weapon-grid .is-equipped { outline: 2px solid #52745e; outline-offset: -2px; }
   .mobile-equipment-content { min-height: 0; min-width: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: #799085 transparent; text-align: center; padding: 0 3px 5px; }
   .mobile-equipped-art { display: flex; width: 100%; height: 88px; min-height: 44px; align-items: center; justify-content: center; padding: 2px 8px; background: none; border: 0; cursor: pointer; }
   .mobile-equipped-image { display: block; width: auto; height: 100%; max-width: 100%; object-fit: contain; }

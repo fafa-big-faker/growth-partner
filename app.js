@@ -3547,9 +3547,9 @@ const PlayerView = {
         <span class="item-icon">${renderItemIcon(weapon.itemId, item.icon)}</span>
         ${renderWeaponRating(weapon, 'slot')}
         <span class="weapon-slot-status" aria-hidden="true">
-          ${isCurrent ? '<span class="mobile-current-badge" title="当前装备"><img src="assets/runtime/ui/check.svg" alt=""></span>' : ''}
+          ${isCurrent ? '<span class="mobile-current-badge" title="当前装备">已装备</span>' : ''}
           ${locked ? `<span class="item-lock-badge">${renderFeatureIcon('icon-lock', '仙阶未解锁', 'lock-badge-icon')}</span>` : ''}
-          ${isNew ? '<span class="item-new-badge">新</span>' : ''}
+          ${isNew && !isCurrent ? '<span class="item-new-badge">新</span>' : ''}
         </span>
       </button>`;
     }).join('') || '<p class="mobile-library-empty">暂无仙斧</p>';
