@@ -3,10 +3,16 @@
 .demo-entry .demo-only { display: block !important; }
 .demo-entry .demo-normal-copy { display: none; }
 .demo-entry #login-screen .role-select { display: none; }
-.demo-entry #login-boot-quote { font-size: clamp(18px, 4.6vw, 25px); line-height: 1.75; letter-spacing: .05em; }
+.demo-entry #login-boot-quote {
+  margin: 18px auto 10px;
+  min-height: 0;
+  font-size: clamp(18px, 4.6vw, 25px);
+  line-height: 1.75;
+  letter-spacing: .05em;
+}
 .demo-boot-notice {
-  max-width: 320px;
-  margin: 12px auto 0;
+  width: 100%;
+  margin: 0 auto 26px;
   color: #464c49;
   font-size: 12px;
   line-height: 1.8;
@@ -20,6 +26,6 @@
 .first-chop-guide--rounded .first-chop-guide-hole,
 .first-chop-guide--rounded .first-chop-guide-ring { border-radius: 14px; }
 @media (max-height: 560px) {
-  .demo-boot-notice { margin-top: 10px; font-size: 12px; line-height: 1.5; }
+  .demo-boot-notice { margin-bottom: 20px; font-size: 12px; line-height: 1.5; }
   .demo-login-hint { margin-top: 4px; font-size: 12px; }
 }
