@@ -12,7 +12,7 @@
     'dragstart', 'selectstart', 'submit', 'change', 'input'];
 
   function shouldStart({ role, environment, totalChops } = {}) {
-    return role === 'player' && environment === 'live'
+    return role === 'player' && ['live', 'demo'].includes(environment)
       && ['number', 'string'].includes(typeof totalChops) && String(totalChops).trim() !== ''
       && Number.isFinite(Number(totalChops)) && Number(totalChops) === 0;
   }
@@ -105,8 +105,11 @@
       const centerX = (unionLeft + unionRight) / 2, centerY = (unionTop + unionBottom) / 2;
       // The full diagonal encloses even the axe's protruding bitmap corners.
       const radius = Math.hypot(unionRight - unionLeft, unionBottom - unionTop) / 2 + 10;
-      const left = centerX - radius, top = centerY - radius;
-      const right = centerX + radius, bottom = centerY + radius;
+      const rounded = options.shape === 'rounded';
+      const left = rounded ? unionLeft - 6 : centerX - radius;
+      const top = rounded ? unionTop - 6 : centerY - radius;
+      const right = rounded ? unionRight + 6 : centerX + radius;
+      const bottom = rounded ? unionBottom + 6 : centerY + radius;
       Object.assign(hole.style, { left: `${left}px`, top: `${top}px`, width: `${right - left}px`, height: `${bottom - top}px` });
       const viewport = host.visualViewport;
       const x = viewport?.offsetLeft || 0, y = viewport?.offsetTop || 0;
@@ -195,7 +198,12 @@
       Promise.resolve().then(() => active && token === generation && current() ? attempt.onChop() : false)
         .catch(() => false).then(success => {
           if (!active || token !== generation) return;
-          if (!current() || success === true) { destroy(); return; }
+          if (!current() || success === true) {
+            const complete = success === true && current() ? attempt.onComplete : null;
+            destroy();
+            complete?.();
+            return;
+          }
           pending = false;
           overlay.removeAttribute('aria-busy');
           // doChop can redraw the bottom bar even when its request fails.
@@ -270,6 +278,7 @@
       previousFocus = doc.activeElement;
       overlay = doc.createElement('div');
       overlay.className = 'first-chop-guide';
+      if (settings.shape === 'rounded') overlay.classList.add('first-chop-guide--rounded');
       overlay.setAttribute('role', 'dialog');
       overlay.setAttribute('aria-modal', 'true');
       overlay.setAttribute('aria-labelledby', TITLE_ID);
@@ -287,10 +296,10 @@
       paper.className = 'first-chop-guide-paper';
       const title = doc.createElement('strong');
       title.id = TITLE_ID;
-      title.textContent = '点一下仙斧，开始砍树';
+      title.textContent = settings.title || '点一下仙斧，开始砍树';
       const description = doc.createElement('span');
       description.id = DESCRIPTION_ID;
-      description.textContent = '每次砍树都能获得奖励';
+      description.textContent = settings.description || '每次砍树都能获得奖励';
       paper.append(title, description);
       bubble.appendChild(paper);
       overlay.append(hole, bubble);

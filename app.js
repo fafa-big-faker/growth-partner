@@ -471,7 +471,10 @@ const TASK_TYPE_MAP = {
 // ===== Supabase 初始化 =====
 let dbClient = null;
 try {
-  if (window.supabase && window.supabase.createClient) {
+  if (typeof DemoSession !== 'undefined' && DemoSession.isEntry()) {
+    // A demo page never creates a live client, including hidden/legacy GM paths.
+    console.log('作品演示：使用独立临时存档');
+  } else if (window.supabase && window.supabase.createClient) {
     dbClient = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_KEY);
     console.log('Supabase 初始化成功');
   } else {
@@ -1330,7 +1333,14 @@ function achievementGoalText(typeId, value) {
   }
 }
 
-const InventoryNewState = InventoryNovelty.create({ storage: window.localStorage });
+if (typeof DemoSession !== 'undefined') {
+  DemoSession.install(DB, { config: GAME_CONFIG, affixes: WeaponAffixes,
+    tasks: typeof DemoTaskTemplate !== 'undefined' ? DemoTaskTemplate : [] });
+}
+
+const InventoryNewState = InventoryNovelty.create({
+  storage: typeof DemoSession !== 'undefined' && DemoSession.isEntry() ? null : window.localStorage,
+});
 
 const Game = {
   state: null,
@@ -2305,14 +2315,21 @@ const Auth = {
   _credentials: null,
 
   init() {
-    this._credentials = LoginCredentials.create({
+    const demoEntry = typeof DemoSession !== 'undefined' && DemoSession.isEntry();
+    this._credentials = demoEntry ? null : LoginCredentials.create({
       usernameInput: document.getElementById('login-username'),
       passwordInput: document.getElementById('login-password'),
       credentials: navigator.credentials,
       PasswordCredential: window.PasswordCredential,
       isSecureContext: window.isSecureContext,
     });
-    void this._credentials.selectRole(this.currentRole);
+    void this._credentials?.selectRole(this.currentRole);
+    if (demoEntry) {
+      this.currentRole = 'player';
+      document.getElementById('login-username').value = 'xianlai-demo';
+      document.getElementById('login-password').placeholder = '请输入演示密码 888';
+      document.getElementById('login-password').setAttribute('inputmode', 'numeric');
+    }
     document.getElementById('login-form-panel').addEventListener('submit', event => {
       event.preventDefault();
       void this.doLogin();
@@ -2337,6 +2354,7 @@ const Auth = {
 
   selectRole(role) {
     if (this._loggingIn || !['player', 'admin'].includes(role)) return;
+    if (typeof DemoSession !== 'undefined' && DemoSession.isEntry() && role !== 'player') return;
     this.currentRole = role;
     void this._credentials?.selectRole(role);
     document.querySelectorAll('.role-card').forEach(el => {
@@ -2363,7 +2381,8 @@ const Auth = {
         if (!prepared.criticalReady) throw new Error('login artwork is not ready');
       }
       this._setLoading(true, 0, '正在核验道号');
-      const account = await AccountSession.verify(role, password);
+      const demoEntry = typeof DemoSession !== 'undefined' && DemoSession.isEntry();
+      const account = demoEntry ? DemoSession.verify(role, password) : await AccountSession.verify(role, password);
       if (!isCurrentAttempt()) return;
       if (!account) {
         attemptActive = false;
@@ -2372,6 +2391,14 @@ const Auth = {
         return;
       }
       if (document.activeElement === document.getElementById('login-password')) document.activeElement.blur();
+      if (demoEntry) {
+        DemoSession.reset();
+        PlayerView._demoWeaponGuide?.cancel();
+        PlayerView._tenChopMode = false;
+        PlayerView.currentTaskFilter = 'all';
+        PlayerView._inventoryOrderStore = null;
+        InventoryNewState.resetMemory();
+      }
       DB.setPlayerRole(account.playerRole);
       PlayerView.clearDataCaches();
       if (role === 'player') void AudioManager.playBgm();
@@ -2426,6 +2453,7 @@ const Auth = {
       console.error('login initialization failed:', error);
       this.session = null;
       if (typeof FirstChopGuide !== 'undefined') FirstChopGuide.destroy();
+      if (typeof DemoSession !== 'undefined' && DemoSession.isEntry()) DemoSession.end();
       AudioManager.pauseBgm();
       Game.state = null;
       Game.inventory = [];
@@ -2469,6 +2497,7 @@ const Auth = {
     if (typeof SceneTransition !== 'undefined') SceneTransition.cancel();
     this.session = null;
     PlayerView.cancelChopPresentation();
+    if (typeof DemoSession !== 'undefined' && DemoSession.isEntry()) DemoSession.end();
     document.getElementById('player-dashboard').style.display = 'none';
     document.getElementById('admin-dashboard').style.display = 'none';
     document.getElementById('login-screen').style.display = 'flex';
@@ -2725,7 +2754,12 @@ const UI = {
 
   closeModal(overlay) {
     overlay?._rewardReveal?.cancel();
-    if (overlay && overlay.parentNode) overlay.remove();
+    if (overlay && overlay.parentNode) {
+      overlay.remove();
+      const afterClose = overlay._afterClose;
+      overlay._afterClose = null;
+      afterClose?.();
+    }
   },
 
   confirm(message, onConfirm, options = {}) {
@@ -3057,6 +3091,31 @@ const PlayerView = {
     return this.startFirstChopGuide({ replay: true });
   },
 
+  startDemoWeaponGuide() {
+    const account = Auth.session;
+    if (account?.environment !== 'demo' || typeof DemoWeaponGuide === 'undefined') return false;
+    const giftId = DemoSession.giftId;
+    if (!giftId || Game.state?.axeInstanceId === giftId || !Game.weapons.some(weapon => weapon.id === giftId)) return false;
+    const isCurrent = () => Auth.session === account && Boolean(Game.state)
+      && Router.currentPlayerTab === 'cultivate' && DemoSession.giftId === giftId;
+    if (!isCurrent() || document.querySelector('.modal-overlay')) return false;
+    this._demoWeaponGuide ||= DemoWeaponGuide.createController({ guide: FirstChopGuide });
+    return this._demoWeaponGuide.start({
+      isCurrent,
+      getArmoryButton: () => document.getElementById('mobile-weapon-toggle'),
+      isArmoryOpen: () => document.getElementById('mobile-weapon-toggle')?.getAttribute('aria-expanded') === 'true',
+      openArmory: () => { MobileCultivation.open(); return true; },
+      getGiftButton: () => document.querySelector(`#mobile-weapon-grid [data-weapon-id="${giftId}"]`),
+      openGift: () => { this.showItemDetail('51002', giftId); return true; },
+      getEquipButton: () => document.querySelector(`[data-equip-weapon="${giftId}"]`),
+      equipGift: async button => {
+        await this.equipItem(giftId, button);
+        return Game.state?.axeInstanceId === giftId;
+      },
+      onComplete: () => { if (isCurrent()) UI.toast('SSS仙斧已装备，继续砍树试试斧技吧！', 'success'); },
+    });
+  },
+
   async renderCultivate() {
     const main = document.getElementById('player-main');
     const mobileState = typeof MobileCultivation !== 'undefined' ? MobileCultivation.unmount({ preserve: true }) : null;
@@ -3315,7 +3374,7 @@ const PlayerView = {
   getInventoryOrder() {
     if (!this._inventoryOrderStore || this._inventoryOrderAccount !== DB.playerRole) {
       let storage;
-      try { storage = window.localStorage; } catch (_) {}
+      try { if (DB.playerRole !== 'demo') storage = window.localStorage; } catch (_) {}
       this._inventoryOrderStore = InventoryOrder.createStore({ storage, accountId: DB.playerRole });
       this._inventoryOrderAccount = DB.playerRole;
     }
@@ -3455,7 +3514,7 @@ const PlayerView = {
       const isNew = InventoryNewState.isWeaponNew(weapon.id);
       const ratingLabel = WeaponAffixes.getWeaponRating(weapon).label;
       return `<button type="button" class="item-slot weapon-slot quality-${item.quality}${locked ? ' item-locked' : ''}${isCurrent ? ' is-equipped' : ''}"
-          onclick="PlayerView.showItemDetail('${weapon.itemId}','${weapon.id}')" aria-label="${isCurrent ? '当前装备：' : ''}${escapeHtml(item.name)}，技能评级${ratingLabel}" title="${isCurrent ? '当前装备：' : ''}${escapeHtml(item.name)} · 技能评级${ratingLabel}">
+          data-weapon-id="${weapon.id}" onclick="PlayerView.showItemDetail('${weapon.itemId}','${weapon.id}')" aria-label="${isCurrent ? '当前装备：' : ''}${escapeHtml(item.name)}，技能评级${ratingLabel}" title="${isCurrent ? '当前装备：' : ''}${escapeHtml(item.name)} · 技能评级${ratingLabel}">
         <span class="item-icon">${renderItemIcon(weapon.itemId, item.icon)}</span>
         ${renderWeaponRating(weapon, 'slot')}
         <span class="weapon-slot-status" aria-hidden="true">
@@ -3505,7 +3564,7 @@ const PlayerView = {
         `;
       } else {
         actionBtn = `
-          <button class="btn btn-primary btn-sm" onclick="PlayerView.equipItem('${instanceId}',this)">装备</button>
+          <button class="btn btn-primary btn-sm" data-equip-weapon="${instanceId}" onclick="PlayerView.equipItem('${instanceId}',this)">装备</button>
           <button class="btn btn-outline btn-sm" onclick="PlayerView.sellItem('${instanceId}',this)">出售 +${renderItemIcon('0', '🪙', 'item-icon-xs')} ${def.sellPrice}</button>
         `;
       }
@@ -3816,6 +3875,7 @@ const PlayerView = {
   _chopWait: null,
 
   cancelChopPresentation() {
+    this._demoWeaponGuide?.cancel();
     if (typeof FirstChopGuide !== 'undefined') FirstChopGuide.destroy();
     CultivationEffects.observeTree(null);
     this._chopPresentationVersion += 1;
@@ -3951,6 +4011,7 @@ const PlayerView = {
         <button class="btn btn-outline task-self-submit" onclick="PlayerView.showSelfSubmit()">自主申报</button>
       </header>
 
+      ${typeof Auth !== 'undefined' && Auth.session?.environment === 'demo' ? '<p class="demo-page-note">这是独立演示任务。提交后可点击“模拟通过”体验领奖，不会发送真实审核；重新登录后恢复未完成状态。</p>' : ''}
       <div id="theme-section"></div>
 
       <div class="filter-bar">
@@ -4261,7 +4322,10 @@ const PlayerView = {
       if (status === 'available') {
         actionBtn = `<button class="btn btn-primary btn-sm" onclick="PlayerView.submitTask('${task.id}')">完成</button>`;
       } else if (status === 'pending') {
-        actionBtn = `<button class="btn btn-outline btn-sm" disabled>审核中</button>`;
+        const submission = this._submissions.find(entry => entry.taskId === task.id && entry.status === 'pending');
+        actionBtn = typeof Auth !== 'undefined' && Auth.session?.environment === 'demo' && submission
+          ? `<button class="btn btn-outline btn-sm demo-review-button" onclick="PlayerView.simulateDemoReview('${submission.id}',this)">模拟通过</button><span class="demo-page-note">演示审核中</span>`
+          : `<button class="btn btn-outline btn-sm" disabled>审核中</button>`;
       } else if (status === 'approved') {
         actionBtn = `<button class="btn btn-accent btn-sm" onclick="PlayerView.claimTaskReward('${task.id}',this)">领取奖励</button>`;
       } else if (status === 'rejected') {
@@ -4293,7 +4357,9 @@ const PlayerView = {
   _renderSelfSubCard(sub) {
     let actionBtn = '';
     if (sub.status === 'pending') {
-      actionBtn = `<button class="btn btn-outline btn-sm" disabled>审核中</button>`;
+      actionBtn = typeof Auth !== 'undefined' && Auth.session?.environment === 'demo'
+        ? `<button class="btn btn-outline btn-sm demo-review-button" onclick="PlayerView.simulateDemoReview('${sub.id}',this)">模拟通过</button><span class="demo-page-note">演示审核中</span>`
+        : `<button class="btn btn-outline btn-sm" disabled>审核中</button>`;
     } else if (sub.status === 'approved') {
       actionBtn = `<button class="btn btn-accent btn-sm" onclick="PlayerView.claimSubmissionReward('${sub.id}',this)">领取奖励</button>`;
     } else if (sub.status === 'rejected') {
@@ -4320,6 +4386,18 @@ const PlayerView = {
         </div>
       </div>
     `;
+  },
+
+  async simulateDemoReview(submissionId, button) {
+    if (Auth.session?.environment !== 'demo') return false;
+    const outcome = await UI.runLockedAction(`demo-review:${submissionId}`, button, '模拟审核中...', () => DemoSession.simulateReview(submissionId));
+    if (outcome.started && outcome.value) {
+      this._mailCache.invalidate();
+      UI.toast('已模拟通过，可领取演示奖励', 'success');
+      await this._refreshTaskData();
+      UI._updateMailBadge();
+    }
+    return outcome.started && outcome.value;
   },
 
   async doDailyCheckIn(button) {
@@ -4644,6 +4722,7 @@ const PlayerView = {
       </header>
 
       <section class="reward-account" aria-label="人民币账户">
+        ${typeof Auth !== 'undefined' && Auth.session?.environment === 'demo' ? '<p class="demo-page-note">演示余额与提现仅用于展示流程，不涉及真实金钱，不发送真实申请。</p>' : ''}
         <div class="reward-account-overview">
           <div>
             <div class="balance-label">可提现余额 <span>人民币</span></div>
@@ -5535,6 +5614,13 @@ const PlayerView = {
     });
     overlay.classList.add('reward-dialog-overlay');
     overlay.querySelector('.modal').classList.add('reward-dialog', 'reward-dialog--ten');
+    if (typeof Auth !== 'undefined' && Auth.session?.environment === 'demo') {
+      const account = Auth.session;
+      overlay._afterClose = () => {
+        if (Auth.session !== account || version !== this._chopPresentationVersion || !Game.state) return;
+        if (DemoSession.afterTenClosed(Game.state.axeInstanceId)) this.startDemoWeaponGuide();
+      };
+    }
     this._startRewardReveal(overlay);
 
     PlayerView.renderCultivate();

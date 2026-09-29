@@ -113,9 +113,12 @@ function fixture({ reduced = false, hidden = false } = {}) {
 const settle = () => new Promise(resolve => setImmediate(resolve));
 function deferred() { let resolve; const promise = new Promise(done => { resolve = done; }); return { promise, resolve }; }
 
-test('only a live player with known zero cloud progress starts automatically', () => {
+test('live and demo players with known zero progress start automatically, test accounts do not', () => {
   assert.equal(shouldStart({ role: 'player', environment: 'live', totalChops: 0 }), true);
   assert.equal(shouldStart({ role: 'player', environment: 'live', totalChops: '0' }), true);
+  assert.equal(shouldStart({ role: 'player', environment: 'demo', totalChops: 0 }), true);
+  assert.equal(shouldStart({ role: 'player', environment: 'demo', totalChops: 1 }), false);
+  assert.equal(shouldStart({ role: 'admin', environment: 'demo', totalChops: 0 }), false);
   for (const role of ['admin', 'gm', undefined]) assert.equal(shouldStart({ role, environment: 'live', totalChops: 0 }), false);
   for (const environment of ['test', undefined]) assert.equal(shouldStart({ role: 'player', environment, totalChops: 0 }), false);
   for (const totalChops of [1, -1, undefined, null, '', ' ', false, NaN, Infinity, 'bad']) {

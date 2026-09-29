@@ -6,6 +6,7 @@
   <title>仙来</title>
   <meta name="application-name" content="仙来">
   <meta name="apple-mobile-web-app-title" content="仙来">
+  <script src="demo-session.js?v=portfolio-demo-20260929"></script>
   <link rel="icon" type="image/png" sizes="64x64" href="assets/runtime/app-icon/favicon.png?v=app-icon-20260910">
   <link rel="apple-touch-icon" sizes="180x180" href="assets/runtime/app-icon/apple-touch-icon.png?v=app-icon-20260910">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -28,6 +29,7 @@
   <link rel="stylesheet" href="web-interactions.css?v=tap-feedback-20260909">
   <link rel="stylesheet" href="first-chop-guide.css?v=first-chop-guide-20260910">
   <link rel="stylesheet" href="scene-transition.css?v=entry-transitions-20260910">
+  <link rel="stylesheet" href="demo-session.css?v=portfolio-demo-20260929">
 </head>
 <body>
   <!-- 登录页 -->
@@ -37,6 +39,7 @@
         <p class="login-boot-brand">仙来</p>
         <span class="login-boot-kicker">修行小笺</span>
         <p id="login-boot-quote">修仙可以慢慢来，<br>饭要记得按时吃。</p>
+        <p class="demo-only demo-boot-notice"><strong>作品演示模式</strong>本次体验不保存进度，重新登录将恢复初始状态。<br>放心探索，不会影响正式账号。</p>
         <div class="login-boot-preparation">
           <div id="login-boot-track" role="progressbar" aria-label="资源准备进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span id="login-boot-fill"></span></div>
           <div class="login-boot-meta"><p id="login-boot-status" role="status" aria-live="polite">正在准备画卷</p><span id="login-boot-percent" aria-hidden="true">0%</span></div>
@@ -71,6 +74,7 @@
         <span class="login-submit-fallback">踏入仙途</span>
         <span class="login-submit-busy" role="status" aria-live="polite"></span>
       </button>
+      <p class="demo-only demo-login-hint">演示密码：<b>888</b><small>独立体验 · 重新登录重置进度</small></p>
       </form>
       <section class="login-loading" id="login-loading" hidden aria-live="polite">
         <div class="loading-track" id="login-loading-track" role="progressbar" aria-label="入道进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span id="login-loading-bar"></span></div>
@@ -181,8 +185,10 @@
   <script src="mobile-cultivation.js?v=reward-login-20260909"></script>
   <script src="reward-presentation.js?v=reward-burst-20260910"></script>
   <script src="chop-refund-feedback.js?v=reward-focus-20260909"></script>
-  <script src="first-chop-guide.js?v=first-chop-guide-20260910"></script>
+  <script src="first-chop-guide.js?v=portfolio-demo-20260929"></script>
+  <script src="demo-tasks.js?v=portfolio-demo-20260929"></script>
+  <script src="demo-guide.js?v=portfolio-demo-20260929"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="app.js?v=admin-console-20260920"></script>
+  <script src="app.js?v=portfolio-demo-20260929"></script>
 </body>
 </html>

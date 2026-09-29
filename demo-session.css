@@ -1,0 +1,26 @@
+/* Demo-only copy reuses the approved paper and ink palette. No new artwork. */
+.demo-only { display: none !important; }
+.demo-entry .demo-only { display: block !important; }
+.demo-entry #login-screen .role-card[data-role="admin"] { display: none; }
+.demo-entry #login-screen .role-select { justify-content: center; }
+.demo-entry #login-screen .role-card[data-role="player"] { flex: 0 1 160px; cursor: default; }
+.demo-boot-notice {
+  max-width: 320px;
+  margin: 20px auto 0;
+  color: #464c49;
+  font-size: 13px;
+  line-height: 1.8;
+  text-align: center;
+}
+.demo-boot-notice strong { display: block; color: #303c36; font-size: 14px; font-weight: 600; letter-spacing: .12em; }
+.demo-login-hint { margin: 10px 0 0; color: #384b40; font-size: 14px; text-align: center; line-height: 1.6; }
+.demo-login-hint b { font-size: 18px; letter-spacing: .18em; font-variant-numeric: tabular-nums; }
+.demo-login-hint small { display: block; color: #515b54; font-size: 12px; }
+.demo-page-note { padding: 8px 2px 12px; color: #515b54; font-size: 12px; line-height: 1.7; }
+.demo-review-button { min-height: 40px; }
+.first-chop-guide--rounded .first-chop-guide-hole,
+.first-chop-guide--rounded .first-chop-guide-ring { border-radius: 14px; }
+@media (max-height: 560px) {
+  .demo-boot-notice { margin-top: 10px; font-size: 12px; line-height: 1.5; }
+  .demo-login-hint { margin-top: 4px; font-size: 12px; }
+}
