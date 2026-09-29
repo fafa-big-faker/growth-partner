@@ -2394,6 +2394,7 @@ const Auth = {
       if (demoEntry) {
         DemoSession.reset();
         PlayerView._demoWeaponGuide?.cancel();
+        PlayerView._demoBreakthroughHint?.cancel();
         PlayerView._tenChopMode = false;
         PlayerView.currentTaskFilter = 'all';
         PlayerView._inventoryOrderStore = null;
@@ -3146,6 +3147,7 @@ const PlayerView = {
   },
 
   async renderCultivate() {
+    this._demoBreakthroughHint?.cancel();
     const main = document.getElementById('player-main');
     const mobileState = typeof MobileCultivation !== 'undefined' ? MobileCultivation.unmount({ preserve: true }) : null;
     const treeConfig = TREE_LEVELS[Game.state.treeLevel] || TREE_LEVELS[1];
@@ -3208,7 +3210,7 @@ const PlayerView = {
           </div>
         </div>
         ${nextRealm ? `
-          <button class="btn btn-accent btn-sm" onclick="PlayerView.showBreakThrough()">${renderFeatureIcon('icon-breakthrough', '', 'button-feature-icon')}突破</button>
+          <button type="button" id="breakthrough-btn" class="btn btn-accent btn-sm" onclick="PlayerView.showBreakThrough()">${renderFeatureIcon('icon-breakthrough', '', 'button-feature-icon')}突破</button>
         ` : '<span class="tag" style="background:var(--quality-5)20;color:var(--quality-5)">已满阶</span>'}
       </div>
 
@@ -3272,12 +3274,28 @@ const PlayerView = {
     this.startFirstChopGuide();
   },
 
+  showDemoBreakthroughHint() {
+    const account = Auth.session;
+    if (account?.environment !== 'demo' || account.role !== 'player'
+        || typeof DemoWeaponGuide === 'undefined'
+        || (typeof FirstChopGuide !== 'undefined' && FirstChopGuide.isActive())
+        || document.querySelector('.modal-overlay')) return false;
+    const isCurrent = () => Auth.session === account && Boolean(Game.state)
+      && Router.currentPlayerTab === 'cultivate'
+      && !GameplayRules.canUseTenChop(Game.state.realmLevel);
+    if (!isCurrent()) return false;
+    this._demoBreakthroughHint ||= DemoWeaponGuide.createBreakthroughHint();
+    return this._demoBreakthroughHint.show({
+      getTarget: () => document.getElementById('breakthrough-btn'), isCurrent,
+    });
+  },
+
   toggleTenChop(checked) {
     if (checked && !GameplayRules.canUseTenChop(Game.state.realmLevel)) {
-      UI.toast('突破至中卡拉米后解锁', 'warn');
       this._tenChopMode = false;
       const cb = document.getElementById('ten-chop-toggle');
       if (cb) cb.checked = false;
+      if (!this.showDemoBreakthroughHint()) UI.toast('突破至中卡拉米后解锁', 'warn');
       return;
     }
     if (checked && Game.state.choppingCount < 10) {
@@ -3905,6 +3923,7 @@ const PlayerView = {
 
   cancelChopPresentation() {
     this._demoWeaponGuide?.cancel();
+    this._demoBreakthroughHint?.cancel();
     if (typeof FirstChopGuide !== 'undefined') FirstChopGuide.destroy();
     CultivationEffects.observeTree(null);
     this._chopPresentationVersion += 1;

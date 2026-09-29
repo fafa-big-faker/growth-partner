@@ -23,6 +23,45 @@
 .demo-login-hint small { display: block; color: #515b54; font-size: 12px; }
 .demo-page-note { padding: 8px 2px 12px; color: #515b54; font-size: 12px; line-height: 1.7; }
 .demo-review-button { min-height: 40px; }
+/* No backdrop or hit area: both the paper copy and arrow let all input pass through. */
+.demo-breakthrough-hint {
+  position: fixed;
+  z-index: 190;
+  width: max-content;
+  max-width: min(224px, calc(100vw - 24px));
+  padding-bottom: 24px;
+  color: #365d4c;
+  pointer-events: none;
+  user-select: none;
+}
+.demo-breakthrough-hint-copy {
+  padding: 7px 11px;
+  border: 1px solid rgb(82 116 94 / 35%);
+  border-radius: 7px 3px 7px 3px;
+  background: #f7f5ea;
+  box-shadow: 0 3px 10px rgb(24 49 38 / 12%);
+  color: #304e40;
+  font: 600 12px/1.6 'Noto Serif SC', SimSun, serif;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+.demo-breakthrough-hint-arrow {
+  position: absolute;
+  left: calc(var(--hint-arrow-x, 50%) - 10px);
+  bottom: 0;
+  width: 20px;
+  height: 24px;
+  filter: drop-shadow(0 1px 1px #fffbed);
+}
+.demo-breakthrough-hint-copy,
+.demo-breakthrough-hint-arrow { animation: demo-breakthrough-float 1500ms ease-in-out infinite; }
+@keyframes demo-breakthrough-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .demo-breakthrough-hint-copy, .demo-breakthrough-hint-arrow { animation: none; }
+}
 .first-chop-guide--rounded .first-chop-guide-hole,
 .first-chop-guide--rounded .first-chop-guide-ring { border-radius: 14px; }
 @media (max-height: 560px) {

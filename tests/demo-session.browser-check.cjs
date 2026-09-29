@@ -75,10 +75,25 @@ async function main() {
       await page.locator('#chop-btn').click();
       await waitReward(page, true); await collect(page);
       assert.equal(await page.evaluate(() => Game.state.choppingCount), 998);
+      // A rejected checkbox click stays unchecked and shows a non-blocking breakthrough hint.
+      await page.locator('#ten-chop-toggle').click();
+      await page.waitForSelector('.demo-breakthrough-hint');
+      assert.equal(await page.locator('#ten-chop-toggle').isChecked(), false);
+      assert.equal(await page.locator('.demo-breakthrough-hint').textContent(), '突破至中卡拉米，解锁十连砍');
+      assert.equal(await page.evaluate(() => FirstChopGuide.isActive()), false);
+      const hintGeometry = await page.evaluate(() => {
+        const hint = document.querySelector('.demo-breakthrough-hint').getBoundingClientRect();
+        const target = document.getElementById('breakthrough-btn').getBoundingClientRect();
+        return hint.left >= 0 && hint.right <= innerWidth && hint.top >= 0 && hint.bottom <= target.top;
+      });
+      assert.ok(hintGeometry, 'weak hint fits above the real breakthrough button');
+      assert.equal(await page.evaluate(() => Game._getItemQty('30001')), 1, 'hint consumes no materials');
       await page.locator('button[onclick="PlayerView.showBreakThrough()"]').click();
+      assert.equal(await page.locator('.demo-breakthrough-hint').count(), 0, 'same click dismisses and opens original modal');
       await page.locator('#breakthrough-ok').click();
       await page.waitForFunction(() => Game.state.realmLevel === 2 && !OperationGuard.isBusy());
       await page.locator('#ten-chop-toggle').check();
+      assert.equal(await page.locator('.demo-breakthrough-hint').count(), 0, 'unlocked ten-chop does not guide');
       await page.locator('#chop-btn').click();
       await waitReward(page);
       assert.equal(await page.evaluate(() => FirstChopGuide.isActive()), false, 'no gift guide before result dismissal');
