@@ -4,7 +4,7 @@ const { create, getCriticalAssets, getDecorationAssets, getEntryAssets } = requi
 
 const flush = async () => { for (let index = 0; index < 16; index++) await Promise.resolve(); };
 
-function fixture({ reduced = false, waitForRuntime = false, resourcePack, manifest, requireResourcePack = false, transition } = {}) {
+function fixture({ reduced = false, waitForRuntime = false, resourcePack, manifest, requireResourcePack = false, transition, demo = false } = {}) {
   const elements = new Map();
   const calls = [];
   const timers = new Map();
@@ -40,7 +40,7 @@ function fixture({ reduced = false, waitForRuntime = false, resourcePack, manife
     getImage(src) { return { src, naturalWidth: 512 }; },
   };
   const boot = create({ document: { createElement: element, getElementById: id => elements.get(id) },
-    window: { matchMedia: () => ({ matches: reduced }) }, preloader, waitForRuntime, resourcePack, manifest, requireResourcePack, transition,
+    window: { matchMedia: () => ({ matches: reduced }) }, preloader, waitForRuntime, resourcePack, manifest, requireResourcePack, transition, demo,
     setTimeout(callback) { timers.set(++timerId, callback); return timerId; },
     clearTimeout(id) { timers.delete(id); },
   });
@@ -301,6 +301,25 @@ test('long preparation rotates one quiet quote and destroy cancels the pending s
   assert.equal(quote.classList.contains('is-changing'), false);
   state.boot.destroy();
   assert.equal(state.timers.size, 0);
+});
+
+test('demo preparation uses a fixed cache notice without quote rotation, and still retries failures', async () => {
+  const state = fixture({ demo: true });
+  state.boot.start();
+  const quote = state.get('login-boot-quote');
+  assert.equal(quote.textContent.replace(/\n/g, ''), '首次需缓存资源，加载稍慢，请稍候。');
+  assert.equal(state.get('demo-boot-notice').textContent, '演示进度不保存，重新登录即重置。');
+  assert.equal(state.timers.size, 0, 'no rotating quote timer in demo');
+  state.expire();
+  assert.equal(quote.classList.contains('is-changing'), false);
+  state.calls[0].resolve([getCriticalAssets()[0]]);
+  await flush();
+  assert.equal(state.boot.getState().phase, 'error');
+  assert.equal(state.get('login-boot-retry').hidden, false);
+  state.boot.retry();
+  assert.equal(state.calls.length, 2);
+  assert.equal(quote.textContent.replace(/\n/g, ''), '首次需缓存资源，加载稍慢，请稍候。');
+  state.boot.destroy();
 });
 
 test('production entry cannot silently bypass a missing resource manifest', async () => {

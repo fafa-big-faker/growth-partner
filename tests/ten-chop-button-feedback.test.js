@@ -52,7 +52,7 @@ async function simulateTenChops(chops, started = true) {
   const tree = makeButton();
   const context = {
     ITEMS: { '0': { name: '小钱钱' } },
-    QUALITY: {}, RewardPresentation,
+    QUALITY: {}, RewardPresentation, Auth: { session: null },
     escapeHtml: value => String(value ?? ''),
     Game: { state: { realmLevel: 99, choppingCount: 10 }, chopTen: async () => {
       writes++;
@@ -89,7 +89,7 @@ async function simulateTenChops(chops, started = true) {
     setTimeout: callback => { callback(); return 0; },
     renderItemIcon: () => '', renderFeatureIcon: () => '',
   };
-  const view = vm.runInNewContext(`({${method('doChopTen')},${method('_showChopRefund')}})`, context);
+  const view = vm.runInNewContext(`({${method('doChopTen')},${method('_showChopRefund')},${method('_bindDemoRewardGuide')}})`, context);
   context.PlayerView = view;
   view._chopPresentationVersion = 0;
   view._waitForChopFeedback = async () => true;

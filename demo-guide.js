@@ -1,6 +1,6 @@
 (function (root) {
   'use strict';
-  function createController({ guide, schedule = callback => setTimeout(callback, 0), cancelSchedule = clearTimeout } = {}) {
+  function createController({ guide, schedule = (callback, delay = 0) => setTimeout(callback, delay), cancelSchedule = clearTimeout } = {}) {
     let generation = 0, timer = null, owned = false;
     function cancel() {
       generation++;
@@ -43,7 +43,36 @@
       later(() => step(0));
       return true;
     }
-    return { start, cancel };
+    function startForge(options) {
+      cancel();
+      const token = generation;
+      const current = () => generation === token && options.isCurrent();
+      timer = schedule(() => {
+        timer = null;
+        if (!current()) return;
+        const target = options.getForgeButton();
+        if (!target?.isConnected || target.disabled) return;
+        target.scrollIntoView?.({ block: 'nearest', inline: 'nearest', behavior: 'instant' });
+        let opened = false;
+        owned = guide.start({
+          title: '去天工开物，试试手气！',
+          description: '用开工石锻造仙斧，寻找更强的斧技。',
+          shape: 'rounded', getTarget: options.getForgeButton, isCurrent: current,
+          onChop: async () => {
+            if (!current()) return false;
+            opened = await options.openForge(target) === true;
+            return current() && opened;
+          },
+          onComplete: () => {
+            if (!current() || !opened) return;
+            owned = false;
+            options.onComplete?.();
+          },
+        });
+      }, 300);
+      return true;
+    }
+    return { start, startForge, cancel };
   }
   root.DemoWeaponGuide = { createController };
   if (typeof module !== 'undefined' && module.exports) module.exports = { createController };

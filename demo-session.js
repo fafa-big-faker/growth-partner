@@ -50,7 +50,7 @@
     const setQuantity = (itemId, count) => count > 0 ? inventory.set(String(itemId), count) : inventory.delete(String(itemId));
     const validItem = (itemId, count) => items.has(String(itemId)) && positive(count);
     const fail = code => ({ ok: false, code });
-    let tenClosed = false;
+    let tenClosed = false, forged = false, forgeGuideCompleted = false;
 
     const store = {
       giftId,
@@ -59,6 +59,11 @@
         tenClosed = true;
         return equippedId !== giftId && weapons.some(weapon => weapon.id === giftId);
       },
+      canGuideForge(usedWeaponId) {
+        return usedWeaponId === giftId && !forged && !forgeGuideCompleted
+          && weapons.some(weapon => weapon.id === giftId);
+      },
+      completeForgeGuide() { forgeGuideCompleted = true; },
       getPlayerState: () => copy(state),
       initPlayerState: () => copy(state),
       _defaultPlayerState: () => copy(state),
@@ -116,6 +121,7 @@
         const weapon = store.grantWeaponInstance(itemId, rolls);
         const remainingMaterial = quantity(costId) - Number(costCount);
         setQuantity(costId, remainingMaterial);
+        forged = true;
         return { ok: true, weapon, remainingMaterial, costQuantity: remainingMaterial };
       },
       equipWeaponInstance(instanceId) {
@@ -265,6 +271,8 @@
       },
       end() { store = null; },
       afterTenClosed: equippedId => Boolean(store?.afterTenClosed(equippedId)),
+      canGuideForge: usedWeaponId => Boolean(store?.canGuideForge(usedWeaponId)),
+      completeForgeGuide: () => store?.completeForgeGuide(),
     };
     return active;
   }
@@ -272,6 +280,8 @@
     isEntry, verify, createStore, install,
     reset: () => active?.reset(), end: () => active?.end(),
     afterTenClosed: equippedId => Boolean(active?.afterTenClosed(equippedId)),
+    canGuideForge: usedWeaponId => Boolean(active?.canGuideForge(usedWeaponId)),
+    completeForgeGuide: () => active?.completeForgeGuide(),
     simulateReview: id => active?.store?.simulateReview(id) || false,
     get giftId() { return active?.giftId || null; },
   };

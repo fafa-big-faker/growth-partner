@@ -124,3 +124,37 @@ test('facade fails closed, preserves real methods outside demo, and resets on ea
   assert.equal(await real.getPlayerState(), 42);
   assert.equal(remoteCalls, 1);
 });
+
+test('forge guide requires the exact gifted instance and completes only once per session', () => {
+  const s = Demo.createStore(deps);
+  assert.equal(s.canGuideForge(s.getWeaponInstances()[0].id), false);
+  const similar = s.grantWeaponInstance('51002', s.getWeaponInstances()[1].skillRolls);
+  assert.equal(s.canGuideForge(similar.id), false);
+  assert.equal(s.canGuideForge(s.giftId), true);
+  assert.equal(s.canGuideForge(s.giftId), true, 'eligibility check does not consume the guide');
+  s.completeForgeGuide();
+  assert.equal(s.canGuideForge(s.giftId), false);
+  const next = Demo.createStore(deps);
+  assert.equal(next.canGuideForge(next.giftId), true);
+});
+
+test('successful prior forging skips the guide, failed forging does not', () => {
+  const s = Demo.createStore(deps);
+  assert.equal(s.forgeWeaponInstance('40001', 9999, '51002', []).ok, false);
+  assert.equal(s.canGuideForge(s.giftId), true);
+  assert.equal(s.forgeWeaponInstance('40001', 1, '51002', []).ok, true);
+  assert.equal(s.canGuideForge(s.giftId), false);
+});
+
+test('forge tutorial facade fails closed after logout and resets at next demo login', () => {
+  const session = Demo.install({}, { ...deps, entry: true });
+  assert.equal(Demo.canGuideForge('missing'), false);
+  session.reset();
+  assert.equal(Demo.canGuideForge(session.giftId), true);
+  Demo.completeForgeGuide();
+  assert.equal(Demo.canGuideForge(session.giftId), false);
+  session.reset();
+  assert.equal(Demo.canGuideForge(session.giftId), true);
+  session.end();
+  assert.equal(Demo.canGuideForge(null), false);
+});

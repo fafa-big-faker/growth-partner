@@ -6,7 +6,7 @@ const vm = require('node:vm');
 const { createOperationGuard } = require('../operation-guard');
 
 const root = path.join(__dirname, '..');
-const app = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
+const app = fs.readFileSync(path.join(root, 'app.js'), 'utf8').replace(/\r\n/g, '\n');
 const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const css = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
 const adminSource = app.slice(app.indexOf('const AdminView = {'), app.indexOf('\n// 初始化（登录时调用'));

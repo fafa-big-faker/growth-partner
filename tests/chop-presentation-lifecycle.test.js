@@ -88,7 +88,7 @@ function fixture(options = {}) {
     playScatterAnimation: item => draw(item, 'scatter-item'),
   };
   const context = vm.createContext({
-    Game, UI, OperationGuard: guard, TenChopTimeline,
+    Game, UI, Auth: { session: null }, OperationGuard: guard, TenChopTimeline,
     GameplayRules: { canUseTenChop: () => true },
     document: {
       getElementById: getNode,
@@ -164,7 +164,7 @@ function fixture(options = {}) {
   });
   Object.assign(UI, vm.runInContext(`({${['runLockedAction', 'modal', 'closeModal'].map(method).join(',')}})`, context));
   const view = vm.runInContext(`({${['_waitForChopFeedback', 'cancelChopPresentation', '_startRewardReveal',
-    '_showChopRefund', '_showRewardModal', 'doChop', 'doChopTen'].map(method).join(',')}})`, context);
+    '_showChopRefund', '_showRewardModal', '_bindDemoRewardGuide', 'doChop', 'doChopTen'].map(method).join(',')}})`, context);
   Object.assign(view, {
     _chopPresentationVersion: 0, _chopWait: null, _tenChopMode: false,
     _playChopButtonFeedback: () => {}, renderCultivate: () => { calls.render++; },

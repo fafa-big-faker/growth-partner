@@ -60,7 +60,10 @@ async function main() {
       await page.waitForFunction(() => typeof Auth !== 'undefined');
       assert.equal(await page.locator('.demo-boot-notice').count(), 1);
       assert.equal(await page.locator('.demo-login-hint').textContent().then(text => text.includes('888')), true);
-      assert.equal(await page.locator('.role-card[data-role="admin"]').isVisible(), false);
+      assert.equal(await page.locator('.role-select').isVisible(), false, 'entire demo role row is collapsed');
+      assert.equal(await page.locator('#login-boot-quote').textContent().then(text => text.replace(/\n/g, '')),
+        '首次需缓存资源，加载稍慢，请稍候。');
+      assert.equal(await page.locator('#demo-boot-notice').textContent(), '演示进度不保存，重新登录即重置。');
       await login(page);
       const initial = await page.evaluate(() => ({
         level: Game.state.level, realm: Game.state.realmLevel, tree: Game.state.treeLevel,
@@ -89,13 +92,40 @@ async function main() {
       await page.waitForFunction(gift => Game.state.axeInstanceId === gift && !FirstChopGuide.isActive()
         && !document.querySelector('.modal-overlay'), initial.gift, { timeout: 15000 });
       console.log(`full tutorial chain OK ${viewport.width}`);
-      // Actual forge consumes local materials and returns a separate weapon instance.
-      const forged = await page.evaluate(async () => {
-        const before = Game._getItemQty('40001');
-        const result = await Game.forge();
-        return { id: result?.weapon.id, before, after: Game._getItemQty('40001') };
-      });
-      assert.ok(forged.id); assert.equal(forged.before - forged.after, 1);
+      const stoneBefore = await page.evaluate(() => Game._getItemQty('40001'));
+      if (viewport.width === 1440) {
+        // An independently discovered forge must suppress the later tutorial.
+        await page.locator('.forge-btn').click();
+        await page.locator('#forge-ok').click();
+        await page.waitForSelector('#forge-reveal-stage[data-state="result"]');
+        await page.locator('.forge-modal-overlay .modal-close').click();
+      }
+      // Single chop and ten-chop both qualify; using the gift does not require a random skill proc.
+      const single = viewport.width !== 390;
+      if (single) await page.locator('#ten-chop-toggle').uncheck();
+      await page.locator('#chop-btn').click();
+      await waitReward(page, single);
+      assert.equal(await page.evaluate(() => FirstChopGuide.isActive()), false, 'forge guide waits for result dismissal');
+      await collect(page);
+      if (viewport.width === 1440) {
+        assert.equal(await page.evaluate(() => DemoSession.canGuideForge(DemoSession.giftId)), false);
+        await page.waitForTimeout(900);
+        assert.equal(await page.evaluate(() => FirstChopGuide.isActive()), false, 'prior forge skips guide');
+      } else {
+        await readyGuide(page, '天工开物');
+        assert.equal(await page.evaluate(() => Game._getItemQty('40001')), stoneBefore, 'guide does not auto-forge');
+        await page.locator('.forge-btn').click();
+        await page.waitForSelector('.forge-modal-overlay');
+        await page.waitForFunction(() => !FirstChopGuide.isActive());
+        assert.equal(await page.evaluate(() => DemoSession.canGuideForge(DemoSession.giftId)), false, 'opening ends guide');
+        assert.equal(await page.evaluate(() => Game._getItemQty('40001')), stoneBefore, 'opening consumes nothing');
+        await page.locator('#forge-ok').click();
+        await page.waitForSelector('#forge-reveal-stage[data-state="result"]');
+        await page.locator('.forge-modal-overlay .modal-close').click();
+      }
+      assert.equal(await page.evaluate(() => Game._getItemQty('40001')), stoneBefore - 1);
+      assert.equal(await page.evaluate(() => Game.weapons.length), 3);
+      console.log(`gift chop / forge onboarding / manual forging OK ${viewport.width}`);
       await page.evaluate(() => Router.playerTab('tasks'));
       await page.waitForFunction(() => PlayerView._weeklyTasks.length === 3 && PlayerView._themeTasks.length === 5);
       assert.equal(await page.locator('.demo-page-note').first().isVisible(), true);
@@ -116,6 +146,7 @@ async function main() {
         Game.state.choppingCount, Game._getItemQty('40001'), Game._getItemQty('30001')]), [10, 1, 0, 999, 999, 1]);
       assert.equal(await page.evaluate(async () => (await DB.getSubmissions()).length), 0);
       assert.notEqual(await page.evaluate(() => DemoSession.giftId), initial.gift);
+      assert.equal(await page.evaluate(() => DemoSession.canGuideForge(DemoSession.giftId)), true, 'forge guide resets on login');
       if (viewport.width === 390) {
         await page.evaluate(() => DB.addItem('40001', 5));
         const other = await context.newPage();
@@ -133,7 +164,7 @@ async function main() {
           'demo inventory, novelty and sorting never persist in browser storage');
       }
       checks.push({ viewport, initialState: true, firstChop: true, breakthrough: true, tenChop: true,
-        giftTutorial: true, forging: true, taskClaim: true, reloginReset: true });
+        giftTutorial: true, forgeTutorial: true, forging: true, taskClaim: true, reloginReset: true });
       await page.close();
     }
     assert.deepEqual(databaseRequests, [], 'demo never contacts Supabase');

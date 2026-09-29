@@ -1,18 +1,17 @@
 /* Demo-only copy reuses the approved paper and ink palette. No new artwork. */
 .demo-only { display: none !important; }
 .demo-entry .demo-only { display: block !important; }
-.demo-entry #login-screen .role-card[data-role="admin"] { display: none; }
-.demo-entry #login-screen .role-select { justify-content: center; }
-.demo-entry #login-screen .role-card[data-role="player"] { flex: 0 1 160px; cursor: default; }
+.demo-entry .demo-normal-copy { display: none; }
+.demo-entry #login-screen .role-select { display: none; }
+.demo-entry #login-boot-quote { font-size: clamp(18px, 4.6vw, 25px); line-height: 1.75; letter-spacing: .05em; }
 .demo-boot-notice {
   max-width: 320px;
-  margin: 20px auto 0;
+  margin: 12px auto 0;
   color: #464c49;
-  font-size: 13px;
+  font-size: 12px;
   line-height: 1.8;
   text-align: center;
 }
-.demo-boot-notice strong { display: block; color: #303c36; font-size: 14px; font-weight: 600; letter-spacing: .12em; }
 .demo-login-hint { margin: 10px 0 0; color: #384b40; font-size: 14px; text-align: center; line-height: 1.6; }
 .demo-login-hint b { font-size: 18px; letter-spacing: .18em; font-variant-numeric: tabular-nums; }
 .demo-login-hint small { display: block; color: #515b54; font-size: 12px; }

@@ -28,6 +28,7 @@
     const resourcePack = options.resourcePack || root.ResourcePack;
     const manifest = options.manifest || root.BootAssetManifest;
     const transition = options.transition || root.SceneTransition;
+    const demo = options.demo ?? Boolean(root.DemoSession?.isEntry());
     let onReveal = options.onReveal;
     let prepareAudio = options.prepareAudio;
     const requireResourcePack = !!options.requireResourcePack;
@@ -70,7 +71,7 @@
 
     function animateQuote() {
       stopQuotes();
-      if (destroyed || phase === 'ready' || phase === 'revealing' || phase === 'error' || doc?.hidden) return;
+      if (demo || destroyed || phase === 'ready' || phase === 'revealing' || phase === 'error' || doc?.hidden) return;
       quoteTimer = setTimer(() => {
         quoteIndex = (quoteIndex + 1) % QUOTES.length;
         const swap = () => {
@@ -106,7 +107,7 @@
         brand.textContent = '仙来';
         const kicker = doc.createElement('span');
         kicker.className = 'login-boot-kicker';
-        kicker.textContent = '修行小笺';
+        kicker.textContent = demo ? '作品演示' : '修行小笺';
         quote = doc.createElement('p');
         quote.id = 'login-boot-quote';
         const preparation = doc.createElement('div');
@@ -142,7 +143,15 @@
         simpleButton.textContent = '\u7b80\u5316\u8fdb\u5165';
         actions.append(retryButton, simpleButton);
         preparation.append(track, meta, actions);
-        content.append(brand, kicker, quote, preparation);
+        content.append(brand, kicker, quote);
+        if (demo) {
+          const notice = doc.createElement('p');
+          notice.id = 'demo-boot-notice';
+          notice.className = 'demo-only demo-boot-notice';
+          notice.textContent = '演示进度不保存，重新登录即重置。';
+          content.append(notice);
+        }
+        content.append(preparation);
         overlay.append(content);
         screen.append(overlay);
       } else {
@@ -154,7 +163,11 @@
         fill = doc.getElementById('login-boot-fill');
         percentLabel = doc.getElementById('login-boot-percent');
       }
-      if (quote) quote.textContent = QUOTES[quoteIndex];
+      if (quote) quote.textContent = demo ? '首次需缓存资源，\n加载稍慢，请稍候。' : QUOTES[quoteIndex];
+      if (demo) {
+        const kicker = overlay.querySelector?.('.login-boot-kicker');
+        if (kicker) kicker.textContent = '作品演示';
+      }
       setProgress(0);
       retryButton?.addEventListener('click', retry);
       simpleButton?.addEventListener('click', enterSimplified);

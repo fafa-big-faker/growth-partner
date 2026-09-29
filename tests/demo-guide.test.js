@@ -52,3 +52,60 @@ test('failed equipment action cannot advance to completion', async () => {
   assert.equal(await f.entry.onChop(), false);
   assert.equal(f.completed, 0);
 });
+
+function forgeFixture() {
+  let entry = null, current = true, opened = 0, completed = 0, delay;
+  const queue = new Map();
+  let serial = 0;
+  const target = { isConnected: true, disabled: false, scrollIntoView() {} };
+  const controller = createController({
+    guide: { start(options) { entry = options; return true; }, destroy() { entry = null; } },
+    schedule(callback, ms) { delay = ms; queue.set(++serial, callback); return serial; },
+    cancelSchedule(key) { queue.delete(key); },
+  });
+  const settings = {
+    isCurrent: () => current, getForgeButton: () => target,
+    openForge: () => { opened++; return true; }, onComplete: () => { completed++; },
+  };
+  return { controller, settings, target,
+    flush() { const callbacks = [...queue.values()]; queue.clear(); callbacks.forEach(callback => callback()); },
+    invalidate() { current = false; },
+    get entry() { return entry; }, get delay() { return delay; },
+    get opened() { return opened; }, get completed() { return completed; } };
+}
+test('forge spotlight waits 300ms, opens the real entrance and never forces a draw', async () => {
+  const f = forgeFixture();
+  f.controller.startForge(f.settings);
+  assert.equal(f.entry, null); assert.equal(f.delay, 300);
+  f.flush();
+  assert.equal(f.entry.title, '去天工开物，试试手气！');
+  assert.equal(f.entry.description, '用开工石锻造仙斧，寻找更强的斧技。');
+  assert.equal(f.entry.shape, 'rounded');
+  assert.equal(await f.entry.onChop(), true);
+  f.entry.onComplete();
+  assert.equal(f.opened, 1); assert.equal(f.completed, 1);
+});
+test('forge spotlight cancels pending or active state and ignores stale callbacks', async () => {
+  const f = forgeFixture();
+  f.controller.startForge(f.settings); f.controller.cancel(); f.flush();
+  assert.equal(f.entry, null);
+  f.controller.startForge(f.settings); f.invalidate(); f.flush();
+  assert.equal(f.entry, null);
+  const g = forgeFixture();
+  g.controller.startForge(g.settings); g.flush();
+  const previous = g.entry;
+  g.controller.cancel();
+  assert.equal(g.entry, null);
+  assert.equal(await previous.onChop(), false);
+  previous.onComplete();
+  assert.equal(g.completed, 0);
+});
+test('missing entrance and failed forge opening do not mark tutorial complete', async () => {
+  const f = forgeFixture();
+  f.target.isConnected = false; f.controller.startForge(f.settings); f.flush();
+  assert.equal(f.entry, null);
+  f.target.isConnected = true; f.settings.openForge = () => false;
+  f.controller.startForge(f.settings); f.flush();
+  assert.equal(await f.entry.onChop(), false);
+  assert.equal(f.completed, 0);
+});

@@ -6,7 +6,7 @@
   <title>仙来</title>
   <meta name="application-name" content="仙来">
   <meta name="apple-mobile-web-app-title" content="仙来">
-  <script src="demo-session.js?v=portfolio-demo-20260929"></script>
+  <script src="demo-session.js?v=demo-onboarding-20260929"></script>
   <link rel="icon" type="image/png" sizes="64x64" href="assets/runtime/app-icon/favicon.png?v=app-icon-20260910">
   <link rel="apple-touch-icon" sizes="180x180" href="assets/runtime/app-icon/apple-touch-icon.png?v=app-icon-20260910">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -29,7 +29,7 @@
   <link rel="stylesheet" href="web-interactions.css?v=tap-feedback-20260909">
   <link rel="stylesheet" href="first-chop-guide.css?v=first-chop-guide-20260910">
   <link rel="stylesheet" href="scene-transition.css?v=entry-transitions-20260910">
-  <link rel="stylesheet" href="demo-session.css?v=portfolio-demo-20260929">
+  <link rel="stylesheet" href="demo-session.css?v=demo-onboarding-20260929">
 </head>
 <body>
   <!-- 登录页 -->
@@ -37,9 +37,9 @@
     <section id="login-boot" class="login-boot" aria-label="入境准备">
       <div class="login-boot-content">
         <p class="login-boot-brand">仙来</p>
-        <span class="login-boot-kicker">修行小笺</span>
-        <p id="login-boot-quote">修仙可以慢慢来，<br>饭要记得按时吃。</p>
-        <p class="demo-only demo-boot-notice"><strong>作品演示模式</strong>本次体验不保存进度，重新登录将恢复初始状态。<br>放心探索，不会影响正式账号。</p>
+        <span class="login-boot-kicker"><span class="demo-normal-copy">修行小笺</span><span class="demo-only">作品演示</span></span>
+        <p id="login-boot-quote"><span class="demo-normal-copy">修仙可以慢慢来，<br>饭要记得按时吃。</span><span class="demo-only">首次需缓存资源，<br>加载稍慢，请稍候。</span></p>
+        <p id="demo-boot-notice" class="demo-only demo-boot-notice">演示进度不保存，重新登录即重置。</p>
         <div class="login-boot-preparation">
           <div id="login-boot-track" role="progressbar" aria-label="资源准备进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span id="login-boot-fill"></span></div>
           <div class="login-boot-meta"><p id="login-boot-status" role="status" aria-live="polite">正在准备画卷</p><span id="login-boot-percent" aria-hidden="true">0%</span></div>
@@ -172,7 +172,7 @@
   <script src="boot-assets.js?v=android-bundle-20260910"></script>
   <script src="resource-pack.js?v=android-bundle-20260910"></script>
   <script src="scene-transition.js?v=entry-transitions-20260910"></script>
-  <script src="login-boot.js?v=mobile-audio-20260910"></script>
+  <script src="login-boot.js?v=demo-onboarding-20260929"></script>
   <script>LoginBoot.start({ waitForRuntime: true, requireResourcePack: true });</script>
   <script src="character-animator.js"></script>
   <script src="cultivation-effects.js?v=wish-trees-20260909"></script>
@@ -187,8 +187,8 @@
   <script src="chop-refund-feedback.js?v=reward-focus-20260909"></script>
   <script src="first-chop-guide.js?v=portfolio-demo-20260929"></script>
   <script src="demo-tasks.js?v=portfolio-demo-20260929"></script>
-  <script src="demo-guide.js?v=portfolio-demo-20260929"></script>
+  <script src="demo-guide.js?v=demo-onboarding-20260929"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="app.js?v=portfolio-demo-20260929"></script>
+  <script src="app.js?v=demo-onboarding-20260929"></script>
 </body>
 </html>

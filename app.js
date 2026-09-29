@@ -3116,6 +3116,35 @@ const PlayerView = {
     });
   },
 
+  startDemoForgeGuide({ account, weaponId, version }) {
+    const isCurrent = () => account?.environment === 'demo' && Auth.session === account
+      && Boolean(Game.state) && Router.currentPlayerTab === 'cultivate'
+      && version === this._chopPresentationVersion && DemoSession.canGuideForge(weaponId);
+    if (!isCurrent() || document.querySelector('.modal-overlay')) return false;
+    this._demoWeaponGuide ||= DemoWeaponGuide.createController({ guide: FirstChopGuide });
+    return this._demoWeaponGuide.startForge({
+      isCurrent,
+      getForgeButton: () => document.querySelector('.modal-overlay') ? null : document.querySelector('.forge-btn'),
+      openForge: () => {
+        if (!isCurrent() || document.querySelector('.modal-overlay')) return false;
+        this.showForge();
+        return Boolean(document.querySelector('.forge-modal-overlay'));
+      },
+      onComplete: () => { if (isCurrent()) DemoSession.completeForgeGuide(); },
+    });
+  },
+
+  _bindDemoRewardGuide(overlay, { account, weaponId, version, ten = false }) {
+    if (!overlay || account?.environment !== 'demo') return;
+    // Snapshot the weapon used by the successful action, not whatever is equipped at dismissal.
+    overlay._afterClose = () => {
+      if (Auth.session !== account || version !== this._chopPresentationVersion || !Game.state
+        || Router.currentPlayerTab !== 'cultivate') return;
+      if (ten && DemoSession.afterTenClosed(Game.state.axeInstanceId)) this.startDemoWeaponGuide();
+      else this.startDemoForgeGuide({ account, weaponId, version });
+    };
+  },
+
   async renderCultivate() {
     const main = document.getElementById('player-main');
     const mobileState = typeof MobileCultivation !== 'undefined' ? MobileCultivation.unmount({ preserve: true }) : null;
@@ -3941,6 +3970,7 @@ const PlayerView = {
     const chopBtn = document.getElementById('chop-btn');
     const outcome = await UI.runLockedAction('chop', chopBtn, '', async () => {
       const version = ++this._chopPresentationVersion;
+      const account = Auth.session, weaponId = Game.state.axeInstanceId;
       this._playChopButtonFeedback(chopBtn);
       void AudioManager.playEffect('chopHit');
       const characterAnimation = CultivatorAnimator.playChop();
@@ -3963,7 +3993,8 @@ const PlayerView = {
             UI.playDropAnimation(item.extraDrop, treeIcon);
           }
           if (!await this._waitForChopFeedback(item.extraDrop ? 620 : 800, version)) return true;
-          this._showRewardModal(item);
+          const overlay = this._showRewardModal(item);
+          this._bindDemoRewardGuide(overlay, { account, weaponId, version });
         }
 
         this.renderCultivate();
@@ -3996,6 +4027,7 @@ const PlayerView = {
     overlay.classList.add('reward-dialog-overlay');
     overlay.querySelector('.modal').classList.add('reward-dialog', 'reward-dialog--single');
     this._startRewardReveal(overlay, { single: true });
+    return overlay;
   },
 
   // --- 任务页 ---
@@ -5543,6 +5575,7 @@ const PlayerView = {
     const outcome = await UI.runLockedAction('chop', chopBtn, '', async () => {
 
     const version = ++this._chopPresentationVersion;
+    const account = Auth.session, weaponId = Game.state.axeInstanceId;
     const results = [];
     const scatterEls = [];
 
@@ -5614,13 +5647,7 @@ const PlayerView = {
     });
     overlay.classList.add('reward-dialog-overlay');
     overlay.querySelector('.modal').classList.add('reward-dialog', 'reward-dialog--ten');
-    if (typeof Auth !== 'undefined' && Auth.session?.environment === 'demo') {
-      const account = Auth.session;
-      overlay._afterClose = () => {
-        if (Auth.session !== account || version !== this._chopPresentationVersion || !Game.state) return;
-        if (DemoSession.afterTenClosed(Game.state.axeInstanceId)) this.startDemoWeaponGuide();
-      };
-    }
+    this._bindDemoRewardGuide(overlay, { account, weaponId, version, ten: true });
     this._startRewardReveal(overlay);
 
     PlayerView.renderCultivate();
